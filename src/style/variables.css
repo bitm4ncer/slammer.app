@@ -2,6 +2,8 @@
   --primary: #8aff8c;
   --primary-rgb: 138, 255, 140;
   --primary-hover: #6ECC70;
+  /* Context accent — defaults to primary, JS overrides per active layer. */
+  --ctx-accent: var(--primary);
   --text-primary: #F2F2F2;
   --text-secondary: #AAAAAA;
   --surface: #262626;

@@ -204,6 +204,12 @@ html, body {
   color: var(--primary);
 }
 
+/* Effects panel header tracks the active layer's accent. Layer Stack header keeps --primary as a stable spine. */
+.effects-group h3,
+.effects-group h3 i {
+  color: var(--ctx-accent);
+}
+
 /* ---------- Notification ---------- */
 .notification {
   position: fixed;

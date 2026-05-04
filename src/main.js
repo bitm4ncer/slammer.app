@@ -86,6 +86,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initAffinityBridge({ document: doc, renderer });
 
+  // ---------- Active-layer accent → CSS variable ----------
+  // Drives effects/typography panels + slider thumbs to match the active layer's colour.
+  function syncCtxAccent() {
+    const layer = doc.activeLayer;
+    const root = document.documentElement;
+    if (layer?.accentColor) root.style.setProperty('--ctx-accent', layer.accentColor);
+    else root.style.removeProperty('--ctx-accent');
+  }
+  doc.subscribe((e) => {
+    if (e.type === 'layer:active' || e.type === 'doc:loaded') syncCtxAccent();
+    if (e.type === 'layer:propChanged' && e.prop === 'accentColor' && doc.activeLayerId === e.id) syncCtxAccent();
+  });
+  syncCtxAccent();
+
   // ---------- History (undo/redo) ----------
   const history = createHistory(doc);
   const undoBtn = document.getElementById('btnUndo');

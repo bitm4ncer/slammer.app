@@ -336,10 +336,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 6px 6px 4px;
+  padding: 6px;
   background: var(--surface);
   border: 1px solid var(--vhs-shadow);
-  border-left: 3px solid var(--layer-accent);
   border-radius: 4px;
   cursor: pointer;
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
