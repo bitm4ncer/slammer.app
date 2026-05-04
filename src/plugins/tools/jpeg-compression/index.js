@@ -9,7 +9,7 @@ export default {
   version: '1.0.0',
   type: 'tool',
   icon: 'compress',
-  category: 'crush',
+  category: 'slam',
 
   defaultParams() {
     return {

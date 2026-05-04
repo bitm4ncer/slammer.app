@@ -1,7 +1,7 @@
 {
-  "name": "crush-v1",
+  "name": "slammer-app",
   "version": "1.0.0-alpha.0",
-  "description": "CRUSH v1 \u2014 multi-layer image editor with VST-like tool plugins",
+  "description": "slammer.app \u2014 multi-layer image editor with VST-like effect plugins",
   "type": "module",
   "scripts": {
     "dev": "vite",

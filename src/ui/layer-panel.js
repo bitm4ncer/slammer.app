@@ -78,14 +78,28 @@ export function initLayerPanel({ container, document, renderer }) {
   }
 
   document.subscribe((e) => {
-    if ([
-      'layer:added', 'layer:removed', 'layer:reordered', 'layer:propChanged',
-      'layer:active', 'layer:sourceChanged', 'layer:textChanged',
-      'effect:propChanged', 'effect:added', 'effect:removed', 'effect:reordered',
-      'doc:loaded',
-    ].includes(e.type)) {
-      // Debounce thumbnails — toDataURL is expensive.
+    // Structural changes need a full DOM rebuild.
+    const structural = [
+      'layer:added', 'layer:removed', 'layer:reordered',
+      'layer:active', 'doc:loaded',
+    ].includes(e.type);
+    // For prop changes (visibility/opacity) update only the affected row inline so the
+    // user's drag-on-opacity-slider isn't interrupted.
+    if (structural) {
       scheduleRender();
+      return;
+    }
+    if (e.type === 'layer:propChanged') {
+      updateRow(e.id);
+      // If only visibility changed, the thumb doesn't need refreshing.
+      return;
+    }
+    // Effect / source / text changes affect thumbnails — refresh them lazily.
+    if ([
+      'effect:propChanged', 'effect:added', 'effect:removed', 'effect:reordered',
+      'layer:sourceChanged', 'layer:textChanged',
+    ].includes(e.type)) {
+      scheduleThumbRefresh(e.layerId || e.id);
     }
   });
 
@@ -93,6 +107,32 @@ export function initLayerPanel({ container, document, renderer }) {
   function scheduleRender() {
     if (pending) return;
     pending = requestAnimationFrame(() => { pending = null; render(); });
+  }
+
+  // Thumb refresh is expensive (toDataURL). Debounce per-layer with idle timing.
+  const thumbTimers = new Map();
+  function scheduleThumbRefresh(layerId) {
+    if (!layerId) return;
+    if (thumbTimers.has(layerId)) clearTimeout(thumbTimers.get(layerId));
+    thumbTimers.set(layerId, setTimeout(() => {
+      thumbTimers.delete(layerId);
+      const row = container.querySelector(`.layer-item[data-layer-id="${layerId}"] .layer-thumb`);
+      const layer = document.findLayer(layerId);
+      if (!row || !layer) return;
+      row.style.backgroundImage = `url('${thumbForLayer(layer)}')`;
+    }, 220));
+  }
+
+  function updateRow(layerId) {
+    const layer = document.findLayer(layerId);
+    if (!layer) return;
+    const row = container.querySelector(`.layer-item[data-layer-id="${layerId}"]`);
+    if (!row) return;
+    const visIcon = row.querySelector('.act-vis i');
+    if (visIcon) visIcon.className = `fas fa-${layer.visible ? 'eye' : 'eye-slash'}`;
+    const op = row.querySelector('.layer-opacity');
+    // Only set value if it differs (avoid resetting an in-drag slider's caret).
+    if (op && window.document.activeElement !== op && parseFloat(op.value) !== layer.opacity) op.value = String(layer.opacity);
   }
 
   render();

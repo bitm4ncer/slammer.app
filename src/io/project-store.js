@@ -2,10 +2,78 @@
 // Index entries: { id, name, thumbnail, updatedAt }.
 // Full project document lives under projects.<id>.
 
-const DB_NAME = 'crush';
+const DB_NAME = 'slammer';
+const LEGACY_DB_NAME = 'crush';
 const STORE = 'projects';
-const INDEX_KEY = 'crush:projects';
-const CURRENT_KEY = 'crush:current';
+const INDEX_KEY = 'slammer:projects';
+const CURRENT_KEY = 'slammer:current';
+const LEGACY_INDEX_KEY = 'crush:projects';
+const LEGACY_CURRENT_KEY = 'crush:current';
+
+// One-shot migration: copy localStorage keys + IndexedDB store from `crush` namespace.
+// Runs at module load — idempotent (skips if new keys already populated).
+migrateFromCrush();
+
+async function migrateFromCrush() {
+  try {
+    if (!localStorage.getItem(INDEX_KEY) && localStorage.getItem(LEGACY_INDEX_KEY)) {
+      localStorage.setItem(INDEX_KEY, localStorage.getItem(LEGACY_INDEX_KEY));
+    }
+    if (!localStorage.getItem(CURRENT_KEY) && localStorage.getItem(LEGACY_CURRENT_KEY)) {
+      localStorage.setItem(CURRENT_KEY, localStorage.getItem(LEGACY_CURRENT_KEY));
+    }
+    // Copy IndexedDB records from the legacy `crush` DB into `slammer` (only if empty).
+    const slammerEmpty = await isStoreEmpty(DB_NAME);
+    if (slammerEmpty && (await dbExists(LEGACY_DB_NAME))) {
+      const records = await readAll(LEGACY_DB_NAME);
+      for (const rec of records) await putProject(rec);
+    }
+  } catch (err) {
+    console.warn('[slammer] migration from crush:* skipped', err);
+  }
+}
+
+function dbExists(name) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(name);
+    req.onsuccess = () => { req.result.close(); resolve(true); };
+    req.onerror = () => resolve(false);
+    req.onupgradeneeded = () => { /* DB didn't exist before this open */ };
+  });
+}
+
+async function isStoreEmpty(name) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction(STORE, 'readonly');
+      const cnt = tx.objectStore(STORE).count();
+      cnt.onsuccess = () => { db.close(); resolve(cnt.result === 0); };
+      cnt.onerror = () => { db.close(); resolve(true); };
+    };
+    req.onerror = () => resolve(true);
+  });
+}
+
+function readAll(name) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(name);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) { db.close(); resolve([]); return; }
+      const tx = db.transaction(STORE, 'readonly');
+      const all = tx.objectStore(STORE).getAll();
+      all.onsuccess = () => { db.close(); resolve(all.result || []); };
+      all.onerror = () => { db.close(); resolve([]); };
+    };
+    req.onerror = () => resolve([]);
+  });
+}
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -80,7 +148,7 @@ export function initProjectStore() {
     if (name) doc.setName(name);
 
     // Convert image-layer Blob sources to Blobs (already Blobs typically).
-    // For .crushproj export we'll convert to data URLs; here we store binary as-is.
+    // For .slammerproj export we'll convert to data URLs; here we store binary as-is.
     const docCopy = JSON.parse(JSON.stringify(doc.serialize(), (k, v) => {
       if (v && typeof v === 'object' && v.__isFile) return undefined; // safety
       return v;

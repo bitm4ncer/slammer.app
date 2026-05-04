@@ -45,7 +45,7 @@ export default {
   version: '1.0.0',
   type: 'tool',
   icon: 'chess-board',
-  category: 'crush',
+  category: 'slam',
 
   defaultParams() {
     return {
@@ -57,7 +57,7 @@ export default {
       darkColor: '#000000',
       lightColor: '#FFFFFF',
       // Multi-color palette.
-      palette: ['#000000', '#9392D9', '#FF6B5B', '#F7E45A', '#FFFFFF'],
+      palette: ['#000000', '#8aff8c', '#FF6B5B', '#F7E45A', '#FFFFFF'],
       // Algorithm-specific:
       bitDepth: 1,
       mosaicSize: 8,
@@ -81,96 +81,105 @@ export default {
 
   renderUI(params, onChange) {
     const root = makeToolRoot();
+    // Local mirror — kept in sync with onChange so structural rebuilds use latest values
+    // without losing in-flight slider state (sliders are rebuilt only on algorithm/colorMode change).
+    const local = { ...params };
 
-    root.appendChild(pillGroup({
-      label: 'Color Mode',
-      options: COLOR_MODES,
-      value: params.colorMode,
-      onChange: (v) => onChange({ colorMode: v }),
-    }));
+    function rebuild() {
+      root.innerHTML = '';
 
-    root.appendChild(pillGroup({
-      label: 'Algorithm',
-      options: ALGORITHMS,
-      value: params.algorithm,
-      onChange: (v) => onChange({ algorithm: v }),
-    }));
-
-    root.appendChild(sliderRow({
-      label: 'Threshold', min: 0, max: 255, step: 1, value: params.threshold,
-      onChange: (v) => onChange({ threshold: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'Strength', min: 0, max: 1, step: 0.01, value: params.strength,
-      onChange: (v) => onChange({ strength: v }),
-    }));
-
-    if (params.colorMode === 'custom') {
-      root.appendChild(colorRow({
-        label: 'Dark', value: params.darkColor,
-        onChange: (v) => onChange({ darkColor: v }),
+      root.appendChild(pillGroup({
+        label: 'Color Mode',
+        options: COLOR_MODES,
+        value: local.colorMode,
+        onChange: (v) => { local.colorMode = v; onChange({ colorMode: v }); rebuild(); },
       }));
-      root.appendChild(colorRow({
-        label: 'Light', value: params.lightColor,
-        onChange: (v) => onChange({ lightColor: v }),
-      }));
-    }
 
-    if (params.colorMode === 'multi') {
-      const swatches = document.createElement('div');
-      swatches.className = 'effect-swatch-row';
-      params.palette.forEach((hex, i) => {
-        const sw = document.createElement('div');
-        sw.className = 'effect-swatch';
-        sw.style.background = hex;
-        sw.innerHTML = `<input type="color" value="${hex}" />`;
-        sw.querySelector('input').addEventListener('input', (e) => {
-          const next = params.palette.slice();
-          next[i] = e.target.value;
-          onChange({ palette: next });
-          sw.style.background = e.target.value;
+      root.appendChild(pillGroup({
+        label: 'Algorithm',
+        options: ALGORITHMS,
+        value: local.algorithm,
+        onChange: (v) => { local.algorithm = v; onChange({ algorithm: v }); rebuild(); },
+      }));
+
+      root.appendChild(sliderRow({
+        label: 'Threshold', min: 0, max: 255, step: 1, value: local.threshold,
+        onChange: (v) => { local.threshold = v; onChange({ threshold: v }); },
+      }));
+      root.appendChild(sliderRow({
+        label: 'Strength', min: 0, max: 1, step: 0.01, value: local.strength,
+        onChange: (v) => { local.strength = v; onChange({ strength: v }); },
+      }));
+
+      if (local.colorMode === 'custom') {
+        root.appendChild(colorRow({
+          label: 'Dark', value: local.darkColor,
+          onChange: (v) => { local.darkColor = v; onChange({ darkColor: v }); },
+        }));
+        root.appendChild(colorRow({
+          label: 'Light', value: local.lightColor,
+          onChange: (v) => { local.lightColor = v; onChange({ lightColor: v }); },
+        }));
+      }
+
+      if (local.colorMode === 'multi') {
+        const swatches = document.createElement('div');
+        swatches.className = 'effect-swatch-row';
+        local.palette.forEach((hex, i) => {
+          const sw = document.createElement('div');
+          sw.className = 'effect-swatch';
+          sw.style.background = hex;
+          sw.innerHTML = `<input type="color" value="${hex}" />`;
+          sw.querySelector('input').addEventListener('input', (e) => {
+            const next = local.palette.slice();
+            next[i] = e.target.value;
+            local.palette = next;
+            onChange({ palette: next });
+            sw.style.background = e.target.value;
+          });
+          swatches.appendChild(sw);
         });
-        swatches.appendChild(sw);
-      });
-      root.appendChild(swatches);
+        root.appendChild(swatches);
+      }
+
+      // Algorithm-specific extra rows.
+      if (['mosaic'].includes(local.algorithm)) {
+        root.appendChild(sliderRow({
+          label: 'Mosaic Size', min: 2, max: 64, step: 1, value: local.mosaicSize,
+          onChange: (v) => { local.mosaicSize = v; onChange({ mosaicSize: v }); },
+        }));
+      }
+      if (['sineWave', 'wave'].includes(local.algorithm)) {
+        root.appendChild(sliderRow({
+          label: 'Wavelength', min: 2, max: 64, step: 1, value: local.waveLength,
+          onChange: (v) => { local.waveLength = v; onChange({ waveLength: v }); },
+        }));
+        root.appendChild(sliderRow({
+          label: 'Amplitude', min: 0, max: 32, step: 1, value: local.waveAmplitude,
+          onChange: (v) => { local.waveAmplitude = v; onChange({ waveAmplitude: v }); },
+        }));
+      }
+      if (['halftone', 'checker', 'gridlock', 'circuitGrid', 'diamond', 'bitTone'].includes(local.algorithm)) {
+        root.appendChild(sliderRow({
+          label: 'Pattern Size', min: 2, max: 32, step: 1, value: local.patternSize,
+          onChange: (v) => { local.patternSize = v; onChange({ patternSize: v }); },
+        }));
+      }
+      if (['halftone', 'gridlock', 'mosaic'].includes(local.algorithm)) {
+        root.appendChild(sliderRow({
+          label: 'Angle', min: 0, max: 90, step: 1, value: local.patternAngle,
+          onChange: (v) => { local.patternAngle = v; onChange({ patternAngle: v }); },
+        }));
+      }
+      if (local.algorithm === 'bitTone') {
+        root.appendChild(sliderRow({
+          label: 'Bit Depth', min: 1, max: 7, step: 1, value: local.bitDepth,
+          onChange: (v) => { local.bitDepth = v; onChange({ bitDepth: v }); },
+        }));
+      }
     }
 
-    // Algorithm-specific extra rows.
-    if (['mosaic'].includes(params.algorithm)) {
-      root.appendChild(sliderRow({
-        label: 'Mosaic Size', min: 2, max: 64, step: 1, value: params.mosaicSize,
-        onChange: (v) => onChange({ mosaicSize: v }),
-      }));
-    }
-    if (['sineWave', 'wave'].includes(params.algorithm)) {
-      root.appendChild(sliderRow({
-        label: 'Wavelength', min: 2, max: 64, step: 1, value: params.waveLength,
-        onChange: (v) => onChange({ waveLength: v }),
-      }));
-      root.appendChild(sliderRow({
-        label: 'Amplitude', min: 0, max: 32, step: 1, value: params.waveAmplitude,
-        onChange: (v) => onChange({ waveAmplitude: v }),
-      }));
-    }
-    if (['halftone', 'checker', 'gridlock', 'circuitGrid', 'diamond', 'bitTone'].includes(params.algorithm)) {
-      root.appendChild(sliderRow({
-        label: 'Pattern Size', min: 2, max: 32, step: 1, value: params.patternSize,
-        onChange: (v) => onChange({ patternSize: v }),
-      }));
-    }
-    if (['halftone', 'gridlock', 'mosaic'].includes(params.algorithm)) {
-      root.appendChild(sliderRow({
-        label: 'Angle', min: 0, max: 90, step: 1, value: params.patternAngle,
-        onChange: (v) => onChange({ patternAngle: v }),
-      }));
-    }
-    if (params.algorithm === 'bitTone') {
-      root.appendChild(sliderRow({
-        label: 'Bit Depth', min: 1, max: 7, step: 1, value: params.bitDepth,
-        onChange: (v) => onChange({ bitDepth: v }),
-      }));
-    }
-
+    rebuild();
     return root;
   },
 };

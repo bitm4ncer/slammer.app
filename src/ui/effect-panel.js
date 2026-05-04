@@ -170,13 +170,16 @@ export function initEffectPanel({ stackEl, addToolBtn, addFilterBtn, document })
   });
 
   document.subscribe((e) => {
-    if ([
+    // Structural events trigger a full rebuild.
+    const structural = [
       'layer:active', 'layer:added', 'layer:removed',
       'effect:added', 'effect:removed', 'effect:reordered',
-      'effect:propChanged', 'doc:loaded',
-    ].includes(e.type)) {
-      render();
-    }
+      'doc:loaded',
+    ].includes(e.type);
+    // Re-render also on enabled/expanded changes so the visual state updates.
+    // CRITICAL: do NOT rebuild on prop=params — that would destroy the user's slider mid-drag.
+    const visualToggle = e.type === 'effect:propChanged' && (e.prop === 'enabled' || e.prop === 'expanded');
+    if (structural || visualToggle) render();
   });
 
   render();

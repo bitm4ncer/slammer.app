@@ -1,4 +1,4 @@
-/* ---------- Buttons (VHS-style, ported from CRUSH v0.5) ---------- */
+/* ---------- Buttons ---------- */
 .tb-btn, .zoom-btn, .add-effect-btn {
   background: linear-gradient(to bottom, var(--surface) 0%, var(--vhs-groove) 100%);
   border: 1px solid var(--vhs-shadow);
@@ -6,7 +6,7 @@
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
   transition: all 0.15s ease;
   color: var(--text-secondary);
-  font-family: 'Chicago', 'Courier New', monospace;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   letter-spacing: 0.5px;
   padding: 6px 10px;
@@ -43,17 +43,170 @@
   padding: 0;
 }
 
+.tb-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+.tb-btn--icon i { font-size: 13px; }
+
+/* ---------- Tool sidebar buttons (Photoshop-style) ---------- */
+.tool-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(to bottom, var(--surface) 0%, var(--vhs-groove) 100%);
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.08), 1px 1px 3px rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tool-btn i {
+  font-size: 16px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.tool-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: linear-gradient(to bottom, var(--surface-3) 0%, var(--surface) 100%);
+}
+
+.tool-btn:active {
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translateY(1px);
+}
+
+.tool-btn[aria-pressed="true"] {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary), inset 1px 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--primary);
+}
+
+.tool-btn[data-shortcut]::after {
+  content: attr(data-shortcut);
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.tool-btn:hover[data-shortcut]::after { opacity: 0.9; color: var(--primary); }
+
 .add-effect-btn { flex: 1; justify-content: center; }
+
+/* ---------- Affinity footer trigger + slideout ---------- */
+.affinity-mount {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.affinity-trigger {
+  position: relative;
+}
+.affinity-trigger .affinity-led {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vhs-shadow);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5);
+}
+.affinity-trigger .affinity-led.connected {
+  background: #6dd17a;
+  box-shadow: 0 0 6px rgba(109, 209, 122, 0.6);
+}
+.affinity-trigger[aria-expanded="true"] {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.affinity-slideout {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.55), inset 0 1px 0 var(--vhs-highlight);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 80;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+.affinity-slideout.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.affinity-slideout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+}
+
+.affinity-title {
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+}
+
+.affinity-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.affinity-close:hover { color: var(--primary); background: var(--button-hover-bg); }
+
+.affinity-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 
 /* ---------- Theme color picker ---------- */
 .theme-color-picker {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid var(--border);
   box-shadow: inset 0 0 0 1px var(--vhs-shadow);
   cursor: pointer;
+  margin-left: 4px;
 }
 .theme-color-picker input {
   width: 200%;

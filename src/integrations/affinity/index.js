@@ -8,37 +8,62 @@ import { showNotification } from '../../ui/notifications.js';
 const DEFAULT_PORT = 39871;
 
 export function initAffinityBridge({ document: doc, renderer }) {
-  const sidePanel = document.querySelector('.side-panel');
-  if (!sidePanel) return;
+  const mount = document.getElementById('affinityMount');
+  if (!mount) return;
 
-  const block = document.createElement('div');
-  block.className = 'control-group affinity-block';
-  block.innerHTML = `
-    <h3 style="display:flex;align-items:center;gap:8px;">
-      <i class="fas fa-link"></i><span>AFFINITY</span>
+  mount.innerHTML = `
+    <button class="tb-btn tb-btn--icon affinity-trigger" id="affinityTrigger" title="Affinity Bridge" aria-expanded="false">
+      <i class="fas fa-link"></i>
       <span class="affinity-led" id="affLed" title="Disconnected"></span>
-    </h3>
-    <div class="affinity-row">
-      <button class="add-effect-btn" id="affConnect" style="flex:1"><i class="fas fa-plug"></i> Connect</button>
-    </div>
-    <div class="affinity-row">
-      <select class="effect-select" id="affSendMode">
-        <option value="active">Send active layer</option>
-        <option value="composition">Send visible composition</option>
-      </select>
-    </div>
-    <div class="affinity-row">
-      <button class="add-effect-btn" id="affSend" style="flex:1" disabled><i class="fas fa-upload"></i> Send</button>
-      <button class="add-effect-btn" id="affPull" style="flex:1" disabled><i class="fas fa-download"></i> Pull</button>
+    </button>
+    <div class="affinity-slideout" id="affinitySlideout" hidden>
+      <div class="affinity-slideout-header">
+        <span class="affinity-title">AFFINITY</span>
+        <button class="affinity-close" id="affClose" title="Close" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="affinity-row">
+        <button class="add-effect-btn" id="affConnect" style="flex:1"><i class="fas fa-plug"></i> Connect</button>
+      </div>
+      <div class="affinity-row">
+        <select class="effect-select" id="affSendMode">
+          <option value="active">Send active layer</option>
+          <option value="composition">Send visible composition</option>
+        </select>
+      </div>
+      <div class="affinity-row">
+        <button class="add-effect-btn" id="affSend" style="flex:1" disabled><i class="fas fa-upload"></i> Send</button>
+        <button class="add-effect-btn" id="affPull" style="flex:1" disabled><i class="fas fa-download"></i> Pull</button>
+      </div>
     </div>
   `;
-  sidePanel.appendChild(block);
 
-  const led = block.querySelector('#affLed');
-  const btnConnect = block.querySelector('#affConnect');
-  const btnSend = block.querySelector('#affSend');
-  const btnPull = block.querySelector('#affPull');
-  const sendModeSel = block.querySelector('#affSendMode');
+  const trigger = mount.querySelector('#affinityTrigger');
+  const slideout = mount.querySelector('#affinitySlideout');
+  const closeBtn = mount.querySelector('#affClose');
+  const led = mount.querySelector('#affLed');
+  const btnConnect = mount.querySelector('#affConnect');
+  const btnSend = mount.querySelector('#affSend');
+  const btnPull = mount.querySelector('#affPull');
+  const sendModeSel = mount.querySelector('#affSendMode');
+
+  function openSlideout() {
+    slideout.hidden = false;
+    requestAnimationFrame(() => slideout.classList.add('open'));
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+  function closeSlideout() {
+    slideout.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    setTimeout(() => { if (!slideout.classList.contains('open')) slideout.hidden = true; }, 200);
+  }
+  trigger.addEventListener('click', () => {
+    if (trigger.getAttribute('aria-expanded') === 'true') closeSlideout();
+    else openSlideout();
+  });
+  closeBtn.addEventListener('click', closeSlideout);
+  document.addEventListener('click', (e) => {
+    if (!mount.contains(e.target) && trigger.getAttribute('aria-expanded') === 'true') closeSlideout();
+  });
 
   let ws = null;
 
@@ -99,7 +124,7 @@ export function initAffinityBridge({ document: doc, renderer }) {
       const out = renderer.flattenVisible({ background: null });
       if (!out) return showNotification('Nothing visible');
       const dataURL = out.toDataURL('image/png');
-      ws.send(JSON.stringify({ type: 'push-image', name: doc.state.name || 'CRUSH composition', dataUrl: dataURL }));
+      ws.send(JSON.stringify({ type: 'push-image', name: doc.state.name || 'slammer composition', dataUrl: dataURL }));
       showNotification('Sent composition');
     }
   }

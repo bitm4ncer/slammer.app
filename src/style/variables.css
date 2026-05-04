@@ -1,7 +1,7 @@
 :root {
-  --primary: #9392D9;
-  --primary-rgb: 147, 146, 217;
-  --primary-hover: #7574B8;
+  --primary: #8aff8c;
+  --primary-rgb: 138, 255, 140;
+  --primary-hover: #6ECC70;
   --text-primary: #F2F2F2;
   --text-secondary: #AAAAAA;
   --surface: #262626;
@@ -19,6 +19,8 @@
   --button-text: var(--text-secondary);
   --toolbar-h: 48px;
   --side-panel-w: 340px;
+  --tool-sidebar-w: 44px;
+  --footer-h: 36px;
 }
 
 @font-face {

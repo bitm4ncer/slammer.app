@@ -1,4 +1,5 @@
-// .crushproj — JSON file with embedded data URLs. Self-contained portable format.
+// .slammerproj — JSON file with embedded data URLs. Self-contained portable format.
+// Legacy .crushproj imports are accepted via the file-extension drop handler.
 
 export async function exportProjectFile({ document: doc }) {
   const docCopy = JSON.parse(JSON.stringify(doc.serialize()));
@@ -13,7 +14,7 @@ export async function exportProjectFile({ document: doc }) {
   const blob = new Blob([JSON.stringify(docCopy)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${doc.state.name || 'project'}.crushproj`;
+  a.download = `${doc.state.name || 'project'}.slammerproj`;
   a.click();
 }
 

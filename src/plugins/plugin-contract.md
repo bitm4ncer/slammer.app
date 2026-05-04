@@ -1,4 +1,4 @@
-# CRUSH Plugin Contract (v1)
+# slammer.app Plugin Contract (v1)
 
 A plugin is an ES module that default-exports a single object describing one
 non-destructive effect node that can sit on a layer's effect stack.
@@ -16,7 +16,7 @@ export default {
   version: '1.0.0',               // semver
   type: 'tool' | 'filter' | 'generator',
   icon: 'chess-board',            // FontAwesome name (no `fa-` prefix)
-  category: 'crush' | 'adjust' | 'distort' | ...,
+  category: 'slam' | 'adjust' | 'distort' | ...,
 
   defaultParams() { return { /* ... */ }; },
 

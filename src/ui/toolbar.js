@@ -19,7 +19,7 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
   });
 
   $('btnAddText').addEventListener('click', () => {
-    const layer = doc.addTextLayer({ text: { value: 'CRUSH' } });
+    const layer = doc.addTextLayer({ text: { value: 'slammer' } });
     openTextLayer?.(layer);
   });
 
@@ -39,7 +39,7 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
   $('btnExport').addEventListener('click', (e) => {
     if (e.shiftKey) {
       exportProjectFile({ document: doc });
-      showNotification('.crushproj exported');
+      showNotification('.slammerproj exported');
     } else {
       exportPng?.();
     }
@@ -55,9 +55,11 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
     projectMenu?.open();
   });
 
-  // Drop a .crushproj file anywhere on the canvas to import it.
+  // Drop a .slammerproj (or legacy .crushproj) file anywhere on the canvas to import it.
   view.stage.container().addEventListener('drop', async (e) => {
-    const f = Array.from(e.dataTransfer?.files || []).find((x) => x.name?.endsWith('.crushproj'));
+    const f = Array.from(e.dataTransfer?.files || []).find((x) =>
+      x.name?.endsWith('.slammerproj') || x.name?.endsWith('.crushproj')
+    );
     if (!f) return;
     e.preventDefault();
     e.stopPropagation();
@@ -72,7 +74,7 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
       }
       showNotification(`Loaded "${doc.state.name}"`);
     } catch (err) {
-      showNotification('Failed to import .crushproj');
+      showNotification('Failed to import project file');
       console.error(err);
     }
   }, true);
@@ -80,6 +82,17 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
   $('zoomIn').addEventListener('click', () => view.zoomBy(1.25));
   $('zoomOut').addEventListener('click', () => view.zoomBy(0.8));
   $('zoomFit').addEventListener('click', () => view.fitTo());
+
+  // Tool hotkeys (Photoshop-style): I = Image, T = Text.
+  // Skip when typing into inputs/textareas/contenteditable, or when modifier keys are held.
+  window.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input, textarea, [contenteditable=""], [contenteditable="true"]')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === 'i') { e.preventDefault(); $('btnAddImage')?.click(); }
+    else if (key === 't') { e.preventDefault(); $('btnAddText')?.click(); }
+  });
 
   // Update canvas hint visibility based on layer presence.
   function syncHint() {

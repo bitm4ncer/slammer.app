@@ -5,27 +5,31 @@ html, body {
   color: var(--text-primary);
   overflow: hidden;
   height: 100%;
-  font-family: 'Chicago', 'Courier New', monospace;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 400;
   font-size: 13px;
-  letter-spacing: 0.5px;
-  text-shadow: 1px 1px 1px var(--vhs-shadow);
+  letter-spacing: 0.1px;
 }
 
 * { box-sizing: border-box; }
 
 #app {
   display: grid;
-  grid-template-rows: var(--toolbar-h) 1fr;
+  grid-template-rows: var(--toolbar-h) 1fr var(--footer-h);
+  grid-template-columns: var(--tool-sidebar-w) 1fr var(--side-panel-w);
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "tools   canvas  panel"
+    "footer  footer  footer";
   height: 100vh;
   width: 100vw;
 }
 
-.app-main {
-  display: grid;
-  grid-template-columns: 1fr var(--side-panel-w);
-  overflow: hidden;
-}
+.app-toolbar { grid-area: toolbar; }
+.tool-sidebar { grid-area: tools; }
+.canvas-area { grid-area: canvas; }
+.side-panel { grid-area: panel; }
+.app-footer { grid-area: footer; }
 
 /* ---------- Toolbar ---------- */
 .app-toolbar {
@@ -47,8 +51,8 @@ html, body {
 
 .toolbar-center { gap: 4px; }
 
-.crush-mini-logo {
-  font-family: 'GlyphWorld-Mountain', sans-serif;
+.slammer-mini-logo {
+  font-family: 'GothicPixels', monospace;
   color: var(--primary);
   font-size: 1.1rem;
   letter-spacing: 0.2em;
@@ -115,6 +119,40 @@ html, body {
   gap: 6px;
   z-index: 10;
 }
+
+/* ---------- Tool sidebar (Photoshop-style) ---------- */
+.tool-sidebar {
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-right: 1px solid var(--vhs-shadow);
+  box-shadow: inset -1px 0 0 var(--vhs-highlight);
+  overflow: hidden;
+}
+
+/* ---------- Footer ---------- */
+.app-footer {
+  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
+  border-top: 1px solid var(--vhs-shadow);
+  box-shadow: inset 0 1px 0 var(--vhs-highlight), 0 -1px 3px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 10px;
+}
+
+.footer-left, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-left { padding-left: 4px; }
+.footer-right { padding-right: 2px; }
 
 /* ---------- Side panel ---------- */
 .side-panel {
@@ -190,14 +228,6 @@ html, body {
   transform: translateX(-50%) translateY(0);
 }
 
-.crush-logo-footer {
-  position: fixed;
-  left: 18px;
-  bottom: 8px;
-  font-family: 'GlyphWorld-Mountain', sans-serif;
-  color: var(--primary);
-  opacity: 0.35;
-  font-size: 13px;
-  letter-spacing: 0.2em;
-  pointer-events: none;
+.slammer-logo-footer {
+  display: none;
 }

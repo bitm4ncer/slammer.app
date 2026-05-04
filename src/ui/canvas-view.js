@@ -59,7 +59,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !isEditingText()) {
       spaceDown = true;
-      stage.find('.crush-layer').forEach((g) => g.draggable(false));
+      stage.find('.slammer-layer').forEach((g) => g.draggable(false));
       syncCursor();
       e.preventDefault();
     }
@@ -77,7 +77,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
       spaceDown = false;
       panning = false;
       // Restore draggable state on all layers.
-      stage.find('.crush-layer').forEach((g) => g.draggable(true));
+      stage.find('.slammer-layer').forEach((g) => g.draggable(true));
       syncCursor();
     }
   });
@@ -152,7 +152,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
 
   function fitTo() {
     // Fit all visible layer bounding rects into the viewport.
-    const groups = stage.find('.crush-layer').filter((g) => g.visible());
+    const groups = stage.find('.slammer-layer').filter((g) => g.visible());
     if (!groups.length) {
       stage.scale({ x: 1, y: 1 });
       stage.position({ x: 0, y: 0 });

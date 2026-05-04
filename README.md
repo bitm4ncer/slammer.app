@@ -1,6 +1,6 @@
-# CRUSH v1
+# slammer.app
 
-Multi-layer image editor for crushing / glitching / dithering, with VST-like
+Multi-layer image editor for slamming, glitching, and dithering, with VST-like
 tool plugins and a typography layer. Konva-based free canvas, non-destructive
 per-layer effect stacks, IndexedDB project storage, Affinity Photo bridge.
 
@@ -22,17 +22,19 @@ npm run preview      # serves the built dist
 | Move / scale / rotate  | Click layer to select, drag handles                   |
 | Pan                    | Hold **Space** + drag, or middle-mouse drag           |
 | Zoom                   | Mouse wheel (zoom-to-pointer), or zoom buttons        |
-| Reorder layers         | Drag rows in the Layers panel                         |
-| Add an effect          | **+ Add Tool** or **+ Add Filter** in the Effects panel |
+| Reorder layers         | Drag rows in the Layer Stack panel                    |
+| Add an effect          | **+** button on the Effects panel header              |
 | Reorder effects        | Drag the grip handle on an effect row                 |
 | Disable an effect      | Click the check icon on the effect's header           |
 | Delete a layer         | Trash icon, or **Delete** key                         |
 | Save project           | Toolbar **Save** (or autosaves on change)             |
-| Open project           | Toolbar **Open** → modal grid                         |
+| Open project           | Toolbar **Open** -> modal grid                        |
 | Export PNG             | Toolbar **Export**                                    |
-| Export .crushproj      | **Shift** + **Export**                                |
-| Import .crushproj      | Drag the .crushproj file onto the canvas              |
-| Connect Affinity       | Side panel → **Connect** (helper must be running)     |
+| Export .slammerproj    | **Shift** + **Export**                                |
+| Import .slammerproj    | Drag the .slammerproj file onto the canvas            |
+| Connect Affinity       | Footer -> **Connect** (Affinity Photo 2 must be open) |
+
+`.crushproj` files exported by older builds are still imported transparently.
 
 ## Architecture
 
@@ -46,34 +48,31 @@ src/
     tools/        # VST-style: dithering, jpeg-compression, pixelsort
     filters/      # compact: invert, brightness, contrast, levels, blur
     shared/       # UI helpers
-  io/             # project-store (IndexedDB), project-file (.crushproj), export-png
+  io/             # project-store (IndexedDB), project-file (.slammerproj), export-png
   integrations/
-    affinity/     # WebSocket bridge to Affinity helper
+    affinity/     # SSE + JSON-RPC bridge to Affinity Photo 2 MCP server
   style/          # variables, layout, components, effects (CSS)
 ```
 
 The renderer maintains a per-layer effect cache (one ImageData per effect) so
-that tweaking a late-stage filter does not re-run earlier ones — see
+that tweaking a late-stage filter does not re-run earlier ones - see
 `plugins/plugin-contract.md` for the caching contract.
 
 ## Plugins
 
 To add a new effect, write an ES module that default-exports the manifest in
 `plugins/plugin-contract.md`, then import + register it in `src/main.js`. The
-plugin appears automatically in the matching Add menu.
+plugin appears automatically in the Effects panel's add menu.
 
-## Status
+## Roadmap
 
-- **Stable:** layered canvas, transform, layer panel, effect stack, dithering
-  (24 algorithms × 5 colour modes), pixelsort, JPEG compression, levels /
-  brightness / contrast / blur / invert, text layer with Google Fonts, project
-  save/load (IndexedDB), PNG + .crushproj export, Affinity bridge.
-- **Planned:** undo/redo, vector layers, generator-type plugins, mobile layout,
-  Web Worker offload for heavy effects.
+See [`roadmap.md`](roadmap.md) for the phased rebuild plan (rebrand,
+design-system polish, Affinity bridge, dithering rework, knobs system, FX
+layers, vector tools, brushes, masks, plugins, artboards).
 
-## Relationship to v0.5
+## History
 
-v0.5 (`C:\Users\konta\Desktop\CRUSH_app`, branch `main`) is a single-image
-single-pipeline tool. It remains in maintenance mode. v1 is the layered
-rewrite, currently on the `next/konva-rewrite` branch and tagged `v.1.0.0`
-when ready.
+Forked from the v0.5 single-image tool that lived at
+`C:\Users\konta\Desktop\CRUSH_app`. v1 is the layered Konva rewrite. The
+`crush:*` localStorage keys and old IndexedDB store are migrated automatically
+on first launch.

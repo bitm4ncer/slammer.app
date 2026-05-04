@@ -13,7 +13,7 @@ export function exportVisibleAsPng({ renderer, document: doc, transparent = true
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${doc.state.name || 'crush'}.png`;
+    a.download = `${doc.state.name || 'slammer'}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     showNotification('PNG exported');

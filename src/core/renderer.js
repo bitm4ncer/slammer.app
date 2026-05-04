@@ -9,14 +9,34 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   let transformer = null;
   let pendingRedraw = null;
 
+  // Per-frame paint queue. Multiple param tweaks within one frame collapse to a single paint.
+  const paintQueue = new Set();
+  let paintScheduled = false;
+  function schedulePaint(layerId) {
+    paintQueue.add(layerId);
+    if (paintScheduled) return;
+    paintScheduled = true;
+    requestAnimationFrame(runPaintQueue);
+  }
+  function runPaintQueue() {
+    paintScheduled = false;
+    const ids = Array.from(paintQueue);
+    paintQueue.clear();
+    for (const id of ids) {
+      const layer = document.findLayer(id);
+      const st = layerState.get(id);
+      if (layer && st) paintLayerSync(layer, st);
+    }
+  }
+
   function ensureTransformer() {
     if (transformer) return transformer;
     transformer = new Konva.Transformer({
       rotateEnabled: true,
-      anchorStroke: '#9392D9',
+      anchorStroke: '#8aff8c',
       anchorFill: '#1e1e1e',
       anchorSize: 9,
-      borderStroke: '#9392D9',
+      borderStroke: '#8aff8c',
       borderDash: [4, 4],
       keepRatio: false,
       flipEnabled: false,
@@ -167,7 +187,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     return out;
   }
 
+  // Public-ish: queue a layer for repaint on the next animation frame.
   function paintLayer(layer, st) {
+    schedulePaint(layer.id);
+  }
+
+  // Actual paint — called only from the RAF queue.
+  function paintLayerSync(layer, st) {
     const finalImageData = applyEffectsPipeline(layer, st);
     if (!finalImageData) return;
     if (st.dstCanvas.width !== finalImageData.width || st.dstCanvas.height !== finalImageData.height) {
@@ -192,14 +218,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       opacity: layer.opacity,
       visible: layer.visible,
       draggable: true,
-      name: 'crush-layer',
+      name: 'slammer-layer',
     });
     const image = new Konva.Image({
       image: null,
       listening: true,
       globalCompositeOperation: layer.blendMode,
     });
-    image._crushLayerId = layer.id;
+    image._slammerLayerId = layer.id;
     group.add(image);
     contentLayer.add(group);
 
@@ -385,7 +411,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   function bindTransformerEvents() {
     contentLayer.on('dragend transformend', (e) => {
       const target = e.target;
-      const layerId = target.id?.() || target._crushLayerId;
+      const layerId = target.id?.() || target._slammerLayerId;
       const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
       if (!layer) return;
       const group = layer.id === layerId ? target : target.parent;

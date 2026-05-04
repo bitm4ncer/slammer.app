@@ -1,4 +1,4 @@
-// CRUSH v1 — bootstrap.
+// slammer.app — bootstrap.
 
 import './style/variables.css';
 import './style/layout.css';
@@ -7,6 +7,7 @@ import './style/effects.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';
+import { createHistory } from './core/history.js';
 import { initCanvasView } from './ui/canvas-view.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
@@ -112,14 +113,81 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initAffinityBridge({ document: doc, renderer });
 
-  // Autosave (debounced)
+  // ---------- History (undo/redo) ----------
+  const history = createHistory(doc);
+  const undoBtn = document.getElementById('btnUndo');
+  const redoBtn = document.getElementById('btnRedo');
+  history.subscribe(({ canUndo, canRedo }) => {
+    undoBtn.disabled = !canUndo;
+    redoBtn.disabled = !canRedo;
+  });
+  undoBtn.addEventListener('click', () => history.undo());
+  redoBtn.addEventListener('click', () => history.redo());
+  window.addEventListener('keydown', (e) => {
+    const isMod = e.ctrlKey || e.metaKey;
+    if (!isMod) return;
+    const ae = document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (inField) return;
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      history.undo();
+    } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+      e.preventDefault();
+      history.redo();
+    }
+  });
+
+  // ---------- Autosave with status indicator ----------
+  const dot = document.getElementById('autosaveDot');
   let saveTimer = null;
-  doc.subscribe(() => {
+  let dotResetTimer = null;
+  let bootRestoreInFlight = true; // suppress autosave for the initial restore-load
+  function setDotState(state) {
+    dot.classList.remove('dirty', 'saving', 'saved');
+    if (state) dot.classList.add(state);
+    if (dotResetTimer) clearTimeout(dotResetTimer);
+    if (state === 'saved') {
+      dotResetTimer = setTimeout(() => dot.classList.remove('saved'), 1400);
+    }
+  }
+  doc.subscribe((e) => {
+    if (bootRestoreInFlight) return;
+    setDotState('dirty');
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      projectStore.autosave({ document: doc }).catch(() => {});
+    saveTimer = setTimeout(async () => {
+      setDotState('saving');
+      try {
+        await projectStore.autosave({ document: doc });
+        setDotState('saved');
+      } catch {
+        setDotState(null);
+      }
     }, 800);
   });
 
-  console.log('[CRUSH v1] app loaded');
+  // ---------- Restore last open project on reload ----------
+  await restoreLastSession({ doc, projectStore });
+  bootRestoreInFlight = false;
+
+  console.log('[slammer.app] loaded');
 });
+
+async function restoreLastSession({ doc, projectStore }) {
+  const id = projectStore.getCurrent();
+  if (!id) return;
+  try {
+    const projDoc = await projectStore.loadProject(id);
+    if (!projDoc || !projDoc.layers?.length) return;
+    // Convert any data-URL sources back to Blobs so the renderer treats them uniformly.
+    for (const l of projDoc.layers) {
+      if (typeof l.source === 'string' && l.source.startsWith('data:')) {
+        l.source = await fetch(l.source).then((r) => r.blob());
+      }
+    }
+    doc.load(projDoc);
+  } catch (err) {
+    console.warn('[slammer.app] restore failed', err);
+  }
+}
