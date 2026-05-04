@@ -33,6 +33,7 @@ import { initProjectMenu } from './ui/project-menu.js';
 import { initAffinityBridge } from './integrations/affinity/index.js';
 import { initSettingsPopup, getSettings, onSettingsChange } from './ui/settings-popup.js';
 import { initSidePanelSplit } from './ui/side-panel-split.js';
+import { initLayerStackAdd } from './ui/layer-stack-add.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -84,6 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     exportPng: () => exportVisibleAsPng({ renderer, document: doc }),
     projectStore,
     projectMenu,
+    openTextLayer: (layer) => textTool.focus(layer),
+  });
+
+  initLayerStackAdd({
+    document: doc,
     openTextLayer: (layer) => textTool.focus(layer),
   });
 

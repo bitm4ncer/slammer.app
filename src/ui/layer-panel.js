@@ -60,6 +60,38 @@ export function initLayerPanel({ container, document, renderer }) {
           <input type="color" value="${layer.accentColor || '#8aff8c'}" class="layer-accent-input" />
           <span class="layer-accent-dot" style="background:${layer.accentColor || '#8aff8c'}"></span>
         </label>` : '';
+
+      // FX (adjustment) layers: no thumbnail, but KEEP blend mode + opacity
+      // controls so the user can dial the adjustment's strength + composite mode.
+      if (layer.type === 'fx') {
+        return `
+        <div class="layer-item layer-item--fx ${document.activeLayerId === layer.id ? 'active' : ''}"
+             data-layer-id="${layer.id}"
+             style="--layer-accent:${accent}">
+          <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
+          ${swatchMarkup}
+          <i class="fas fa-sliders-h layer-fx-icon"></i>
+          <div class="layer-meta">
+            <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
+            <div class="layer-blend-opacity-row">
+              <div class="layer-blend-dropdown">
+                <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+              </div>
+              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+                <span class="layer-opacity-knob"></span>
+                <span class="layer-opacity-num"></span>
+              </div>
+            </div>
+          </div>
+          <div class="layer-actions">
+            <button class="layer-icon-btn act-vis" title="Toggle visibility">
+              <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
+            </button>
+            <button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>`;
+      }
+
       return `
       <div class="layer-item ${document.activeLayerId === layer.id ? 'active' : ''}"
            data-layer-id="${layer.id}"

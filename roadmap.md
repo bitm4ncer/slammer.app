@@ -101,9 +101,11 @@
 
 ## PHASE 9 — FX / Adjustment Layers (non-destructive stack-level filters)
 
-- [ ] Refactor effect pipeline to support stack-level filters. add plus icon similar to effect panel to add Tools "Image," "text" etc. but also all effects that gets added as a new effects layer that effects all layers below. 
-- [ ] New layer type: **Effect** (affects all layers below, non-destructive, Affinity Live-filters style)
-- [ ] All filters usable as either direct effect on the layer or adjustment/effect layer
+- [x] New layer type: **`fx`** — Affinity Live-filter style. Has its own effect stack but no own pixels; its "source" is the live composite of every visible layer below it.
+- [x] Renderer: when paint runs, FX layer's source is recomputed via `compositeLayersBelow()` (reuses the same world-space compositing as `flattenVisible`). Every event on a non-FX layer (transform, prop, source, text, effect-add/remove/reorder) triggers `repaintFxAbove()` so FX layers refresh.
+- [x] **Click-through**: FX `Konva.Image` is `listening: false` — the modified composite renders on top, but pointer events fall through to the underlying layer's group so it stays selectable / draggable on canvas (no more "all layers locked together").
+- [x] Round **+** button next to the **Layer Stack** panel header opens a portaled flyout with two sections: **Layers** (Image / Text / Text Box) and **Effects** (every registered filter, grouped by category). Picking an effect creates an FX layer pre-loaded with that single effect, named after the effect. Tools (Datamosh, JPEG, Pixel Sort, Dithering) stay per-layer-only via the Effects panel `+`.
+- [x] All filters usable as either direct effect on the layer OR as the effect stack of an FX layer (no plugin changes needed — same `process(imageData, params)` contract works for both).
 
 ## PHASE 10 — New filters
 

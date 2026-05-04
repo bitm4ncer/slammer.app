@@ -105,7 +105,69 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     if (layer.type === 'text') {
       return rasterizeText(layer.text, st);
     }
+    if (layer.type === 'fx') {
+      // FX layer's "source" is the composite of every visible layer beneath it.
+      // Re-computed lazily in paintLayerSync; this initial pass returns an empty
+      // 1×1 placeholder so the layer has valid dimensions before the first paint.
+      const c = makeCanvas(1, 1);
+      st.naturalSize = { w: 1, h: 1 };
+      return c.getContext('2d').getImageData(0, 0, 1, 1);
+    }
     return null;
+  }
+
+  // Composite every visible layer that sits BELOW the given layer in the doc's
+  // z-order, into a single canvas covering the union bounding box. Used as the
+  // source for an FX layer's effect pipeline.
+  //
+  // CRITICAL: read positions from the LIVE Konva groups (st.group.x() etc.)
+  // rather than layer.transform.* (which is only updated on dragend). Mixing
+  // the two sources during a live drag produces a ghosted composite where the
+  // bbox is sized for the new position but the pixels draw at the old one.
+  function compositeLayersBelow(layer) {
+    const idx = document.layers.indexOf(layer);
+    if (idx <= 0) return null;
+    const below = document.layers.slice(0, idx).filter((l) => l.visible);
+    const stRefs = below.map((l) => ({ layer: l, st: layerState.get(l.id) }))
+      .filter((x) => x.st && x.st.dstCanvas);
+    if (!stRefs.length) return null;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const { st } of stRefs) {
+      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.width);
+      maxY = Math.max(maxY, r.y + r.height);
+    }
+    if (!isFinite(minX)) return null;
+    const w = Math.ceil(maxX - minX);
+    const h = Math.ceil(maxY - minY);
+    if (w <= 0 || h <= 0) return null;
+
+    const out = makeCanvas(w, h);
+    const octx = out.getContext('2d');
+    octx.translate(-minX, -minY);
+    for (const { st, layer: l } of stRefs) {
+      // Live Konva state — matches what the user actually sees on screen.
+      const gx = st.group.x();
+      const gy = st.group.y();
+      const sx = st.group.scaleX();
+      const sy = st.group.scaleY();
+      const rot = st.group.rotation();
+      octx.save();
+      octx.globalCompositeOperation = l.blendMode || 'source-over';
+      octx.globalAlpha = (l.opacity ?? 1) * (st.group.opacity() ?? 1);
+      octx.translate(gx, gy);
+      octx.rotate((rot * Math.PI) / 180);
+      octx.scale(sx, sy);
+      octx.drawImage(st.dstCanvas, 0, 0);
+      octx.restore();
+    }
+    // Position the FX layer's group so its composite aligns with the canvas.
+    const st = layerState.get(layer.id);
+    if (st) st.fxOrigin = { x: minX, y: minY };
+    return octx.getImageData(0, 0, w, h);
   }
 
   function rasterizeText(text, st) {
@@ -269,6 +331,28 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Actual paint — called only from the RAF queue. Async-friendly: when an effect
   // returns a Promise (e.g. JPEG using the browser's real encoder), we await it.
   async function paintLayerSync(layer, st) {
+    // FX layers re-source from the composite of layers below before each paint.
+    if (layer.type === 'fx') {
+      const composite = compositeLayersBelow(layer);
+      if (composite) {
+        st.sourceImageData = composite;
+        st.naturalSize = { w: composite.width, h: composite.height };
+        st.dirtyFromIndex = 0; // composite changed → re-run all effects
+        // Position the FX group so its composite renders at the same world coords
+        // as the underlying layers (compositeLayersBelow stores fxOrigin).
+        if (st.fxOrigin) {
+          st.group.position({ x: st.fxOrigin.x, y: st.fxOrigin.y });
+          // Reflect into the layer model so transform feels stable when user drags.
+          layer.transform.x = st.fxOrigin.x;
+          layer.transform.y = st.fxOrigin.y;
+        }
+      } else {
+        // Nothing below to composite — leave the FX layer empty.
+        const empty = new ImageData(1, 1);
+        st.sourceImageData = empty;
+        st.dirtyFromIndex = 0;
+      }
+    }
     const finalImageData = await applyEffectsPipeline(layer, st);
     if (!finalImageData) return;
     const dimsChanged =
@@ -282,13 +366,46 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
-    // If this layer is currently selected, the Konva transformer caches the old bbox.
-    // Force it to re-measure whenever the image dimensions change (e.g. font-size /
-    // tracking / line-height / box-width / textarea content edits).
     if (dimsChanged && transformer && document.activeLayerId === layer.id) {
       transformer.forceUpdate();
     }
+    syncFxVisibility();
+    // After a non-FX layer finishes painting, every FX layer above it must
+    // re-composite — its source-from-below was potentially stale (e.g. just
+    // after doc:loaded the underlying layers' dstCanvases are still 1×1 until
+    // their first async paint completes; without this hop the FX bitmap would
+    // render with the moved/restored layer missing).
+    if (layer.type !== 'fx') {
+      const idx = document.layers.indexOf(layer);
+      if (idx >= 0) {
+        for (let i = idx + 1; i < document.layers.length; i++) {
+          const above = document.layers[i];
+          if (above.type !== 'fx') continue;
+          const aboveSt = layerState.get(above.id);
+          if (!aboveSt) continue;
+          aboveSt.dirtyFromIndex = 0;
+          paintLayer(above, aboveSt);
+        }
+      }
+    }
     scheduleDraw();
+  }
+
+  // FX layers are "invisible pseudo-layers" — they don't grab pointer events.
+  // Their bitmap (the modified composite of layers below) draws on top of the
+  // underlying groups; with listening: false on the FX image, clicks fall through
+  // so the user can still click / drag any layer beneath an FX layer on canvas.
+  function syncFxVisibility() {
+    document.layers.forEach((l) => {
+      const st = layerState.get(l.id);
+      if (!st) return;
+      st.group.visible(!!l.visible);
+      if (l.type === 'fx') {
+        st.image.listening(false);
+        st.group.listening(false);
+        st.group.draggable(false);
+      }
+    });
   }
 
   async function createLayerNodes(layer) {
@@ -411,17 +528,46 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
   }
 
+  // Repaint every FX layer that sits ABOVE the given layer index. Used whenever
+  // an underlying layer changes so the FX layer's source-from-composite refreshes.
+  function repaintFxAbove(changedLayerId) {
+    const idx = document.layers.findIndex((l) => l.id === changedLayerId);
+    if (idx < 0) return;
+    for (let i = idx + 1; i < document.layers.length; i++) {
+      const l = document.layers[i];
+      if (l.type !== 'fx') continue;
+      const st = layerState.get(l.id);
+      if (!st) continue;
+      st.dirtyFromIndex = 0; // composite-below changed → re-run from start
+      paintLayer(l, st);
+    }
+  }
+
   // Subscribe to document changes
   document.subscribe(async (event) => {
     switch (event.type) {
       case 'layer:added':
         await createLayerNodes(event.layer);
+        repaintFxAbove(event.layer.id);
+        syncFxVisibility();
         break;
-      case 'layer:removed':
+      case 'layer:removed': {
+        const removedIdx = -1; // already removed; just refresh all FX
         destroyLayerNodes(event.id);
+        for (const l of document.layers) if (l.type === 'fx') {
+          const st = layerState.get(l.id);
+          if (st) { st.dirtyFromIndex = 0; paintLayer(l, st); }
+        }
+        syncFxVisibility();
         break;
+      }
       case 'layer:reordered':
         syncZOrder();
+        for (const l of document.layers) if (l.type === 'fx') {
+          const st = layerState.get(l.id);
+          if (st) { st.dirtyFromIndex = 0; paintLayer(l, st); }
+        }
+        syncFxVisibility();
         scheduleDraw();
         break;
       case 'layer:propChanged': {
@@ -432,12 +578,19 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           const st = layerState.get(event.id);
           if (st) attachTransformer(st.group);
         }
+        // Visibility / opacity / blendMode of an underlying layer changes the composite.
+        if (['visible', 'opacity', 'blendMode'].includes(event.prop)) {
+          repaintFxAbove(event.id);
+          if (event.prop === 'visible') syncFxVisibility();
+        }
         scheduleDraw();
         break;
       }
       case 'layer:transform': {
         const layer = document.findLayer(event.id);
         if (layer) applyTransform(layer);
+        // Moving / scaling / rotating an underlying layer changes the composite.
+        repaintFxAbove(event.id);
         break;
       }
       case 'layer:sourceChanged': {
@@ -450,6 +603,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           st.sourceImageData = imgData;
           st.dirtyFromIndex = 0;
           paintLayer(layer, st);
+          repaintFxAbove(event.id);
         }
         break;
       }
@@ -463,13 +617,17 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           st.sourceImageData = imgData;
           st.dirtyFromIndex = 0;
           paintLayer(layer, st);
+          repaintFxAbove(event.id);
         }
         break;
       }
       case 'layer:active': {
         const layer = document.findLayer(event.id);
         const st = layer ? layerState.get(layer.id) : null;
-        attachTransformer(st ? st.group : null);
+        // FX layers are pseudo-layers — no selection handles, no on-canvas
+        // transform. They're just position markers in the stack.
+        if (layer?.type === 'fx') attachTransformer(null);
+        else attachTransformer(st ? st.group : null);
         break;
       }
       case 'effect:added':
@@ -482,6 +640,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         const fromIndex = event.atIndex ?? event.fromIndex ?? 0;
         st.dirtyFromIndex = Math.min(st.dirtyFromIndex, fromIndex);
         paintLayer(layer, st);
+        if (layer.type !== 'fx') repaintFxAbove(layer.id);
         break;
       }
       case 'effect:propChanged': {
@@ -491,6 +650,9 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (!st) break;
         if (event.fromIndex >= 0) st.dirtyFromIndex = Math.min(st.dirtyFromIndex, event.fromIndex);
         paintLayer(layer, st);
+        // An effect param change on a non-FX layer changes its visible output,
+        // so any FX layer above must re-composite.
+        if (layer.type !== 'fx') repaintFxAbove(layer.id);
         break;
       }
       case 'doc:loaded':
@@ -506,8 +668,61 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
   });
 
-  // Hook transformer drag/transform back into the document.
+  // Hook transformer drag/transform back into the document. We listen to BOTH
+  // the per-frame events (dragmove / transform) and the commit events
+  // (dragend / transformend):
+  //   • Per-frame  → repaint FX layers live so the modified composite follows
+  //                  the layer being moved/resized in real time. Throttled to
+  //                  one rAF per event burst so heavy filters don't choke.
+  //   • Commit     → write the new transform into the doc model (history,
+  //                  autosave, layer:transform listeners).
+  let liveFxRaf = null;
+  function scheduleLiveFxRecompute() {
+    if (liveFxRaf) return;
+    liveFxRaf = requestAnimationFrame(() => {
+      liveFxRaf = null;
+      for (const l of document.layers) {
+        if (l.type !== 'fx') continue;
+        const st = layerState.get(l.id);
+        if (!st) continue;
+        st.dirtyFromIndex = 0;
+        paintLayer(l, st);
+      }
+    });
+  }
+
+  // Track which underlying layer is currently being dragged/transformed so we can
+  // hide its raw image while a live FX preview shows the modified composite at
+  // the new position. Avoids the "raw layer here, FX bitmap there" double-image.
+  let liveDragLayerId = null;
+
+  function isLayerUnderTopFx(layerId) {
+    let topmostFxIdx = -1;
+    document.layers.forEach((l, i) => { if (l.type === 'fx' && l.visible) topmostFxIdx = i; });
+    if (topmostFxIdx < 0) return false;
+    const idx = document.layers.findIndex((l) => l.id === layerId);
+    return idx >= 0 && idx < topmostFxIdx;
+  }
+
   function bindTransformerEvents() {
+    contentLayer.on('dragstart transformstart', (e) => {
+      const target = e.target;
+      const layerId = target.id?.() || target._slammerLayerId;
+      const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
+      if (!layer || layer.type === 'fx') return;
+      // Only bother hiding when there's actually an FX layer above this one.
+      if (!isLayerUnderTopFx(layer.id)) return;
+      liveDragLayerId = layer.id;
+      const st = layerState.get(layer.id);
+      if (st) st.image.opacity(0);
+    });
+    contentLayer.on('dragmove transform', (e) => {
+      const target = e.target;
+      const layerId = target.id?.() || target._slammerLayerId;
+      const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
+      if (layer?.type === 'fx') return;
+      scheduleLiveFxRecompute();
+    });
     contentLayer.on('dragend transformend', (e) => {
       const target = e.target;
       const layerId = target.id?.() || target._slammerLayerId;
@@ -522,6 +737,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         scaleY: group.scaleY(),
         rotation: group.rotation(),
       });
+      // Restore the dragged layer's visibility now that the FX layer's bitmap
+      // covers the final position.
+      if (liveDragLayerId) {
+        const st = layerState.get(liveDragLayerId);
+        if (st) st.image.opacity(1);
+        liveDragLayerId = null;
+        scheduleDraw();
+      }
     });
   }
   bindTransformerEvents();

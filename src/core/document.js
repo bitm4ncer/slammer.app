@@ -1,7 +1,7 @@
 // Document — the editable state container.
 // Mutate via methods so listeners can react with precise change events.
 
-import { createImageLayer, createTextLayer } from './layer.js';
+import { createImageLayer, createTextLayer, createFxLayer } from './layer.js';
 
 const uid = () => crypto.randomUUID();
 
@@ -54,6 +54,15 @@ export function createDocument() {
 
     addTextLayer(opts) {
       const layer = createTextLayer({ id: uid(), ...opts });
+      state.layers.push(layer);
+      state.activeLayerId = layer.id;
+      emit({ type: 'layer:added', layer });
+      emit({ type: 'layer:active', id: layer.id });
+      return layer;
+    },
+
+    addFxLayer(opts) {
+      const layer = createFxLayer({ id: uid(), ...opts });
       state.layers.push(layer);
       state.activeLayerId = layer.id;
       emit({ type: 'layer:added', layer });

@@ -64,6 +64,23 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
   };
 }
 
+// FX (Adjustment) layer — has no own pixels. Its "source" is the composite of
+// all layers BELOW it. Its effect stack is then applied to that composite.
+// Affinity Live-filter style: non-destructive, affects everything beneath.
+export function createFxLayer({ id, name, transform, accentColor } = {}) {
+  return {
+    id,
+    type: 'fx',
+    name: name || 'FX Layer',
+    visible: true,
+    opacity: 1,
+    blendMode: 'source-over',
+    accentColor: accentColor || randomPastelHex(),
+    transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
+    effects: [],
+  };
+}
+
 export const BLEND_MODES = [
   'source-over', 'multiply', 'screen', 'overlay',
   'darken', 'lighten', 'color-dodge', 'color-burn',
