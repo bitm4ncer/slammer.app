@@ -54,15 +54,13 @@
         </div>
       </div>
 
-      <div class="control-group effects-group">
-        <h3><i class="fas fa-sliders-h"></i> <span>Effects</span></h3>
-        <div class="effect-actions">
-          <button class="add-effect-btn" id="btnAddTool" disabled><i class="fas fa-plus"></i> Add Tool</button>
-          <button class="add-effect-btn" id="btnAddFilter" disabled><i class="fas fa-plus"></i> Add Filter</button>
-        </div>
-        <div class="effect-stack" id="effectStack">
-          <div class="effect-empty">Select a layer to add effects</div>
-        </div>
+      <div class="control-group effects-group" id="effectsGroup">
+        <h3>
+          <i class="fas fa-sliders-h"></i>
+          <span>Effects</span>
+          <button class="effects-add-btn" id="btnAddEffect" title="Add effect" aria-label="Add effect"></button>
+        </h3>
+        <div class="effect-stack" id="effectStack"></div>
       </div>
     </aside>
 

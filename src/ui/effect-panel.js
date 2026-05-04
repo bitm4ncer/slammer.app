@@ -1,25 +1,28 @@
 // Effect panel — stack of EffectInstances on the active layer.
 // Tools render expanded (one at a time); Filters render compact.
+// Hidden entirely when no layer is selected.
 
 import Sortable from 'sortablejs';
 import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
 
-export function initEffectPanel({ stackEl, addToolBtn, addFilterBtn, document }) {
+export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   let sortable = null;
 
   function activeLayer() { return document.activeLayer; }
 
   function render() {
     const layer = activeLayer();
-    addToolBtn.disabled = !layer;
-    addFilterBtn.disabled = !layer;
+    // Hide the whole panel when there's no active layer — keeps the UI uncluttered.
+    if (groupEl) groupEl.style.display = layer ? '' : 'none';
+    if (addBtn) addBtn.disabled = !layer;
 
     if (!layer) {
-      stackEl.innerHTML = '<div class="effect-empty">Select a layer to add effects</div>';
+      stackEl.innerHTML = '';
+      destroySortable();
       return;
     }
     if (!layer.effects.length) {
-      stackEl.innerHTML = '<div class="effect-empty">No effects on this layer</div>';
+      stackEl.innerHTML = '<div class="effect-empty">No effects yet — click + to add</div>';
       destroySortable();
       return;
     }
@@ -108,12 +111,14 @@ export function initEffectPanel({ stackEl, addToolBtn, addFilterBtn, document })
     return wrap;
   }
 
-  // ---------- "Add Tool" / "Add Filter" menus ----------
-  function showAddMenu(button, type) {
+  // ---------- Single merged Add menu ----------
+  function showAddMenu(button) {
     closeAnyMenu();
     const layer = activeLayer();
     if (!layer) return;
-    const items = listPlugins({ type });
+    // All effects, sorted alphabetically.
+    const items = [...listPlugins({ type: 'filter' }), ...listPlugins({ type: 'tool' })]
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!items.length) return;
 
     const menu = window.document.createElement('div');
@@ -126,18 +131,20 @@ export function initEffectPanel({ stackEl, addToolBtn, addFilterBtn, document })
     `).join('');
     window.document.body.appendChild(menu);
 
+    // Position below the button, right-aligned to its right edge.
     const r = button.getBoundingClientRect();
     menu.style.position = 'fixed';
-    menu.style.top = `${r.bottom + 4}px`;
-    menu.style.left = `${r.left}px`;
+    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.left = `${Math.max(8, r.right - 200)}px`;
     menu.style.zIndex = 200;
 
     menu.querySelectorAll('.add-effect-item').forEach((el) => {
       el.addEventListener('click', () => {
         const inst = makeEffectInstance(el.dataset.id);
         if (inst) {
+          const plugin = getPlugin(el.dataset.id);
           // For tools: collapse others, expand this one.
-          if (type === 'tool') {
+          if (plugin?.type === 'tool') {
             for (const e2 of layer.effects) {
               if (getPlugin(e2.pluginId)?.type === 'tool') {
                 document.setEffectProp(layer.id, e2.id, 'expanded', false);
@@ -160,13 +167,9 @@ export function initEffectPanel({ stackEl, addToolBtn, addFilterBtn, document })
     window.document.querySelectorAll('.add-effect-menu').forEach((m) => m.remove());
   }
 
-  addToolBtn.addEventListener('click', (e) => {
+  addBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    showAddMenu(addToolBtn, 'tool');
-  });
-  addFilterBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    showAddMenu(addFilterBtn, 'filter');
+    showAddMenu(addBtn);
   });
 
   document.subscribe((e) => {

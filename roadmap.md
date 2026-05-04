@@ -44,10 +44,10 @@
 
 ## PHASE 2 — Effects panel consolidation + dynamic visibility
 
-- [ ] Merge "Tools" and "Filters" into a single **Effects** panel
-- [ ] Replace the two add buttons with one round `+` icon button on the Effects header row
-- [ ] Hide the Effects section entirely when no layer is selected
-- [ ] Re-style for cohesion with new design system
+- [x] Merge "Tools" and "Filters" into a single **Effects** panel (one merged add menu in registration order: filters first, then tools)
+- [x] Replace the two add buttons with one round `+` icon button on the Effects header row (tinted by active layer's `--ctx-accent`, hover glow)
+- [x] Hide the Effects section entirely when no layer is selected (`display: none` on `#effectsGroup`)
+- [x] Re-style for cohesion with new design system
 
 ## PHASE 3 — Affinity bridge (port working SSE/JSON-RPC implementation)
 

@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   initEffectPanel({
     stackEl: document.getElementById('effectStack'),
-    addToolBtn: document.getElementById('btnAddTool'),
-    addFilterBtn: document.getElementById('btnAddFilter'),
+    addBtn: document.getElementById('btnAddEffect'),
+    groupEl: document.getElementById('effectsGroup'),
     document: doc,
   });
 
