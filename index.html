@@ -18,9 +18,10 @@
         <span class="version-tag">v1.0.0-alpha</span>
       </div>
       <div class="toolbar-right">
-        <button class="tb-btn tb-btn--icon" id="btnNew" title="New Blank"><i class="fas fa-file"></i></button>
-        <button class="tb-btn tb-btn--icon" id="btnOpen" title="Open Project"><i class="fas fa-folder-open"></i></button>
-        <button class="tb-btn tb-btn--icon" id="btnSave" title="Save Project"><i class="fas fa-save"></i></button>
+        <button class="tb-btn tb-btn--icon" id="btnNew" title="New Blank (Ctrl+N)"><i class="fas fa-file"></i></button>
+        <button class="tb-btn tb-btn--icon" id="btnOpen" title="Open Project (Ctrl+O)"><i class="fas fa-folder-open"></i></button>
+        <button class="tb-btn tb-btn--icon" id="btnSave" title="Save Project (Ctrl+S)"><i class="fas fa-save"></i></button>
+        <button class="tb-btn tb-btn--icon" id="btnExport" title="Export PNG (Ctrl+E) · Shift = .slammerproj"><i class="fas fa-file-export"></i></button>
         <span class="tb-sep"></span>
         <button class="tb-btn tb-btn--icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled><i class="fas fa-rotate-left"></i></button>
         <button class="tb-btn tb-btn--icon" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled><i class="fas fa-rotate-right"></i></button>
@@ -47,7 +48,7 @@
 
     <aside class="side-panel plastic-texture">
       <div class="control-group layers-group">
-        <h3><i class="fas fa-layer-group"></i> <span>Layers</span></h3>
+        <h3><i class="fas fa-layer-group"></i> <span>Layer Stack</span></h3>
         <div class="layer-list" id="layerList">
           <div class="layer-empty">No layers yet</div>
         </div>
@@ -67,16 +68,11 @@
 
     <footer class="app-footer">
       <div class="footer-left">
+        <button class="tb-btn tb-btn--icon" id="btnSettings" title="Settings"><i class="fas fa-gear"></i></button>
         <div class="autosave-indicator" id="autosaveDot" title="Autosave"></div>
       </div>
       <div class="footer-right">
         <div class="affinity-mount" id="affinityMount"></div>
-        <span class="tb-sep"></span>
-        <button class="tb-btn tb-btn--icon" id="btnClear" title="Clear Canvas"><i class="fas fa-eraser"></i></button>
-        <button class="tb-btn tb-btn--icon" id="btnExport" title="Export PNG (Shift = .slammerproj)"><i class="fas fa-file-export"></i></button>
-        <div class="theme-color-picker" title="UI Theme Color">
-          <input type="color" id="themeColorPicker" value="#8aff8c" />
-        </div>
       </div>
     </footer>
 

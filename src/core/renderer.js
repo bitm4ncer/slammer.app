@@ -48,6 +48,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   function attachTransformer(node) {
     ensureTransformer();
     transformer.nodes(node ? [node] : []);
+    // Tint the handles to match the active layer's accent colour.
+    if (node) {
+      const layer = document.findLayer(node.id?.());
+      const accent = layer?.accentColor || '#8aff8c';
+      transformer.anchorStroke(accent);
+      transformer.borderStroke(accent);
+    }
     transformer.moveToTop();
     contentLayer.batchDraw();
   }
@@ -333,6 +340,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       case 'layer:propChanged': {
         const layer = document.findLayer(event.id);
         if (layer) applyLayerProps(layer);
+        // Live-tint the transformer if accent of the active layer changed.
+        if (event.prop === 'accentColor' && document.activeLayerId === event.id && transformer) {
+          transformer.anchorStroke(event.value);
+          transformer.borderStroke(event.value);
+        }
         scheduleDraw();
         break;
       }

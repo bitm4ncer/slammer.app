@@ -306,28 +306,44 @@
   height: 110px;
   background: var(--background) center/cover no-repeat;
   border-bottom: 1px solid var(--vhs-shadow);
+  cursor: pointer;
 }
 .project-card-meta { padding: 8px 10px; font-size: 11px; color: var(--text-primary); }
+.project-card-name {
+  display: inline-block;
+  outline: none;
+  padding: 1px 4px;
+  margin-left: -4px;
+  border-radius: 2px;
+  cursor: text;
+}
+.project-card-name:hover { background: var(--background); }
+.project-card-name.renaming {
+  background: var(--background);
+  outline: 1px solid var(--primary);
+}
 .project-card-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   padding: 4px 6px;
   border-top: 1px solid var(--vhs-shadow);
   background: var(--surface-2);
 }
-.project-card-actions button {
+.project-card-btn {
   flex: 1;
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 10px;
-  padding: 4px;
+  font-size: 12px;
+  padding: 5px 4px;
   cursor: pointer;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.project-card-actions button:hover { color: var(--primary); }
+.project-card-btn:hover { color: var(--primary); background: var(--button-hover-bg); }
+.project-card-btn[data-act=del]:hover { color: #ff8a8a; }
 
 /* ---------- Text tool panel ---------- */
 .text-tool-panel {

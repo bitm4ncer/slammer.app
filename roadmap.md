@@ -24,23 +24,23 @@
 - [x] Update `package.json` name + README
 - [x] Set default accent color from `#9392D9` → `#8aff8c` in `src/style/variables.css` (also Konva transformer strokes + dithering palette swatch)
 - [x] Change UI font from Chicago → Inter (Chicago kept available as a text-layer typeface)
-- [ ] Prepare `slammer.app` GitHub repo: confirm with user, then `gh repo create` + push
+- [x] Prepare `slammer.app` GitHub repo — created at [github.com/bitm4ncer/slammer.app](https://github.com/bitm4ncer/slammer.app) (private). Old CRUSH remote preserved as `crush-legacy`. Branch `v.1.0.0` tracks new origin.
 
 ## PHASE 1 — Design system foundation & quick UX wins
 
-- [ ] Settings button (gears icon) in bottom-left footer → opens settings popup
-- [ ] Settings popup contents: autosave duration, version info, theme accent color, (future) API keys tab
-- [ ] Rename "Layers" panel label → **"Layer Stack"**
-- [ ] Each new layer gets a unique random pastel accent color used in its panels + selection handles
-- [ ] Manual per-layer accent color change (color swatch on layer card)
-- [ ] Small layer-type icon on each layer card (image / vector / text / pencil / FX)
-- [ ] Double-click layer title to rename inline
-- [ ] Project popup: icon-based actions (Open / Rename / Duplicate / Delete) + click-title-to-rename
-- [ ] Selection handles appear *immediately* when a layer is clicked+dragged (not only after a clean click)
-- [ ] Remove Clear button (New Blank covers it)
-- [ ] Place Export button next to Save in toolbar
-- [ ] Keyboard shortcuts: `Ctrl+S` save · `Ctrl+E` export · `Ctrl+N` new blank · `Ctrl+O` open project popup
-- [ ] Shortcut hints surfaced in tooltips
+- [x] Settings button (gears icon) in bottom-left footer → opens settings popup
+- [x] Settings popup contents: autosave duration, version info, theme accent color, (API keys tab deferred to Phase 16)
+- [x] Rename "Layers" panel label → **"Layer Stack"**
+- [x] Each new layer gets a unique random pastel accent color used in its panels + selection handles (HSL-randomised, sat 55–75 / lig 72–82)
+- [x] Manual per-layer accent color change (color swatch on layer card, live re-tints transformer handles)
+- [x] Small layer-type icon on each layer card (image / vector / text / pencil / FX) — bottom-right corner of thumb
+- [x] Double-click layer title to rename inline (Enter commits, Esc cancels)
+- [x] Project popup: icon-based actions (Open / Rename / Duplicate / Delete) + click-title-to-rename
+- [x] Selection handles appear *immediately* when a layer is clicked+dragged (mousedown selection added)
+- [x] Remove Clear button (New Blank covers it)
+- [x] Place Export button next to Save in toolbar
+- [x] Keyboard shortcuts: `Ctrl+S` save · `Ctrl+E` export · `Ctrl+N` new blank · `Ctrl+O` open project popup
+- [x] Shortcut hints surfaced in tooltips
 
 ## PHASE 2 — Effects panel consolidation + dynamic visibility
 

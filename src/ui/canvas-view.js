@@ -93,6 +93,20 @@ export function initCanvasView({ container, document, onImageDropped }) {
       lastPan = { x: e.evt.clientX ?? e.evt.touches?.[0]?.clientX, y: e.evt.clientY ?? e.evt.touches?.[0]?.clientY };
       syncCursor();
       e.evt.preventDefault();
+      return;
+    }
+    // Activate layer immediately on mousedown so selection handles appear
+    // even when the user mouse-downs and drags in one motion (no clean click).
+    const target = e.target;
+    if (target === stage) return;
+    let node = target;
+    while (node && node !== stage) {
+      const id = node.id?.();
+      if (id && document.findLayer(id)) {
+        if (document.activeLayerId !== id) document.setActiveLayer(id);
+        return;
+      }
+      node = node.getParent && node.getParent();
     }
   });
   window.addEventListener('mousemove', (e) => {

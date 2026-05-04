@@ -30,12 +30,6 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
     showNotification('New blank document');
   });
 
-  $('btnClear').addEventListener('click', () => {
-    if (!doc.layers.length) return;
-    if (!confirm('Clear all layers?')) return;
-    while (doc.layers.length) doc.removeLayer(doc.layers[0].id);
-  });
-
   $('btnExport').addEventListener('click', (e) => {
     if (e.shiftKey) {
       exportProjectFile({ document: doc });
@@ -83,13 +77,45 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
   $('zoomOut').addEventListener('click', () => view.zoomBy(0.8));
   $('zoomFit').addEventListener('click', () => view.fitTo());
 
-  // Tool hotkeys (Photoshop-style): I = Image, T = Text.
-  // Skip when typing into inputs/textareas/contenteditable, or when modifier keys are held.
+  // Tool hotkeys + project shortcuts.
+  // Skip when typing into inputs/textareas/contenteditable.
   window.addEventListener('keydown', (e) => {
     const t = e.target;
-    if (t && t.matches && t.matches('input, textarea, [contenteditable=""], [contenteditable="true"]')) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const inField = t && t.matches && t.matches('input, textarea, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]');
+    const mod = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
+
+    // Modifier shortcuts (Ctrl/Cmd) — work even from form fields except text editing fields.
+    if (mod && !e.altKey) {
+      if (key === 's' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        $('btnSave')?.click();
+        return;
+      }
+      if (key === 'e' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        $('btnExport')?.click();
+        return;
+      }
+      if (key === 'n' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        $('btnNew')?.click();
+        return;
+      }
+      if (key === 'o' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        $('btnOpen')?.click();
+        return;
+      }
+    }
+
+    // Plain-letter tool hotkeys.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (inField) return;
     if (key === 'i') { e.preventDefault(); $('btnAddImage')?.click(); }
     else if (key === 't') { e.preventDefault(); $('btnAddText')?.click(); }
   });

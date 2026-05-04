@@ -30,41 +30,14 @@ import { exportVisibleAsPng } from './io/export-png.js';
 import { initProjectStore } from './io/project-store.js';
 import { initProjectMenu } from './ui/project-menu.js';
 import { initAffinityBridge } from './integrations/affinity/index.js';
-
-// ---------- Theme color ----------
-function initThemeColor() {
-  const picker = document.getElementById('themeColorPicker');
-  if (!picker) return;
-  const initial = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-  if (initial) picker.value = initial;
-  const update = (hex) => {
-    document.documentElement.style.setProperty('--primary', hex);
-    document.documentElement.style.setProperty('--primary-hover', darken(hex, 0.15));
-    const { r, g, b } = hexToRgb(hex);
-    document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
-  };
-  picker.addEventListener('input', (e) => update(e.target.value));
-  picker.addEventListener('change', () => showNotification('UI theme color updated'));
-}
-
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  return {
-    r: parseInt(h.slice(0, 2), 16),
-    g: parseInt(h.slice(2, 4), 16),
-    b: parseInt(h.slice(4, 6), 16),
-  };
-}
-function darken(hex, percent) {
-  const { r, g, b } = hexToRgb(hex);
-  const f = 1 - percent;
-  const to2 = (n) => Math.max(0, Math.floor(n * f)).toString(16).padStart(2, '0');
-  return `#${to2(r)}${to2(g)}${to2(b)}`;
-}
+import { initSettingsPopup, getSettings, onSettingsChange } from './ui/settings-popup.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
-  initThemeColor();
+  initSettingsPopup({
+    button: document.getElementById('btnSettings'),
+    version: 'v1.0.0-alpha',
+  });
 
   // Register plugins (order = order shown in Add menus, sort of).
   [
@@ -144,6 +117,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let saveTimer = null;
   let dotResetTimer = null;
   let bootRestoreInFlight = true; // suppress autosave for the initial restore-load
+  let autosaveMs = getSettings().autosaveMs;
+  onSettingsChange((s) => { autosaveMs = s.autosaveMs; });
+
   function setDotState(state) {
     dot.classList.remove('dirty', 'saving', 'saved');
     if (state) dot.classList.add(state);
@@ -164,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch {
         setDotState(null);
       }
-    }, 800);
+    }, autosaveMs);
   });
 
   // ---------- Restore last open project on reload ----------
