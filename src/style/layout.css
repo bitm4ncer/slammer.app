@@ -13,6 +13,35 @@ html, body {
 
 * { box-sizing: border-box; }
 
+/* ---------- Global custom scrollbars ----------
+ * Slim, dark, brand-matched. Native OS scrollbars are never used in slammer.app.
+ * Firefox: scrollbar-width + scrollbar-color (no pseudo-elements).
+ * Chromium / WebKit: ::-webkit-scrollbar pseudo-elements.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 30px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ctx-accent) 50%, var(--surface-3));
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
 #app {
   display: grid;
   grid-template-rows: var(--toolbar-h) 1fr var(--footer-h);

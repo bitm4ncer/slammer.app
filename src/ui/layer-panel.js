@@ -1,9 +1,18 @@
 // Right-side Layer panel — list driven by Document, drag-reorder via SortableJS.
 
 import Sortable from 'sortablejs';
+import { getSettings, onSettingsChange } from './settings-popup.js';
 
 export function initLayerPanel({ container, document, renderer }) {
   let sortable = null;
+  let customLayerColors = getSettings().customLayerColors !== false;
+  onSettingsChange((s) => {
+    const next = s.customLayerColors !== false;
+    if (next !== customLayerColors) {
+      customLayerColors = next;
+      scheduleRender();
+    }
+  });
 
   function thumbForLayer(layer) {
     const st = renderer.layerState.get(layer.id);
@@ -23,16 +32,18 @@ export function initLayerPanel({ container, document, renderer }) {
       return;
     }
     container.innerHTML = layers.map((layer) => {
-      const accent = layer.accentColor || '#8aff8c';
+      const accent = customLayerColors ? (layer.accentColor || '#8aff8c') : 'var(--primary)';
+      const swatchMarkup = customLayerColors ? `
+        <label class="layer-accent-swatch" title="Layer accent colour">
+          <input type="color" value="${layer.accentColor || '#8aff8c'}" class="layer-accent-input" />
+          <span class="layer-accent-dot" style="background:${layer.accentColor || '#8aff8c'}"></span>
+        </label>` : '';
       return `
       <div class="layer-item ${document.activeLayerId === layer.id ? 'active' : ''}"
            data-layer-id="${layer.id}"
            style="--layer-accent:${accent}">
         <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
-        <label class="layer-accent-swatch" title="Layer accent colour">
-          <input type="color" value="${accent}" class="layer-accent-input" />
-          <span class="layer-accent-dot" style="background:${accent}"></span>
-        </label>
+        ${swatchMarkup}
         <div class="layer-thumb" style="background-image:url('${thumbForLayer(layer)}')">
           <i class="fas fa-${typeIcon(layer.type)} layer-type-icon"></i>
         </div>
@@ -68,12 +79,15 @@ export function initLayerPanel({ container, document, renderer }) {
       row.querySelector('.layer-opacity').addEventListener('input', (e) => {
         document.setLayerProp(id, 'opacity', parseFloat(e.target.value));
       });
-      row.querySelector('.layer-accent-input').addEventListener('input', (e) => {
-        const hex = e.target.value;
-        document.setLayerProp(id, 'accentColor', hex);
-        row.style.setProperty('--layer-accent', hex);
-        row.querySelector('.layer-accent-dot').style.background = hex;
-      });
+      const accentInput = row.querySelector('.layer-accent-input');
+      if (accentInput) {
+        accentInput.addEventListener('input', (e) => {
+          const hex = e.target.value;
+          document.setLayerProp(id, 'accentColor', hex);
+          row.style.setProperty('--layer-accent', hex);
+          row.querySelector('.layer-accent-dot').style.background = hex;
+        });
+      }
       const nameEl = row.querySelector('.layer-name');
       nameEl.addEventListener('dblclick', (e) => {
         e.stopPropagation();
@@ -193,13 +207,15 @@ export function initLayerPanel({ container, document, renderer }) {
       nameEl.textContent = layer.name;
       nameEl.title = layer.name;
     }
-    const accent = layer.accentColor || '#8aff8c';
-    if (row.style.getPropertyValue('--layer-accent') !== accent) {
-      row.style.setProperty('--layer-accent', accent);
-      const dot = row.querySelector('.layer-accent-dot');
-      if (dot) dot.style.background = accent;
-      const pick = row.querySelector('.layer-accent-input');
-      if (pick && pick.value.toLowerCase() !== accent.toLowerCase()) pick.value = accent;
+    if (customLayerColors) {
+      const accent = layer.accentColor || '#8aff8c';
+      if (row.style.getPropertyValue('--layer-accent') !== accent) {
+        row.style.setProperty('--layer-accent', accent);
+        const dot = row.querySelector('.layer-accent-dot');
+        if (dot) dot.style.background = accent;
+        const pick = row.querySelector('.layer-accent-input');
+        if (pick && pick.value.toLowerCase() !== accent.toLowerCase()) pick.value = accent;
+      }
     }
   }
 

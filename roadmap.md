@@ -60,14 +60,16 @@
 
 ## PHASE 4 — Dithering rework (premium-feel core feature)
 
-- [ ] Add Size slider (resolution scale 1–100 %, default 100 %) — port from original CRUSH
-- [ ] Rename "Custom" → **"Halftone"**, make it the default mode
-- [ ] Remove "B&W" mode
-- [ ] Add "Transparent Light" option (transparent-background toggle in Halftone)
-- [ ] Fix **Multi** mode (palette dithering — match original implementation)
-- [ ] Fix **RGB** mode (per-channel parallel dithering)
-- [ ] Fix **CMYK** mode (RGB→CMYK conversion + per-channel dithering)
-- [ ] Restructure algorithm picker: visual grouped picker (not button rows)
+- [x] Add Size slider (resolution scale 1–100 %, default 100 %) — downscale → dither → upscale (nearest-neighbour)
+- [x] Rename "Custom" → **"Halftone"**, make it the default mode (with Dark + Light colour rows)
+- [x] Remove "B&W" mode (legacy `bw` / `custom` saved values are auto-mapped to `halftone`)
+- [x] Add "Transparent Light" option (light areas become transparent in Halftone)
+- [x] Fix **Multi** mode — palette error-diffusion (Floyd-Steinberg-style, per-pixel nearest-palette + error spread); ordered fallback for non-error-diffusion algorithms
+- [x] Fix **RGB** mode — per-channel parallel dithering (R/G/B extracted into separate ImageData, dithered independently, recombined)
+- [x] Fix **CMYK** mode — RGB→CMYK conversion + per-channel dithering, then recomposite to RGB output
+- [x] Restructure algorithm picker — custom dropdown (grouped: Error Diffusion / Ordered / Patterns), portaled to `<body>` with fixed positioning so the menu escapes the effect-card overflow:hidden
+- [x] Added `effect-toggle-row` switch component + `sliderRow` `suffix` support (e.g. `%`)
+- [x] Global custom scrollbars (slim, dark, ctx-accent on hover) on every scrollable element — the native OS scrollbar is no longer used anywhere in the app
 
 ## PHASE 5 — Right sidebar split
 

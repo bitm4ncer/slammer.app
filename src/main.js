@@ -88,16 +88,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---------- Active-layer accent → CSS variable ----------
   // Drives effects/typography panels + slider thumbs to match the active layer's colour.
+  // Gated by the "Custom layer colours" setting — when off, --ctx-accent stays unset
+  // (CSS falls back to var(--primary)).
   function syncCtxAccent() {
-    const layer = doc.activeLayer;
     const root = document.documentElement;
-    if (layer?.accentColor) root.style.setProperty('--ctx-accent', layer.accentColor);
+    const enabled = getSettings().customLayerColors !== false;
+    const layer = doc.activeLayer;
+    if (enabled && layer?.accentColor) root.style.setProperty('--ctx-accent', layer.accentColor);
     else root.style.removeProperty('--ctx-accent');
+    // Re-tint the Konva transformer from the new --ctx-accent.
+    if (layer) {
+      const st = renderer.layerState.get(layer.id);
+      if (st) renderer.attachTransformer(st.group);
+    }
   }
   doc.subscribe((e) => {
     if (e.type === 'layer:active' || e.type === 'doc:loaded') syncCtxAccent();
     if (e.type === 'layer:propChanged' && e.prop === 'accentColor' && doc.activeLayerId === e.id) syncCtxAccent();
   });
+  onSettingsChange(syncCtxAccent);
   syncCtxAccent();
 
   // ---------- History (undo/redo) ----------

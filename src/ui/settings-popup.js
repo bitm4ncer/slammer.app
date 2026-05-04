@@ -2,7 +2,7 @@
 // Persists to localStorage 'slammer:settings'.
 
 const STORE_KEY = 'slammer:settings';
-const DEFAULTS = { autosaveMs: 800, accent: '#8aff8c' };
+const DEFAULTS = { autosaveMs: 800, accent: '#8aff8c', customLayerColors: true };
 
 const listeners = new Set();
 
@@ -84,6 +84,12 @@ export function initSettingsPopup({ button, version }) {
               <input type="range" id="setAutosave" min="200" max="3000" step="100" value="${s.autosaveMs}" />
             </div>
           </div>
+
+          <label class="effect-toggle-row settings-toggle-row" for="setCustomLayerColors">
+            <span class="effect-label">Custom layer colours</span>
+            <input type="checkbox" id="setCustomLayerColors" ${s.customLayerColors ? 'checked' : ''} />
+            <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+          </label>
         </div>
 
         <div class="settings-section settings-meta">
@@ -119,6 +125,11 @@ export function initSettingsPopup({ button, version }) {
       const ms = parseInt(e.target.value, 10);
       autosaveReadout.textContent = `${ms} ms`;
       setSettings({ autosaveMs: ms });
+    });
+
+    const customAccentInput = backdrop.querySelector('#setCustomLayerColors');
+    customAccentInput.addEventListener('change', (e) => {
+      setSettings({ customLayerColors: e.target.checked });
     });
 
     // Esc closes.

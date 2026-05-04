@@ -48,10 +48,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   function attachTransformer(node) {
     ensureTransformer();
     transformer.nodes(node ? [node] : []);
-    // Tint the handles to match the active layer's accent colour.
+    // Tint handles using live --ctx-accent (which already respects the
+    // "custom layer colours" setting set in main.js).
     if (node) {
-      const layer = document.findLayer(node.id?.());
-      const accent = layer?.accentColor || '#8aff8c';
+      const rootStyle = getComputedStyle(window.document.documentElement);
+      const accent = rootStyle.getPropertyValue('--ctx-accent').trim()
+        || rootStyle.getPropertyValue('--primary').trim()
+        || '#8aff8c';
       transformer.anchorStroke(accent);
       transformer.borderStroke(accent);
     }
@@ -340,10 +343,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       case 'layer:propChanged': {
         const layer = document.findLayer(event.id);
         if (layer) applyLayerProps(layer);
-        // Live-tint the transformer if accent of the active layer changed.
+        // Re-tint transformer from live --ctx-accent (honours custom-colours toggle).
         if (event.prop === 'accentColor' && document.activeLayerId === event.id && transformer) {
-          transformer.anchorStroke(event.value);
-          transformer.borderStroke(event.value);
+          const st = layerState.get(event.id);
+          if (st) attachTransformer(st.group);
         }
         scheduleDraw();
         break;

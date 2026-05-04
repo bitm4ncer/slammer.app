@@ -12,13 +12,16 @@ export function makeToolRoot(extra = '') {
   return el;
 }
 
-export function sliderRow({ label, min, max, step = 1, value, onChange, format }) {
+export function sliderRow({ label, min, max, step = 1, value, onChange, format, suffix }) {
   const row = document.createElement('label');
   row.className = 'effect-slider-row';
   row.innerHTML = `
     <span class="effect-label">${label}</span>
     <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" />
-    <input type="number" min="${min}" max="${max}" step="${step}" value="${value}" class="effect-num" />
+    <span class="effect-num-wrap">
+      <input type="number" min="${min}" max="${max}" step="${step}" value="${value}" class="effect-num" />
+      ${suffix ? `<span class="effect-num-suffix">${suffix}</span>` : ''}
+    </span>
   `;
   const range = row.querySelector('input[type=range]');
   const num = row.querySelector('input[type=number]');
