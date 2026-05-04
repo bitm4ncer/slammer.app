@@ -12,7 +12,7 @@ import { initCanvasView } from './ui/canvas-view.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
-import { initTextTool } from './ui/text-tool.js';
+import { initTextTool, preloadFontsForDoc } from './ui/text-tool.js';
 import { showNotification } from './ui/notifications.js';
 import { registerPlugin } from './plugins/registry.js';
 
@@ -25,6 +25,7 @@ import blurPlugin from './plugins/filters/blur/index.js';
 import ditheringPlugin from './plugins/tools/dithering/index.js';
 import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
 import jpegPlugin from './plugins/tools/jpeg-compression/index.js';
+import datamoshPlugin from './plugins/tools/datamosh/index.js';
 
 import { exportVisibleAsPng } from './io/export-png.js';
 import { initProjectStore } from './io/project-store.js';
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Register plugins (order = order shown in Add menus, sort of).
   [
     invertPlugin, brightnessPlugin, contrastPlugin, levelsPlugin, blurPlugin,
-    ditheringPlugin, pixelsortPlugin, jpegPlugin,
+    ditheringPlugin, pixelsortPlugin, jpegPlugin, datamoshPlugin,
   ].forEach(registerPlugin);
 
   const doc = createDocument();
@@ -162,17 +163,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         await projectStore.autosave({ document: doc });
         setDotState('saved');
-      } catch {
+      } catch (err) {
+        // No more silent failures — surface so we can debug.
+        console.error('[slammer.app] autosave failed:', err);
         setDotState(null);
       }
     }, autosaveMs);
   });
 
   // ---------- Restore last open project on reload ----------
-  await restoreLastSession({ doc, projectStore });
-  bootRestoreInFlight = false;
+  // Guard the boot restore with a timeout — if IDB hangs (e.g. an upgrade is
+  // blocked by another tab), we DO NOT want bootRestoreInFlight stuck at true,
+  // because that silently eats every autosave event. After 5 s we wake it up.
+  const restoreSafetyTimer = setTimeout(() => {
+    if (bootRestoreInFlight) {
+      console.warn('[slammer.app] restore took >5 s — forcing autosave to resume');
+      bootRestoreInFlight = false;
+    }
+  }, 5000);
+  try {
+    await restoreLastSession({ doc, projectStore });
+  } finally {
+    clearTimeout(restoreSafetyTimer);
+    bootRestoreInFlight = false;
+  }
 
-  console.log('[slammer.app] loaded');
+  console.log('[slammer.app] loaded — autosave armed (delay ' + autosaveMs + ' ms)');
 });
 
 async function restoreLastSession({ doc, projectStore }) {
@@ -186,6 +202,17 @@ async function restoreLastSession({ doc, projectStore }) {
       if (typeof l.source === 'string' && l.source.startsWith('data:')) {
         l.source = await fetch(l.source).then((r) => r.blob());
       }
+    }
+    // Preload Google fonts for any text layers BEFORE the renderer rasterises,
+    // so canvas fillText doesn't fall back to sans-serif on first paint after reload.
+    // Capped at 2 s so a slow font CDN doesn't block restore.
+    try {
+      await Promise.race([
+        preloadFontsForDoc(projDoc),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    } catch (err) {
+      console.warn('[slammer.app] font preload skipped:', err);
     }
     doc.load(projDoc);
   } catch (err) {

@@ -13,10 +13,11 @@ const FONT_OPTIONS = [
 ];
 
 const loadedGoogleFonts = new Set();
-function ensureGoogleFont(family) {
+const LOCAL_FONTS = new Set(['Chicago', 'GlyphWorld-Mountain', 'GothicPixels', 'Inter']);
+export function ensureGoogleFont(family) {
   if (!family) return;
   if (loadedGoogleFonts.has(family)) return;
-  if (['Chicago', 'GlyphWorld-Mountain', 'GothicPixels', 'Inter'].includes(family)) {
+  if (LOCAL_FONTS.has(family)) {
     loadedGoogleFonts.add(family);
     return;
   }
@@ -25,6 +26,28 @@ function ensureGoogleFont(family) {
   link.rel = 'stylesheet';
   link.href = `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, '+')}:wght@400;600;700&display=swap`;
   document.head.appendChild(link);
+}
+
+// Walk a doc snapshot, inject any missing Google-font <link> tags, then await
+// the browser's font-loading machinery so canvas rasterising picks them up.
+export async function preloadFontsForDoc(doc) {
+  const fonts = new Set();
+  for (const layer of doc.layers || []) {
+    if (layer?.type === 'text' && layer.text?.font) fonts.add(layer.text.font);
+  }
+  for (const f of fonts) ensureGoogleFont(f);
+  if (document.fonts?.ready) await document.fonts.ready;
+  // Belt-and-braces: also explicitly load the size/weight combos we use for text rasterising.
+  if (document.fonts?.load) {
+    const probes = [];
+    for (const layer of doc.layers || []) {
+      if (layer?.type === 'text' && layer.text) {
+        const t = layer.text;
+        probes.push(document.fonts.load(`${t.weight || 400} ${t.size || 96}px "${t.font}"`));
+      }
+    }
+    if (probes.length) await Promise.allSettled(probes);
+  }
 }
 
 export function initTextTool({ document: doc }) {
@@ -80,19 +103,19 @@ export function initTextTool({ document: doc }) {
     colorInp.value = t.color || '#FFFFFF';
     alignSel.value = t.align || 'left';
     sizeHost.innerHTML = ''; sizeHost.appendChild(sliderRow({
-      label: 'Size', min: 8, max: 600, step: 1, value: t.size,
+      label: 'Size', min: 8, max: 600, step: 1, value: t.size, defaultValue: 96,
       onChange: (v) => doc.setTextProp(layer.id, 'size', v),
     }));
     weightHost.innerHTML = ''; weightHost.appendChild(sliderRow({
-      label: 'Weight', min: 100, max: 900, step: 100, value: t.weight,
+      label: 'Weight', min: 100, max: 900, step: 100, value: t.weight, defaultValue: 400,
       onChange: (v) => doc.setTextProp(layer.id, 'weight', v),
     }));
     lsHost.innerHTML = ''; lsHost.appendChild(sliderRow({
-      label: 'Tracking', min: -200, max: 200, step: 0.5, value: t.letterSpacing,
+      label: 'Tracking', min: -200, max: 200, step: 0.5, value: t.letterSpacing, defaultValue: 0,
       onChange: (v) => doc.setTextProp(layer.id, 'letterSpacing', v),
     }));
     lhHost.innerHTML = ''; lhHost.appendChild(sliderRow({
-      label: 'Line Ht', min: 0.2, max: 3, step: 0.05, value: t.lineHeight,
+      label: 'Line Ht', min: 0.2, max: 3, step: 0.05, value: t.lineHeight, defaultValue: 1.2,
       onChange: (v) => doc.setTextProp(layer.id, 'lineHeight', v),
     }));
     // Box-width slider appears only in Text Box mode.
@@ -100,7 +123,7 @@ export function initTextTool({ document: doc }) {
       boxHost.innerHTML = '';
       if (mode === 'textBox') {
         boxHost.appendChild(sliderRow({
-          label: 'Box Width', min: 80, max: 4000, step: 1, value: t.boxWidth ?? 600,
+          label: 'Box Width', min: 80, max: 4000, step: 1, value: t.boxWidth ?? 600, defaultValue: 600,
           onChange: (v) => doc.setTextProp(layer.id, 'boxWidth', v),
         }));
       }
@@ -111,16 +134,19 @@ export function initTextTool({ document: doc }) {
     const layer = doc.activeLayer;
     if (layer && layer.type === 'text') doc.setTextProp(layer.id, 'value', textarea.value);
   });
-  fontSel.addEventListener('change', () => {
+  fontSel.addEventListener('change', async () => {
     const layer = doc.activeLayer;
     if (!layer || layer.type !== 'text') return;
-    ensureGoogleFont(fontSel.value);
-    // Wait briefly for font to apply before reraster.
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => doc.setTextProp(layer.id, 'font', fontSel.value));
-    } else {
-      doc.setTextProp(layer.id, 'font', fontSel.value);
+    const family = fontSel.value;
+    ensureGoogleFont(family);
+    // Explicitly load this size/weight combo. document.fonts.ready alone resolves
+    // before a freshly-injected <link> has even started fetching, so the rasteriser
+    // would otherwise miss it on the first paint.
+    if (document.fonts?.load) {
+      const t = layer.text;
+      try { await document.fonts.load(`${t.weight || 400} ${t.size || 96}px "${family}"`); } catch {}
     }
+    doc.setTextProp(layer.id, 'font', family);
   });
   colorInp.addEventListener('input', () => {
     const layer = doc.activeLayer;

@@ -30,7 +30,7 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
     const m = mode === 'textBox' ? 'textBox' : 'text';
     setLastTextMode(m);
     const layer = doc.addTextLayer({
-      text: { value: 'slammer', mode: m, boxWidth: 600 },
+      text: { value: 'Typo', mode: m, boxWidth: 600 },
     });
     openTextLayer?.(layer);
   }

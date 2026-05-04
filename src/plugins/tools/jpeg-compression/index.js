@@ -1,190 +1,172 @@
-// JPEG Compression — fakes JPEG block artefacts via DCT quantization on 8x8 blocks.
-// Modes: artifacts (classic blocky), heavy, glitch (perturb DC coefficients), block-shift.
+// JPEG Compression — uses the BROWSER'S REAL JPEG encoder via
+// canvas.convertToBlob({ type: 'image/jpeg', quality }).
+//
+// Two controls:
+//   Quality     1–100 % — passed straight to the encoder. Lower = harsher artefacts.
+//   Resolution  5–100 % — image is resampled down to this percentage BEFORE encoding,
+//                          then nearest-neighbour upscaled back to original size.
+//                          Lower values give larger, blockier JPEG artefacts.
 
-import { sliderRow, pillGroup, makeToolRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, makeToolRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'jpeg-compression',
   name: 'JPEG Compression',
-  version: '1.0.0',
+  version: '3.1.0',
   type: 'tool',
   icon: 'compress',
-  category: 'slam',
+  category: 'glitch',
 
   defaultParams() {
     return {
-      blockSize: 8,
-      quantization: 12,
-      freqNoise: 0,
-      mode: 'artifacts',
+      quality: 5,        // %, very low → strong artefacts at first add
+      resolution: 100,   // % of original, 100 = no resample
+      glitch: 0,         // %, datamosh-style entropy-segment bit-flips, 0 = clean
     };
   },
 
-  process(imageData, params) {
-    const N = clampPow2(params.blockSize || 8);
-    const Q = Math.max(1, params.quantization ?? 12);
-    const noise = (params.freqNoise || 0) / 100;
-    const mode = params.mode || 'artifacts';
-    const w = imageData.width, h = imageData.height;
-    const d = imageData.data;
-    const Y = new Float32Array(w * h);
-    const Cb = new Float32Array(w * h);
-    const Cr = new Float32Array(w * h);
-    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      Y[p] =  0.299  * r + 0.587  * g + 0.114  * b;
-      Cb[p] = -0.169 * r - 0.331  * g + 0.500  * b + 128;
-      Cr[p] =  0.500 * r - 0.419  * g - 0.081  * b + 128;
+  async process(imageData, params) {
+    const W = imageData.width, H = imageData.height;
+    const quality = clamp(params.quality ?? 5, 1, 100) / 100;
+    const resolution = clamp(params.resolution ?? 100, 5, 100) / 100;
+    const glitch = clamp(params.glitch ?? 0, 0, 100) / 100;
+
+    // ImageData → source canvas.
+    const srcCanvas = makeOffscreen(W, H);
+    srcCanvas.getContext('2d').putImageData(imageData, 0, 0);
+
+    // Optional pre-pass: resample down (creates larger JPEG blocks after upsample).
+    let workCanvas = srcCanvas;
+    if (resolution < 1) {
+      const sw = Math.max(2, Math.floor(W * resolution));
+      const sh = Math.max(2, Math.floor(H * resolution));
+      const small = makeOffscreen(sw, sh);
+      const sctx = small.getContext('2d');
+      sctx.imageSmoothingEnabled = true;
+      sctx.imageSmoothingQuality = 'low';
+      sctx.drawImage(workCanvas, 0, 0, sw, sh);
+      workCanvas = small;
     }
 
-    const cosTbl = buildCosineTable(N);
+    // Encode → (optional bit-flip) → decode through the browser's real JPEG codec.
+    let blob = await canvasToJpegBlob(workCanvas, quality);
+    if (glitch > 0) blob = await datamoshBlob(blob, glitch, params._seed);
+    const bitmap = await createImageBitmap(blob);
+    const decoded = makeOffscreen(bitmap.width, bitmap.height);
+    decoded.getContext('2d').drawImage(bitmap, 0, 0);
+    bitmap.close?.();
 
-    function processChannel(ch, qBoost = 1) {
-      const Qs = Q * qBoost;
-      for (let by = 0; by < h; by += N) {
-        for (let bx = 0; bx < w; bx += N) {
-          // Extract block (with edge clamp).
-          const block = new Float32Array(N * N);
-          for (let y = 0; y < N; y++) {
-            const yy = Math.min(h - 1, by + y);
-            for (let x = 0; x < N; x++) {
-              const xx = Math.min(w - 1, bx + x);
-              block[y * N + x] = ch[yy * w + xx] - 128;
-            }
-          }
-          const dct = forwardDCT(block, N, cosTbl);
-          // Quantize.
-          for (let i = 0; i < dct.length; i++) {
-            const u = i % N, v = Math.floor(i / N);
-            const qf = 1 + (u + v) * Qs / 16;
-            dct[i] = Math.round(dct[i] / qf) * qf;
-            if (noise && Math.random() < noise) {
-              dct[i] += (Math.random() - 0.5) * 200;
-            }
-            if (mode === 'glitch' && i === 0 && Math.random() < 0.04) {
-              dct[i] += (Math.random() - 0.5) * 800;
-            }
-          }
-          if (mode === 'block-shift' && Math.random() < 0.02) {
-            // Swap two random coefficients.
-            const a = (Math.random() * dct.length) | 0;
-            const b = (Math.random() * dct.length) | 0;
-            const t = dct[a]; dct[a] = dct[b]; dct[b] = t;
-          }
-          const idct = inverseDCT(dct, N, cosTbl);
-          for (let y = 0; y < N; y++) {
-            const yy = by + y; if (yy >= h) break;
-            for (let x = 0; x < N; x++) {
-              const xx = bx + x; if (xx >= w) break;
-              ch[yy * w + xx] = idct[y * N + x] + 128;
-            }
-          }
-        }
-      }
+    // Upsample back to W×H if we downscaled (nearest-neighbour for crisp blocks).
+    let finalCanvas = decoded;
+    if (decoded.width !== W || decoded.height !== H) {
+      const out = makeOffscreen(W, H);
+      const octx = out.getContext('2d');
+      octx.imageSmoothingEnabled = false;
+      octx.drawImage(decoded, 0, 0, decoded.width, decoded.height, 0, 0, W, H);
+      finalCanvas = out;
     }
 
-    processChannel(Y, 1);
-    if (mode !== 'mono') {
-      processChannel(Cb, 2);
-      processChannel(Cr, 2);
-    }
-
-    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-      const y = Y[p], cb = Cb[p] - 128, cr = Cr[p] - 128;
-      d[i]     = clamp255(y + 1.402   * cr);
-      d[i + 1] = clamp255(y - 0.344136 * cb - 0.714136 * cr);
-      d[i + 2] = clamp255(y + 1.772   * cb);
-    }
-    return imageData;
+    return finalCanvas.getContext('2d').getImageData(0, 0, W, H);
   },
 
   renderUI(params, onChange) {
     const root = makeToolRoot();
-    root.appendChild(pillGroup({
-      label: 'Mode',
-      options: [
-        { value: 'artifacts', label: 'Artefacts' },
-        { value: 'heavy', label: 'Heavy' },
-        { value: 'glitch', label: 'Glitch' },
-        { value: 'block-shift', label: 'Block Shift' },
-        { value: 'mono', label: 'Mono' },
-      ],
-      value: params.mode,
-      onChange: (v) => onChange({ mode: v }),
+    root.appendChild(sliderRow({
+      label: 'Quality', min: 1, max: 100, step: 1,
+      value: params.quality ?? 5, defaultValue: 5, suffix: '%',
+      onChange: (v) => onChange({ quality: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Block Size', min: 4, max: 32, step: 4, value: params.blockSize,
-      onChange: (v) => onChange({ blockSize: v }),
+      label: 'Resolution', min: 5, max: 100, step: 1,
+      value: params.resolution ?? 100, defaultValue: 100, suffix: '%',
+      onChange: (v) => onChange({ resolution: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Quant', min: 1, max: 60, step: 1, value: params.quantization,
-      onChange: (v) => onChange({ quantization: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'Freq Noise', min: 0, max: 100, step: 1, value: params.freqNoise,
-      onChange: (v) => onChange({ freqNoise: v }),
+      label: 'Glitch', min: 0, max: 100, step: 1,
+      value: params.glitch ?? 0, defaultValue: 0, suffix: '%',
+      onChange: (v) => onChange({ glitch: v }),
     }));
     return root;
   },
 };
 
-function clampPow2(n) {
-  // Snap to 4, 8, 16, 32.
-  const opts = [4, 8, 16, 32];
-  let best = 8, dist = Infinity;
-  for (const o of opts) { const d = Math.abs(o - n); if (d < dist) { best = o; dist = d; } }
-  return best;
+// ---------- Helpers ----------
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function makeOffscreen(w, h) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
 }
 
-function buildCosineTable(N) {
-  const tbl = new Float32Array(N * N);
-  for (let u = 0; u < N; u++) {
-    for (let x = 0; x < N; x++) {
-      tbl[u * N + x] = Math.cos(((2 * x + 1) * u * Math.PI) / (2 * N));
-    }
-  }
-  return tbl;
-}
-function alpha(k, N) { return k === 0 ? Math.SQRT1_2 : 1; }
-
-function forwardDCT(block, N, cosTbl) {
-  const out = new Float32Array(N * N);
-  // Separable 1D DCT: rows then cols.
-  const tmp = new Float32Array(N * N);
-  for (let y = 0; y < N; y++) {
-    for (let u = 0; u < N; u++) {
-      let sum = 0;
-      for (let x = 0; x < N; x++) sum += block[y * N + x] * cosTbl[u * N + x];
-      tmp[y * N + u] = sum * alpha(u, N);
-    }
-  }
-  for (let u = 0; u < N; u++) {
-    for (let v = 0; v < N; v++) {
-      let sum = 0;
-      for (let y = 0; y < N; y++) sum += tmp[y * N + u] * cosTbl[v * N + y];
-      out[v * N + u] = sum * alpha(v, N) * (2 / N);
-    }
-  }
-  return out;
-}
-function inverseDCT(coeffs, N, cosTbl) {
-  const out = new Float32Array(N * N);
-  const tmp = new Float32Array(N * N);
-  for (let v = 0; v < N; v++) {
-    for (let x = 0; x < N; x++) {
-      let sum = 0;
-      for (let u = 0; u < N; u++) sum += alpha(u, N) * coeffs[v * N + u] * cosTbl[u * N + x];
-      tmp[v * N + x] = sum;
-    }
-  }
-  for (let x = 0; x < N; x++) {
-    for (let y = 0; y < N; y++) {
-      let sum = 0;
-      for (let v = 0; v < N; v++) sum += alpha(v, N) * tmp[v * N + x] * cosTbl[v * N + y];
-      out[y * N + x] = sum * (2 / N);
-    }
-  }
-  return out;
+function canvasToJpegBlob(canvas, quality) {
+  if (canvas.convertToBlob) return canvas.convertToBlob({ type: 'image/jpeg', quality });
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
 
-function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+// ---------- Datamosh: bit-flip the entropy-coded segment ----------
+// Real-deal JPEG glitch. We locate the Start-Of-Scan marker (0xFFDA), then
+// XOR random bytes between (SOS-payload-end) and (EOI). Bytes that are 0xFF
+// or that follow a 0xFF are skipped — those are markers / stuffed escapes,
+// touching them tends to break the decoder rather than glitch it.
+//
+// `intensity` is 0–1 — controls what fraction of the entropy segment to mutate.
+async function datamoshBlob(blob, intensity, seed) {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  const sos = findSOS(buf);
+  const eoi = findEOI(buf);
+  if (sos < 0 || eoi < 0 || eoi - sos < 64) return blob;
+
+  // SOS payload starts after the 12-byte SOS header (typical for baseline JPEG).
+  const start = sos + 12;
+  const end = eoi - 4;
+  if (end <= start + 16) return blob;
+
+  // Cap mutation count: never more than 1 % of the entropy region. Small numbers
+  // give crisp block-streams; high numbers turn into noise. The slider scales
+  // exponentially so the low end stays usable.
+  const region = end - start;
+  const maxMutations = Math.max(1, Math.floor(region * 0.01));
+  const count = Math.max(1, Math.floor(intensity ** 1.5 * maxMutations));
+
+  const rand = mulberry32(((seed | 0) || 0x9E3779B1) ^ (count * 131));
+  const out = buf.slice();
+  let mutated = 0;
+  let attempts = 0;
+  while (mutated < count && attempts < count * 8) {
+    attempts++;
+    const i = start + Math.floor(rand() * region);
+    if (out[i] === 0xFF) continue;       // marker byte
+    if (i > 0 && out[i - 1] === 0xFF) continue; // stuffed-byte slot after a marker
+    // XOR a non-zero random byte so each flip is meaningful.
+    const flip = 1 + Math.floor(rand() * 255);
+    out[i] ^= flip;
+    mutated++;
+  }
+  return new Blob([out], { type: 'image/jpeg' });
+}
+
+function findSOS(buf) {
+  for (let i = 2; i < buf.length - 1; i++) {
+    if (buf[i] === 0xFF && buf[i + 1] === 0xDA) return i;
+  }
+  return -1;
+}
+function findEOI(buf) {
+  for (let i = buf.length - 2; i >= 0; i--) {
+    if (buf[i] === 0xFF && buf[i + 1] === 0xD9) return i;
+  }
+  return -1;
+}
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}

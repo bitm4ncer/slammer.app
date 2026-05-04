@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'sliders',
-  category: 'adjust',
+  category: 'image',
 
   defaultParams() { return { black: 0, mid: 1.0, white: 255 }; },
 
@@ -39,15 +39,15 @@ export default {
   renderUI(params, onChange) {
     const root = makeRoot();
     root.appendChild(sliderRow({
-      label: 'Black', min: 0, max: 254, step: 1, value: params.black ?? 0,
+      label: 'Black', min: 0, max: 254, step: 1, value: params.black ?? 0, defaultValue: 0,
       onChange: (v) => onChange({ black: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Mid (γ)', min: 0.1, max: 4, step: 0.01, value: params.mid ?? 1,
+      label: 'Mid (γ)', min: 0.1, max: 4, step: 0.01, value: params.mid ?? 1, defaultValue: 1,
       onChange: (v) => onChange({ mid: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'White', min: 1, max: 255, step: 1, value: params.white ?? 255,
+      label: 'White', min: 1, max: 255, step: 1, value: params.white ?? 255, defaultValue: 255,
       onChange: (v) => onChange({ white: v }),
     }));
     return root;

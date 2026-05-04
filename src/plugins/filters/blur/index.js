@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'droplet',
-  category: 'adjust',
+  category: 'image',
 
   defaultParams() { return { radius: 4 }; },
 
@@ -30,7 +30,7 @@ export default {
   renderUI(params, onChange) {
     const root = makeRoot();
     root.appendChild(sliderRow({
-      label: 'Radius', min: 0, max: 40, step: 1, value: params.radius ?? 4,
+      label: 'Radius', min: 0, max: 40, step: 1, value: params.radius ?? 4, defaultValue: 4,
       onChange: (v) => onChange({ radius: v }),
     }));
     return root;

@@ -1,6 +1,9 @@
 // Settings popup — autosave duration, version info, theme accent colour.
 // Persists to localStorage 'slammer:settings'.
 
+import { createKnob } from '../plugins/shared/knob.js';
+import { createNumericInput } from '../plugins/shared/numeric-input.js';
+
 const STORE_KEY = 'slammer:settings';
 const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true };
 
@@ -89,10 +92,8 @@ export function initSettingsPopup({ button, version }) {
           </div>
 
           <div class="settings-row">
-            <label class="settings-label" for="setAutosave">Autosave delay <code class="settings-readout" id="setAutosaveReadout">${s.autosaveMs} ms</code></label>
-            <div class="settings-control">
-              <input type="range" id="setAutosave" min="200" max="3000" step="100" value="${s.autosaveMs}" />
-            </div>
+            <label class="settings-label">Autosave delay <code class="settings-readout" id="setAutosaveReadout">${s.autosaveMs} ms</code></label>
+            <div class="settings-control" id="setAutosaveControl"></div>
           </div>
         </div>
 
@@ -123,13 +124,33 @@ export function initSettingsPopup({ button, version }) {
       setSettings({ accent: hex });
     });
 
-    const autosaveInput = backdrop.querySelector('#setAutosave');
+    const autosaveControl = backdrop.querySelector('#setAutosaveControl');
     const autosaveReadout = backdrop.querySelector('#setAutosaveReadout');
-    autosaveInput.addEventListener('input', (e) => {
-      const ms = parseInt(e.target.value, 10);
-      autosaveReadout.textContent = `${ms} ms`;
-      setSettings({ autosaveMs: ms });
-    });
+    if (autosaveControl) {
+      const autosaveKnob = createKnob({
+        size: 32,
+        min: 200, max: 3000, step: 100,
+        value: s.autosaveMs,
+        defaultValue: 800,
+        onChange: (v) => {
+          autosaveReadout.textContent = `${v} ms`;
+          autosaveNum.setValue(v);
+          setSettings({ autosaveMs: v });
+        },
+      });
+      const autosaveNum = createNumericInput({
+        min: 200, max: 3000, step: 100,
+        value: s.autosaveMs,
+        suffix: 'ms',
+        onChange: (v) => {
+          autosaveReadout.textContent = `${v} ms`;
+          autosaveKnob.setValue(v);
+          setSettings({ autosaveMs: v });
+        },
+      });
+      autosaveControl.appendChild(autosaveKnob);
+      autosaveControl.appendChild(autosaveNum);
+    }
 
     const customAccentInput = backdrop.querySelector('#setCustomLayerColors');
     customAccentInput.addEventListener('change', (e) => {

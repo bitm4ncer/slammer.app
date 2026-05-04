@@ -50,7 +50,7 @@ export default {
   version: '2.0.0',
   type: 'tool',
   icon: 'chess-board',
-  category: 'slam',
+  category: 'glitch',
 
   defaultParams() {
     return {
@@ -116,17 +116,17 @@ export default {
 
       // Size slider — resolution scale, controls "blockiness" of the dither pattern.
       root.appendChild(sliderRow({
-        label: 'Size', min: 1, max: 100, step: 1, value: local.size,
+        label: 'Size', min: 1, max: 100, step: 1, value: local.size, defaultValue: 100,
         suffix: '%',
         onChange: (v) => { local.size = v; onChange({ size: v }); },
       }));
 
       root.appendChild(sliderRow({
-        label: 'Threshold', min: 0, max: 255, step: 1, value: local.threshold,
+        label: 'Threshold', min: 0, max: 255, step: 1, value: local.threshold, defaultValue: 128,
         onChange: (v) => { local.threshold = v; onChange({ threshold: v }); },
       }));
       root.appendChild(sliderRow({
-        label: 'Strength', min: 0, max: 1, step: 0.01, value: local.strength,
+        label: 'Strength', min: 0, max: 1, step: 0.01, value: local.strength, defaultValue: 1,
         onChange: (v) => { local.strength = v; onChange({ strength: v }); },
       }));
 
@@ -155,35 +155,35 @@ export default {
       // Algorithm-specific extra rows
       if (local.algorithm === 'mosaic') {
         root.appendChild(sliderRow({
-          label: 'Mosaic Size', min: 2, max: 64, step: 1, value: local.mosaicSize,
+          label: 'Mosaic Size', min: 2, max: 64, step: 1, value: local.mosaicSize, defaultValue: 8,
           onChange: (v) => { local.mosaicSize = v; onChange({ mosaicSize: v }); },
         }));
       }
       if (['sineWave', 'wave'].includes(local.algorithm)) {
         root.appendChild(sliderRow({
-          label: 'Wavelength', min: 2, max: 64, step: 1, value: local.waveLength,
+          label: 'Wavelength', min: 2, max: 64, step: 1, value: local.waveLength, defaultValue: 8,
           onChange: (v) => { local.waveLength = v; onChange({ waveLength: v }); },
         }));
         root.appendChild(sliderRow({
-          label: 'Amplitude', min: 0, max: 32, step: 1, value: local.waveAmplitude,
+          label: 'Amplitude', min: 0, max: 32, step: 1, value: local.waveAmplitude, defaultValue: 4,
           onChange: (v) => { local.waveAmplitude = v; onChange({ waveAmplitude: v }); },
         }));
       }
       if (['halftone', 'checker', 'gridlock', 'circuitGrid', 'diamond', 'bitTone'].includes(local.algorithm)) {
         root.appendChild(sliderRow({
-          label: 'Pattern Size', min: 2, max: 32, step: 1, value: local.patternSize,
+          label: 'Pattern Size', min: 2, max: 32, step: 1, value: local.patternSize, defaultValue: 4,
           onChange: (v) => { local.patternSize = v; onChange({ patternSize: v }); },
         }));
       }
       if (['halftone', 'gridlock', 'mosaic'].includes(local.algorithm)) {
         root.appendChild(sliderRow({
-          label: 'Angle', min: 0, max: 90, step: 1, value: local.patternAngle,
+          label: 'Angle', min: 0, max: 90, step: 1, value: local.patternAngle, defaultValue: 0,
           onChange: (v) => { local.patternAngle = v; onChange({ patternAngle: v }); },
         }));
       }
       if (local.algorithm === 'bitTone') {
         root.appendChild(sliderRow({
-          label: 'Bit Depth', min: 1, max: 7, step: 1, value: local.bitDepth,
+          label: 'Bit Depth', min: 1, max: 7, step: 1, value: local.bitDepth, defaultValue: 1,
           onChange: (v) => { local.bitDepth = v; onChange({ bitDepth: v }); },
         }));
       }

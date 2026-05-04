@@ -2,6 +2,9 @@
 
 import Sortable from 'sortablejs';
 import { getSettings, onSettingsChange } from './settings-popup.js';
+import { createKnob } from '../plugins/shared/knob.js';
+import { createNumericInput } from '../plugins/shared/numeric-input.js';
+import { BLEND_MODES } from '../core/layer.js';
 
 export function initLayerPanel({ container, document, renderer }) {
   let sortable = null;
@@ -14,19 +17,38 @@ export function initLayerPanel({ container, document, renderer }) {
     }
   });
 
+  function closeAllBlendMenus() {
+    window.document.querySelectorAll('.layer-blend-menu--portaled').forEach((m) => { m.style.display = 'none'; });
+  }
+  window.document.addEventListener('click', (e) => {
+    if (!e.target.closest('.layer-blend-dropdown')) closeAllBlendMenus();
+  });
+
   function thumbForLayer(layer) {
     const st = renderer.layerState.get(layer.id);
     if (!st || !st.dstCanvas) return '';
     try {
-      // Small thumbnails kept light: just reuse the dstCanvas as a scaled CSS background.
       return st.dstCanvas.toDataURL('image/png');
     } catch {
       return '';
     }
   }
 
+  const BLEND_SHORT = {
+    'source-over': 'Normal', multiply: 'Mult', screen: 'Scrn', overlay: 'Ovly',
+    darken: 'Drkn', lighten: 'Lght', 'color-dodge': 'CDge', 'color-burn': 'CBrn',
+    'hard-light': 'Hard', 'soft-light': 'Soft', difference: 'Diff', exclusion: 'Excl',
+  };
+  const BLEND_FULL = {
+    'source-over': 'Normal', multiply: 'Multiply', screen: 'Screen', overlay: 'Overlay',
+    darken: 'Darken', lighten: 'Lighten', 'color-dodge': 'Color Dodge', 'color-burn': 'Color Burn',
+    'hard-light': 'Hard Light', 'soft-light': 'Soft Light', difference: 'Difference', exclusion: 'Exclusion',
+  };
+  function blendShort(mode) { return BLEND_SHORT[mode] || 'Normal'; }
+  function blendFull(mode) { return BLEND_FULL[mode] || mode; }
+
   function render() {
-    const layers = document.layers.slice().reverse(); // top of stack first in panel
+    const layers = document.layers.slice().reverse();
     if (!layers.length) {
       container.innerHTML = '<div class="layer-empty">No layers yet</div>';
       return;
@@ -45,11 +67,19 @@ export function initLayerPanel({ container, document, renderer }) {
         <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
         ${swatchMarkup}
         <div class="layer-thumb" style="background-image:url('${thumbForLayer(layer)}')">
-          <i class="fas fa-${typeIcon(layer.type)} layer-type-icon"></i>
+          ${layer.type === 'text' ? '<span class="layer-type-icon">T</span>' : `<i class="fas fa-${typeIcon(layer.type)} layer-type-icon"></i>`}
         </div>
         <div class="layer-meta">
           <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
-          <input type="range" class="layer-opacity" min="0" max="1" step="0.01" value="${layer.opacity}" />
+          <div class="layer-blend-opacity-row">
+            <div class="layer-blend-dropdown">
+              <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+            </div>
+            <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+              <span class="layer-opacity-knob"></span>
+              <span class="layer-opacity-num"></span>
+            </div>
+          </div>
         </div>
         <div class="layer-actions">
           <button class="layer-icon-btn act-vis" title="Toggle visibility">
@@ -62,23 +92,62 @@ export function initLayerPanel({ container, document, renderer }) {
 
     container.querySelectorAll('.layer-item').forEach((row) => {
       const id = row.dataset.layerId;
+      const layer = document.findLayer(id);
+      if (!layer) return;
+
       row.addEventListener('click', (e) => {
-        if (e.target.closest('.layer-actions') || e.target.closest('.layer-opacity')
-            || e.target.closest('.layer-accent-swatch') || e.target.closest('.layer-name[contenteditable]')) return;
+        if (e.target.closest('.layer-actions') || e.target.closest('.layer-blend-dropdown')
+            || e.target.closest('.layer-opacity-row') || e.target.closest('.layer-accent-swatch')
+            || e.target.closest('.layer-name[contenteditable]')) return;
         document.setActiveLayer(id);
       });
+
       row.querySelector('.act-vis').addEventListener('click', (e) => {
         e.stopPropagation();
-        const layer = document.findLayer(id);
-        if (layer) document.setLayerProp(id, 'visible', !layer.visible);
+        document.setLayerProp(id, 'visible', !layer.visible);
       });
       row.querySelector('.act-del').addEventListener('click', (e) => {
         e.stopPropagation();
         document.removeLayer(id);
       });
-      row.querySelector('.layer-opacity').addEventListener('input', (e) => {
-        document.setLayerProp(id, 'opacity', parseFloat(e.target.value));
-      });
+
+      // Blend mode trigger
+      const blendTrigger = row.querySelector('.layer-blend-trigger');
+      if (blendTrigger) {
+        blendTrigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showBlendMenu(blendTrigger, layer);
+        });
+        blendTrigger.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const idx = BLEND_MODES.indexOf(layer.blendMode || 'source-over');
+          const next = BLEND_MODES[(idx + (e.deltaY > 0 ? 1 : BLEND_MODES.length - 1)) % BLEND_MODES.length];
+          document.setLayerProp(id, 'blendMode', next);
+        });
+      }
+
+      // Opacity knob + numeric input
+      const opRow = row.querySelector('.layer-opacity-row');
+      if (opRow) {
+        const opacityPercent = Math.round((layer.opacity ?? 1) * 100);
+        const knob = createKnob({ size: 28, min: 0, max: 100, step: 1, value: opacityPercent, defaultValue: 100,
+          onChange: (v) => {
+            document.setLayerProp(id, 'opacity', v / 100);
+            if (num) num.setValue(v);
+          }
+        });
+        const num = createNumericInput({ min: 0, max: 100, step: 1, value: opacityPercent, suffix: '%',
+          onChange: (v) => {
+            document.setLayerProp(id, 'opacity', v / 100);
+            if (knob) knob.setValue(v);
+          }
+        });
+        opRow.querySelector('.layer-opacity-knob').appendChild(knob);
+        opRow.querySelector('.layer-opacity-num').appendChild(num);
+        opRow._knob = knob;
+        opRow._num = num;
+      }
+
       const accentInput = row.querySelector('.layer-accent-input');
       if (accentInput) {
         accentInput.addEventListener('input', (e) => {
@@ -88,6 +157,7 @@ export function initLayerPanel({ container, document, renderer }) {
           row.querySelector('.layer-accent-dot').style.background = hex;
         });
       }
+
       const nameEl = row.querySelector('.layer-name');
       nameEl.addEventListener('dblclick', (e) => {
         e.stopPropagation();
@@ -101,9 +171,39 @@ export function initLayerPanel({ container, document, renderer }) {
       handle: '.layer-drag-handle',
       onEnd: () => {
         const ids = Array.from(container.querySelectorAll('.layer-item')).map((el) => el.dataset.layerId);
-        // Panel shows top-of-stack first → document is bottom-up, so reverse.
         document.reorderLayers(ids.slice().reverse());
       },
+    });
+  }
+
+  function showBlendMenu(trigger, layer) {
+    closeAllBlendMenus();
+    const menu = window.document.createElement('div');
+    menu.className = 'layer-blend-menu layer-blend-menu--portaled';
+    menu.innerHTML = BLEND_MODES.map((mode) => `
+      <button class="layer-blend-option ${layer.blendMode === mode ? 'active' : ''}" data-mode="${mode}">${blendFull(mode)}</button>
+    `).join('');
+    window.document.body.appendChild(menu);
+
+    const r = trigger.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = `${r.bottom + 4}px`;
+    menu.style.left = `${r.left}px`;
+    menu.style.zIndex = '200';
+
+    const options = menu.querySelectorAll('.layer-blend-option');
+    options.forEach((el) => {
+      el.addEventListener('mouseenter', () => {
+        document.setLayerProp(layer.id, 'blendMode', el.dataset.mode);
+      });
+      el.addEventListener('click', () => {
+        document.setLayerProp(layer.id, 'blendMode', el.dataset.mode);
+        closeAllBlendMenus();
+      });
+    });
+
+    setTimeout(() => {
+      window.addEventListener('click', closeAllBlendMenus, { once: true });
     });
   }
 
@@ -148,23 +248,18 @@ export function initLayerPanel({ container, document, renderer }) {
   }
 
   document.subscribe((e) => {
-    // Structural changes need a full DOM rebuild.
     const structural = [
       'layer:added', 'layer:removed', 'layer:reordered',
       'layer:active', 'doc:loaded',
     ].includes(e.type);
-    // For prop changes (visibility/opacity) update only the affected row inline so the
-    // user's drag-on-opacity-slider isn't interrupted.
     if (structural) {
       scheduleRender();
       return;
     }
     if (e.type === 'layer:propChanged') {
       updateRow(e.id);
-      // If only visibility changed, the thumb doesn't need refreshing.
       return;
     }
-    // Effect / source / text changes affect thumbnails — refresh them lazily.
     if ([
       'effect:propChanged', 'effect:added', 'effect:removed', 'effect:reordered',
       'layer:sourceChanged', 'layer:textChanged',
@@ -179,7 +274,6 @@ export function initLayerPanel({ container, document, renderer }) {
     pending = requestAnimationFrame(() => { pending = null; render(); });
   }
 
-  // Thumb refresh is expensive (toDataURL). Debounce per-layer with idle timing.
   const thumbTimers = new Map();
   function scheduleThumbRefresh(layerId) {
     if (!layerId) return;
@@ -200,8 +294,18 @@ export function initLayerPanel({ container, document, renderer }) {
     if (!row) return;
     const visIcon = row.querySelector('.act-vis i');
     if (visIcon) visIcon.className = `fas fa-${layer.visible ? 'eye' : 'eye-slash'}`;
-    const op = row.querySelector('.layer-opacity');
-    if (op && window.document.activeElement !== op && parseFloat(op.value) !== layer.opacity) op.value = String(layer.opacity);
+    const opRow = row.querySelector('.layer-opacity-row');
+    if (opRow) {
+      const opKnob = opRow._knob;
+      const opNum = opRow._num;
+      const opacityPercent = Math.round(layer.opacity * 100);
+      if (opKnob && document.activeElement !== opKnob && document.activeElement !== opNum?.querySelector('input')) {
+        opKnob.setValue(opacityPercent);
+      }
+      if (opNum && document.activeElement !== opNum.querySelector('input')) {
+        opNum.setValue(opacityPercent);
+      }
+    }
     const nameEl = row.querySelector('.layer-name');
     if (nameEl && !nameEl.classList.contains('renaming') && nameEl.textContent !== layer.name) {
       nameEl.textContent = layer.name;
@@ -216,6 +320,12 @@ export function initLayerPanel({ container, document, renderer }) {
         const pick = row.querySelector('.layer-accent-input');
         if (pick && pick.value.toLowerCase() !== accent.toLowerCase()) pick.value = accent;
       }
+    }
+    const blendTrigger = row.querySelector('.layer-blend-trigger');
+    if (blendTrigger) {
+      const currentShort = blendShort(layer.blendMode || 'source-over');
+      if (blendTrigger.textContent !== currentShort) blendTrigger.textContent = currentShort;
+      blendTrigger.dataset.mode = layer.blendMode || 'source-over';
     }
   }
 

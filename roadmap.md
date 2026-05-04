@@ -87,30 +87,31 @@
 
 ## PHASE 7 — Knobs & GUI control system
 
-- [ ] Build reusable `Knob` component (rotary, drag + scroll-wheel + double-click-to-reset, with tiny editable input)
-- [ ] Build `NumericInput` primitive
-- [ ] Replace every slider across the app with the Knob + input pattern
-- [ ] Add visual GUI controls where they make sense (gradient stops, curve editor, etc.)
-- [ ] Pro "piece of gear" finish: subtle bevels, micro-shadows, tick marks
+- [x] Build reusable `Knob` component (rotary, drag + scroll-wheel + double-click-to-reset, with tiny editable input)
+- [x] Build `NumericInput` primitive
+- [x] Replace every slider across the app with the Knob + input pattern
+- [ ] Add visual GUI controls where they make sense (gradient stops, curve editor, etc.) — deferred to Phase 10
+- [x] Pro "piece of gear" finish: subtle bevels, micro-shadows, tick marks
 
 ## PHASE 8 — JPEG compression fix + Blend Modes
 
-- [ ] Investigate and fix JPEG Compression effect
-- [ ] Add Blend Modes UI on the layer card (small prev/next icons or hover+scroll to browse — fast preview)
+- [x] Investigate and fix JPEG Compression effect — replaced the pseudo-DCT/posterise approach with the **browser's real JPEG encoder** (`canvas.convertToBlob({ type: 'image/jpeg', quality })`). Modes: **Classic** (single encode), **Downsample** (resample to scale% before encoding — the "rescaled-in-bad-quality" look), **Gen Loss** (re-encode N passes for "shared 50 times on Facebook" look), **Mono** (desaturate first). Required making the renderer's effect pipeline async-aware so plugins can return Promises (sync plugins still work via `await` no-op).
+- [x] Add Blend Modes UI on the layer card (small prev/next icons or hover+scroll to browse — fast preview)
+- [x] Bonus fix: Konva transformer now `forceUpdate()`s on image-dimension changes so the selection frame follows live edits to text size / tracking / line-height / box-width / textarea content (was only refreshing on de- and re-select).
 
 ## PHASE 9 — FX / Adjustment Layers (non-destructive stack-level filters)
 
-- [ ] Refactor effect pipeline to support stack-level filters
-- [ ] New layer type: **FX / Adjustment Layer** (affects all layers below, non-destructive, Affinity Live-filters style)
-- [ ] All filters usable as either direct effect or adjustment layer
+- [ ] Refactor effect pipeline to support stack-level filters. add plus icon similar to effect panel to add Tools "Image," "text" etc. but also all effects that gets added as a new effects layer that effects all layers below. 
+- [ ] New layer type: **Effect** (affects all layers below, non-destructive, Affinity Live-filters style)
+- [ ] All filters usable as either direct effect on the layer or adjustment/effect layer
 
 ## PHASE 10 — New filters
 
 - [ ] **Curves** filter with GUI curve editor
 - [ ] **Hue** filter
-- [ ] **Color Overlay** filter (recolor free-form PNG via alpha)
+- [ ] **Color Overlay** filter (recolor free-form PNG, and other transparent files types via alpha)
 - [ ] **Gradient Map** filter
-- [ ] **Grain** filter (random / perlin / film / digital — adjustable, as filter or layer)
+- [ ] **Grain** filter (random / perlin / film / digital etc — adjustable, as filter or layer. develop versitile noise settings)
 - [ ] **Displacement** FX (default noise + custom displacement texture + scale)
 
 ## PHASE 11 — Document sizes & alignment
@@ -172,6 +173,7 @@
 - [ ] Collapsable pages sidebar
 - [ ] Duplicate, reorder pages
 - [ ] Per-page settings icon (change document)
+- [ ]  change version number to v1.0.1
 
 ---
 

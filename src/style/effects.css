@@ -10,23 +10,80 @@
 }
 .layer-drag-handle:active { cursor: grabbing; }
 
-.layer-meta .layer-opacity {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: var(--surface);
-  border-radius: 2px;
-  margin-top: 4px;
+.layer-blend-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
 }
-.layer-opacity::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--layer-accent);
+.layer-blend-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+.layer-blend-trigger {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 3px;
   cursor: pointer;
-  box-shadow: 0 0 4px color-mix(in srgb, var(--layer-accent) 50%, transparent);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: border-color 0.12s ease, color 0.12s ease;
+  line-height: 1;
+  min-width: 44px;
+}
+.layer-blend-trigger:hover {
+  border-color: var(--ctx-accent);
+  color: var(--ctx-accent);
+}
+.layer-blend-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 90;
+  background: var(--surface-2);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px 0;
+  gap: 1px;
+}
+.layer-blend-menu--portaled {
+  position: fixed;
+  z-index: 250;
+}
+.layer-blend-option {
+  padding: 5px 10px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.layer-blend-option:hover,
+.layer-blend-option.active {
+  background: color-mix(in srgb, var(--ctx-accent) 14%, transparent);
+  color: var(--ctx-accent);
+}
+.layer-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.layer-opacity-row .knob-container {
+  flex-shrink: 0;
+}
+.layer-opacity-row .effect-num {
+  width: 42px;
+  padding: 2px 4px;
+  font-size: 10px;
 }
 
 /* ---------- Effect items ---------- */
@@ -114,7 +171,7 @@
 
 .effect-slider-row {
   display: grid;
-  grid-template-columns: 80px 1fr 56px;
+  grid-template-columns: 80px 28px 56px;
   align-items: center;
   gap: 8px;
   font-size: 11px;
@@ -122,24 +179,24 @@
 }
 .effect-label { letter-spacing: 0.05em; text-transform: uppercase; }
 
-.effect-slider-row input[type="range"] {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: var(--surface);
-  border-radius: 2px;
-  border: 1px solid var(--vhs-shadow);
-}
-.effect-slider-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+/* ---------- Knob ---------- */
+.knob-container {
+  outline: none;
   border-radius: 50%;
-  background: var(--ctx-accent);
-  cursor: pointer;
-  box-shadow: 0 0 4px color-mix(in srgb, var(--ctx-accent) 40%, transparent);
+  transition: box-shadow 0.15s ease;
 }
+.knob-container:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 50%, transparent);
+}
+.knob-container.dragging {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ctx-accent) 45%, transparent);
+}
+.knob-canvas {
+  display: block;
+  border-radius: 50%;
+}
+
+/* ---------- Numeric input (no spinners) ---------- */
 .effect-num {
   width: 100%;
   background: var(--surface);
@@ -149,6 +206,14 @@
   border-radius: 3px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
+}
+.effect-num::-webkit-outer-spin-button,
+.effect-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.effect-num {
+  -moz-appearance: textfield;
 }
 
 /* ---------- Tool: button rows (Color Mode / Algorithm / Direction tabs) ---------- */
@@ -200,7 +265,6 @@
 /* ---------- Add-effect popup menu ---------- */
 .add-effect-menu {
   background: var(--surface-2);
-  border: 1px solid var(--ctx-accent);
   border-radius: 4px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
   padding: 4px;
@@ -393,7 +457,6 @@
 
 .custom-dropdown-menu {
   background: var(--surface-2);
-  border: 1px solid color-mix(in srgb, var(--ctx-accent) 60%, var(--vhs-shadow));
   border-radius: 4px;
   box-shadow: 0 8px 22px rgba(0,0,0,0.55);
   max-height: 280px;

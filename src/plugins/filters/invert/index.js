@@ -1,12 +1,14 @@
 // Invert — trivial filter, used end-to-end as the Phase 4a smoke test.
 
+import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+
 export default {
   id: 'invert',
   name: 'Invert',
   version: '1.0.0',
   type: 'filter',
   icon: 'adjust',
-  category: 'adjust',
+  category: 'image',
 
   defaultParams() {
     return { strength: 1 };
@@ -33,25 +35,11 @@ export default {
   },
 
   renderUI(params, onChange) {
-    const root = document.createElement('div');
-    root.className = 'effect-inline-controls';
-    root.innerHTML = `
-      <label class="effect-slider-row">
-        <span class="effect-label">Strength</span>
-        <input type="range" min="0" max="1" step="0.01" value="${params.strength ?? 1}" />
-        <input type="number" min="0" max="1" step="0.01" value="${params.strength ?? 1}" class="effect-num" />
-      </label>
-    `;
-    const range = root.querySelector('input[type=range]');
-    const num = root.querySelector('input[type=number]');
-    const sync = (val) => {
-      const v = Math.max(0, Math.min(1, parseFloat(val)));
-      range.value = String(v);
-      num.value = String(v);
-      onChange({ strength: v });
-    };
-    range.addEventListener('input', (e) => sync(e.target.value));
-    num.addEventListener('input', (e) => sync(e.target.value));
+    const root = makeRoot();
+    root.appendChild(sliderRow({
+      label: 'Strength', min: 0, max: 1, step: 0.01, value: params.strength ?? 1, defaultValue: 1,
+      onChange: (v) => onChange({ strength: v }),
+    }));
     return root;
   },
 };

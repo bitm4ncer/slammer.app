@@ -9,7 +9,7 @@ export default {
   version: '1.0.0',
   type: 'tool',
   icon: 'arrows-up-down-left-right',
-  category: 'slam',
+  category: 'glitch',
 
   defaultParams() {
     return {
@@ -115,11 +115,11 @@ export default {
       onChange: (v) => onChange({ criteria: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Threshold', min: 0, max: 100, step: 1, value: params.threshold,
+      label: 'Threshold', min: 0, max: 100, step: 1, value: params.threshold, defaultValue: 80,
       onChange: (v) => onChange({ threshold: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Amount', min: 0, max: 1, step: 0.01, value: params.amount,
+      label: 'Amount', min: 0, max: 1, step: 0.01, value: params.amount, defaultValue: 1.0,
       onChange: (v) => onChange({ amount: v }),
     }));
     return root;

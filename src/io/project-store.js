@@ -43,20 +43,24 @@ function dbExists(name) {
 }
 
 async function isStoreEmpty(name) {
+  // Open WITHOUT a version so we don't trigger upgrades or VersionErrors against
+  // whatever the current schema is. We just want to peek at the count.
   return new Promise((resolve) => {
-    const req = indexedDB.open(name, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
-    };
+    const req = indexedDB.open(name);
     req.onsuccess = () => {
       const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.close();
+        resolve(true);
+        return;
+      }
       const tx = db.transaction(STORE, 'readonly');
       const cnt = tx.objectStore(STORE).count();
       cnt.onsuccess = () => { db.close(); resolve(cnt.result === 0); };
       cnt.onerror = () => { db.close(); resolve(true); };
     };
     req.onerror = () => resolve(true);
+    req.onblocked = () => resolve(true);
   });
 }
 
@@ -75,18 +79,39 @@ function readAll(name) {
   });
 }
 
+// Cache the open connection so we don't churn on every save / read.
+let _dbPromise = null;
 function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'id' });
       }
+      // v2 added by Datamosh plugin — declared here too so opening from either
+      // side doesn't block on a versionchange race.
+      if (!db.objectStoreNames.contains('datamosh-cache')) {
+        db.createObjectStore('datamosh-cache');
+      }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // If a NEWER version is requested elsewhere, close so we don't block the upgrade.
+      db.onversionchange = () => { try { db.close(); } catch {} _dbPromise = null; };
+      resolve(db);
+    };
+    req.onerror = () => {
+      _dbPromise = null;
+      reject(req.error || new Error('IndexedDB open failed'));
+    };
+    req.onblocked = () => {
+      // Another tab/connection is holding an older version open. Log so it's visible.
+      console.warn('[slammer.app] IndexedDB upgrade blocked — close other slammer.app tabs');
+    };
   });
+  return _dbPromise;
 }
 
 async function putProject(record) {
@@ -186,13 +211,37 @@ export function initProjectStore() {
       id = crypto.randomUUID();
       localStorage.setItem(CURRENT_KEY, id);
     }
-    const docCopy = JSON.parse(JSON.stringify(doc.serialize()));
+
+    // Step 1: serialize. Any throw here means the doc state contains something
+    // unserializable (BigInt, circular ref, function, etc.). Surface it loudly.
+    let docCopy;
+    try {
+      docCopy = JSON.parse(JSON.stringify(doc.serialize()));
+    } catch (err) {
+      throw new Error(`autosave: serialize failed — ${err.message}`);
+    }
+
+    // Step 2: re-attach Blob sources as data URLs (JSON.stringify dropped them).
     for (let i = 0; i < doc.layers.length; i++) {
       const src = doc.layers[i].source;
-      if (src instanceof Blob) docCopy.layers[i].source = await blobToDataURL(src);
-      else docCopy.layers[i].source = src;
+      if (src instanceof Blob) {
+        try {
+          docCopy.layers[i].source = await blobToDataURL(src);
+        } catch (err) {
+          throw new Error(`autosave: blobToDataURL failed for layer ${i} (${doc.layers[i].name}) — ${err.message}`);
+        }
+      } else {
+        docCopy.layers[i].source = src;
+      }
     }
-    await putProject({ id, document: docCopy, updatedAt: Date.now() });
+
+    // Step 3: write to IndexedDB.
+    try {
+      await putProject({ id, document: docCopy, updatedAt: Date.now() });
+    } catch (err) {
+      throw new Error(`autosave: IDB putProject failed — ${err.message || err.name || err}`);
+    }
+
     const list = readIndex();
     const idx = list.findIndex((p) => p.id === id);
     const entry = { id, name: doc.state.name || 'Untitled', thumbnail: list[idx]?.thumbnail || null, updatedAt: Date.now() };

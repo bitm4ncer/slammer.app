@@ -207,7 +207,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     return Math.max(0, w);
   }
 
-  function applyEffectsPipeline(layer, st) {
+  async function applyEffectsPipeline(layer, st) {
     if (!st.sourceImageData) return null;
     const { effects } = layer;
     const enabledIndices = effects.map((e, i) => (e.enabled ? i : -1)).filter((i) => i >= 0);
@@ -221,10 +221,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     if (!Number.isFinite(dirty) || dirty < 0) dirty = 0;
 
     // Walk all steps, but only re-run from dirty onward; reuse prior cached output otherwise.
+    // Plugins may be sync OR async — `await` on a non-Promise returns the value unchanged.
     for (let i = 0; i < effects.length; i++) {
       const eff = effects[i];
       if (!eff.enabled) {
-        // disabled effects don't contribute; cache mirrors prev
         st.steps[i] = prev;
         continue;
       }
@@ -240,7 +240,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const input = cloneImageData(prev);
       let out = prev;
       try {
-        const r = plugin.process(input, eff.params || {});
+        const r = await plugin.process(input, eff.params || {});
         out = r || input;
       } catch (err) {
         console.error('[plugin]', eff.pluginId, err);
@@ -251,8 +251,6 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
 
     st.dirtyFromIndex = effects.length;
-
-    // The "final" output is the last enabled effect's cache, or source.
     const last = enabledIndices.length ? st.steps[enabledIndices[enabledIndices.length - 1]] : st.sourceImageData;
     return last || st.sourceImageData;
   }
@@ -268,10 +266,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     schedulePaint(layer.id);
   }
 
-  // Actual paint — called only from the RAF queue.
-  function paintLayerSync(layer, st) {
-    const finalImageData = applyEffectsPipeline(layer, st);
+  // Actual paint — called only from the RAF queue. Async-friendly: when an effect
+  // returns a Promise (e.g. JPEG using the browser's real encoder), we await it.
+  async function paintLayerSync(layer, st) {
+    const finalImageData = await applyEffectsPipeline(layer, st);
     if (!finalImageData) return;
+    const dimsChanged =
+      st.image.width() !== finalImageData.width ||
+      st.image.height() !== finalImageData.height;
     if (st.dstCanvas.width !== finalImageData.width || st.dstCanvas.height !== finalImageData.height) {
       st.dstCanvas.width = finalImageData.width;
       st.dstCanvas.height = finalImageData.height;
@@ -280,6 +282,12 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
+    // If this layer is currently selected, the Konva transformer caches the old bbox.
+    // Force it to re-measure whenever the image dimensions change (e.g. font-size /
+    // tracking / line-height / box-width / textarea content edits).
+    if (dimsChanged && transformer && document.activeLayerId === layer.id) {
+      transformer.forceUpdate();
+    }
     scheduleDraw();
   }
 

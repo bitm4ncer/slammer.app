@@ -112,22 +112,40 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   }
 
   // ---------- Single merged Add menu ----------
+  // Category order + display labels. Categories not listed here fall through to
+  // "Other" at the end. Empty categories are skipped — so "color" stays hidden
+  // until a Gradient Map / Color Overlay plugin lands.
+  const CATEGORY_ORDER = ['image', 'glitch', 'color'];
+  const CATEGORY_LABELS = { image: 'Image', glitch: 'Glitch', color: 'Color', other: 'Other' };
+
   function showAddMenu(button) {
     closeAnyMenu();
     const layer = activeLayer();
     if (!layer) return;
-    // All effects, sorted alphabetically.
-    const items = [...listPlugins({ type: 'filter' }), ...listPlugins({ type: 'tool' })]
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const items = [...listPlugins({ type: 'filter' }), ...listPlugins({ type: 'tool' })];
     if (!items.length) return;
+
+    // Group by category, alphabetise within each group.
+    const buckets = new Map();
+    for (const p of items) {
+      const cat = CATEGORY_ORDER.includes(p.category) ? p.category : 'other';
+      if (!buckets.has(cat)) buckets.set(cat, []);
+      buckets.get(cat).push(p);
+    }
+    for (const arr of buckets.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+
+    const orderedCats = [...CATEGORY_ORDER, 'other'].filter((c) => buckets.has(c));
 
     const menu = window.document.createElement('div');
     menu.className = 'add-effect-menu';
-    menu.innerHTML = items.map((p) => `
-      <button class="add-effect-item" data-id="${p.id}">
-        <i class="fas fa-${p.icon || 'puzzle-piece'}"></i>
-        <span>${p.name}</span>
-      </button>
+    menu.innerHTML = orderedCats.map((cat) => `
+      <div class="add-effect-section-label">${CATEGORY_LABELS[cat] || cat}</div>
+      ${buckets.get(cat).map((p) => `
+        <button class="add-effect-item" data-id="${p.id}">
+          <i class="fas fa-${p.icon || 'puzzle-piece'}"></i>
+          <span>${p.name}</span>
+        </button>
+      `).join('')}
     `).join('');
     window.document.body.appendChild(menu);
 

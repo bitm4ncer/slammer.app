@@ -1,5 +1,8 @@
 // Shared DOM helpers for plugin UIs.
 
+import { createKnob } from './knob.js';
+import { createNumericInput } from './numeric-input.js';
+
 export function makeRoot(extra = '') {
   const el = document.createElement('div');
   el.className = `effect-inline-controls ${extra}`;
@@ -12,29 +15,38 @@ export function makeToolRoot(extra = '') {
   return el;
 }
 
-export function sliderRow({ label, min, max, step = 1, value, onChange, format, suffix }) {
+export function sliderRow({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix }) {
   const row = document.createElement('label');
   row.className = 'effect-slider-row';
-  row.innerHTML = `
-    <span class="effect-label">${label}</span>
-    <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" />
-    <span class="effect-num-wrap">
-      <input type="number" min="${min}" max="${max}" step="${step}" value="${value}" class="effect-num" />
-      ${suffix ? `<span class="effect-num-suffix">${suffix}</span>` : ''}
-    </span>
-  `;
-  const range = row.querySelector('input[type=range]');
-  const num = row.querySelector('input[type=number]');
-  const sync = (val, source) => {
-    let v = parseFloat(val);
-    if (Number.isNaN(v)) return;
-    v = Math.max(parseFloat(min), Math.min(parseFloat(max), v));
-    if (source !== 'range') range.value = String(v);
-    if (source !== 'num') num.value = String(v);
-    onChange(format ? format(v) : v);
-  };
-  range.addEventListener('input', (e) => sync(e.target.value, 'range'));
-  num.addEventListener('input', (e) => sync(e.target.value, 'num'));
+
+  const lbl = document.createElement('span');
+  lbl.className = 'effect-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const knob = createKnob({
+    size: 28,
+    min, max, step,
+    value,
+    defaultValue: defaultValue !== undefined ? defaultValue : value,
+    onChange: (v) => {
+      numWrap.setValue(format ? format(v) : v);
+      onChange(format ? format(v) : v);
+    },
+  });
+  row.appendChild(knob);
+
+  const numWrap = createNumericInput({
+    min, max, step,
+    value: format ? format(value) : value,
+    suffix,
+    onChange: (v) => {
+      knob.setValue(v);
+      onChange(v);
+    },
+  });
+  row.appendChild(numWrap);
+
   return row;
 }
 

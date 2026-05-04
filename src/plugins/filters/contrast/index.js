@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'circle-half-stroke',
-  category: 'adjust',
+  category: 'image',
 
   defaultParams() { return { value: 0 }; },
 
@@ -28,7 +28,7 @@ export default {
   renderUI(params, onChange) {
     const root = makeRoot();
     root.appendChild(sliderRow({
-      label: 'Value', min: -255, max: 255, step: 1, value: params.value ?? 0,
+      label: 'Value', min: -255, max: 255, step: 1, value: params.value ?? 0, defaultValue: 0,
       onChange: (v) => onChange({ value: v }),
     }));
     return root;
