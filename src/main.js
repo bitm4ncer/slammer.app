@@ -31,6 +31,7 @@ import { initProjectStore } from './io/project-store.js';
 import { initProjectMenu } from './ui/project-menu.js';
 import { initAffinityBridge } from './integrations/affinity/index.js';
 import { initSettingsPopup, getSettings, onSettingsChange } from './ui/settings-popup.js';
+import { initSidePanelSplit } from './ui/side-panel-split.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     button: document.getElementById('btnSettings'),
     version: 'v1.0.0-alpha',
   });
+  initSidePanelSplit();
 
   // Register plugins (order = order shown in Add menus, sort of).
   [

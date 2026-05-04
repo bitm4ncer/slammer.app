@@ -55,10 +55,11 @@ export function initTextTool({ document: doc }) {
     <div data-host="letterSpacing"></div>
     <div data-host="lineHeight"></div>
   `;
-  // Mount it under the side-panel above the effects (insert before Effects group).
-  const sidePanel = document.querySelector('.side-panel');
-  const effectsGroup = sidePanel.querySelector('.effects-group');
-  sidePanel.insertBefore(panel, effectsGroup);
+  // Mount inside the contextual (bottom) section, just above the Effects group.
+  const effectsGroup = document.querySelector('.effects-group');
+  const host = effectsGroup?.parentNode || document.querySelector('.side-panel-bottom') || document.querySelector('.side-panel');
+  if (effectsGroup && effectsGroup.parentNode === host) host.insertBefore(panel, effectsGroup);
+  else host.appendChild(panel);
 
   const textarea = panel.querySelector('textarea[data-key=value]');
   const fontSel = panel.querySelector('select[data-key=font]');

@@ -47,20 +47,28 @@
     </section>
 
     <aside class="side-panel plastic-texture">
-      <div class="control-group layers-group">
-        <h3><i class="fas fa-layer-group"></i> <span>Layer Stack</span></h3>
-        <div class="layer-list" id="layerList">
-          <div class="layer-empty">No layers yet</div>
+      <div class="side-panel-top" id="sidePanelTop">
+        <div class="control-group layers-group">
+          <h3><i class="fas fa-layer-group"></i> <span>Layer Stack</span></h3>
+          <div class="layer-list" id="layerList">
+            <div class="layer-empty">No layers yet</div>
+          </div>
         </div>
       </div>
 
-      <div class="control-group effects-group" id="effectsGroup">
-        <h3>
-          <i class="fas fa-sliders-h"></i>
-          <span>Effects</span>
-          <button class="effects-add-btn" id="btnAddEffect" title="Add effect" aria-label="Add effect"></button>
-        </h3>
-        <div class="effect-stack" id="effectStack"></div>
+      <div class="side-panel-handle" id="sidePanelHandle" role="separator" aria-orientation="horizontal" aria-label="Resize panel" tabindex="0">
+        <span class="side-panel-handle-grip"></span>
+      </div>
+
+      <div class="side-panel-bottom" id="sidePanelBottom">
+        <div class="control-group effects-group" id="effectsGroup">
+          <h3>
+            <i class="fas fa-sliders-h"></i>
+            <span>Effects</span>
+            <button class="effects-add-btn" id="btnAddEffect" title="Add effect" aria-label="Add effect"></button>
+          </h3>
+          <div class="effect-stack" id="effectStack"></div>
+        </div>
       </div>
     </aside>
 

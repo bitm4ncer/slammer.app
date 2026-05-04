@@ -183,11 +183,14 @@ html, body {
 .footer-left { padding-left: 4px; }
 .footer-right { padding-right: 2px; }
 
-/* ---------- Side panel ---------- */
+/* ---------- Side panel (split into Layer Stack + contextual panels) ---------- */
 .side-panel {
-  overflow-y: auto;
-  overflow-x: hidden;
+  --side-panel-top-h: 38%;     /* live-updated by sidePanelHandle drag */
+  overflow: hidden;             /* sections own their own scroll */
   border-left: 1px solid var(--vhs-shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .plastic-texture {
@@ -195,12 +198,49 @@ html, body {
   background-size: 100% auto;
   background-repeat: repeat-y;
   background-position: top center;
+}
+
+.side-panel-top,
+.side-panel-bottom {
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px;
-  padding-bottom: 40px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 }
+.side-panel-top    { flex: 0 0 var(--side-panel-top-h); }
+.side-panel-bottom { flex: 1 1 auto; padding-bottom: 40px; }
+
+/* The drag handle between the two sections. */
+.side-panel-handle {
+  flex: 0 0 8px;
+  position: relative;
+  background: var(--vhs-groove);
+  border-top: 1px solid var(--vhs-shadow);
+  border-bottom: 1px solid var(--vhs-shadow);
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: background 0.14s ease;
+}
+.side-panel-handle:hover,
+.side-panel-handle:focus-visible,
+.side-panel-handle.dragging {
+  background: color-mix(in srgb, var(--ctx-accent) 22%, var(--vhs-groove));
+}
+.side-panel-handle-grip {
+  width: 28px;
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text-secondary) 60%, transparent);
+}
+.side-panel-handle.dragging .side-panel-handle-grip,
+.side-panel-handle:hover .side-panel-handle-grip { background: var(--ctx-accent); }
+body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
 
 /* ---------- Control groups ---------- */
 .control-group {

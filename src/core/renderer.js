@@ -230,10 +230,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       draggable: true,
       name: 'slammer-layer',
     });
+    // Initialise with finite dimensions so the Transformer (which can attach
+    // synchronously below, before paintLayerSync runs on the next frame) has
+    // valid bounds to compute anchor positions from. Without this, an Image
+    // with undefined width/height makes Konva emit dozens of "NaN is not a
+    // valid value" warnings at startup. paintLayerSync() overwrites these
+    // with the rasterised size on the first paint.
+    const initW = Math.max(1, layer.naturalSize?.w | 0 || 1);
+    const initH = Math.max(1, layer.naturalSize?.h | 0 || 1);
     const image = new Konva.Image({
       image: null,
       listening: true,
       globalCompositeOperation: layer.blendMode,
+      width: initW,
+      height: initH,
     });
     image._slammerLayerId = layer.id;
     group.add(image);

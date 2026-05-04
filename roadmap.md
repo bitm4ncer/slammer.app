@@ -73,8 +73,9 @@
 
 ## PHASE 5 — Right sidebar split
 
-- [ ] Split right sidebar into two sections: top **Layer Stack**, bottom contextual panels (Effects, Typography, Plugins) for active layer
-- [ ] Draggable handle between sections, persist height in `slammer:ui:sidebarSplit`
+- [x] Split right sidebar into two sections: top **Layer Stack**, bottom contextual panels (Effects, Typography, Plugins) for active layer
+- [x] Draggable handle between sections (mouse + touch + keyboard arrows + double-click reset), persisted as percentage in `slammer:ui:sidebarSplit` (clamped 18–82 %, default 38 %)
+- [x] Each section scrolls independently with the global custom scrollbar
 
 ## PHASE 6 — Typography polish
 
