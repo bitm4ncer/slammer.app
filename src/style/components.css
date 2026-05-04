@@ -172,6 +172,70 @@
   background: #6dd17a;
   box-shadow: 0 0 6px rgba(109, 209, 122, 0.6);
 }
+.affinity-trigger .affinity-led.busy {
+  background: #f7e45a;
+  box-shadow: 0 0 6px rgba(247, 228, 90, 0.6);
+  animation: affPulse 0.9s ease-in-out infinite;
+}
+.affinity-trigger .affinity-led.error {
+  background: #ff6b6b;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.6);
+}
+@keyframes affPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.affinity-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.affinity-led-inline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vhs-shadow);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.affinity-led-inline.connected { background: #6dd17a; box-shadow: 0 0 6px rgba(109, 209, 122, 0.6); }
+.affinity-led-inline.busy {
+  background: #f7e45a;
+  box-shadow: 0 0 6px rgba(247, 228, 90, 0.6);
+  animation: affPulse 0.9s ease-in-out infinite;
+}
+.affinity-led-inline.error { background: #ff6b6b; box-shadow: 0 0 6px rgba(255, 107, 107, 0.6); }
+.affinity-status-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.affinity-btn {
+  flex: 1;
+  background: linear-gradient(to bottom, var(--surface) 0%, var(--vhs-groove) 100%);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+.affinity-btn:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.affinity-btn:disabled { opacity: 0.45; cursor: default; }
 .affinity-trigger[aria-expanded="true"] {
   color: var(--primary);
   border-color: var(--primary);

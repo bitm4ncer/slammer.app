@@ -51,12 +51,12 @@
 
 ## PHASE 3 — Affinity bridge (port working SSE/JSON-RPC implementation)
 
-- [ ] Drop the broken WebSocket `:39871` bridge in `src/integrations/affinity/index.js`
-- [ ] Port `affinity.js` (SSE + JSON-RPC 2.0 on `http://localhost:6767/sse`) into `src/integrations/affinity/`
-- [ ] Connect / Send / Pull buttons with status dot, exponential auto-reconnect, document-presence probe
-- [ ] Shift+click on Connect to override MCP URL (persist to `slammer:affinityMcpUrl`)
-- [ ] Layer name template `slammer · {algo} · HH:MM`
-- [ ] Verify against running Affinity Photo 2 with MCP enabled
+- [x] Drop the broken WebSocket `:39871` bridge in `src/integrations/affinity/index.js`
+- [x] Port `affinity.js` (SSE + JSON-RPC 2.0 on `http://localhost:6767/sse`) into `src/integrations/affinity/`
+- [x] Connect / Send / Pull buttons with status text + LED, exponential auto-reconnect, document-presence probe
+- [x] Shift+click on Connect to override MCP URL (persist to `slammer:affinityMcpUrl`)
+- [x] Layer name template `slammer · {layerName} · HH:MM`
+- [x] Verify against running Affinity Photo 2 with MCP enabled — connected live, Send/Pull enabled when doc is open
 
 ## PHASE 4 — Dithering rework (premium-feel core feature)
 
