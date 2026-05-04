@@ -109,36 +109,102 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   }
 
   function rasterizeText(text, st) {
-    // Measure first
     const meas = window.document.createElement('canvas').getContext('2d');
     const fontSpec = `${text.weight} ${text.size}px "${text.font}", sans-serif`;
     meas.font = fontSpec;
-    const lines = String(text.value || '').split('\n');
-    const lineH = text.size * text.lineHeight;
-    const widths = lines.map((ln) => meas.measureText(ln).width + (ln.length - 1) * (text.letterSpacing || 0));
-    const w = Math.max(1, Math.ceil(Math.max(...widths) + 8));
-    const h = Math.max(1, Math.ceil(lineH * lines.length + 8));
+    const ls = +text.letterSpacing || 0;
+    const lineH = text.size * (+text.lineHeight || 1.2);
+    const align = text.align || 'left';
+    const mode = text.mode || 'text';
+
+    // Build lines: split on \n, then word-wrap each line to boxWidth in textBox mode.
+    const rawLines = String(text.value || '').split('\n');
+    const lines = mode === 'textBox'
+      ? rawLines.flatMap((ln) => wrapToWidth(meas, ln, ls, Math.max(40, +text.boxWidth || 600)))
+      : rawLines;
+
+    // Measure each line's actual rendered width (handles negative tracking by clamping at >=0).
+    const lineWidths = lines.map((ln) => measureLineWidth(meas, ln, ls));
+
+    // Filter-safe padding so blur etc. has room to expand without being clipped.
+    // Heuristic: half a font-size each side, capped to a sensible range.
+    const pad = Math.min(96, Math.max(16, Math.round(text.size * 0.5)));
+
+    // Vertical extent: top half of size on first line + (n-1) lineH steps + descender on last line.
+    // Use 1.2× size as the visual line-box (handles descenders even when lineHeight < 1).
+    const visualLineBox = text.size * 1.2;
+    const contentH = Math.max(visualLineBox, (lines.length - 1) * lineH + visualLineBox);
+
+    // Horizontal extent: max line width (tracked).
+    const contentW = mode === 'textBox'
+      ? Math.max(40, +text.boxWidth || 600)
+      : Math.max(1, Math.ceil(Math.max(...lineWidths, 1)));
+
+    const w = Math.max(1, Math.ceil(contentW + pad * 2));
+    const h = Math.max(1, Math.ceil(contentH + pad * 2));
+
     const c = makeCanvas(w, h);
     const ctx = c.getContext('2d');
     ctx.font = fontSpec;
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = text.color || '#fff';
-    ctx.textAlign = text.align || 'left';
-    const xRef = text.align === 'center' ? w / 2 : text.align === 'right' ? w - 4 : 4;
+    ctx.textAlign = align;
+
+    // Baseline of the FIRST line: top padding + ascent (~size). After that, advance by lineH.
+    const firstBaseline = pad + text.size * 0.85;
+    // Reference X depends on alignment.
+    const xRef = align === 'center' ? pad + contentW / 2
+               : align === 'right'  ? pad + contentW
+               : pad;
+
     lines.forEach((ln, i) => {
-      const y = 4 + i * lineH;
-      if (text.letterSpacing && text.letterSpacing !== 0) {
-        let x = xRef;
+      const baseline = firstBaseline + i * lineH;
+      if (ls !== 0) {
+        // Render character-by-character so we can apply tracking. Honour alignment ourselves.
+        const lineWidth = measureLineWidth(meas, ln, ls);
+        let x = align === 'center' ? xRef - lineWidth / 2
+              : align === 'right'  ? xRef - lineWidth
+              :                      xRef;
+        ctx.textAlign = 'left';
         for (const ch of ln) {
-          ctx.fillText(ch, x, y);
-          x += ctx.measureText(ch).width + text.letterSpacing;
+          ctx.fillText(ch, x, baseline);
+          x += meas.measureText(ch).width + ls;
         }
+        ctx.textAlign = align;
       } else {
-        ctx.fillText(ln, xRef, y);
+        ctx.fillText(ln, xRef, baseline);
       }
     });
+
     st.naturalSize = { w, h };
     return ctx.getImageData(0, 0, w, h);
+  }
+
+  // Greedy word-wrap to a target pixel width, respecting per-character tracking.
+  function wrapToWidth(meas, line, ls, targetW) {
+    if (!line) return [''];
+    const words = line.split(/(\s+)/); // keep spaces as separators
+    const out = [];
+    let cur = '';
+    for (const tok of words) {
+      const candidate = cur + tok;
+      const w = measureLineWidth(meas, candidate, ls);
+      if (w > targetW && cur.trim().length) {
+        out.push(cur.replace(/\s+$/, ''));
+        cur = tok.replace(/^\s+/, '');
+      } else {
+        cur = candidate;
+      }
+    }
+    if (cur.length) out.push(cur);
+    return out.length ? out : [''];
+  }
+
+  function measureLineWidth(meas, line, ls) {
+    if (!line) return 0;
+    let w = meas.measureText(line).width;
+    if (ls && line.length > 1) w += (line.length - 1) * ls;
+    return Math.max(0, w);
   }
 
   function applyEffectsPipeline(layer, st) {

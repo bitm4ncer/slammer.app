@@ -2,7 +2,7 @@
 // Persists to localStorage 'slammer:settings'.
 
 const STORE_KEY = 'slammer:settings';
-const DEFAULTS = { autosaveMs: 800, accent: '#8aff8c', customLayerColors: true };
+const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true };
 
 const listeners = new Set();
 
@@ -70,11 +70,21 @@ export function initSettingsPopup({ button, version }) {
         </div>
 
         <div class="settings-section">
-          <div class="settings-row">
-            <label class="settings-label" for="setAccent">UI accent colour</label>
-            <div class="settings-control settings-control--accent">
-              <input type="color" id="setAccent" value="${s.accent}" />
-              <code class="settings-readout" id="setAccentReadout">${s.accent.toUpperCase()}</code>
+          <div class="settings-rowpair">
+            <div class="settings-row">
+              <label class="settings-label" for="setAccent">UI accent colour</label>
+              <div class="settings-control settings-control--accent">
+                <input type="color" id="setAccent" value="${s.accent}" />
+                <code class="settings-readout" id="setAccentReadout">${s.accent.toUpperCase()}</code>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <label class="settings-label" for="setCustomLayerColors">Custom layer colours</label>
+              <label class="effect-toggle-row settings-toggle-bare" for="setCustomLayerColors">
+                <input type="checkbox" id="setCustomLayerColors" ${s.customLayerColors ? 'checked' : ''} />
+                <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+              </label>
             </div>
           </div>
 
@@ -84,12 +94,6 @@ export function initSettingsPopup({ button, version }) {
               <input type="range" id="setAutosave" min="200" max="3000" step="100" value="${s.autosaveMs}" />
             </div>
           </div>
-
-          <label class="effect-toggle-row settings-toggle-row" for="setCustomLayerColors">
-            <span class="effect-label">Custom layer colours</span>
-            <input type="checkbox" id="setCustomLayerColors" ${s.customLayerColors ? 'checked' : ''} />
-            <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
-          </label>
         </div>
 
         <div class="settings-section settings-meta">

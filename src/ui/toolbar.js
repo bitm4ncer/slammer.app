@@ -18,10 +18,59 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
     input.click();
   });
 
-  $('btnAddText').addEventListener('click', () => {
-    const layer = doc.addTextLayer({ text: { value: 'slammer' } });
+  // Add Text — clicking uses the last-picked mode; hover the slot to choose.
+  const TEXT_MODE_KEY = 'slammer:lastTextMode';
+  function getLastTextMode() {
+    const v = localStorage.getItem(TEXT_MODE_KEY);
+    return v === 'textBox' ? 'textBox' : 'text';
+  }
+  function setLastTextMode(m) { try { localStorage.setItem(TEXT_MODE_KEY, m); } catch {} }
+
+  function addText(mode) {
+    const m = mode === 'textBox' ? 'textBox' : 'text';
+    setLastTextMode(m);
+    const layer = doc.addTextLayer({
+      text: { value: 'slammer', mode: m, boxWidth: 600 },
+    });
     openTextLayer?.(layer);
-  });
+  }
+
+  $('btnAddText').addEventListener('click', () => addText(getLastTextMode()));
+
+  // Slot hover → reveal flyout; clicking an item picks a mode AND adds the layer.
+  const slot = $('addTextSlot');
+  const flyout = $('addTextFlyout');
+  if (slot && flyout) {
+    let hideTimer = null;
+    const show = () => {
+      clearTimeout(hideTimer);
+      flyout.hidden = false;
+      requestAnimationFrame(() => flyout.classList.add('open'));
+      // Mark which mode is "last used" so it's visually highlighted.
+      const last = getLastTextMode();
+      flyout.querySelectorAll('.tool-flyout-item').forEach((el) => {
+        el.classList.toggle('active', el.dataset.mode === last);
+      });
+    };
+    const hide = (delay = 180) => {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        flyout.classList.remove('open');
+        setTimeout(() => { if (!flyout.classList.contains('open')) flyout.hidden = true; }, 180);
+      }, delay);
+    };
+    slot.addEventListener('mouseenter', show);
+    slot.addEventListener('mouseleave', () => hide());
+    flyout.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+    flyout.addEventListener('mouseleave', () => hide());
+    flyout.querySelectorAll('.tool-flyout-item').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addText(el.dataset.mode);
+        hide(0);
+      });
+    });
+  }
 
   $('btnNew').addEventListener('click', () => {
     if (doc.layers.length && !confirm('Discard current document and start a new blank?')) return;

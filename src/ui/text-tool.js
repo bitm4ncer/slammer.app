@@ -54,6 +54,7 @@ export function initTextTool({ document: doc }) {
     </label>
     <div data-host="letterSpacing"></div>
     <div data-host="lineHeight"></div>
+    <div data-host="boxWidth"></div>
   `;
   // Mount inside the contextual (bottom) section, just above the Effects group.
   const effectsGroup = document.querySelector('.effects-group');
@@ -69,9 +70,11 @@ export function initTextTool({ document: doc }) {
   const weightHost = panel.querySelector('[data-host=weight]');
   const lsHost = panel.querySelector('[data-host=letterSpacing]');
   const lhHost = panel.querySelector('[data-host=lineHeight]');
+  const boxHost = panel.querySelector('[data-host=boxWidth]');
 
   function rebuild(layer) {
     const t = layer.text;
+    const mode = t.mode || 'text';
     textarea.value = t.value;
     fontSel.value = t.font;
     colorInp.value = t.color || '#FFFFFF';
@@ -85,13 +88,23 @@ export function initTextTool({ document: doc }) {
       onChange: (v) => doc.setTextProp(layer.id, 'weight', v),
     }));
     lsHost.innerHTML = ''; lsHost.appendChild(sliderRow({
-      label: 'Tracking', min: -10, max: 60, step: 0.5, value: t.letterSpacing,
+      label: 'Tracking', min: -200, max: 200, step: 0.5, value: t.letterSpacing,
       onChange: (v) => doc.setTextProp(layer.id, 'letterSpacing', v),
     }));
     lhHost.innerHTML = ''; lhHost.appendChild(sliderRow({
-      label: 'Line Ht', min: 0.6, max: 3, step: 0.05, value: t.lineHeight,
+      label: 'Line Ht', min: 0.2, max: 3, step: 0.05, value: t.lineHeight,
       onChange: (v) => doc.setTextProp(layer.id, 'lineHeight', v),
     }));
+    // Box-width slider appears only in Text Box mode.
+    if (boxHost) {
+      boxHost.innerHTML = '';
+      if (mode === 'textBox') {
+        boxHost.appendChild(sliderRow({
+          label: 'Box Width', min: 80, max: 4000, step: 1, value: t.boxWidth ?? 600,
+          onChange: (v) => doc.setTextProp(layer.id, 'boxWidth', v),
+        }));
+      }
+    }
   }
 
   textarea.addEventListener('input', () => {

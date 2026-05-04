@@ -57,6 +57,8 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
       align: 'left',
       letterSpacing: 0,
       lineHeight: 1.2,
+      mode: 'text',          // 'text' (free-flow) | 'textBox' (word-wrap to boxWidth)
+      boxWidth: 600,         // pixels — only used when mode === 'textBox'
       ...(text || {}),
     },
   };

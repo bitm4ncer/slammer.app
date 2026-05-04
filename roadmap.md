@@ -79,11 +79,11 @@
 
 ## PHASE 6 — Typography polish
 
-- [ ] Selection handles aligned to actual text bounding box
-- [ ] Two text modes: **Text** / **Text Box** — slide-out mode picker on Add Text button hover, remember last used as default
-- [ ] Extend negative tracking range (current `-10` too low — go to `-50` or further)
-- [ ] Fix low line-height clipping (allow rows to overlap, don't cut off button row)
-- [ ] Typo filters like Blur must extend beyond selection-control area (don't get cut off)
+- [x] Selection handles aligned to actual text bounding box (rasterizer now derives canvas from `text.size * 1.2` line-box + accurate per-line widths, so the Konva transformer naturally fits)
+- [x] Two text modes: **Text** / **Text Box** — slide-out mode picker on Add Text button hover, last-used persisted as `slammer:lastTextMode`
+- [x] Extended negative tracking range to `-200…+200` (was `-10…+60`)
+- [x] Line-height min lowered to `0.2` (was `0.6`); rasterizer now uses a `1.2× size` visual line-box so descenders aren't clipped when lines overlap
+- [x] Filter-safe padding (16…96 px each side, scales with font size) baked into the text canvas so Blur etc. has room to expand without being cut off
 
 ## PHASE 7 — Knobs & GUI control system
 

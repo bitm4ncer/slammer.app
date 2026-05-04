@@ -107,6 +107,71 @@
 
 .tool-btn:hover[data-shortcut]::after { opacity: 0.9; color: var(--primary); }
 
+/* ---------- Tool sidebar flyouts (e.g. Add Text → Text / Text Box) ---------- */
+.tool-slot { position: relative; }
+.tool-slot .tool-btn::before {
+  /* Tiny corner triangle to hint a flyout is available. */
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-bottom: 4px solid color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  pointer-events: none;
+}
+.tool-flyout {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 6px);
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 5px;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 90;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: none;
+  min-width: 130px;
+}
+.tool-flyout.open {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.tool-flyout-item {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 3px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.tool-flyout-item i { width: 14px; text-align: center; color: var(--ctx-accent); }
+.tool-flyout-item:hover { color: var(--ctx-accent); background: var(--button-hover-bg); }
+.tool-flyout-item.active { color: var(--ctx-accent); }
+.tool-flyout-item.active::after {
+  content: '';
+  margin-left: auto;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ctx-accent);
+}
+
 /* ---------- Effects panel header + add-effect round button ---------- */
 .effects-group h3 {
   display: flex;
@@ -408,6 +473,21 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
+}
+
+/* Two settings-rows side by side (e.g. UI accent + Custom layer colours). */
+.settings-rowpair {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.settings-rowpair > .settings-row { flex: 1; min-width: 0; }
+
+/* Toggle without an inline label — the label sits above (settings-row pattern). */
+.settings-toggle-bare {
+  min-height: 26px;
+  padding: 0;
+  justify-content: flex-start;
 }
 
 .settings-meta .settings-row {
