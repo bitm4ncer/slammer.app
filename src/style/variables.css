@@ -1,0 +1,46 @@
+:root {
+  --primary: #9392D9;
+  --primary-rgb: 147, 146, 217;
+  --primary-hover: #7574B8;
+  --text-primary: #F2F2F2;
+  --text-secondary: #AAAAAA;
+  --surface: #262626;
+  --surface-2: #2E2E2E;
+  --surface-3: #383838;
+  --background: #1E1E1E;
+  --border: #3D3D3D;
+  --vhs-stripe: rgba(200, 200, 200, 0.03);
+  --vhs-groove: rgba(0, 0, 0, 0.2);
+  --vhs-shadow: rgba(0, 0, 0, 0.5);
+  --vhs-highlight: rgba(255, 255, 255, 0.1);
+  --vhs-inset: rgba(0, 0, 0, 0.35);
+  --button-hover-bg: rgba(255, 255, 255, 0.05);
+  --button-bg: var(--surface-2);
+  --button-text: var(--text-secondary);
+  --toolbar-h: 48px;
+  --side-panel-w: 340px;
+}
+
+@font-face {
+  font-family: 'Chicago';
+  src: url('/data/Chicago.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GlyphWorld-Mountain';
+  src: url('/data/GlyphWorld-Mountain.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GothicPixels';
+  src: url('/data/GothicPixels.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}

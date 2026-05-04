@@ -1,0 +1,389 @@
+/* ---------- Layer panel additions ---------- */
+.layer-drag-handle {
+  width: 14px;
+  cursor: grab;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.layer-drag-handle:active { cursor: grabbing; }
+
+.layer-meta .layer-opacity {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  margin-top: 4px;
+}
+.layer-opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(var(--primary-rgb), 0.5);
+}
+
+/* ---------- Effect items ---------- */
+.effect-item {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+.effect-item.disabled {
+  opacity: 0.5;
+}
+.effect-item.is-tool .effect-header {
+  background: linear-gradient(to bottom, var(--surface-3) 0%, var(--surface-2) 100%);
+  cursor: pointer;
+}
+.effect-item.is-tool.expanded {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
+}
+
+.effect-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  user-select: none;
+}
+
+.effect-header .eff-drag-handle {
+  cursor: grab;
+  color: var(--text-secondary);
+  opacity: 0.4;
+}
+.effect-header .effect-icon {
+  color: var(--primary);
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+}
+.effect-header .effect-name {
+  flex: 1;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.effect-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.effect-icon-btn:hover { color: var(--primary); background: var(--button-hover-bg); }
+
+.effect-body {
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--vhs-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---------- Tool body — bigger, "VST" feel ---------- */
+.effect-item.is-tool .effect-body {
+  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
+  padding: 14px;
+}
+
+/* ---------- Inline controls (sliders, number boxes, buttons) ---------- */
+.effect-inline-controls,
+.effect-tool-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.effect-slider-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 56px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.effect-label { letter-spacing: 0.05em; text-transform: uppercase; }
+
+.effect-slider-row input[type="range"] {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  border: 1px solid var(--vhs-shadow);
+}
+.effect-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(var(--primary-rgb), 0.4);
+}
+.effect-num {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-family: 'Chicago', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+/* ---------- Tool: button rows (Color Mode / Algorithm / Direction tabs) ---------- */
+.effect-tool-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.effect-tool-row > .effect-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.effect-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.effect-pill {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'Chicago', 'Courier New', monospace;
+}
+.effect-pill:hover { color: var(--primary); border-color: var(--primary); }
+.effect-pill.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
+  background: var(--surface-3);
+}
+
+.effect-select {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--vhs-shadow);
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-family: 'Chicago', 'Courier New', monospace;
+  font-size: 11px;
+  width: 100%;
+}
+
+/* ---------- Add-effect popup menu ---------- */
+.add-effect-menu {
+  background: var(--surface-2);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  gap: 2px;
+}
+.add-effect-item {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 3px;
+  font-family: 'Chicago', 'Courier New', monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.add-effect-item:hover { color: var(--primary); background: var(--button-hover-bg); }
+.add-effect-item i { width: 14px; text-align: center; color: var(--primary); }
+
+/* ---------- Drag-over visual on canvas ---------- */
+#stageContainer.drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: -8px;
+}
+
+/* ---------- Color swatch row (used by dithering custom-color modes) ---------- */
+.effect-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.effect-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--vhs-shadow);
+  cursor: pointer;
+  position: relative;
+}
+.effect-swatch input[type="color"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ---------- Project menu modal ---------- */
+.project-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+.project-modal {
+  background: var(--surface-2);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  width: min(720px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.project-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+}
+.project-modal-body {
+  padding: 18px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.project-card:hover { border-color: var(--primary); }
+.project-card-thumb {
+  height: 110px;
+  background: var(--background) center/cover no-repeat;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.project-card-meta { padding: 8px 10px; font-size: 11px; color: var(--text-primary); }
+.project-card-actions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+}
+.project-card-actions button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 4px;
+  cursor: pointer;
+  font-family: 'Chicago', 'Courier New', monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.project-card-actions button:hover { color: var(--primary); }
+
+/* ---------- Text tool panel ---------- */
+.text-tool-panel {
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 14px;
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: inset 1px 1px 3px var(--vhs-inset);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.text-tool-panel h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+}
+.text-tool-textarea {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  padding: 8px;
+  font-family: 'Chicago', 'Courier New', monospace;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 50px;
+}
+
+/* ---------- Affinity bridge UI ---------- */
+.affinity-block {
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid var(--vhs-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.affinity-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.affinity-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #444;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.6);
+}
+.affinity-led.connected {
+  background: #6cda8b;
+  box-shadow: 0 0 6px rgba(108, 218, 139, 0.7);
+}

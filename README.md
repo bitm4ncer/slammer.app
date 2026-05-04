@@ -1,140 +1,79 @@
-crush your images! 
-### USE APP HERE
-    
-[https://bitm4ncer.github.io/CRUSH/](https://bitm4ncer.github.io/CRUSH/)
-    
-    
+# CRUSH v1
 
+Multi-layer image editor for crushing / glitching / dithering, with VST-like
+tool plugins and a typography layer. Konva-based free canvas, non-destructive
+per-layer effect stacks, IndexedDB project storage, Affinity Photo bridge.
 
-![CRUSH Preview](./data/preview.png)
+## Getting started
 
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # outputs static files to dist/
+npm run preview      # serves the built dist
+```
 
-### FEATURE LIST
+## Workflow at a glance
 
+| Action                 | How                                                   |
+|------------------------|-------------------------------------------------------|
+| Add image              | Toolbar **Image** button, or drop file on canvas      |
+| Add text               | Toolbar **Text** button, edit in the Typography panel |
+| Move / scale / rotate  | Click layer to select, drag handles                   |
+| Pan                    | Hold **Space** + drag, or middle-mouse drag           |
+| Zoom                   | Mouse wheel (zoom-to-pointer), or zoom buttons        |
+| Reorder layers         | Drag rows in the Layers panel                         |
+| Add an effect          | **+ Add Tool** or **+ Add Filter** in the Effects panel |
+| Reorder effects        | Drag the grip handle on an effect row                 |
+| Disable an effect      | Click the check icon on the effect's header           |
+| Delete a layer         | Trash icon, or **Delete** key                         |
+| Save project           | Toolbar **Save** (or autosaves on change)             |
+| Open project           | Toolbar **Open** → modal grid                         |
+| Export PNG             | Toolbar **Export**                                    |
+| Export .crushproj      | **Shift** + **Export**                                |
+| Import .crushproj      | Drag the .crushproj file onto the canvas              |
+| Connect Affinity       | Side panel → **Connect** (helper must be running)     |
 
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                            DITHERING ALGORITHMS                                   ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ ERROR DIFFUSION ALGORITHMS:                                                       ║
-    ║ ├─ Floyd-Steinberg (Classic diffusion)                                            ║
-    ║ ├─ Atkinson (Apple's algorithm)                                                   ║
-    ║ ├─ Burkes (Balanced error distribution)                                           ║
-    ║ ├─ Sierra (Three-row diffusion)                                                   ║
-    ║ ├─ Sierra-2 (Two-row variant)                                                     ║
-    ║ ├─ Sierra Lite (Simplified Sierra)                                                ║
-    ║ ├─ Stucki (High-quality diffusion)                                                ║
-    ║ └─ Jarvis (Jarvis, Judice & Ninke)                                                ║
-    ║                                                                                   ║
-    ║ ORDERED DITHERING:                                                                ║
-    ║ ├─ Bayer 8×8 (Classic ordered dither)                                             ║
-    ║ ├─ Bayer 4×4 (Medium resolution)                                                  ║
-    ║ └─ Bayer 2×2 (High contrast)                                                      ║
-    ║                                                                                   ║
-    ║ SIMPLE ALGORITHMS:                                                                ║
-    ║ ├─ Threshold (Binary conversion)                                                  ║
-    ║ ├─ Random/Noise (Stochastic dithering)                                            ║
-    ║ └─ Halftone (Newspaper-style dots)                                                ║
-    ║                                                                                   ║
-    ║ EXPERIMENTAL EFFECTS:                                                             ║
-    ║ ├─ Bit Tone (Digital artifact simulation)                                         ║
-    ║ ├─ Checkerboard (Pattern-based)                                                   ║
-    ║ ├─ Radial Burst (Circular patterns)                                               ║
-    ║ ├─ Vortex (Spiral distortion)                                                     ║
-    ║ ├─ Crystallize (Diamond patterns)                                                 ║
-    ║ ├─ Sine Wave (Mathematical curves)                                                ║
-    ║ ├─ Tiles/Tiles2 (Geometric patterns)                                              ║
-    ║ ├─ Mosaic (Tessellation effects)                                                  ║
-    ║ └─ Grid (Structured layouts)                                                      ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                              COLOR MODES                                          ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ ► Black & White      - Classic monochrome dithering                               ║
-    ║ ► Custom Colors      - User-defined foreground/background                         ║
-    ║ ► Multi-Color        - Unlimited custom palette support                           ║
-    ║ ► RGB Mode           - Full red, green, blue processing                           ║
-    ║ ► CMYK-like          - Cyan, magenta, yellow, black simulation                    ║
-    ║ ► Transparent BG     - Alpha channel support                                      ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                          ADVANCED CONTROLS                                        ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ IMAGE ADJUSTMENTS:                                                                ║
-    ║ ├─ Contrast Control (Dynamic range adjustment)                                    ║
-    ║ ├─ Brightness Levels (Exposure compensation)                                      ║
-    ║ ├─ Saturation Control (Color intensity)                                           ║
-    ║ ├─ Hue Rotation (Color shifting)                                                  ║
-    ║ ├─ Gaussian Blur (Smoothing filter)                                               ║
-    ║ └─ Threshold Adjustment (Binary cutoff point)                                     ║
-    ║                                                                                   ║
-    ║ ADVANCED PROCESSING:                                                              ║
-    ║ ├─ Dither Amount (Algorithm intensity)                                            ║
-    ║ ├─ Block Size Control (Pixelation effects)                                        ║
-    ║ ├─ Levels Adjustment (Black/Mid/White points)                                     ║
-    ║ ├─ Color Inversion (Negative effects)                                             ║
-    ║ └─ Real-time Preview (Instant feedback)                                           ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                           USER INTERFACE                                          ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ ► Drag & Drop Support    - Instant image loading                                  ║
-    ║ ► Dual Preview Mode      - Switch between PNG/SVG output                          ║
-    ║ ► Zoom & Pan Controls    - Detailed inspection tools                              ║
-    ║ ► Fullscreen Mode        - Immersive editing experience                           ║
-    ║ ► Collapsible Panels     - Customizable workspace                                 ║
-    ║ ► Theme Customization    - Personalized color schemes                             ║
-    ║ ► Responsive Design      - Mobile & desktop optimized                             ║
-    ║ ► Loading Indicators     - Progress feedback                                      ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                         EXPORT CAPABILITIES                                       ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ ► PNG Export             - High-quality raster output                             ║
-    ║ ► SVG Export             - Scalable vector graphics                               ║
-    ║ ► ZIP Batch Export       - Multiple format packaging                              ║
-    ║ ► GIF Animation          - Animated sequence export                               ║
-    ║ ► Print Support          - Direct printer output                                  ║                        
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                        GLITCH & SPECIAL FX                                        ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ PIXEL SORTING:                                                                    ║
-    ║ ├─ Horizontal/Vertical sorting directions                                         ║
-    ║ ├─ Brightness-based criteria                                                      ║
-    ║ ├─ Threshold control                                                              ║
-    ║ └─ Amount intensity                                                               ║
-    ║                                                                                   ║
-    ║ JPEG ARTIFACTS:                                                                   ║
-    ║ ├─ Block size simulation                                                          ║
-    ║ ├─ Quantization effects                                                           ║
-    ║ ├─ Frequency noise                                                                ║
-    ║ └─ Multiple artifact modes                                                        ║
-    ║                                                                                   ║
-    ║ PATTERN GENERATION:                                                               ║
-    ║ ├─ Sine wave parameters (length, amplitude, thickness)                            ║
-    ║ ├─ Pattern rotation control                                                       ║
-    ║ ├─ Multi-layer wave generation                                                    ║
-    ║ └─ Distance & count modulation                                                    ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
-    ╔═══════════════════════════════════════════════════════════════════════════════════╗
-    ║                         ANIMATION FEATURES                                        ║
-    ╠═══════════════════════════════════════════════════════════════════════════════════╣
-    ║ ► Frame Snapshots        - Multi-frame capture system                             ║
-    ║ ► Sortable Timeline      - Drag & drop frame ordering                             ║
-    ║ ► Animation Speed        - Customizable playback rates                            ║
-    ║ ► Loop Controls          - Infinite or counted repetitions                        ║
-    ║ ► GIF Export             - Optimized animated output                              ║
-    ║ ► Frame Management       - Add, delete, reorder frames                            ║
-    ╚═══════════════════════════════════════════════════════════════════════════════════╝
-    
- 
- 
+## Architecture
 
+```
+src/
+  core/           # document, layer, renderer, history (model)
+  ui/             # canvas-view, panels, toolbar, modals
+  plugins/
+    registry.js   # registry + manifest validator
+    plugin-contract.md
+    tools/        # VST-style: dithering, jpeg-compression, pixelsort
+    filters/      # compact: invert, brightness, contrast, levels, blur
+    shared/       # UI helpers
+  io/             # project-store (IndexedDB), project-file (.crushproj), export-png
+  integrations/
+    affinity/     # WebSocket bridge to Affinity helper
+  style/          # variables, layout, components, effects (CSS)
+```
 
+The renderer maintains a per-layer effect cache (one ImageData per effect) so
+that tweaking a late-stage filter does not re-run earlier ones — see
+`plugins/plugin-contract.md` for the caching contract.
+
+## Plugins
+
+To add a new effect, write an ES module that default-exports the manifest in
+`plugins/plugin-contract.md`, then import + register it in `src/main.js`. The
+plugin appears automatically in the matching Add menu.
+
+## Status
+
+- **Stable:** layered canvas, transform, layer panel, effect stack, dithering
+  (24 algorithms × 5 colour modes), pixelsort, JPEG compression, levels /
+  brightness / contrast / blur / invert, text layer with Google Fonts, project
+  save/load (IndexedDB), PNG + .crushproj export, Affinity bridge.
+- **Planned:** undo/redo, vector layers, generator-type plugins, mobile layout,
+  Web Worker offload for heavy effects.
+
+## Relationship to v0.5
+
+v0.5 (`C:\Users\konta\Desktop\CRUSH_app`, branch `main`) is a single-image
+single-pipeline tool. It remains in maintenance mode. v1 is the layered
+rewrite, currently on the `next/konva-rewrite` branch and tagged `v.1.0.0`
+when ready.

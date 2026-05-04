@@ -1,0 +1,18 @@
+{
+  "name": "crush-v1",
+  "version": "1.0.0-alpha.0",
+  "description": "CRUSH v1 \u2014 multi-layer image editor with VST-like tool plugins",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "konva": "^9.3.16",
+    "sortablejs": "^1.15.2"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}

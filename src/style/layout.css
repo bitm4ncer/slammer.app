@@ -1,0 +1,203 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--background);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100%;
+  font-family: 'Chicago', 'Courier New', monospace;
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 1px var(--vhs-shadow);
+}
+
+* { box-sizing: border-box; }
+
+#app {
+  display: grid;
+  grid-template-rows: var(--toolbar-h) 1fr;
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: 1fr var(--side-panel-w);
+  overflow: hidden;
+}
+
+/* ---------- Toolbar ---------- */
+.app-toolbar {
+  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--vhs-shadow);
+  box-shadow: inset 0 1px 0 var(--vhs-highlight), 0 1px 3px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 14px;
+}
+
+.toolbar-left, .toolbar-center, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-center { gap: 4px; }
+
+.crush-mini-logo {
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+  color: var(--primary);
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+}
+
+.version-tag {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  letter-spacing: 0.1em;
+}
+
+.tb-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--vhs-shadow);
+  margin: 0 6px;
+}
+
+/* ---------- Canvas area ---------- */
+.canvas-area {
+  position: relative;
+  background-color: var(--background);
+  overflow: hidden;
+  background-image:
+    linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+#stageContainer {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.canvas-hint i { font-size: 48px; color: var(--primary); opacity: 0.5; }
+.canvas-hint p { margin: 0; font-size: 14px; }
+.canvas-hint strong { color: var(--primary); }
+.canvas-hint.hidden { display: none; }
+
+.zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+/* ---------- Side panel ---------- */
+.side-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-left: 1px solid var(--vhs-shadow);
+}
+
+.plastic-texture {
+  background-image: url('/data/background_01.jpg');
+  background-size: 100% auto;
+  background-repeat: repeat-y;
+  background-position: top center;
+  padding: 14px;
+  padding-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---------- Control groups ---------- */
+.control-group {
+  background-color: var(--surface-2);
+  border-radius: 6px;
+  padding: 14px;
+  width: 100%;
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: inset 1px 1px 3px var(--vhs-inset), 0 1px 0 #807777;
+}
+
+.control-group h3 {
+  margin: 0 0 14px 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+  font-weight: 400;
+}
+
+.control-group h3 i {
+  margin-right: 8px;
+  font-size: 0.95rem;
+  width: 20px;
+  text-align: center;
+  color: var(--primary);
+}
+
+/* ---------- Notification ---------- */
+.notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  padding: 10px 18px;
+  border-radius: 4px;
+  border: 1px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  z-index: 100;
+  font-size: 12px;
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.crush-logo-footer {
+  position: fixed;
+  left: 18px;
+  bottom: 8px;
+  font-family: 'GlyphWorld-Mountain', sans-serif;
+  color: var(--primary);
+  opacity: 0.35;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  pointer-events: none;
+}

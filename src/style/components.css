@@ -1,0 +1,156 @@
+/* ---------- Buttons (VHS-style, ported from CRUSH v0.5) ---------- */
+.tb-btn, .zoom-btn, .add-effect-btn {
+  background: linear-gradient(to bottom, var(--surface) 0%, var(--vhs-groove) 100%);
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.1), 1px 1px 3px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
+  font-family: 'Chicago', 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.tb-btn i, .zoom-btn i, .add-effect-btn i { font-size: 12px; }
+
+.tb-btn:hover, .zoom-btn:hover, .add-effect-btn:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: linear-gradient(to bottom, var(--surface-3) 0%, var(--surface) 100%);
+}
+
+.tb-btn:active, .zoom-btn:active, .add-effect-btn:active:not(:disabled) {
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translateY(1px);
+}
+
+.tb-btn:disabled, .add-effect-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoom-btn {
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+}
+
+.add-effect-btn { flex: 1; justify-content: center; }
+
+/* ---------- Theme color picker ---------- */
+.theme-color-picker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  box-shadow: inset 0 0 0 1px var(--vhs-shadow);
+  cursor: pointer;
+}
+.theme-color-picker input {
+  width: 200%;
+  height: 200%;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  transform: translate(-25%, -25%);
+}
+
+/* ---------- Layer list ---------- */
+.layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.layer-empty, .effect-empty {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-size: 11px;
+  text-align: center;
+  padding: 14px 0;
+  font-style: italic;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.layer-item.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.layer-thumb {
+  width: 40px;
+  height: 40px;
+  background: var(--background);
+  border-radius: 2px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.layer-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.layer-name {
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.layer-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.layer-icon-btn:hover { color: var(--primary); background: var(--button-hover-bg); }
+
+/* ---------- Effect actions / stack (placeholder for Phase 4) ---------- */
+.effect-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.effect-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

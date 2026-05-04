@@ -1,0 +1,174 @@
+// Document — the editable state container.
+// Mutate via methods so listeners can react with precise change events.
+
+import { createImageLayer, createTextLayer } from './layer.js';
+
+const uid = () => crypto.randomUUID();
+
+export function createDocument() {
+  const state = {
+    version: 1,
+    name: 'Untitled',
+    canvasBackground: { type: 'transparent' },
+    layers: [],
+    activeLayerId: null,
+    exportFrame: null,
+  };
+
+  const listeners = new Set();
+  const emit = (event) => listeners.forEach((fn) => fn(event));
+
+  const findIndex = (id) => state.layers.findIndex((l) => l.id === id);
+  const findLayer = (id) => state.layers.find((l) => l.id === id) || null;
+
+  return {
+    get state() { return state; },
+    get layers() { return state.layers; },
+    get activeLayerId() { return state.activeLayerId; },
+    get activeLayer() { return findLayer(state.activeLayerId); },
+
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+
+    setName(name) {
+      state.name = name;
+      emit({ type: 'doc:propChanged', prop: 'name' });
+    },
+
+    setActiveLayer(id) {
+      if (state.activeLayerId === id) return;
+      state.activeLayerId = id;
+      emit({ type: 'layer:active', id });
+    },
+
+    addImageLayer(opts) {
+      const layer = createImageLayer({ id: uid(), ...opts });
+      state.layers.push(layer);
+      state.activeLayerId = layer.id;
+      emit({ type: 'layer:added', layer });
+      emit({ type: 'layer:active', id: layer.id });
+      return layer;
+    },
+
+    addTextLayer(opts) {
+      const layer = createTextLayer({ id: uid(), ...opts });
+      state.layers.push(layer);
+      state.activeLayerId = layer.id;
+      emit({ type: 'layer:added', layer });
+      emit({ type: 'layer:active', id: layer.id });
+      return layer;
+    },
+
+    removeLayer(id) {
+      const idx = findIndex(id);
+      if (idx < 0) return;
+      const [removed] = state.layers.splice(idx, 1);
+      if (state.activeLayerId === id) {
+        state.activeLayerId = state.layers[idx]?.id ?? state.layers[idx - 1]?.id ?? null;
+        emit({ type: 'layer:active', id: state.activeLayerId });
+      }
+      emit({ type: 'layer:removed', id, layer: removed });
+    },
+
+    reorderLayers(orderedIds) {
+      const map = new Map(state.layers.map((l) => [l.id, l]));
+      state.layers = orderedIds.map((id) => map.get(id)).filter(Boolean);
+      emit({ type: 'layer:reordered', orderedIds });
+    },
+
+    setLayerProp(id, prop, value) {
+      const layer = findLayer(id);
+      if (!layer) return;
+      layer[prop] = value;
+      emit({ type: 'layer:propChanged', id, prop, value });
+    },
+
+    setLayerTransform(id, partial) {
+      const layer = findLayer(id);
+      if (!layer) return;
+      Object.assign(layer.transform, partial);
+      emit({ type: 'layer:transform', id });
+    },
+
+    setLayerSource(id, source, naturalSize) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'image') return;
+      layer.source = source;
+      if (naturalSize) layer.naturalSize = naturalSize;
+      emit({ type: 'layer:sourceChanged', id });
+    },
+
+    setTextProp(id, prop, value) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'text') return;
+      layer.text[prop] = value;
+      emit({ type: 'layer:textChanged', id, prop, value });
+    },
+
+    addEffect(layerId, effect) {
+      const layer = findLayer(layerId);
+      if (!layer) return null;
+      const inst = { id: uid(), enabled: true, expanded: false, ...effect };
+      layer.effects.push(inst);
+      emit({ type: 'effect:added', layerId, effect: inst, atIndex: layer.effects.length - 1 });
+      return inst;
+    },
+
+    removeEffect(layerId, effectId) {
+      const layer = findLayer(layerId);
+      if (!layer) return;
+      const idx = layer.effects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.effects.splice(idx, 1);
+      emit({ type: 'effect:removed', layerId, effectId, fromIndex: idx });
+    },
+
+    setEffectProp(layerId, effectId, prop, value) {
+      const layer = findLayer(layerId);
+      if (!layer) return;
+      const idx = layer.effects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.effects[idx][prop] = value;
+      const cacheBreaking = prop === 'enabled' || prop === 'params';
+      emit({ type: 'effect:propChanged', layerId, effectId, prop, value, fromIndex: cacheBreaking ? idx : -1 });
+    },
+
+    setEffectParams(layerId, effectId, params) {
+      const layer = findLayer(layerId);
+      if (!layer) return;
+      const idx = layer.effects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.effects[idx].params = { ...layer.effects[idx].params, ...params };
+      emit({ type: 'effect:propChanged', layerId, effectId, prop: 'params', value: layer.effects[idx].params, fromIndex: idx });
+    },
+
+    reorderEffects(layerId, orderedIds) {
+      const layer = findLayer(layerId);
+      if (!layer) return;
+      const oldOrder = layer.effects.map((e) => e.id);
+      const map = new Map(layer.effects.map((e) => [e.id, e]));
+      layer.effects = orderedIds.map((id) => map.get(id)).filter(Boolean);
+      let firstChange = -1;
+      for (let i = 0; i < layer.effects.length; i++) {
+        if (oldOrder[i] !== layer.effects[i].id) { firstChange = i; break; }
+      }
+      emit({ type: 'effect:reordered', layerId, fromIndex: firstChange < 0 ? 0 : firstChange });
+    },
+
+    findLayer,
+    serialize() {
+      return JSON.parse(JSON.stringify(state, (k, v) => (k === 'naturalSize' ? v : v)));
+    },
+    load(snapshot) {
+      state.version = snapshot.version ?? 1;
+      state.name = snapshot.name ?? 'Untitled';
+      state.canvasBackground = snapshot.canvasBackground ?? { type: 'transparent' };
+      state.layers = snapshot.layers ?? [];
+      state.activeLayerId = snapshot.activeLayerId ?? null;
+      state.exportFrame = snapshot.exportFrame ?? null;
+      emit({ type: 'doc:loaded' });
+    },
+  };
+}

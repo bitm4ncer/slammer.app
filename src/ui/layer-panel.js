@@ -1,0 +1,100 @@
+// Right-side Layer panel — list driven by Document, drag-reorder via SortableJS.
+
+import Sortable from 'sortablejs';
+
+export function initLayerPanel({ container, document, renderer }) {
+  let sortable = null;
+
+  function thumbForLayer(layer) {
+    const st = renderer.layerState.get(layer.id);
+    if (!st || !st.dstCanvas) return '';
+    try {
+      // Small thumbnails kept light: just reuse the dstCanvas as a scaled CSS background.
+      return st.dstCanvas.toDataURL('image/png');
+    } catch {
+      return '';
+    }
+  }
+
+  function render() {
+    const layers = document.layers.slice().reverse(); // top of stack first in panel
+    if (!layers.length) {
+      container.innerHTML = '<div class="layer-empty">No layers yet</div>';
+      return;
+    }
+    container.innerHTML = layers.map((layer) => `
+      <div class="layer-item ${document.activeLayerId === layer.id ? 'active' : ''}" data-layer-id="${layer.id}">
+        <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
+        <div class="layer-thumb" style="background-image:url('${thumbForLayer(layer)}')"></div>
+        <div class="layer-meta">
+          <div class="layer-name" title="${escape(layer.name)}">${escape(layer.name)}</div>
+          <input type="range" class="layer-opacity" min="0" max="1" step="0.01" value="${layer.opacity}" />
+        </div>
+        <div class="layer-actions">
+          <button class="layer-icon-btn act-vis" title="Toggle visibility">
+            <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
+          </button>
+          <button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.layer-item').forEach((row) => {
+      const id = row.dataset.layerId;
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.layer-actions') || e.target.closest('.layer-opacity')) return;
+        document.setActiveLayer(id);
+      });
+      row.querySelector('.act-vis').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const layer = document.findLayer(id);
+        if (layer) document.setLayerProp(id, 'visible', !layer.visible);
+      });
+      row.querySelector('.act-del').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.removeLayer(id);
+      });
+      row.querySelector('.layer-opacity').addEventListener('input', (e) => {
+        document.setLayerProp(id, 'opacity', parseFloat(e.target.value));
+      });
+    });
+
+    if (sortable) sortable.destroy();
+    sortable = Sortable.create(container, {
+      animation: 140,
+      handle: '.layer-drag-handle',
+      onEnd: () => {
+        const ids = Array.from(container.querySelectorAll('.layer-item')).map((el) => el.dataset.layerId);
+        // Panel shows top-of-stack first → document is bottom-up, so reverse.
+        document.reorderLayers(ids.slice().reverse());
+      },
+    });
+  }
+
+  function escape(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
+  document.subscribe((e) => {
+    if ([
+      'layer:added', 'layer:removed', 'layer:reordered', 'layer:propChanged',
+      'layer:active', 'layer:sourceChanged', 'layer:textChanged',
+      'effect:propChanged', 'effect:added', 'effect:removed', 'effect:reordered',
+      'doc:loaded',
+    ].includes(e.type)) {
+      // Debounce thumbnails — toDataURL is expensive.
+      scheduleRender();
+    }
+  });
+
+  let pending = null;
+  function scheduleRender() {
+    if (pending) return;
+    pending = requestAnimationFrame(() => { pending = null; render(); });
+  }
+
+  render();
+  return { render: scheduleRender };
+}
