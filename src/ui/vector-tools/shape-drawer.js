@@ -71,17 +71,20 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     return true;
   }
 
-  // The renderer positions the image so canvas's path-interior pixel
-  // sits at group origin, so layer.transform.x/y === path bounds top-left
-  // in world coords. (No padding compensation needed here — that's the
-  // renderer's job via image.position().)
+  // Vector layers use a CENTRE-origin convention so rotation / scale via
+  // the transformer pivot around the shape's geometric centre. The renderer
+  // sets group.offset = (w/2, h/2); we set group.x/y (= transform.x/y) to
+  // the shape's centre in world coords.
   function syncLayerTransform() {
     if (!active) return;
     const layer = doc.findLayer(active.layerId);
     if (!layer) return;
     const b = computePathBounds(layer.vector.paths);
     if (!(b.width > 0) || !(b.height > 0)) return;
-    doc.setLayerTransform(active.layerId, { x: b.x, y: b.y });
+    doc.setLayerTransform(active.layerId, {
+      x: b.x + b.width / 2,
+      y: b.y + b.height / 2,
+    });
   }
 
   function end() {

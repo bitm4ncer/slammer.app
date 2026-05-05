@@ -47,7 +47,8 @@ export async function importSvgFile(file, doc) {
   const b = computePathBounds(records);
   return doc.addVectorLayer({
     name: file.name.replace(/\.svg$/i, ''),
-    transform: { x: b.x, y: b.y },
+    // Vector layers use a centre origin (matches the renderer's group offset).
+    transform: { x: b.x + b.width / 2, y: b.y + b.height / 2 },
     vector: { paths: records },
   });
 }

@@ -188,20 +188,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st.vectorPathBounds = pathBounds;
       st.vectorContentOffset = contentOffsetInImage;
       // Position the image so the path's top-left sits at the GROUP origin
-      // (0,0). After this, layer.transform.x/y is the world coord of the
-      // path top-left, scaling pivots around that, and selection handles
-      // wrap exactly the path bbox.
+      // (0,0). Then set the GROUP's offset to the path's centre so
+      // Konva.Transformer rotates/scales around the shape's centre instead
+      // of its top-left. layer.transform.x/y is the world coord of the
+      // pivot point (= path centre).
       st.image.position({
         x: -contentOffsetInImage.x,
         y: -contentOffsetInImage.y,
       });
-      // Tight content bounds for the Konva.Image's getSelfRect override.
-      st.textPad = contentOffsetInImage.x;       // reuse the field; it's the
-      st.textContentSize = {                       // image-local rect of the
-        w: Math.max(1, Math.round(pathBounds.width)),  // path interior.
+      st.group.offset({
+        x: pathBounds.width / 2,
+        y: pathBounds.height / 2,
+      });
+      st.textPad = contentOffsetInImage.x;
+      st.textContentSize = {
+        w: Math.max(1, Math.round(pathBounds.width)),
         h: Math.max(1, Math.round(pathBounds.height)),
       };
-      // Persist on the layer for alignment-controls + project save.
       layer.naturalSize = { w: Math.round(pathBounds.width), h: Math.round(pathBounds.height) };
       return imageData;
     }

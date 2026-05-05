@@ -39,22 +39,27 @@ export function initAnchorOverlay({ stage, contentLayer, document: doc }) {
     // coords (in path-local) map to the right world position.
     const layerGroup = stage.findOne((n) => n.id?.() === layer.id);
     if (!layerGroup) return;
+    // Mirror the layer group's transform (incl. offset for centre origin)
+    // so anchor coords in path-local space land in the right world spot.
     const grp = new Konva.Group({
       x: layerGroup.x(),
       y: layerGroup.y(),
       scaleX: layerGroup.scaleX(),
       scaleY: layerGroup.scaleY(),
       rotation: layerGroup.rotation(),
+      offsetX: layerGroup.offsetX(),
+      offsetY: layerGroup.offsetY(),
       listening: false,
     });
     overlay.add(grp);
 
-    // Path-local coordinate offset: shapes store coords starting at
-    // (transform.x, transform.y) in WORLD space. For overlay we want them
-    // at (0, 0) in the group (which is at transform.x in world). So
-    // subtract layer.transform.x/y from each point.
-    const offX = layer.transform.x;
-    const offY = layer.transform.y;
+    // Path coords are in world space (where the user originally drew). The
+    // overlay group lives in the same coord space as the layer group. With
+    // offset applied, the layer group's local (0, 0) sits at
+    // (transform.x - offsetX, transform.y - offsetY) in world — which is
+    // the path bbox top-left. So shift each point by subtracting that.
+    const offX = layer.transform.x - layerGroup.offsetX();
+    const offY = layer.transform.y - layerGroup.offsetY();
 
     const accent = getAccent(layer);
 
