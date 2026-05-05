@@ -64,6 +64,11 @@ export function initTextTool({ document: doc }) {
     </div>
 
     <div data-host="features"></div>
+
+    <button class="typo-to-path-btn" id="typoToPathBtn"
+      title="Convert text to vector outlines. Shift-click to invert the Settings default (replace ↔ duplicate).">
+      <i class="fas fa-bezier-curve"></i> Convert to Path
+    </button>
   `;
   // Mount inside the contextual (bottom) section, just above the Effects group.
   const effectsGroup = document.querySelector('.effects-group');
@@ -348,6 +353,19 @@ export function initTextTool({ document: doc }) {
         if (input) input.value = String(Math.round(e.value));
       }
     }
+  });
+
+  // Convert text → vector paths (opentype.js + glyph extraction in
+  // text-to-path.js). Replace vs duplicate is settings-driven, with
+  // Shift-click inverting for one conversion.
+  const t2pBtn = panel.querySelector('#typoToPathBtn');
+  t2pBtn?.addEventListener('click', async (e) => {
+    const layer = doc.activeLayer;
+    if (!layer || layer.type !== 'text') return;
+    const { convertTextLayerToPath } = await import('./vector-tools/text-to-path.js');
+    const { getSettings } = await import('./settings-popup.js');
+    const replace = e.shiftKey ? !getSettings().textToPathReplace : getSettings().textToPathReplace;
+    await convertTextLayerToPath(doc, layer, { replace });
   });
 
   syncVisibility();

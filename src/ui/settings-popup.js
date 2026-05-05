@@ -5,7 +5,7 @@ import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
 
 const STORE_KEY = 'slammer:settings';
-const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true, keepEffectsOpen: false, frameDimOpacity: 0.80 };
+const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true, keepEffectsOpen: false, frameDimOpacity: 0.80, textToPathReplace: true };
 
 const listeners = new Set();
 
@@ -100,6 +100,14 @@ export function initSettingsPopup({ button, version }) {
           </div>
 
           <div class="settings-row">
+            <label class="settings-label" for="setTextToPathReplace" title="When ON, Convert to Path removes the original text layer (Affinity-style). When OFF, the text layer is kept and the vector is added as a copy. Shift-click the Convert button to invert for one conversion.">Convert to Path replaces text</label>
+            <label class="effect-toggle-row settings-toggle-bare" for="setTextToPathReplace">
+              <input type="checkbox" id="setTextToPathReplace" ${s.textToPathReplace ? 'checked' : ''} />
+              <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="settings-row">
             <label class="settings-label" for="setFrameDim">Export frame dim
               <code class="settings-readout" id="setFrameDimReadout">${Math.round((s.frameDimOpacity ?? 0.80) * 100)}%</code>
             </label>
@@ -177,6 +185,10 @@ export function initSettingsPopup({ button, version }) {
     const keepOpenInput = backdrop.querySelector('#setKeepEffectsOpen');
     keepOpenInput.addEventListener('change', (e) => {
       setSettings({ keepEffectsOpen: e.target.checked });
+    });
+    const t2pInput = backdrop.querySelector('#setTextToPathReplace');
+    t2pInput?.addEventListener('change', (e) => {
+      setSettings({ textToPathReplace: e.target.checked });
     });
 
     const frameDimInput = backdrop.querySelector('#setFrameDim');

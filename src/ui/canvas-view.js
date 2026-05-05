@@ -4,6 +4,8 @@ import Konva from 'konva';
 import { getSettings, onSettingsChange } from './settings-popup.js';
 import { getTool, setTool, onToolChange, TOOL_CURSORS } from './vector-tools/active-tool.js';
 import { attachShapeDrawer } from './vector-tools/shape-drawer.js';
+import { attachPenTool } from './vector-tools/pen-tool.js';
+import { attachPencilTool } from './vector-tools/pencil-tool.js';
 
 // Restrict Konva drag-start to the left mouse button so middle-mouse pan
 // never accidentally drags overlay handles.
@@ -520,6 +522,8 @@ export function initCanvasView({ container, document, onImageDropped }) {
     document,
     getStageScale: () => stage.scaleX() || 1,
   });
+  const penTool = attachPenTool({ stage, document });
+  const pencilTool = attachPencilTool({ stage, document });
 
   stage.on('mousedown touchstart', (e) => {
     if (spaceDown || e.evt.button === 1) {
@@ -532,10 +536,11 @@ export function initCanvasView({ container, document, onImageDropped }) {
     // Active vector tool? Hand off to its drawer.
     const tool = getTool();
     if (tool.startsWith('shape:')) {
-      if (shapeDrawer.start(e)) {
-        e.evt.preventDefault();
-        return;
-      }
+      if (shapeDrawer.start(e)) { e.evt.preventDefault(); return; }
+    } else if (tool === 'pen') {
+      if (penTool.start(e)) { e.evt.preventDefault(); return; }
+    } else if (tool === 'pencil') {
+      if (pencilTool.start(e)) { e.evt.preventDefault(); return; }
     }
     // Activate layer immediately on mousedown so selection handles appear
     // even when the user mouse-downs and drags in one motion (no clean click).
@@ -553,9 +558,18 @@ export function initCanvasView({ container, document, onImageDropped }) {
   });
   stage.on('mousemove touchmove', (e) => {
     shapeDrawer.move(e);
+    penTool.move(e);
+    pencilTool.move(e);
   });
   stage.on('mouseup touchend', () => {
     shapeDrawer.end();
+    penTool.up();
+    pencilTool.end();
+  });
+  // Pointer leaves the container while pencil is mid-stroke → auto-commit
+  // the stroke (avoids dangling state if the user's mouse exits the canvas).
+  container.addEventListener('pointerleave', () => {
+    if (pencilTool.isDrawing()) pencilTool.end();
   });
   // Esc cancels in-progress shape draw.
   window.addEventListener('keydown', (e) => {

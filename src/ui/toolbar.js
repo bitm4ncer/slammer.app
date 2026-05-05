@@ -5,6 +5,7 @@ import { exportProjectFile, importProjectFile } from '../io/project-file.js';
 import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
 import { importSvgFile } from './vector-tools/svg-import.js';
+import { getPencilSmoothness, setPencilSmoothness } from './vector-tools/pencil-tool.js';
 
 // Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
 const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
@@ -60,12 +61,28 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   // clicked. Pen + Pencil are 13b; the buttons are present but inactive.
   $('btnSelect')?.addEventListener('click', () => setTool('select'));
   $('btnDirectSelect')?.addEventListener('click', () => setTool('directSelect'));
-  $('btnPen')?.addEventListener('click', () => {
-    showNotification('Pen tool coming in Phase 13b');
-  });
-  $('btnPencil')?.addEventListener('click', () => {
-    showNotification('Pencil tool coming in Phase 13b');
-  });
+  $('btnPen')?.addEventListener('click', () => setTool('pen'));
+  $('btnPencil')?.addEventListener('click', () => setTool('pencil'));
+
+  // Pencil smoothness slider in the footer — hidden unless pencil is the
+  // active tool. Persists through getPencilSmoothness / setPencilSmoothness.
+  const smoothWrap   = $('pencilSmoothness');
+  const smoothSlider = $('pencilSmoothnessSlider');
+  const smoothRead   = $('pencilSmoothnessReadout');
+  if (smoothWrap && smoothSlider && smoothRead) {
+    const cur = getPencilSmoothness();
+    smoothSlider.value = String(cur);
+    smoothRead.textContent = cur.toFixed(1);
+    smoothSlider.addEventListener('input', () => {
+      const v = parseFloat(smoothSlider.value);
+      setPencilSmoothness(v);
+      smoothRead.textContent = v.toFixed(1);
+    });
+    onToolChange((tool) => {
+      smoothWrap.hidden = tool !== 'pencil';
+    });
+    smoothWrap.hidden = getTool() !== 'pencil';
+  }
 
   // Shape button — single-click activates the last-used shape;
   // long-press / right-click opens the flyout.

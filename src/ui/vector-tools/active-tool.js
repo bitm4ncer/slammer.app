@@ -36,7 +36,7 @@ export const TOOL_CURSORS = {
   select:        '',
   directSelect:  'default',
   pen:           'crosshair',
-  pencil:        'crosshair',
+  pencil:        'cell',
   'shape:rect':    'crosshair',
   'shape:ellipse': 'crosshair',
   'shape:polygon': 'crosshair',

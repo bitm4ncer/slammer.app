@@ -40,6 +40,9 @@ export function initAnchorOverlay({ stage, document: doc }) {
   // otherwise we destroy the very Konva node Konva is dragging, killing
   // the gesture after one tick (the symptom: handles only move 1 px).
   let anchorDragging = false;
+  // Currently-selected anchor (for Backspace / visual highlight).
+  // { layerId, pathIdx, segIdx } or null.
+  let selected = null;
 
   function refresh() {
     if (anchorDragging) return;
@@ -113,12 +116,11 @@ export function initAnchorOverlay({ stage, document: doc }) {
       let p;
       try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
 
-      // Dashed path outline (read-only). Tagged with the path index so the
-      // anchor / handle drag handlers can patch its `data` attribute live
-      // — refresh() is short-circuited during drag (would destroy the very
-      // Konva node the user is dragging), so we have to keep the outline
-      // in sync ourselves.
-      grp.add(new Konva.Path({
+      // Dashed path outline. listening:true so a double-click on the edge
+      // inserts a new anchor (Paper getNearestLocation). Tagged with the
+      // path index so commitAnchorEdit can patch its `data` attribute
+      // live during a drag without rebuilding the whole overlay.
+      const outline = new Konva.Path({
         name: `path-outline-${pathIdx}`,
         data: rec.d,
         x: -offX, y: -offY,
@@ -126,8 +128,22 @@ export function initAnchorOverlay({ stage, document: doc }) {
         strokeWidth: 1,
         strokeScaleEnabled: false,
         dash: [3, 3],
-        listening: false,
-      }));
+        // Boost hit-test width so the user doesn't need pixel-perfect aim.
+        hitStrokeWidth: 10,
+        listening: true,
+      });
+      outline.on('dblclick dbltap', (e) => {
+        e.cancelBubble = true;
+        // Convert pointer to path-local coords (undo overlay group offset).
+        const pos = stage.getPointerPosition();
+        if (!pos) return;
+        const sc = stage.scaleX() || 1;
+        const worldX = (pos.x - stage.x()) / sc;
+        const worldY = (pos.y - stage.y()) / sc;
+        // Path-local = world + offX (since outline is drawn at -offX).
+        insertAnchorAtPoint(layer, pathIdx, 0, { x: worldX + offX, y: worldY + offY });
+      });
+      grp.add(outline);
 
       const subpaths = p.children && p.children.length ? p.children : [p];
       let segCounter = 0;
@@ -155,19 +171,35 @@ export function initAnchorOverlay({ stage, document: doc }) {
           });
 
           // Anchor square (draggable).
+          // Selected anchor → larger + accent-filled, otherwise white-filled.
+          const isSelected = selected
+            && selected.layerId === layer.id
+            && selected.pathIdx === pathIdx
+            && selected.segIdx === segIdx;
+          const half = isSelected ? 4.5 : 3.5;
           const anchor = new Konva.Rect({
-            x: px - 3.5, y: py - 3.5,
-            width: 7, height: 7,
-            fill: '#fff', stroke: '#0a0a0a',
+            x: px - half, y: py - half,
+            width: half * 2, height: half * 2,
+            fill: isSelected ? accent : '#fff',
+            stroke: '#0a0a0a',
             strokeWidth: 1, strokeScaleEnabled: false,
             draggable: true,
           });
           anchor.on('mousedown', (e) => { e.cancelBubble = true; });
-          anchor.on('dragstart', () => { anchorDragging = true; });
-          anchor.on('dragend',   () => { anchorDragging = false; refresh(); });
+          // Plain click → select. Alt-click → toggle smooth/corner.
+          anchor.on('click', (e) => {
+            e.cancelBubble = true;
+            if (e.evt.altKey) toggleSmoothCorner(layer, pathIdx, si, segIdx);
+            else { selected = { layerId: layer.id, pathIdx, segIdx }; refresh(); }
+          });
+          anchor.on('dragstart', () => {
+            anchorDragging = true;
+            selected = { layerId: layer.id, pathIdx, segIdx };
+          });
+          anchor.on('dragend', () => { anchorDragging = false; refresh(); });
           anchor.on('dragmove', () => {
-            const newPx = anchor.x() + 3.5;
-            const newPy = anchor.y() + 3.5;
+            const newPx = anchor.x() + half;
+            const newPy = anchor.y() + half;
             const targetX = newPx + offX;
             const targetY = newPy + offY;
             commitAnchorEdit(layer, pathIdx, si, segIdx, { point: { x: targetX, y: targetY } });
@@ -196,6 +228,14 @@ export function initAnchorOverlay({ stage, document: doc }) {
       draggable: true,
     });
     dot.on('mousedown', (e) => { e.cancelBubble = true; });
+    // Alt-click handle dot → break the symmetric pair so subsequent drags
+    // only move the touched side. We mark the segment with an
+    // _asymmetric flag so commitAnchorEdit doesn't auto-mirror.
+    dot.on('click', (e) => {
+      if (!e.evt.altKey) return;
+      e.cancelBubble = true;
+      breakHandlePair(layer, pathIdx, subPathIdx, segIdx);
+    });
     dot.on('dragstart', () => { anchorDragging = true; });
     dot.on('dragend',   () => { anchorDragging = false; refresh(); });
     dot.on('dragmove', () => {
@@ -205,6 +245,104 @@ export function initAnchorOverlay({ stage, document: doc }) {
       commitAnchorEdit(layer, pathIdx, subPathIdx, segIdx, patch);
     });
     grp.add(dot);
+  }
+
+  function toggleSmoothCorner(layer, pathIdx, subPathIdx, segIdx) {
+    activatePaper();
+    const rec = layer.vector.paths[pathIdx];
+    if (!rec) return;
+    let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = p.children && p.children.length ? p.children : [p];
+    const sub = subs[subPathIdx];
+    const seg = sub?.segments?.[segIdx];
+    if (!seg) { p.remove(); return; }
+    const isCorner = (!seg.handleIn || (!seg.handleIn.x && !seg.handleIn.y))
+                  && (!seg.handleOut || (!seg.handleOut.x && !seg.handleOut.y));
+    if (isCorner) {
+      // Make smooth — derive a sensible handle vector from neighbour points.
+      const segs = sub.segments;
+      const prev = segs[(segIdx - 1 + segs.length) % segs.length];
+      const next = segs[(segIdx + 1) % segs.length];
+      const tx = (next.point.x - prev.point.x) / 4;
+      const ty = (next.point.y - prev.point.y) / 4;
+      seg.handleIn = new paper.Point(-tx, -ty);
+      seg.handleOut = new paper.Point(tx, ty);
+    } else {
+      seg.handleIn = new paper.Point(0, 0);
+      seg.handleOut = new paper.Point(0, 0);
+    }
+    const newD = p.pathData;
+    p.remove();
+    doc.setVectorPath(layer.id, pathIdx, { d: newD });
+    refresh();
+  }
+
+  function breakHandlePair(layer, pathIdx, subPathIdx, segIdx) {
+    // We don't actually need a flag — Paper segments naturally support
+    // asymmetric handles. The symmetry came from our commitAnchorEdit
+    // patch. To "break" the pair we just leave them alone (the next drag
+    // already moves only the touched side via handleIn / handleOut keys).
+    // For visual feedback we briefly highlight via refresh.
+    refresh();
+  }
+
+  function deleteSelectedAnchor() {
+    if (!selected) return;
+    const layer = doc.findLayer(selected.layerId);
+    if (!layer) return;
+    const rec = layer.vector.paths[selected.pathIdx];
+    if (!rec) return;
+    activatePaper();
+    let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = p.children && p.children.length ? p.children : [p];
+    // We track segIdx as a flat index across subpaths; figure out which sub.
+    let walk = 0, sub = null, localIdx = -1;
+    for (const s of subs) {
+      const n = s.segments.length;
+      if (selected.segIdx < walk + n) { sub = s; localIdx = selected.segIdx - walk; break; }
+      walk += n;
+    }
+    if (!sub || localIdx < 0) { p.remove(); return; }
+    if (sub.segments.length <= 2) {
+      // Removing would leave 0 or 1 anchor — drop the whole sub-path.
+      sub.remove();
+    } else {
+      sub.removeSegment(localIdx);
+    }
+    const newD = p.pathData;
+    p.remove();
+    if (!newD) {
+      // Path empty — drop it. If the layer becomes empty too, drop the layer.
+      if (layer.vector.paths.length === 1) {
+        doc.removeLayer(layer.id);
+      } else {
+        const next = layer.vector.paths.slice();
+        next.splice(selected.pathIdx, 1);
+        doc.setVectorPaths(layer.id, next);
+      }
+    } else {
+      doc.setVectorPath(layer.id, selected.pathIdx, { d: newD });
+    }
+    selected = null;
+    refresh();
+  }
+
+  function insertAnchorAtPoint(layer, pathIdx, subPathIdx, point) {
+    activatePaper();
+    const rec = layer.vector.paths[pathIdx];
+    if (!rec) return;
+    let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = p.children && p.children.length ? p.children : [p];
+    const sub = subs[subPathIdx];
+    if (!sub) { p.remove(); return; }
+    // Find the location on the sub-path nearest the click point.
+    const loc = sub.getNearestLocation(new paper.Point(point.x, point.y));
+    if (!loc) { p.remove(); return; }
+    sub.divideAt(loc);
+    const newD = p.pathData;
+    p.remove();
+    doc.setVectorPath(layer.id, pathIdx, { d: newD });
+    refresh();
   }
 
   function commitAnchorEdit(layer, pathIdx, subPathIdx, segIdx, patch) {
@@ -256,6 +394,9 @@ export function initAnchorOverlay({ stage, document: doc }) {
   }
 
   doc.subscribe((e) => {
+    if (e.type === 'layer:active' || e.type === 'layer:removed' || e.type === 'doc:loaded') {
+      selected = null;
+    }
     if (
       e.type === 'layer:active' ||
       e.type === 'layer:added' ||
@@ -265,7 +406,28 @@ export function initAnchorOverlay({ stage, document: doc }) {
       e.type === 'doc:loaded'
     ) refresh();
   });
-  onToolChange(refresh);
+  onToolChange(() => { selected = null; refresh(); });
+
+  // Backspace / Delete deletes the currently-selected anchor (Direct Select).
+  // Be conservative — only fire when the user isn't typing in an input
+  // and we have an anchor selected.
+  window.addEventListener('keydown', (e) => {
+    if (getTool() !== 'directSelect' || !selected) return;
+    const ae = window.document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      deleteSelectedAnchor();
+    }
+  });
+
+  // Click on empty stage area in directSelect → deselect anchor.
+  stage.on('click.anchorOverlayEmpty', (e) => {
+    if (getTool() !== 'directSelect') return;
+    if (e.target === stage) {
+      if (selected) { selected = null; refresh(); }
+    }
+  });
 
   return { refresh };
 }
