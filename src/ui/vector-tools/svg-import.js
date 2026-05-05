@@ -22,9 +22,19 @@ export async function importSvgFile(file, doc) {
   const root = tempProject.importSVG(text, { expandShapes: true });
 
   // Walk every leaf path/compound and emit a serialisable record.
+  // CRITICAL: Paper's `p.pathData` returns coords in the path's LOCAL space,
+  // ignoring any parent <g transform="…"> matrices. We bake the accumulated
+  // global matrix into the segments first so the d-string we store is in
+  // the SVG's root coordinate system — otherwise paths land in the wrong
+  // place on canvas and their anchor overlay drifts away from the visible
+  // raster (paths with parent translates are the worst offenders).
   const records = [];
   root.getItems({ class: paper.PathItem }).forEach((p) => {
     if (!p.pathData) return;
+    const m = p.globalMatrix;
+    if (m && !m.isIdentity()) {
+      try { p.transform(m); } catch {}
+    }
     const fillSpec = paperFillToSpec(p.fillColor);
     const strokeSpec = paperStrokeToSpec(p);
     records.push({

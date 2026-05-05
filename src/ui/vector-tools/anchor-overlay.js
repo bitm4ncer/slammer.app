@@ -34,8 +34,14 @@ export function initAnchorOverlay({ stage, document: doc }) {
   const overlay = new Konva.Layer();
   stage.add(overlay);
   let liveDragOff = null;
+  // While the user is dragging an anchor or bezier handle, skip the
+  // overlay rebuild that would normally fire on layer:vectorChanged —
+  // otherwise we destroy the very Konva node Konva is dragging, killing
+  // the gesture after one tick (the symptom: handles only move 1 px).
+  let anchorDragging = false;
 
   function refresh() {
+    if (anchorDragging) return;
     overlay.destroyChildren();
     detachLiveDrag();
     if (getTool() !== 'directSelect') { overlay.batchDraw(); return; }
@@ -142,11 +148,12 @@ export function initAnchorOverlay({ stage, document: doc }) {
             draggable: true,
           });
           anchor.on('mousedown', (e) => { e.cancelBubble = true; });
+          anchor.on('dragstart', () => { anchorDragging = true; });
+          anchor.on('dragend',   () => { anchorDragging = false; refresh(); });
           anchor.on('dragmove', () => {
-            // Convert anchor's group-local centre back to path-local coord.
             const newPx = anchor.x() + 3.5;
             const newPy = anchor.y() + 3.5;
-            const targetX = newPx + offX;   // path-local
+            const targetX = newPx + offX;
             const targetY = newPy + offY;
             commitAnchorEdit(layer, pathIdx, si, segIdx, { point: { x: targetX, y: targetY } });
           });
@@ -174,6 +181,8 @@ export function initAnchorOverlay({ stage, document: doc }) {
       draggable: true,
     });
     dot.on('mousedown', (e) => { e.cancelBubble = true; });
+    dot.on('dragstart', () => { anchorDragging = true; });
+    dot.on('dragend',   () => { anchorDragging = false; refresh(); });
     dot.on('dragmove', () => {
       const dx = dot.x() - anchorX;
       const dy = dot.y() - anchorY;

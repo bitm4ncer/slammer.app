@@ -80,6 +80,7 @@ export function initVectorTool({ document: doc }) {
   panel.innerHTML = `
     <h3><i class="fas fa-bezier-curve"></i> Vector</h3>
 
+    <div data-host="path-picker"></div>
     <div data-host="shape-controls"></div>
 
     <div class="effect-slider-row">
@@ -122,6 +123,7 @@ export function initVectorTool({ document: doc }) {
   if (effectsGroup && effectsGroup.parentNode === host) host.insertBefore(panel, effectsGroup);
   else host.appendChild(panel);
 
+  const pathPickerHost    = panel.querySelector('[data-host=path-picker]');
   const shapeControlsHost = panel.querySelector('[data-host=shape-controls]');
   const fillTypeHost      = panel.querySelector('[data-host=fill-type]');
   const fillColorRow      = panel.querySelector('[data-row=fill-color]');
@@ -245,6 +247,54 @@ export function initVectorTool({ document: doc }) {
     doc.setVectorPath(l.id, activePathIdx, { shape: nextShape, d });
   }
 
+  // Sub-path picker: shows a horizontal strip of colour swatches, one per
+  // path in the layer. Click a swatch to make that path the active edit
+  // target. Hidden when the layer has only one path. Used heavily on
+  // SVG-imported layers where a single .svg file produced many paths.
+  function renderPathPicker(layer) {
+    pathPickerHost.innerHTML = '';
+    const paths = layer.vector.paths || [];
+    if (paths.length <= 1) return;
+    const row = document.createElement('div');
+    row.className = 'effect-slider-row vector-path-picker-row';
+    const label = document.createElement('span');
+    label.className = 'effect-label';
+    label.textContent = `Path ${activePathIdx + 1}/${paths.length}`;
+    row.appendChild(label);
+    const strip = document.createElement('div');
+    strip.className = 'vector-path-picker-strip';
+    paths.forEach((p, idx) => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'vector-path-swatch' + (idx === activePathIdx ? ' active' : '');
+      sw.title = `Path ${idx + 1}`;
+      sw.style.background = swatchBg(p);
+      sw.addEventListener('click', () => {
+        activePathIdx = idx;
+        // Discard the cached gradient editors — they're keyed to the
+        // previously-active path's spec.
+        clearGradientEditor(fillGradHost);
+        clearGradientEditor(strokeGradHost);
+        rebuild();
+      });
+      strip.appendChild(sw);
+    });
+    row.appendChild(strip);
+    pathPickerHost.appendChild(row);
+  }
+  // CSS background for a path's swatch (solid colour or linear gradient).
+  function swatchBg(path) {
+    const f = path.fill;
+    if (!f || f.type === 'none') return 'transparent';
+    if (f.type === 'solid') return f.color || '#fff';
+    if (f.type === 'gradient') {
+      const stops = (f.stops || []).slice().sort((a, b) => a.at - b.at);
+      const css = stops.map((s) => `${s.color} ${(s.at * 100).toFixed(1)}%`).join(', ');
+      return `linear-gradient(to right, ${css || '#fff, #000'})`;
+    }
+    return '#fff';
+  }
+
   function renderShapeControls(layer, path) {
     shapeControlsHost.innerHTML = '';
     const shape = path?.shape;
@@ -327,6 +377,7 @@ export function initVectorTool({ document: doc }) {
     if (activePathIdx < 0) activePathIdx = 0;
     const p = l.vector.paths[activePathIdx] || { fill: DEFAULT_VECTOR_FILL(), stroke: DEFAULT_VECTOR_STROKE() };
 
+    renderPathPicker(l);
     renderShapeControls(l, p);
 
     const fillType = (p.fill && p.fill.type) || 'none';
