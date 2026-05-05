@@ -9,8 +9,8 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   letter-spacing: 0.5px;
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 6px 13px;
+  border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -18,7 +18,7 @@
   user-select: none;
 }
 
-.tb-btn i, .zoom-btn i { font-size: 12px; }
+.tb-btn i, .zoom-btn i { font-size: 10px; }
 
 .tb-btn:hover, .zoom-btn:hover {
   color: var(--primary);
@@ -37,20 +37,22 @@
 }
 
 .zoom-btn {
-  width: 32px;
-  height: 32px;
+  width: 37px;
+  height: 22px;
   justify-content: center;
   padding: 0;
+  border-radius: 999px;
 }
 
 .tb-btn--icon {
-  width: 32px;
-  height: 32px;
+  width: 37px;
+  height: 22px;
   padding: 0;
   justify-content: center;
   gap: 0;
+  border-radius: 999px;
 }
-.tb-btn--icon i { font-size: 13px; }
+.tb-btn--icon i { font-size: 11px; }
 
 /* ---------- Tool sidebar buttons (Photoshop-style) ---------- */
 .tool-btn {
@@ -327,8 +329,8 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   letter-spacing: 0.05em;
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: 6px 13px;
+  border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -612,8 +614,74 @@
 .docsize-card-name { font-size: 11px; letter-spacing: 0.04em; }
 .docsize-card-dim { font-size: 9px; color: var(--text-secondary); font-family: ui-monospace, monospace; }
 
-/* ---------- Export popup ---------- */
-.export-modal { width: min(440px, calc(100vw - 40px)); }
+/* ---------- Floating window (Export) ---------- */
+.floating-window {
+  position: fixed;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--vhs-highlight);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 360px;
+  min-height: 320px;
+  animation: floatingRise 0.16s cubic-bezier(.2,.7,.2,1);
+}
+@keyframes floatingRise {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.floating-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: linear-gradient(to bottom, var(--surface-3) 0%, var(--surface-2) 100%);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  cursor: grab;
+  user-select: none;
+}
+.floating-header:active { cursor: grabbing; }
+.floating-header i { margin-right: 8px; }
+.floating-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+.floating-close:hover { color: var(--primary); background: var(--button-hover-bg); }
+.floating-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.floating-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 0 50%,
+    var(--text-secondary) 50% 60%, transparent 60% 70%,
+    var(--text-secondary) 70% 80%, transparent 80% 90%,
+    var(--text-secondary) 90% 100%);
+  opacity: 0.5;
+  border-bottom-right-radius: 6px;
+}
+.floating-resize:hover { opacity: 1; }
+
+/* ---------- Export popup contents ---------- */
 .export-pillgroup {
   display: flex;
   gap: 4px;
@@ -653,10 +721,15 @@
 }
 .alignment-strip[hidden] { display: none; }
 .align-btn {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 22px;
   font-size: 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.align-btn svg { width: 14px; height: 14px; }
 
 /* ---------- Layer Stack fills the top section ---------- */
 .layers-group {
@@ -680,19 +753,21 @@
  * Effects card flex-grows so it visually fills the empty area when it's the only card present.
  */
 .effects-group {
-  flex: 1 1 auto;
-  min-height: 0;
+  /* Card sizes to its content (header + stack); .side-panel-bottom scrolls
+   * if the combined Typography + Effects content overflows. */
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 .effects-group h3 { flex-shrink: 0; }
 .effect-stack {
-  flex: 1 1 auto;
-  min-height: 0;
+  /* Natural height — the parent .side-panel-bottom owns vertical scrolling
+   * so that long effect stacks scroll with the rest of the bottom panel
+   * instead of being clipped to the card's flex-allocated height. */
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow-y: auto;
 }
 /* Typography panel: cap at half the bottom section so Effects always has room.
  * If its own content exceeds that, it scrolls internally with the global custom scrollbar.

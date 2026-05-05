@@ -1,11 +1,11 @@
 // Hue — RGB → HSL → shift hue / sat / lit → RGB.
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { makeRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'hue',
   name: 'Hue',
-  version: '1.0.0',
+  version: '1.1.0',
   type: 'filter',
   icon: 'palette',
   category: 'color',
@@ -30,22 +30,68 @@ export default {
   },
 
   renderUI(params, onChange) {
-    const root = makeRoot();
-    root.appendChild(sliderRow({
-      label: 'Hue', min: -180, max: 180, step: 1, value: params.hue ?? 0, defaultValue: 0, suffix: '°',
+    const root = makeRoot('hue-effect');
+
+    root.appendChild(gradientSlider({
+      label: 'Hue Shift',
+      min: -180, max: 180, step: 1, value: params.hue ?? 0, suffix: '°',
+      gradient: 'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)',
       onChange: (v) => onChange({ hue: v }),
     }));
-    root.appendChild(sliderRow({
-      label: 'Sat', min: -100, max: 100, step: 1, value: params.saturation ?? 0, defaultValue: 0, suffix: '%',
+    root.appendChild(gradientSlider({
+      label: 'Saturation Shift',
+      min: -100, max: 100, step: 1, value: params.saturation ?? 0, suffix: '%',
+      gradient: 'linear-gradient(to right, #888 0%, #888 50%, #ff0000 100%)',
       onChange: (v) => onChange({ saturation: v }),
     }));
-    root.appendChild(sliderRow({
-      label: 'Lit', min: -100, max: 100, step: 1, value: params.lightness ?? 0, defaultValue: 0, suffix: '%',
+    root.appendChild(gradientSlider({
+      label: 'Luminosity Shift',
+      min: -100, max: 100, step: 1, value: params.lightness ?? 0, suffix: '%',
+      gradient: 'linear-gradient(to right, #000 0%, #888 50%, #fff 100%)',
       onChange: (v) => onChange({ lightness: v }),
     }));
+
     return root;
   },
 };
+
+function gradientSlider({ label, min, max, step, value, suffix, gradient, onChange }) {
+  const row = document.createElement('div');
+  row.className = 'hue-grad-row';
+  row.innerHTML = `
+    <div class="hue-grad-label">${label}</div>
+    <div class="hue-grad-controls">
+      <div class="hue-grad-track" style="--grad: ${gradient};">
+        <input type="range" class="hue-grad-input" min="${min}" max="${max}" step="${step}" value="${value}" />
+      </div>
+      <input type="number" class="hue-grad-num" min="${min}" max="${max}" step="${step}" value="${value}" />
+      <span class="hue-grad-suffix">${suffix || ''}</span>
+    </div>
+  `;
+  const range = row.querySelector('.hue-grad-input');
+  const num = row.querySelector('.hue-grad-num');
+
+  range.addEventListener('input', () => {
+    const v = parseFloat(range.value);
+    num.value = v;
+    onChange(v);
+  });
+  num.addEventListener('input', () => {
+    let v = parseFloat(num.value);
+    if (Number.isNaN(v)) return;
+    v = Math.max(min, Math.min(max, v));
+    range.value = v;
+    onChange(v);
+  });
+
+  // Double-click anywhere on the track resets to 0 (or midpoint).
+  row.querySelector('.hue-grad-track').addEventListener('dblclick', () => {
+    const reset = (min < 0 && max > 0) ? 0 : Math.round((min + max) / 2);
+    range.value = reset; num.value = reset; onChange(reset);
+  });
+
+  return row;
+}
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 

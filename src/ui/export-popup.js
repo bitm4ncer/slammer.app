@@ -1,16 +1,28 @@
 // Export popup — region (frame|visible), format (PNG|JPEG), quality, scale,
 // background, filename. Drives io/export-png.exportImage().
+// FLOATING window: draggable from header, resizable from bottom-right corner.
+// Position + size persist to localStorage.
 
 import { exportImage } from '../io/export-png.js';
 
 const SETTINGS_KEY = 'slammer:lastExportSettings';
+const WIN_KEY = 'slammer:exportWindow';
 
 function loadLast() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
 }
 function saveLast(s) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} }
+function loadWin() {
+  try { return JSON.parse(localStorage.getItem(WIN_KEY) || '{}'); } catch { return {}; }
+}
+function saveWin(s) { try { localStorage.setItem(WIN_KEY, JSON.stringify(s)); } catch {} }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+let openWindow = null;
 
 export function openExportPopup({ document: doc, renderer }) {
+  if (openWindow) { openWindow.focus?.(); return; }
+
   const last = loadLast();
   const hasFrame = !!(doc.state.exportFrame && doc.state.exportFrame.w > 0);
   const initial = {
@@ -23,15 +35,25 @@ export function openExportPopup({ document: doc, renderer }) {
     filename: doc.state.name || 'slammer',
   };
 
-  const backdrop = document.createElement('div');
-  backdrop.className = 'settings-backdrop';
-  backdrop.innerHTML = `
-    <div class="settings-modal export-modal" role="dialog" aria-label="Export">
-      <div class="settings-header">
-        <span><i class="fas fa-file-export"></i> Export</span>
-        <button class="settings-close" data-act="close" aria-label="Close"><i class="fas fa-times"></i></button>
-      </div>
+  // Window geometry — restore last, clamp to viewport.
+  const winState = loadWin();
+  const W = clamp(winState.w || 460, 360, window.innerWidth - 20);
+  const H = clamp(winState.h || 540, 320, window.innerHeight - 20);
+  const X = clamp(winState.x ?? (window.innerWidth - W) / 2, 0, window.innerWidth - W);
+  const Y = clamp(winState.y ?? (window.innerHeight - H) / 2, 0, window.innerHeight - H);
 
+  const win = document.createElement('div');
+  win.className = 'floating-window export-window';
+  win.style.left = `${X}px`;
+  win.style.top = `${Y}px`;
+  win.style.width = `${W}px`;
+  win.style.height = `${H}px`;
+  win.innerHTML = `
+    <div class="floating-header" data-drag-handle>
+      <span><i class="fas fa-file-export"></i> Export</span>
+      <button class="floating-close" data-act="close" aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="floating-body">
       <div class="settings-section">
         <div class="settings-row">
           <span class="settings-label">Region</span>
@@ -81,7 +103,7 @@ export function openExportPopup({ document: doc, renderer }) {
         <div class="settings-row">
           <label class="settings-label" for="exportFilename">Filename</label>
           <div class="settings-control">
-            <input type="text" id="exportFilename" class="effect-num" style="width: 100%; padding: 4px 6px;" value="${initial.filename}" />
+            <input type="text" id="exportFilename" class="effect-num" style="width: 100%; padding: 5px 8px;" value="${initial.filename}" />
           </div>
         </div>
       </div>
@@ -91,13 +113,20 @@ export function openExportPopup({ document: doc, renderer }) {
         <button class="export-go" id="exportGo">Export</button>
       </div>
     </div>
+    <div class="floating-resize" data-resize-handle aria-hidden="true"></div>
   `;
-  document.body.appendChild(backdrop);
+  document.body.appendChild(win);
+  openWindow = {
+    el: win,
+    focus: () => { win.style.zIndex = String(nextZ()); },
+  };
+  win.style.zIndex = String(nextZ());
 
   const state = { ...initial };
 
+  // ---------- Pill groups ----------
   function pillBind(groupKey, transform = (v) => v) {
-    const grp = backdrop.querySelector(`.export-pillgroup[data-key="${groupKey}"]`);
+    const grp = win.querySelector(`.export-pillgroup[data-key="${groupKey}"]`);
     if (!grp) return;
     grp.querySelectorAll('.effect-pill').forEach((b) => {
       b.addEventListener('click', () => {
@@ -106,10 +135,10 @@ export function openExportPopup({ document: doc, renderer }) {
         state[groupKey] = v;
         grp.querySelectorAll('.effect-pill').forEach((x) => x.classList.toggle('active', x === b));
         if (groupKey === 'format') {
-          backdrop.querySelector('.export-quality').toggleAttribute('hidden', v !== 'jpeg');
+          win.querySelector('.export-quality').toggleAttribute('hidden', v !== 'jpeg');
         }
         if (groupKey === 'background') {
-          backdrop.querySelector('#exportCustomBg').toggleAttribute('hidden', v !== 'custom');
+          win.querySelector('#exportCustomBg').toggleAttribute('hidden', v !== 'custom');
         }
       });
     });
@@ -119,29 +148,79 @@ export function openExportPopup({ document: doc, renderer }) {
   pillBind('scale', (v) => parseInt(v, 10));
   pillBind('background');
 
-  const qSlider = backdrop.querySelector('#exportQuality');
-  const qReadout = backdrop.querySelector('#exportQualityReadout');
+  const qSlider = win.querySelector('#exportQuality');
+  const qReadout = win.querySelector('#exportQualityReadout');
   qSlider.addEventListener('input', (e) => {
     state.quality = parseInt(e.target.value, 10);
     qReadout.textContent = state.quality;
   });
-  const customBg = backdrop.querySelector('#exportCustomBg');
-  customBg.addEventListener('input', (e) => { state.customBg = e.target.value; });
-  const fnInput = backdrop.querySelector('#exportFilename');
-  fnInput.addEventListener('input', (e) => { state.filename = e.target.value; });
+  win.querySelector('#exportCustomBg').addEventListener('input', (e) => { state.customBg = e.target.value; });
+  win.querySelector('#exportFilename').addEventListener('input', (e) => { state.filename = e.target.value; });
 
+  // ---------- Close ----------
   function close() {
+    persistGeometry();
     document.removeEventListener('keydown', onKey);
-    backdrop.remove();
+    win.remove();
+    openWindow = null;
   }
   function onKey(e) { if (e.key === 'Escape') close(); }
   document.addEventListener('keydown', onKey);
+  win.addEventListener('click', (e) => {
+    if (e.target.closest('[data-act=close]')) close();
+  });
+  // Bring to front on any click inside the window
+  win.addEventListener('mousedown', () => { win.style.zIndex = String(nextZ()); });
 
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop || e.target.closest('[data-act=close]')) close();
+  // ---------- Drag the header ----------
+  const header = win.querySelector('[data-drag-handle]');
+  let dragOffset = null;
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('[data-act=close]')) return;
+    const r = win.getBoundingClientRect();
+    dragOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
+    document.body.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragOffset) return;
+    const w = win.offsetWidth;
+    const h = win.offsetHeight;
+    const x = clamp(e.clientX - dragOffset.x, 0, window.innerWidth - w);
+    const y = clamp(e.clientY - dragOffset.y, 0, window.innerHeight - h);
+    win.style.left = `${x}px`;
+    win.style.top = `${y}px`;
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragOffset) { dragOffset = null; document.body.style.userSelect = ''; persistGeometry(); }
   });
 
-  backdrop.querySelector('#exportGo').addEventListener('click', () => {
+  // ---------- Resize from bottom-right corner ----------
+  const resizer = win.querySelector('[data-resize-handle]');
+  let resizeStart = null;
+  resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = win.getBoundingClientRect();
+    resizeStart = { x: e.clientX, y: e.clientY, w: r.width, h: r.height };
+    document.body.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!resizeStart) return;
+    const w = clamp(resizeStart.w + (e.clientX - resizeStart.x), 360, window.innerWidth - parseFloat(win.style.left));
+    const h = clamp(resizeStart.h + (e.clientY - resizeStart.y), 320, window.innerHeight - parseFloat(win.style.top));
+    win.style.width = `${w}px`;
+    win.style.height = `${h}px`;
+  });
+  window.addEventListener('mouseup', () => {
+    if (resizeStart) { resizeStart = null; document.body.style.userSelect = ''; persistGeometry(); }
+  });
+
+  function persistGeometry() {
+    const r = win.getBoundingClientRect();
+    saveWin({ x: r.left, y: r.top, w: r.width, h: r.height });
+  }
+
+  // ---------- Go ----------
+  win.querySelector('#exportGo').addEventListener('click', () => {
     const bg = state.background === 'transparent' ? null
       : state.background === 'custom' ? state.customBg
       : state.background;
@@ -162,3 +241,6 @@ export function openExportPopup({ document: doc, renderer }) {
     close();
   });
 }
+
+let _z = 1000;
+function nextZ() { return ++_z; }

@@ -1,38 +1,65 @@
 // Displacement — for each output pixel (x, y) sample the source at
-// (x + dx, y + dy) where (dx, dy) come from a 2-channel value-noise map.
-// Edge mode: clamp. Output is a fresh ImageData (cannot mutate in place
-// because each output pixel reads from a different source position).
+// (x + dx, y + dy) where (dx, dy) come from a 2-channel value-noise map
+// OR an uploaded displacement texture (R = X offset, G = Y offset).
+// Edge mode: clamp. Output is a fresh ImageData (cannot mutate in place).
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+
+// In-memory cache: data-URL → decoded { w, h, data: Uint8ClampedArray }.
+// Lives for the page lifetime (small textures, cheap re-decode otherwise).
+const _textureCache = new Map();
 
 export default {
   id: 'displacement',
   name: 'Displacement',
-  version: '1.0.0',
+  version: '1.2.0',
   type: 'filter',
   icon: 'wave-square',
   category: 'glitch',
 
-  defaultParams() { return { amount: 10, scale: 8, seed: 1 }; },
+  defaultParams() {
+    return {
+      mode: 'noise',     // 'noise' | 'texture'
+      amount: 10,        // 0-100 px
+      scale: 8,          // 1-40 (noise feature size)
+      seed: 1,           // 1-99
+      texture: null,     // dataURL of the uploaded texture
+    };
+  },
 
-  process(imageData, params) {
-    const amount = Math.max(0, Math.min(100, params.amount ?? 10));
+  async process(imageData, params) {
+    const amount = Math.max(0, Math.min(500, params.amount ?? 10));
     if (amount === 0) return imageData;
-    const scale = Math.max(1, Math.min(40, params.scale ?? 8));
-    const seed = Math.max(1, Math.floor(params.seed || 1));
     const W = imageData.width, H = imageData.height;
     const src = imageData.data;
     const out = new ImageData(W, H);
     const dst = out.data;
+    const mode = params.mode || 'noise';
 
-    const noiseX = makeValueNoise(W, H, scale, seed * 0xDEADBEEF);
-    const noiseY = makeValueNoise(W, H, scale, seed * 0xCAFEBABE + 17);
+    let sampleXY; // (x, y) → [-1, +1] each axis
+    if (mode === 'texture' && params.texture) {
+      const tex = await loadTexture(params.texture);
+      if (tex) {
+        // Tile the texture across the layer; map R → x-offset, G → y-offset (centred at 128).
+        sampleXY = (x, y) => {
+          const tx = ((x % tex.w) + tex.w) % tex.w | 0;
+          const ty = ((y % tex.h) + tex.h) % tex.h | 0;
+          const i = (ty * tex.w + tx) * 4;
+          return [(tex.data[i] - 128) / 128, (tex.data[i + 1] - 128) / 128];
+        };
+      }
+    }
+    if (!sampleXY) {
+      const scale = Math.max(1, Math.min(100, params.scale ?? 8));
+      const seed = Math.max(1, Math.floor(params.seed || 1));
+      const noiseX = makeValueNoise(W, H, scale, seed * 0xDEADBEEF);
+      const noiseY = makeValueNoise(W, H, scale, seed * 0xCAFEBABE + 17);
+      sampleXY = (x, y) => [noiseX(x, y) * 2 - 1, noiseY(x, y) * 2 - 1];
+    }
 
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        // Noise samples in [-1, +1]
-        const nx = noiseX(x, y) * 2 - 1;
-        const ny = noiseY(x, y) * 2 - 1;
+        const [nx, ny] = sampleXY(x, y);
         const sx = clampI(x + Math.round(nx * amount), 0, W - 1);
         const sy = clampI(y + Math.round(ny * amount), 0, H - 1);
         const si = (sy * W + sx) * 4;
@@ -48,23 +75,106 @@ export default {
 
   renderUI(params, onChange) {
     const root = makeRoot();
-    root.appendChild(sliderRow({
-      label: 'Amount', min: 0, max: 100, step: 1, value: params.amount ?? 10, defaultValue: 10, suffix: 'px',
-      onChange: (v) => onChange({ amount: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'Scale', min: 1, max: 40, step: 1, value: params.scale ?? 8, defaultValue: 8,
-      onChange: (v) => onChange({ scale: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'Seed', min: 1, max: 99, step: 1, value: params.seed ?? 1, defaultValue: 1,
-      onChange: (v) => onChange({ seed: v }),
-    }));
+    const local = { ...params };
+
+    function rebuild() {
+      root.innerHTML = '';
+
+      root.appendChild(pillGroup({
+        label: 'Mode',
+        options: [
+          { value: 'noise',   label: 'Noise' },
+          { value: 'texture', label: 'Texture' },
+        ],
+        value: local.mode || 'noise',
+        onChange: (v) => { local.mode = v; onChange({ mode: v }); rebuild(); },
+      }));
+
+      if (local.mode === 'texture') {
+        const drop = document.createElement('div');
+        drop.className = 'displace-drop' + (local.texture ? ' has-texture' : '');
+        drop.innerHTML = local.texture
+          ? `<img src="${local.texture}" alt="" /><span class="displace-drop-label">Drop a new texture or click to replace</span><button class="displace-drop-clear" title="Remove texture">×</button>`
+          : `<i class="fas fa-cloud-arrow-up"></i><span class="displace-drop-label">Drop a displacement texture<br/><small>R → X offset · G → Y offset · grayscale = both</small></span>`;
+        root.appendChild(drop);
+
+        const accept = (file) => {
+          if (!file || !file.type.startsWith('image/')) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            local.texture = reader.result;
+            onChange({ texture: reader.result });
+            rebuild();
+          };
+          reader.readAsDataURL(file);
+        };
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag-over'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+        drop.addEventListener('drop', (e) => {
+          e.preventDefault();
+          drop.classList.remove('drag-over');
+          accept(e.dataTransfer?.files?.[0]);
+        });
+        drop.addEventListener('click', (e) => {
+          if (e.target.closest('.displace-drop-clear')) return;
+          const fi = document.createElement('input');
+          fi.type = 'file';
+          fi.accept = 'image/*';
+          fi.onchange = () => accept(fi.files?.[0]);
+          fi.click();
+        });
+        const clearBtn = drop.querySelector('.displace-drop-clear');
+        if (clearBtn) clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          local.texture = null;
+          onChange({ texture: null });
+          rebuild();
+        });
+      }
+
+      root.appendChild(sliderRow({
+        label: 'Amount', min: 0, max: 100, step: 1, value: local.amount ?? 10, defaultValue: 10, suffix: 'px',
+        onChange: (v) => { local.amount = v; onChange({ amount: v }); },
+      }));
+
+      if (local.mode !== 'texture') {
+        root.appendChild(sliderRow({
+          label: 'Scale', min: 1, max: 100, step: 1, value: local.scale ?? 8, defaultValue: 8,
+          onChange: (v) => { local.scale = v; onChange({ scale: v }); },
+        }));
+        root.appendChild(sliderRow({
+          label: 'Seed', min: 1, max: 99, step: 1, value: local.seed ?? 1, defaultValue: 1,
+          onChange: (v) => { local.seed = v; onChange({ seed: v }); },
+        }));
+      }
+    }
+    rebuild();
     return root;
   },
 };
 
+// ---------- helpers ----------
 function clampI(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function loadTexture(dataUrl) {
+  if (!dataUrl) return null;
+  if (_textureCache.has(dataUrl)) return Promise.resolve(_textureCache.get(dataUrl));
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const id = ctx.getImageData(0, 0, c.width, c.height);
+      const tex = { w: c.width, h: c.height, data: id.data };
+      _textureCache.set(dataUrl, tex);
+      resolve(tex);
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
 
 function mulberry32(seed) {
   let t = (seed >>> 0) || 1;

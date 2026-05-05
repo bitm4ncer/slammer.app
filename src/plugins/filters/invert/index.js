@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'adjust',
-  category: 'image',
+  category: 'color',
 
   defaultParams() {
     return { strength: 1 };

@@ -32,12 +32,8 @@ export function initLayerStackAdd({ document: doc, openTextLayer }) {
       };
       input.click();
     });
-    appendItem(m, 'fa-i-cursor', 'Text', () => {
+    appendCustomItem(m, '<span class="dropdown-glyph-t">T</span>', 'Text', () => {
       const layer = doc.addTextLayer({ text: { value: 'slammer', mode: 'text', boxWidth: 600 } });
-      openTextLayer?.(layer);
-    });
-    appendItem(m, 'fa-pen-to-square', 'Text Box', () => {
-      const layer = doc.addTextLayer({ text: { value: 'slammer', mode: 'textBox', boxWidth: 600 } });
       openTextLayer?.(layer);
     });
 
@@ -75,9 +71,12 @@ export function initLayerStackAdd({ document: doc, openTextLayer }) {
     m.appendChild(g);
   }
   function appendItem(m, faIcon, label, onClick) {
+    appendCustomItem(m, `<i class="fas ${faIcon}"></i>`, label, onClick);
+  }
+  function appendCustomItem(m, iconHTML, label, onClick) {
     const it = window.document.createElement('div');
     it.className = 'custom-dropdown-item';
-    it.innerHTML = `<i class="fas ${faIcon}"></i><span>${label}</span>`;
+    it.innerHTML = `${iconHTML}<span>${label}</span>`;
     it.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();

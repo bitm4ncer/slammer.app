@@ -142,14 +142,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---------- History (undo/redo) ----------
   const history = createHistory(doc);
-  const undoBtn = document.getElementById('btnUndo');
-  const redoBtn = document.getElementById('btnRedo');
+  const undoBtns = document.querySelectorAll('.tb-undo');
+  const redoBtns = document.querySelectorAll('.tb-redo');
   history.subscribe(({ canUndo, canRedo }) => {
-    undoBtn.disabled = !canUndo;
-    redoBtn.disabled = !canRedo;
+    undoBtns.forEach((b) => { b.disabled = !canUndo; });
+    redoBtns.forEach((b) => { b.disabled = !canRedo; });
   });
-  undoBtn.addEventListener('click', () => history.undo());
-  redoBtn.addEventListener('click', () => history.redo());
+  undoBtns.forEach((b) => b.addEventListener('click', () => history.undo()));
+  redoBtns.forEach((b) => b.addEventListener('click', () => history.redo()));
   window.addEventListener('keydown', (e) => {
     const isMod = e.ctrlKey || e.metaKey;
     if (!isMod) return;

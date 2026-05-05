@@ -1,9 +1,9 @@
-// Curve editor — interactive 220×140 canvas with draggable control points and
+// Curve editor — interactive 256×200 canvas with draggable control points and
 // Catmull-Rom interpolation between them. Builds a 256-entry LUT.
 
-const W = 220;
-const H = 140;
-const PAD = 6;
+const W = 256;
+const H = 200;
+const PAD = 10;
 
 export function createCurveEditor({ getPoints, setPoints, channelColor }) {
   const root = document.createElement('div');
@@ -39,9 +39,11 @@ export function createCurveEditor({ getPoints, setPoints, channelColor }) {
   function draw() {
     const pts = getPoints();
     ctx.clearRect(0, 0, W, H);
-    // Background grid
-    ctx.fillStyle = '#1a1a1a';
+    // Backdrop — slightly lighter than the panel surface for contrast.
+    ctx.fillStyle = '#161616';
     ctx.fillRect(0, 0, W, H);
+
+    // Subtle 4×4 grid + bolder centre lines.
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
@@ -50,31 +52,59 @@ export function createCurveEditor({ getPoints, setPoints, channelColor }) {
       ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, H - PAD); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
     }
+    ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+    const midX = PAD + 0.5 * (W - PAD * 2);
+    const midY = PAD + 0.5 * (H - PAD * 2);
+    ctx.beginPath(); ctx.moveTo(midX, PAD); ctx.lineTo(midX, H - PAD); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, midY); ctx.lineTo(W - PAD, midY); ctx.stroke();
+
+    // Histogram-style luminance-band hint (left = shadows, right = highlights).
+    const grad = ctx.createLinearGradient(PAD, 0, W - PAD, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0.0)');
+    grad.addColorStop(1, 'rgba(255,255,255,0.06)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(PAD, H - PAD - 8, W - PAD * 2, 8);
+
     // Diagonal reference
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.setLineDash([3, 3]);
     ctx.beginPath();
     const a = toUv({ x: 0, y: 0 }); const b = toUv({ x: 255, y: 255 });
     ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Curve path
+    // Curve path with subtle outer glow in the channel colour.
     const lut = buildLut(pts);
-    ctx.strokeStyle = channelColor();
-    ctx.lineWidth = 1.5;
+    const col = channelColor();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 3;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     for (let x = 0; x < 256; x++) {
       const uv = toUv({ x, y: lut[x] });
       if (x === 0) ctx.moveTo(uv.x, uv.y); else ctx.lineTo(uv.x, uv.y);
     }
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    // Control points
-    for (const p of pts) {
-      const uv = toUv(p);
-      ctx.fillStyle = channelColor();
-      ctx.strokeStyle = '#0e0e0e';
+    // Control points — slightly larger, white inner dot for contrast.
+    for (let i = 0; i < pts.length; i++) {
+      const uv = toUv(pts[i]);
+      const isEndpoint = i === 0 || i === pts.length - 1;
+      ctx.beginPath();
+      ctx.arc(uv.x, uv.y, isEndpoint ? 4 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.strokeStyle = '#0a0a0a';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(uv.x, uv.y, 4, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
+      ctx.stroke();
+      if (!isEndpoint) {
+        ctx.beginPath();
+        ctx.arc(uv.x, uv.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+      }
     }
   }
 

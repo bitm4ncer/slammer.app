@@ -86,6 +86,24 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   $('zoomOut').addEventListener('click', () => view.zoomBy(0.8));
   $('zoomFit').addEventListener('click', () => view.fitTo());
 
+  // Fullscreen toggle — uses the Fullscreen API; falls back to a no-op
+  // on browsers that block it.
+  const fsBtn = $('btnFullscreen');
+  fsBtn?.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const inFs = !!document.fullscreenElement;
+    const icon = fsBtn?.querySelector('i');
+    if (icon) icon.className = inFs ? 'fas fa-compress' : 'fas fa-expand';
+  });
+
   // Tool hotkeys + project shortcuts.
   // Skip when typing into inputs/textareas/contenteditable.
   window.addEventListener('keydown', (e) => {

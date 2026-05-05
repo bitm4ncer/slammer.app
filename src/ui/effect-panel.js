@@ -4,6 +4,7 @@
 
 import Sortable from 'sortablejs';
 import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
+import { getSettings, onSettingsChange } from './settings-popup.js';
 
 export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   let sortable = null;
@@ -52,17 +53,28 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     });
   }
 
+  function isExpanded(eff, plugin) {
+    if (plugin?.type === 'tool') return !!eff.expanded;
+    // Filters: open if user expanded it, OR setting "keep all open" is on.
+    // Disabled effects collapse like enabled ones — user can still click to open.
+    if (getSettings().keepEffectsOpen) return true;
+    return !!eff.expanded;
+  }
+
   function renderEffect(layer, eff, plugin) {
+    const expanded = isExpanded(eff, plugin);
     const wrap = window.document.createElement('div');
-    wrap.className = `effect-item ${plugin?.type === 'tool' ? 'is-tool' : 'is-filter'} ${eff.expanded ? 'expanded' : ''} ${eff.enabled ? '' : 'disabled'}`;
+    wrap.className = `effect-item ${plugin?.type === 'tool' ? 'is-tool' : 'is-filter'} ${expanded ? 'expanded' : ''} ${eff.enabled ? '' : 'disabled'}`;
     wrap.dataset.effectId = eff.id;
 
     const header = window.document.createElement('div');
     header.className = 'effect-header';
+    const showCaret = plugin?.type === 'filter' && !getSettings().keepEffectsOpen;
     header.innerHTML = `
       <span class="eff-drag-handle" title="Reorder"><i class="fas fa-grip-vertical"></i></span>
       <i class="effect-icon fas fa-${plugin?.icon || 'puzzle-piece'}"></i>
       <span class="effect-name">${plugin?.name || eff.pluginId}</span>
+      ${showCaret ? `<i class="effect-caret fas fa-chevron-${expanded ? 'up' : 'down'}"></i>` : ''}
       <button class="effect-icon-btn act-toggle" title="${eff.enabled ? 'Disable' : 'Enable'}">
         <i class="fas fa-${eff.enabled ? 'circle-check' : 'circle'}"></i>
       </button>
@@ -93,12 +105,23 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
         document.setEffectProp(layer.id, eff.id, 'expanded', willExpand);
         render();
       });
+    } else {
+      // Filters: click header (not the action icons) to expand/collapse.
+      // Disabled effects can still be opened to tweak before re-enabling.
+      // Only the "keep all effects open" setting locks the body open.
+      header.addEventListener('click', (e) => {
+        if (e.target.closest('.effect-icon-btn')) return;
+        if (getSettings().keepEffectsOpen) return;
+        document.setEffectProp(layer.id, eff.id, 'expanded', !eff.expanded);
+        render();
+      });
+      header.style.cursor = getSettings().keepEffectsOpen ? 'default' : 'pointer';
     }
 
     if (!plugin) return wrap;
 
-    // Body — for filters always render; for tools only when expanded.
-    if (plugin.type === 'filter' || eff.expanded) {
+    // Body — only render when expanded (per isExpanded() rules above).
+    if (expanded) {
       const body = window.document.createElement('div');
       body.className = 'effect-body';
       const ui = plugin.renderUI(eff.params, (patch) => {
@@ -202,6 +225,9 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     const visualToggle = e.type === 'effect:propChanged' && (e.prop === 'enabled' || e.prop === 'expanded');
     if (structural || visualToggle) render();
   });
+
+  // Re-render whenever the user flips the "Keep effects open" setting.
+  onSettingsChange(() => render());
 
   render();
   return { render };

@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'sliders',
-  category: 'image',
+  category: 'color',
 
   defaultParams() { return { black: 0, mid: 1.0, white: 255 }; },
 

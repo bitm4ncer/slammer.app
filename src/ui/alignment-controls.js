@@ -2,23 +2,33 @@
 // layer to the export frame. Visible only when both a frame is set AND there
 // is an active non-FX layer.
 
+// Inline SVG icons — proper layout-alignment glyphs (vertical/horizontal
+// reference bar + two object rectangles aligned to it). FontAwesome Free
+// doesn't ship the "objects-align-*" set, so we draw them ourselves.
+const SVG = {
+  alignLeft: `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="1" y="1" width="1" height="14"/><rect x="3" y="3" width="9" height="3"/><rect x="3" y="10" width="6" height="3"/></svg>`,
+  centerH:   `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="7.5" y="1" width="1" height="14"/><rect x="3.5" y="3" width="9" height="3"/><rect x="5"   y="10" width="6" height="3"/></svg>`,
+  alignRight:`<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="14" y="1" width="1" height="14"/><rect x="4" y="3" width="9" height="3"/><rect x="7" y="10" width="6" height="3"/></svg>`,
+  alignTop:  `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="1" y="1" width="14" height="1"/><rect x="3" y="3" width="3" height="9"/><rect x="10" y="3" width="3" height="6"/></svg>`,
+  centerV:   `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="1" y="7.5" width="14" height="1"/><rect x="3" y="3.5" width="3" height="9"/><rect x="10" y="5"   width="3" height="6"/></svg>`,
+  alignBot:  `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="1" y="14" width="14" height="1"/><rect x="3" y="4" width="3" height="9"/><rect x="10" y="7" width="3" height="6"/></svg>`,
+};
+
 const ACTIONS = [
-  ['fa-align-left',          'Align left',           'h', 'left'],
-  ['fa-align-center',        'Center horizontally',  'h', 'center'],
-  ['fa-align-right',         'Align right',          'h', 'right'],
-  ['fa-arrow-up-to-line',    'Align top',            'v', 'top'],
-  ['fa-grip-lines',          'Center vertically',    'v', 'middle'],
-  ['fa-arrow-down-to-line',  'Align bottom',         'v', 'bottom'],
+  [SVG.alignLeft,  'Align left',          'h', 'left'],
+  [SVG.centerH,    'Center horizontally', 'h', 'center'],
+  [SVG.alignRight, 'Align right',         'h', 'right'],
+  [SVG.alignTop,   'Align top',           'v', 'top'],
+  [SVG.centerV,    'Center vertically',   'v', 'middle'],
+  [SVG.alignBot,   'Align bottom',        'v', 'bottom'],
 ];
 
 export function initAlignmentControls({ document: doc, container }) {
   if (!container) return;
 
   // Build buttons once.
-  container.innerHTML = ACTIONS.map(([icon, title, axis, mode]) =>
-    `<button class="tb-btn tb-btn--icon align-btn" data-axis="${axis}" data-mode="${mode}" title="${title} (frame)" aria-label="${title}">
-       <i class="fas ${icon}"></i>
-     </button>`
+  container.innerHTML = ACTIONS.map(([svg, title, axis, mode]) =>
+    `<button class="tb-btn tb-btn--icon align-btn" data-axis="${axis}" data-mode="${mode}" title="${title} (frame)" aria-label="${title}">${svg}</button>`
   ).join('');
 
   container.querySelectorAll('.align-btn').forEach((btn) => {

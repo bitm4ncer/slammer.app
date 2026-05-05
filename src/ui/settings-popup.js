@@ -5,7 +5,7 @@ import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
 
 const STORE_KEY = 'slammer:settings';
-const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true };
+const DEFAULTS = { autosaveMs: 800, accent: '#F0F0F0', customLayerColors: true, keepEffectsOpen: false, frameDimOpacity: 0.80 };
 
 const listeners = new Set();
 
@@ -92,6 +92,23 @@ export function initSettingsPopup({ button, version }) {
           </div>
 
           <div class="settings-row">
+            <label class="settings-label" for="setKeepEffectsOpen">Keep all effects open</label>
+            <label class="effect-toggle-row settings-toggle-bare" for="setKeepEffectsOpen">
+              <input type="checkbox" id="setKeepEffectsOpen" ${s.keepEffectsOpen ? 'checked' : ''} />
+              <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="setFrameDim">Export frame dim
+              <code class="settings-readout" id="setFrameDimReadout">${Math.round((s.frameDimOpacity ?? 0.80) * 100)}%</code>
+            </label>
+            <div class="settings-control">
+              <input type="range" id="setFrameDim" min="0" max="100" step="1" value="${Math.round((s.frameDimOpacity ?? 0.80) * 100)}" />
+            </div>
+          </div>
+
+          <div class="settings-row">
             <label class="settings-label">Autosave delay <code class="settings-readout" id="setAutosaveReadout">${s.autosaveMs} ms</code></label>
             <div class="settings-control" id="setAutosaveControl"></div>
           </div>
@@ -155,6 +172,19 @@ export function initSettingsPopup({ button, version }) {
     const customAccentInput = backdrop.querySelector('#setCustomLayerColors');
     customAccentInput.addEventListener('change', (e) => {
       setSettings({ customLayerColors: e.target.checked });
+    });
+
+    const keepOpenInput = backdrop.querySelector('#setKeepEffectsOpen');
+    keepOpenInput.addEventListener('change', (e) => {
+      setSettings({ keepEffectsOpen: e.target.checked });
+    });
+
+    const frameDimInput = backdrop.querySelector('#setFrameDim');
+    const frameDimReadout = backdrop.querySelector('#setFrameDimReadout');
+    frameDimInput.addEventListener('input', (e) => {
+      const pct = parseInt(e.target.value, 10);
+      frameDimReadout.textContent = `${pct}%`;
+      setSettings({ frameDimOpacity: pct / 100 });
     });
 
     // Esc closes.

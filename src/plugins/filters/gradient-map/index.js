@@ -43,67 +43,99 @@ export default {
 
     function rebuild() {
       root.innerHTML = '';
-      // Visual gradient bar (CSS linear-gradient from current stops).
+      // Visual gradient bar with draggable position handles per stop.
+      const wrap = document.createElement('div');
+      wrap.className = 'gradient-editor';
       const bar = document.createElement('div');
       bar.className = 'gradient-bar';
       bar.style.background = stopsToCss(local.stops);
-      root.appendChild(bar);
+      wrap.appendChild(bar);
+      const handles = document.createElement('div');
+      handles.className = 'gradient-handles';
+      wrap.appendChild(handles);
+      root.appendChild(wrap);
 
-      // Per-stop swatch row + add button.
-      const row = document.createElement('div');
-      row.className = 'effect-swatch-row';
-      const sortedIdx = local.stops
-        .map((_, i) => i)
-        .sort((a, b) => local.stops[a].at - local.stops[b].at);
-      const canRemove = local.stops.length > 2;
+      function refreshBar() {
+        bar.style.background = stopsToCss(local.stops);
+      }
 
-      sortedIdx.forEach((origIdx) => {
-        const stop = local.stops[origIdx];
-        const sw = document.createElement('div');
-        sw.className = 'effect-swatch palette-swatch';
-        sw.style.background = stop.color;
-        sw.innerHTML = `
-          <input type="color" value="${stop.color}" />
-          ${canRemove ? `<button class="palette-remove" title="Remove stop">×</button>` : ''}
-        `;
-        sw.querySelector('input').addEventListener('input', (e) => {
-          local.stops[origIdx] = { ...local.stops[origIdx], color: e.target.value };
+      function placeHandle(idx) {
+        const stop = local.stops[idx];
+        const h = document.createElement('div');
+        h.className = 'gradient-handle';
+        h.style.background = stop.color;
+        h.style.left = `${stop.at * 100}%`;
+        h.title = `${stop.color} @ ${(stop.at * 100).toFixed(0)}%`;
+
+        // Hidden colour input so click on the handle (without drag) opens picker.
+        const colorInp = document.createElement('input');
+        colorInp.type = 'color';
+        colorInp.value = stop.color;
+        colorInp.className = 'gradient-handle-color';
+        h.appendChild(colorInp);
+        colorInp.addEventListener('input', (e) => {
+          local.stops[idx] = { ...local.stops[idx], color: e.target.value };
           onChange({ stops: local.stops });
-          sw.style.background = e.target.value;
-          bar.style.background = stopsToCss(local.stops);
+          h.style.background = e.target.value;
+          refreshBar();
         });
-        const rm = sw.querySelector('.palette-remove');
-        if (rm) rm.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          local.stops.splice(origIdx, 1);
+
+        // Drag to reposition; double-click to remove (min 2 stops).
+        let dragging = false;
+        let moved = false;
+        h.addEventListener('mousedown', (e) => {
+          if (e.target === colorInp) return;
+          e.preventDefault();
+          dragging = true;
+          moved = false;
+        });
+        const onMove = (e) => {
+          if (!dragging) return;
+          const rect = bar.getBoundingClientRect();
+          const at = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+          if (Math.abs(at - local.stops[idx].at) > 0.001) moved = true;
+          local.stops[idx] = { ...local.stops[idx], at };
+          h.style.left = `${at * 100}%`;
+          h.title = `${local.stops[idx].color} @ ${(at * 100).toFixed(0)}%`;
+          onChange({ stops: local.stops });
+          refreshBar();
+        };
+        const onUp = () => { dragging = false; };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        // Click without drag → open colour picker (the input is invisible but
+        // intercepts the click natively).
+        h.addEventListener('click', (e) => {
+          if (moved) e.stopPropagation();
+        });
+        h.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          if (local.stops.length <= 2) return;
+          local.stops.splice(idx, 1);
           onChange({ stops: local.stops });
           rebuild();
         });
-        row.appendChild(sw);
+        handles.appendChild(h);
+      }
+      local.stops.forEach((_, idx) => placeHandle(idx));
+
+      // Click empty spot on the bar to add a new stop there.
+      bar.addEventListener('click', (e) => {
+        if (local.stops.length >= 8) return;
+        const rect = bar.getBoundingClientRect();
+        const at = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+        const sorted = local.stops.slice().sort((a, b) => a.at - b.at);
+        const color = sampleStops(sorted, at);
+        local.stops.push({ at, color });
+        onChange({ stops: local.stops });
+        rebuild();
       });
 
-      if (local.stops.length < 8) {
-        const add = document.createElement('button');
-        add.type = 'button';
-        add.className = 'palette-add';
-        add.title = 'Add stop';
-        add.addEventListener('click', () => {
-          // New stop midway between the two widest-gap neighbours.
-          const sorted = local.stops.slice().sort((a, b) => a.at - b.at);
-          let bestGap = 0; let at = 0.5;
-          for (let i = 0; i < sorted.length - 1; i++) {
-            const gap = sorted[i + 1].at - sorted[i].at;
-            if (gap > bestGap) { bestGap = gap; at = (sorted[i].at + sorted[i + 1].at) / 2; }
-          }
-          // Interpolate the colour at that point.
-          const color = sampleStops(sorted, at);
-          local.stops.push({ at, color });
-          onChange({ stops: local.stops });
-          rebuild();
-        });
-        row.appendChild(add);
-      }
-      root.appendChild(row);
+      // Hint row + amount slider.
+      const hint = document.createElement('div');
+      hint.className = 'gradient-hint';
+      hint.textContent = 'Click bar to add · drag handle to move · double-click to remove';
+      root.appendChild(hint);
 
       root.appendChild(sliderRow({
         label: 'Amount', min: 0, max: 100, step: 1, value: local.amount, defaultValue: 100, suffix: '%',

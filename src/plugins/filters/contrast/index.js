@@ -8,7 +8,7 @@ export default {
   version: '1.0.0',
   type: 'filter',
   icon: 'circle-half-stroke',
-  category: 'image',
+  category: 'color',
 
   defaultParams() { return { value: 0 }; },
 
