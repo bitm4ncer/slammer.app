@@ -7,6 +7,11 @@
 
 import paper from 'paper';
 
+// Padding around the path bbox so blur / displacement / glow don't clip.
+// Exported via the rasterise return so the consumer (renderer.js) can
+// position the Konva.Image to compensate for path-bounds shifts.
+const PAD = 16;
+
 let _project = null;
 function ensureProject() {
   if (!_project) {
@@ -215,20 +220,20 @@ export function rasterizeVectorLayer(layer) {
   ensureProject();
   const recs = (layer.vector && layer.vector.paths) || [];
   // Empty placeholder used by the early-out branches. Always include
-  // pathBounds + contentOffsetInImage so the renderer can call
-  // image.position(...) without `undefined` crashes — the symptom of the
-  // bug we used to ship: TypeError reading 'x' on initial shape draw.
+  // pathBounds + pad so the renderer can call image.position(...) without
+  // `undefined` crashes — the symptom of the bug we used to ship: TypeError
+  // reading 'x' on initial shape draw.
   const empty = () => ({
     imageData: new ImageData(1, 1),
     naturalSize: { w: 1, h: 1 },
     pathBounds: { x: 0, y: 0, width: 1, height: 1 },
-    contentOffsetInImage: { x: 0, y: 0 },
+    pad: PAD,
   });
   if (!recs.length) return empty();
 
   const b = computeBounds(recs);
   if (b.width <= 0 || b.height <= 0) return empty();
-  const pad = 16;
+  const pad = PAD;
   const w = Math.max(1, Math.ceil(b.width + pad * 2));
   const h = Math.max(1, Math.ceil(b.height + pad * 2));
   const dx = -b.x + pad;
@@ -291,17 +296,10 @@ export function rasterizeVectorLayer(layer) {
   // selection handles tight to the path geometry and makes Konva.Transformer
   // scale around the path's actual top-left, not the padded canvas edge.
   const pathBounds = computePathBounds(recs);
-  // contentOffsetInImage = where, in canvas pixels, the path's top-left sits.
-  // dx = pad - b.x (b includes stroke), so canvas x for path.bounds.x is
-  // path.bounds.x + dx = pad + (path.bounds.x - b.x) = pad + outsideStrokeGrow.
-  const contentOffsetInImage = {
-    x: pathBounds.x + dx,
-    y: pathBounds.y + dy,
-  };
   return {
     imageData,
     naturalSize: { w, h },
     pathBounds,
-    contentOffsetInImage,
+    pad,
   };
 }

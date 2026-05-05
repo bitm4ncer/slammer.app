@@ -71,20 +71,17 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     return true;
   }
 
-  // Vector layers use a CENTRE-origin convention so rotation / scale via
-  // the transformer pivot around the shape's geometric centre. The renderer
-  // sets group.offset = (w/2, h/2); we set group.x/y (= transform.x/y) to
-  // the shape's centre in world coords.
+  // Top-left origin: layer.transform.x/y is the path bbox top-left in
+  // world. Updated only during the active draw (so the visible shape
+  // tracks the user's cursor); after release, transform stays fixed and
+  // anchor edits leave it alone.
   function syncLayerTransform() {
     if (!active) return;
     const layer = doc.findLayer(active.layerId);
     if (!layer) return;
     const b = computePathBounds(layer.vector.paths);
     if (!(b.width > 0) || !(b.height > 0)) return;
-    doc.setLayerTransform(active.layerId, {
-      x: b.x + b.width / 2,
-      y: b.y + b.height / 2,
-    });
+    doc.setLayerTransform(active.layerId, { x: b.x, y: b.y });
   }
 
   function end() {

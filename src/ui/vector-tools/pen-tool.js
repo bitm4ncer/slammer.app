@@ -70,12 +70,63 @@ export function attachPenTool({ stage, document: doc }) {
       listening: false,
     });
     state.rubberLayer.add(state.rubberLine);
+    // Group for anchor-handle previews — repopulated each tick.
+    state.handleGroup = new Konva.Group({ listening: false });
+    state.rubberLayer.add(state.handleGroup);
   }
   function clearRubber() {
     if (!state.rubberLayer) return;
     state.rubberLayer.destroy();
     state.rubberLayer = null;
     state.rubberLine = null;
+    state.handleGroup = null;
+  }
+  // Render the in-progress path's anchors + bezier tangents on the rubber
+  // layer so the user can SEE what they're building (matches Affinity / AI
+  // pen-tool feedback).
+  function renderHandles() {
+    if (!state.handleGroup) return;
+    state.handleGroup.destroyChildren();
+    const layer = doc.findLayer(state.layerId);
+    if (!layer) { state.rubberLayer.batchDraw(); return; }
+    const segs = dToSegments(layer.vector.paths[state.pathIdx].d);
+    const accent = getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c';
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      // Tangent lines + dots
+      if (s.hi && (s.hi.x || s.hi.y)) {
+        state.handleGroup.add(new Konva.Line({
+          points: [s.x, s.y, s.x + s.hi.x, s.y + s.hi.y],
+          stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, opacity: 0.55, listening: false,
+        }));
+        state.handleGroup.add(new Konva.Circle({
+          x: s.x + s.hi.x, y: s.y + s.hi.y,
+          radius: 3.5, fill: '#fff', stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, listening: false,
+        }));
+      }
+      if (s.ho && (s.ho.x || s.ho.y)) {
+        state.handleGroup.add(new Konva.Line({
+          points: [s.x, s.y, s.x + s.ho.x, s.y + s.ho.y],
+          stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, opacity: 0.55, listening: false,
+        }));
+        state.handleGroup.add(new Konva.Circle({
+          x: s.x + s.ho.x, y: s.y + s.ho.y,
+          radius: 3.5, fill: '#fff', stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, listening: false,
+        }));
+      }
+      // Anchor square (white-fill / dark-stroke). The first anchor is a
+      // smidge bigger so the user can target it for the close-path click.
+      const isFirst = i === 0;
+      const half = isFirst ? 4.5 : 3.5;
+      state.handleGroup.add(new Konva.Rect({
+        x: s.x - half, y: s.y - half,
+        width: half * 2, height: half * 2,
+        fill: isFirst ? accent : '#fff',
+        stroke: '#0a0a0a', strokeWidth: 1, strokeScaleEnabled: false,
+        listening: false,
+      }));
+    }
+    state.rubberLayer.batchDraw();
   }
 
   // Pick (or create) the layer + path index where new anchors will land.
@@ -160,12 +211,20 @@ export function attachPenTool({ stage, document: doc }) {
     return segs;
   }
 
-  function syncCenterTransform(layerId) {
+  // Top-left origin: layer.transform.x/y is the path bbox top-left in
+  // world space. Set on first anchor; never recomputed after that — the
+  // renderer's image.position handles bounds shifts.
+  function setInitialTransform(layerId) {
     const layer = doc.findLayer(layerId);
     if (!layer) return;
     const b = computePathBounds(layer.vector.paths);
-    if (b.width <= 0 || b.height <= 0) return;
-    doc.setLayerTransform(layerId, { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    if (b.width <= 0 && b.height <= 0) {
+      // Single-point — anchor at the path's first point.
+      const seg0 = (layer.vector.paths[state.pathIdx]?.d || '').match(/M\s*(-?[\d.]+)\s*(-?[\d.]+)/);
+      if (seg0) doc.setLayerTransform(layerId, { x: parseFloat(seg0[1]), y: parseFloat(seg0[2]) });
+      return;
+    }
+    doc.setLayerTransform(layerId, { x: b.x, y: b.y });
   }
 
   // Distance in screen pixels (for hit-zone tests like "click first anchor").
@@ -188,7 +247,8 @@ export function attachPenTool({ stage, document: doc }) {
       const segs = dToSegments(layer.vector.paths[pathIdx].d);
       segs.push({ x: pt.x, y: pt.y, hi: null, ho: null });
       doc.setVectorPath(layer.id, pathIdx, { d: segmentsToD(segs, false) });
-      syncCenterTransform(layer.id);
+      setInitialTransform(layer.id);
+      renderHandles();
       ensureRubber();
       state.pressDownPos = pt;
       state.pressedHandleAnchorIdx = segs.length - 1;
@@ -208,9 +268,11 @@ export function attachPenTool({ stage, document: doc }) {
     }
     segs.push({ x: pt.x, y: pt.y, hi: null, ho: null });
     doc.setVectorPath(layer.id, state.pathIdx, { d: segmentsToD(segs, false) });
-    syncCenterTransform(layer.id);
+    // Don't recompute transform here — it stays at the layer's creation
+    // anchor point so subsequent anchors stay visually put.
     state.pressDownPos = pt;
     state.pressedHandleAnchorIdx = segs.length - 1;
+    renderHandles();
     return true;
   }
 
@@ -231,10 +293,10 @@ export function attachPenTool({ stage, document: doc }) {
             segs[i].ho = { x: dx, y: dy };
             segs[i].hi = { x: -dx, y: -dy };
             doc.setVectorPath(layer.id, state.pathIdx, { d: segmentsToD(segs, false) });
+            renderHandles();
           }
         }
       }
-      // Don't draw rubber-band while pulling out handles.
       if (state.rubberLine) state.rubberLine.points([]);
       if (state.rubberLayer) state.rubberLayer.batchDraw();
       return;
@@ -261,7 +323,6 @@ export function attachPenTool({ stage, document: doc }) {
     if (!layer) { reset(); return; }
     const segs = dToSegments(layer.vector.paths[state.pathIdx].d);
     doc.setVectorPath(layer.id, state.pathIdx, { d: segmentsToD(segs, true), closed: true });
-    syncCenterTransform(layer.id);
     reset();
   }
 

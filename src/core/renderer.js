@@ -183,24 +183,34 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return rasterizeText(layer.text, st);
     }
     if (layer.type === 'vector') {
-      const { imageData, naturalSize, pathBounds, contentOffsetInImage } = rasterizeVectorLayer(layer);
+      const { imageData, naturalSize, pathBounds, pad } = rasterizeVectorLayer(layer);
       st.naturalSize = naturalSize;
       st.vectorPathBounds = pathBounds;
-      st.vectorContentOffset = contentOffsetInImage;
-      // Position the image so the path's top-left sits at the GROUP origin
-      // (0,0). Then set the GROUP's offset to the path's centre so
-      // Konva.Transformer rotates/scales around the shape's centre instead
-      // of its top-left. layer.transform.x/y is the world coord of the
-      // pivot point (= path centre).
+      st.vectorPad = pad;
+      // Vector layer model:
+      //   • layer.transform.x/y = the layer's anchor point in world (set ONCE
+      //     at creation by the shape-drawer; never updated by anchor/shape edits)
+      //   • path coords stored in WORLD space (where the user drew them)
+      //   • group.offset = 0 (top-left origin — Konva scales/rotates around
+      //     the layer's transform.x/y point)
+      //   • image.position adjusts so canvas-pixel for path-coord lx lands
+      //     at world lx, regardless of how the path bounds have shifted
+      //     since creation.
+      //
+      // World position derivation (group.offset = 0):
+      //   pixel(cx) world = group.x + image.x + cx
+      //   canvas pixel for path-coord lx = lx + (pad - pathBounds.x)
+      //   → world(lx) = group.x + image.x + lx + pad - pathBounds.x
+      //   We want world(lx) = lx, so:
+      //   image.x = pathBounds.x - group.x - pad
+      st.group.offset({ x: 0, y: 0 });
       st.image.position({
-        x: -contentOffsetInImage.x,
-        y: -contentOffsetInImage.y,
+        x: pathBounds.x - layer.transform.x - pad,
+        y: pathBounds.y - layer.transform.y - pad,
       });
-      st.group.offset({
-        x: pathBounds.width / 2,
-        y: pathBounds.height / 2,
-      });
-      st.textPad = contentOffsetInImage.x;
+      // Selection rect = path bbox in image-local. Pad sits at canvas-pixel
+      // (pad, pad); width/height match the path geometry (no stroke padding).
+      st.textPad = pad;
       st.textContentSize = {
         w: Math.max(1, Math.round(pathBounds.width)),
         h: Math.max(1, Math.round(pathBounds.height)),

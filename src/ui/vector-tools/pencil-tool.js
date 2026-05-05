@@ -65,12 +65,12 @@ export function attachPencilTool({ stage, document: doc }) {
     return Math.hypot((a.x - b.x) * sc, (a.y - b.y) * sc);
   }
 
-  function syncCenterTransform(layerId) {
+  function setInitialTransform(layerId) {
     const layer = doc.findLayer(layerId);
     if (!layer) return;
     const b = computePathBounds(layer.vector.paths);
-    if (b.width <= 0 || b.height <= 0) return;
-    doc.setLayerTransform(layerId, { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    if (b.width <= 0 && b.height <= 0) return;
+    doc.setLayerTransform(layerId, { x: b.x, y: b.y });
   }
 
   function samplesToD(samples, closed) {
@@ -112,7 +112,7 @@ export function attachPencilTool({ stage, document: doc }) {
     }
     state.layerId = layer.id;
     state.drawing = true;
-    syncCenterTransform(layer.id);
+    setInitialTransform(layer.id);
     return true;
   }
 
@@ -122,9 +122,9 @@ export function attachPencilTool({ stage, document: doc }) {
     const last = state.samples[state.samples.length - 1];
     if (screenDist(last, pt) < 4) return;  // ~4 px screen-space sample spacing
     state.samples.push(pt);
-    // Live polyline preview while dragging — cheap rewrite of d each tick.
+    // Live polyline preview while dragging. Transform stays fixed; the
+    // renderer's image.position compensates as the bbox grows.
     doc.setVectorPath(state.layerId, state.pathIdx, { d: samplesToD(state.samples, false) });
-    syncCenterTransform(state.layerId);
   }
 
   function end() {
@@ -160,7 +160,6 @@ export function attachPencilTool({ stage, document: doc }) {
     p.remove();
 
     doc.setVectorPath(state.layerId, state.pathIdx, { d: newD, closed });
-    syncCenterTransform(state.layerId);
     reset();
   }
 

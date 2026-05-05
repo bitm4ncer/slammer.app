@@ -105,11 +105,12 @@ export function initAnchorOverlay({ stage, document: doc }) {
     });
     overlay.add(grp);
 
-    // Path-local origin in group coords: layer's transform.x/y points at the
-    // group's offset point (centre); to draw at path-local coords we shift
-    // by (transform - offset) which equals path bbox top-left in world.
-    const offX = layer.transform.x - layerGroup.offsetX();
-    const offY = layer.transform.y - layerGroup.offsetY();
+    // Top-left origin: layerGroup has offset = 0. Path coords are stored
+    // in WORLD space; the layer group sits at world (transform.x, transform.y).
+    // To place an anchor at path-coord (px, py) we shift it by -transform
+    // into the group's local coord system.
+    const offX = layer.transform.x;
+    const offY = layer.transform.y;
     const accent = getAccent(layer);
 
     layer.vector.paths.forEach((rec, pathIdx) => {
@@ -186,11 +187,16 @@ export function initAnchorOverlay({ stage, document: doc }) {
             draggable: true,
           });
           anchor.on('mousedown', (e) => { e.cancelBubble = true; });
-          // Plain click → select. Alt-click → toggle smooth/corner.
+          // Plain click → select + tell the Vector panel to switch its
+          // active sub-path. Alt-click → toggle smooth/corner.
           anchor.on('click', (e) => {
             e.cancelBubble = true;
             if (e.evt.altKey) toggleSmoothCorner(layer, pathIdx, si, segIdx);
-            else { selected = { layerId: layer.id, pathIdx, segIdx }; refresh(); }
+            else {
+              selected = { layerId: layer.id, pathIdx, segIdx };
+              doc._emitVectorActivePath?.(layer.id, pathIdx);
+              refresh();
+            }
           });
           anchor.on('dragstart', () => {
             anchorDragging = true;
@@ -365,25 +371,14 @@ export function initAnchorOverlay({ stage, document: doc }) {
     // still work. Changing a slider regenerates d and overwrites manual
     // edits, which mirrors the mental model in Affinity / Illustrator.
     doc.setVectorPath(layer.id, pathIdx, { d: newD });
-    // The path's bounding-box may have shifted (the user moved an anchor
-    // outside the old bbox). With the centre-origin convention the layer's
-    // transform.x must equal the new bbox centre, otherwise the rasteriser
-    // (which positions the image relative to the new bbox) would visually
-    // drift the entire shape every frame. Push the new centre.
-    const allPaths = doc.findLayer(layer.id)?.vector?.paths || [];
-    const nb = computePathBounds(allPaths);
-    if (nb.width > 0 && nb.height > 0) {
-      doc.setLayerTransform(layer.id, {
-        x: nb.x + nb.width / 2,
-        y: nb.y + nb.height / 2,
-      });
-    }
-    // refresh() is short-circuited during anchorDragging — keep the dashed
-    // outline + the overlay group's transform in sync ourselves.
+    // Top-left origin: layer.transform stays fixed at the layer's anchor
+    // point (set ONCE at creation by the shape/pen/pencil drawer). The
+    // renderer's image.position compensates for path-bounds shifts so
+    // non-moved anchors stay visually put without us touching transform.
+    // refresh() is short-circuited during anchorDragging — keep the
+    // dashed outline's `data` attribute in sync ourselves.
     const outline = overlay.findOne(`.path-outline-${pathIdx}`);
     if (outline) outline.data(newD);
-    const layerGroup = stage.findOne((n) => n.id?.() === layer.id);
-    if (layerGroup) syncOverlayTransform(layerGroup);
     overlay.batchDraw();
   }
 

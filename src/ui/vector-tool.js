@@ -244,9 +244,9 @@ export function initVectorTool({ document: doc }) {
   }
 
   // Recompute the path's d-string from its current bbox and the new shape
-  // params (sides / points / innerRatio / cornerRadius). Also update the
-  // layer's centre transform so non-changing anchors stay visually put
-  // (different polygon side counts produce slightly different bboxes).
+  // params (sides / points / innerRatio / cornerRadius). Top-left origin
+  // means layer.transform stays fixed; the renderer's image.position
+  // compensates for path bbox shifts so non-changing anchors stay put.
   function setShapeParam(patch) {
     const l = activeLayer(); const p = activePath(); if (!l || !p || !p.shape) return;
     const nextShape = { ...p.shape, ...patch };
@@ -255,15 +255,6 @@ export function initVectorTool({ document: doc }) {
     const d = rebuildShapePathD(nextShape, b);
     if (!d) return;
     doc.setVectorPath(l.id, activePathIdx, { shape: nextShape, d });
-    // Push the new path-bounds centre back to layer.transform so the
-    // renderer's centre-origin convention stays consistent.
-    const updated = computePathBounds(l.vector.paths);
-    if (updated.width > 0 && updated.height > 0) {
-      doc.setLayerTransform(l.id, {
-        x: updated.x + updated.width / 2,
-        y: updated.y + updated.height / 2,
-      });
-    }
   }
 
   // Sub-path picker: shows a horizontal strip of colour swatches, one per
@@ -463,6 +454,16 @@ export function initVectorTool({ document: doc }) {
     if (e.type === 'layer:vectorChanged') {
       const l = activeLayer();
       if (l && l.id === e.id) rebuild();
+    }
+    // Anchor overlay fired this — switch the panel's sub-path target.
+    if (e.type === 'layer:vectorActivePath') {
+      const l = activeLayer();
+      if (l && l.id === e.id && Number.isInteger(e.pathIdx)) {
+        activePathIdx = e.pathIdx;
+        clearGradientEditor(fillGradHost);
+        clearGradientEditor(strokeGradHost);
+        rebuild();
+      }
     }
   });
 
