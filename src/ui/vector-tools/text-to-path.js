@@ -25,29 +25,37 @@ async function loadOpentype() {
   return _opentypePromise;
 }
 
-// Resolve a font binary URL (or blob URL) suitable for opentype.load().
-async function resolveFontBinary(meta, t) {
+// Fetch a font binary as ArrayBuffer (suitable for opentype.parse()).
+// Returns { buffer, sourceLabel } or null on failure.
+async function resolveFontBuffer(meta, t) {
   if (!meta) return null;
   if (meta.source === 'uploaded') {
     const blob = await getUploadedBlob(meta.family);
-    if (blob) return URL.createObjectURL(blob);
-    return null;
+    if (!blob) return null;
+    return { buffer: await blob.arrayBuffer(), sourceLabel: 'uploaded' };
   }
   if (meta.source === 'system') {
     return null; // not reachable without Local Font Access raw binary access
   }
-  // Google + Fontshare — sniff the woff2 URL out of the @font-face the
-  // loader injected. Fallback: build a one-off Google CSS request and parse.
+  // Google + Fontshare — sniff the woff2 URL from the @font-face the loader
+  // injected, then fetch it as ArrayBuffer.
   const fam = (meta.cssFamily || meta.family);
   const wght = (t.variation && t.variation.wght != null) ? t.variation.wght : t.weight;
   const url = await fetchFontFileUrl(fam, wght || 400, !!t.italic);
-  return url;
+  if (!url) return null;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return { buffer: await r.arrayBuffer(), sourceLabel: meta.source };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchFontFileUrl(family, weight, italic) {
   // Probe Google's CSS endpoint with a precise spec, then read out the
-  // .woff2 URL the @font-face uses. We have to send a UA Google likes
-  // (woff2 isn't returned to "old" UAs); fetch() in a modern browser is fine.
+  // .woff2 URL the @font-face uses. fetch() in a modern browser sends a UA
+  // Google understands, so woff2 is returned by default.
   const fam = family.replace(/\s+/g, '+');
   const url = italic
     ? `https://fonts.googleapis.com/css2?family=${fam}:ital,wght@1,${weight}&display=swap`
@@ -55,7 +63,9 @@ async function fetchFontFileUrl(family, weight, italic) {
   try {
     const r = await fetch(url);
     const css = await r.text();
-    const m = css.match(/url\((https?:\/\/[^)]+\.woff2)\)/);
+    // Prefer woff2; fall back to any .ttf / .otf url if present.
+    const m = css.match(/url\((https?:\/\/[^)]+\.woff2)\)/)
+           || css.match(/url\((https?:\/\/[^)]+\.(?:ttf|otf))\)/);
     return m ? m[1] : null;
   } catch {
     return null;
@@ -75,20 +85,21 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
     return null;
   }
 
-  const fontUrl = await resolveFontBinary(meta, t);
-  if (!fontUrl) {
-    showNotification('Convert to Path: couldn’t locate the font file URL.');
+  const fontFile = await resolveFontBuffer(meta, t);
+  if (!fontFile) {
+    showNotification('Convert to Path: couldn’t download the font file.');
     return null;
   }
 
   let otFont;
   try {
     const opentype = await loadOpentype();
-    otFont = await new Promise((resolve, reject) => {
-      opentype.load(fontUrl, (err, font) => err ? reject(err) : resolve(font));
-    });
+    // Modern API — synchronous parse on a fetched ArrayBuffer. Avoids
+    // opentype.load()'s deprecated callback path.
+    otFont = opentype.parse(fontFile.buffer);
   } catch (e) {
-    showNotification('Convert to Path: font failed to load (' + (e.message || e) + ').');
+    console.error('[text-to-path] opentype.parse failed:', e);
+    showNotification('Convert to Path: font failed to parse (' + (e.message || e) + ').');
     return null;
   }
 
@@ -108,14 +119,18 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
   const longest = Math.max(...lineAdvances, 1);
 
   const records = [];
+  // Match the text rasteriser's pad heuristic so glyph paths land in the same
+  // world position as the rendered text. Without this, the new vector layer
+  // is shifted by ~`pad` from where the text was visible.
+  const pad = Math.min(96, Math.max(16, Math.round(size * 0.5)));
   // First-line baseline matches our rasteriser's `pad + size * 0.85`.
-  const firstBaseline = size * 0.85;
+  const firstBaseline = pad + size * 0.85;
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i];
     const advance = lineAdvances[i];
-    let x = 0;
-    if (align === 'center') x = (longest - advance) / 2;
-    else if (align === 'right') x = longest - advance;
+    let x = pad;
+    if (align === 'center') x = pad + (longest - advance) / 2;
+    else if (align === 'right') x = pad + longest - advance;
     const y = firstBaseline + i * lineH;
     let cursor = x;
     for (const ch of line) {
