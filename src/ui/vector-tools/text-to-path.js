@@ -155,18 +155,23 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
   const longest = Math.max(...lineAdvances, 1);
 
   const records = [];
-  // Match the text rasteriser's pad heuristic so glyph paths land in the same
-  // world position as the rendered text. Without this, the new vector layer
-  // is shifted by ~`pad` from where the text was visible.
+  // Vector path coords live in WORLD space (the renderer offsets the image
+  // so canvas-pixel lx lands at world lx). To put the new layer where the
+  // text was visually, we anchor glyphs at the text layer's world origin
+  // PLUS the text rasteriser's pad (its canvas is padded so visible content
+  // starts at transform.x/y + pad).
   const pad = Math.min(96, Math.max(16, Math.round(size * 0.5)));
+  const xfm = layer.transform || { x: 0, y: 0 };
+  const originX = (xfm.x || 0) + pad;
+  const originY = (xfm.y || 0) + pad;
   // First-line baseline matches our rasteriser's `pad + size * 0.85`.
-  const firstBaseline = pad + size * 0.85;
+  const firstBaseline = originY + size * 0.85;
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i];
     const advance = lineAdvances[i];
-    let x = pad;
-    if (align === 'center') x = pad + (longest - advance) / 2;
-    else if (align === 'right') x = pad + longest - advance;
+    let x = originX;
+    if (align === 'center') x = originX + (longest - advance) / 2;
+    else if (align === 'right') x = originX + longest - advance;
     const y = firstBaseline + i * lineH;
     let cursor = x;
     for (const ch of line) {
@@ -190,8 +195,9 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
     return null;
   }
 
-  // Add the new vector layer at the same world position as the text layer.
-  const xfm = layer.transform || { x: 0, y: 0 };
+  // Add the new vector layer. transform.x/y is the rotation/scale anchor —
+  // we keep it identical to the text layer's so future rotations behave the
+  // same. Path coords already carry the world position.
   const vectorLayer = doc.addVectorLayer({
     name: `${layer.name || 'Text'} (paths)`,
     transform: { x: xfm.x, y: xfm.y },

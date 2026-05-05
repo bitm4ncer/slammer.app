@@ -1,8 +1,11 @@
 // pencil-tool — freehand drawing.
 //
-// Mousedown begins a polyline. Mousemove samples points (~every 4 px in
-// screen space). Mouseup hydrates the polyline as a Paper.Path and runs
-// path.simplify(tolerance) to convert it to a smooth bezier path.
+// Mousedown begins sampling. Mousemove samples points (~every 4 px in screen
+// space) and renders a live Konva polyline on a rubber layer — NO doc model
+// updates, NO rasterise — so the stroke feels instant regardless of length
+// or layer effects. Mouseup hydrates the samples as a Paper.Path, runs
+// path.simplify(tolerance), and emits ONE doc.setVectorPath/addVectorLayer
+// to commit.
 //
 // Tolerance comes from a slider in the footer (visible only when the
 // pencil tool is active). Higher tolerance = fewer anchors = smoother.
@@ -28,20 +31,23 @@ export function setPencilSmoothness(v) {
   try { localStorage.setItem(SMOOTH_KEY, String(clamped)); } catch {}
 }
 
+function accentColor() {
+  return getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c';
+}
+
 function freshStrokeStyle() {
-  const accent = getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c';
-  return { ...DEFAULT_VECTOR_STROKE(), type: 'solid', color: accent, width: 2 };
+  return { ...DEFAULT_VECTOR_STROKE(), type: 'solid', color: accentColor(), width: 2 };
 }
 
 export function attachPencilTool({ stage, document: doc }) {
   const state = {
     drawing: false,
-    layerId: null,
-    pathIdx: null,
-    samples: [],   // path-local world coords [{x, y}]
+    samples: [],          // world-space [{x, y}]
+    rubberLayer: null,
+    rubberLine: null,
   };
 
-  function worldXY(e) {
+  function worldXY() {
     const stagePos = stage.getPointerPosition();
     if (!stagePos) return { x: 0, y: 0 };
     const sc = stage.scaleX() || 1;
@@ -53,114 +59,127 @@ export function attachPencilTool({ stage, document: doc }) {
     return Math.hypot((a.x - b.x) * sc, (a.y - b.y) * sc);
   }
 
-  function setInitialTransform(layerId) {
-    const layer = doc.findLayer(layerId);
-    if (!layer) return;
-    const b = computePathBounds(layer.vector.paths);
-    if (b.width <= 0 && b.height <= 0) return;
-    doc.setLayerTransform(layerId, { x: b.x, y: b.y });
+  function ensureRubber() {
+    if (state.rubberLayer) return;
+    state.rubberLayer = new Konva.Layer({ listening: false });
+    stage.add(state.rubberLayer);
+    state.rubberLine = new Konva.Line({
+      points: [],
+      stroke: accentColor(),
+      strokeWidth: 2,
+      strokeScaleEnabled: false,
+      lineCap: 'round',
+      lineJoin: 'round',
+      listening: false,
+    });
+    state.rubberLayer.add(state.rubberLine);
   }
 
-  function samplesToD(samples, closed) {
-    if (!samples.length) return '';
-    const parts = samples.map((s, i) => `${i === 0 ? 'M' : 'L'} ${s.x.toFixed(2)} ${s.y.toFixed(2)}`);
-    if (closed) parts.push('Z');
-    return parts.join(' ');
+  function clearRubber() {
+    if (!state.rubberLayer) return;
+    state.rubberLayer.destroy();
+    state.rubberLayer = null;
+    state.rubberLine = null;
   }
 
-  function start(e) {
-    if (getTool() !== 'pencil') return false;
-    const pt = worldXY(e);
-    state.samples = [pt];
-    // Same routing convention as pen — extend active vector layer or create new.
-    let layer = doc.activeLayer;
-    if (layer && layer.type === 'vector') {
-      const next = layer.vector.paths.slice();
-      next.push({
-        d: samplesToD(state.samples, false),
-        closed: false,
-        fill: { type: 'none' },
-        stroke: freshStrokeStyle(),
-      });
-      doc.setVectorPaths(layer.id, next);
-      state.pathIdx = layer.vector.paths.length - 1;
-    } else {
-      layer = doc.addVectorLayer({
-        name: 'Pencil path',
-        vector: {
-          paths: [{
-            d: samplesToD(state.samples, false),
-            closed: false,
-            fill: { type: 'none' },
-            stroke: freshStrokeStyle(),
-          }],
-        },
-      });
-      state.pathIdx = 0;
+  function flatPoints() {
+    const out = new Array(state.samples.length * 2);
+    for (let i = 0; i < state.samples.length; i++) {
+      out[i * 2]     = state.samples[i].x;
+      out[i * 2 + 1] = state.samples[i].y;
     }
-    state.layerId = layer.id;
+    return out;
+  }
+
+  // Apply Konva.Layer transform so its world-space points draw at world
+  // pixels regardless of stage zoom/pan. Done once per drag (cheap).
+  function syncRubberTransform() {
+    if (!state.rubberLayer) return;
+    state.rubberLayer.position({ x: stage.x(), y: stage.y() });
+    state.rubberLayer.scale({ x: stage.scaleX(), y: stage.scaleY() });
+  }
+
+  function start() {
+    if (getTool() !== 'pencil') return false;
+    state.samples = [worldXY()];
     state.drawing = true;
-    setInitialTransform(layer.id);
+    ensureRubber();
+    syncRubberTransform();
+    state.rubberLine.points(flatPoints());
+    state.rubberLayer.batchDraw();
     return true;
   }
 
-  function move(e) {
+  function move() {
     if (!state.drawing) return;
-    const pt = worldXY(e);
+    const pt = worldXY();
     const last = state.samples[state.samples.length - 1];
     if (screenDist(last, pt) < 4) return;  // ~4 px screen-space sample spacing
     state.samples.push(pt);
-    // Live polyline preview while dragging. Transform stays fixed; the
-    // renderer's image.position compensates as the bbox grows.
-    doc.setVectorPath(state.layerId, state.pathIdx, { d: samplesToD(state.samples, false) });
+    state.rubberLine.points(flatPoints());
+    state.rubberLayer.batchDraw();
   }
 
   function end() {
     if (!state.drawing) return;
-    if (state.samples.length < 2) {
-      // Treat as a no-op — drop the empty path (and layer if it's the only one).
-      const layer = doc.findLayer(state.layerId);
-      if (layer) {
-        if (layer.vector.paths.length === 1) doc.removeLayer(layer.id);
-        else {
-          const next = layer.vector.paths.slice();
-          next.splice(state.pathIdx, 1);
-          doc.setVectorPaths(layer.id, next);
-        }
-      }
-      reset();
-      return;
-    }
+    const samples = state.samples;
+    state.drawing = false;
+    state.samples = [];
+    clearRubber();
+
+    if (samples.length < 2) return;  // a tap without drag — drop it.
+
     // Auto-close if release is within 8 px of the start sample.
-    const first = state.samples[0];
-    const lastPt = state.samples[state.samples.length - 1];
-    const closed = screenDist(first, lastPt) <= 8 && state.samples.length >= 4;
+    const first = samples[0];
+    const lastPt = samples[samples.length - 1];
+    const closed = screenDist(first, lastPt) <= 8 && samples.length >= 4;
 
     // Hydrate as Paper.Path, run simplify(tolerance), extract pathData.
     activatePaper();
     const tolerance = 0.5 + getPencilSmoothness() * 0.55; // 0..10 → ~0.5..6
     const p = new paper.Path({
-      segments: state.samples.map((s) => new paper.Point(s.x, s.y)),
+      segments: samples.map((s) => new paper.Point(s.x, s.y)),
       closed,
     });
     try { p.simplify(tolerance); } catch {}
     const newD = p.pathData;
     p.remove();
 
-    doc.setVectorPath(state.layerId, state.pathIdx, { d: newD, closed });
-    reset();
+    if (!newD) return;
+
+    // Commit ONCE — append to active vector layer or create a new one.
+    let layer = doc.activeLayer;
+    const newRec = {
+      d: newD,
+      closed,
+      fill: { type: 'none' },
+      stroke: freshStrokeStyle(),
+    };
+    if (layer && layer.type === 'vector') {
+      const next = layer.vector.paths.slice();
+      next.push(newRec);
+      doc.setVectorPaths(layer.id, next);
+    } else {
+      layer = doc.addVectorLayer({
+        name: 'Pencil path',
+        vector: { paths: [newRec] },
+      });
+      // Anchor the layer at the path's bbox top-left in world.
+      const b = computePathBounds([newRec]);
+      if (b.width > 0 || b.height > 0) {
+        doc.setLayerTransform(layer.id, { x: b.x, y: b.y });
+      }
+    }
   }
 
-  function reset() {
+  function cancel() {
     state.drawing = false;
-    state.layerId = null;
-    state.pathIdx = null;
     state.samples = [];
+    clearRubber();
   }
 
   return {
-    start, move, end,
-    cancel: end,    // pointer left container = treat as commit
+    start, move, end, cancel,
     isDrawing: () => state.drawing,
   };
 }

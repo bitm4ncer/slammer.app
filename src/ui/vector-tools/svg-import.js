@@ -2,19 +2,10 @@
 // Uses Paper.js's importSVG which understands almost every SVG construct
 // (paths, shapes, transforms, groups, gradients, basic style attributes).
 
-import paper from 'paper';
-
-let _setup = false;
-function ensure() {
-  if (_setup) return;
-  const dummy = document.createElement('canvas');
-  dummy.width = 1; dummy.height = 1;
-  paper.setup(dummy);
-  _setup = true;
-}
+import { paper, ensurePaper, activatePaper } from '../../core/paper-context.js';
 
 export async function importSvgFile(file, doc) {
-  ensure();
+  ensurePaper();
   const text = await file.text();
   // Use a temporary detached project so we don't pollute the rasterise pipeline.
   const tempProject = new paper.Project(document.createElement('canvas'));
@@ -46,6 +37,8 @@ export async function importSvgFile(file, doc) {
   });
   // Tear down the temp project so memory doesn't leak between imports.
   tempProject.remove();
+  // Re-activate the shared project so subsequent path hydrations land in it.
+  activatePaper();
 
   if (!records.length) {
     console.warn('[svg] no paths found in', file.name);
