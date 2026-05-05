@@ -162,7 +162,6 @@
 - [ ] **Pexels** plugin (image search → image layer)
 - [ ] **Unsplash** plugin
 - [ ] **Image generation** plugin (Replicate API: NanoBanana, Flux — image-to-image, prompts, LORA support incl. `markredito/90sbadtrip`, variant count)
-- [ ] **Infinite Gradient** plugin (adjustable gradient layer with `noisesc(v + udirsc(v)*t)` style)
 - [ ] **Callshop Frame Generator** integration ([repo](https://github.com/bitm4ncer/Callshop_FrameGenerator))
 - [ ] API keys live in Settings popup → API Keys tab
 

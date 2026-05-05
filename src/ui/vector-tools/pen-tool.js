@@ -80,7 +80,6 @@ export function attachPenTool({ stage, document: doc }) {
     state.rubberLayer.add(state.rubberLine);
     state.handleGroup = new Konva.Group({ listening: false });
     state.rubberLayer.add(state.handleGroup);
-    syncRubberTransform();
   }
 
   function clearRubber() {
@@ -90,12 +89,6 @@ export function attachPenTool({ stage, document: doc }) {
     state.rubberLine = null;
     state.pathPreview = null;
     state.handleGroup = null;
-  }
-
-  function syncRubberTransform() {
-    if (!state.rubberLayer) return;
-    state.rubberLayer.position({ x: stage.x(), y: stage.y() });
-    state.rubberLayer.scale({ x: stage.scaleX(), y: stage.scaleY() });
   }
 
   // Build (or rebuild) the in-progress curve preview from state.segs. Called
@@ -315,12 +308,116 @@ export function attachPenTool({ stage, document: doc }) {
     return Math.hypot((a.x - b.x) * sc, (a.y - b.y) * sc);
   }
 
+  // Hit-test the active vector layer for an existing anchor (within 8 screen-
+  // px) or path edge (within 6 screen-px) under the cursor. Used by pen
+  // +/- mode at start(). Returns null if no hit.
+  function hitTestActiveVector(pt) {
+    const layer = doc.activeLayer;
+    if (!layer || layer.type !== 'vector') return null;
+    const sc = stage.scaleX() || 1;
+    const anchorTolWorld = 8 / sc;
+    const edgeTolWorld   = 6 / sc;
+    activatePaper();
+    for (let pathIdx = 0; pathIdx < layer.vector.paths.length; pathIdx++) {
+      const rec = layer.vector.paths[pathIdx];
+      if (!rec.d) continue;
+      let pp;
+      try { pp = new paper.CompoundPath({ pathData: rec.d }); } catch { continue; }
+      const subs = pp.children?.length ? pp.children : [pp];
+      // Anchors first (priority over edge).
+      for (let si = 0; si < subs.length; si++) {
+        const sub = subs[si];
+        for (let segIdx = 0; segIdx < (sub.segments?.length || 0); segIdx++) {
+          const seg = sub.segments[segIdx];
+          if (Math.hypot(seg.point.x - pt.x, seg.point.y - pt.y) < anchorTolWorld) {
+            pp.remove();
+            return { kind: 'anchor', layer, pathIdx, subPathIdx: si, segIdx };
+          }
+        }
+      }
+      // Path edge.
+      const target = new paper.Point(pt.x, pt.y);
+      let best = null;
+      for (let si = 0; si < subs.length; si++) {
+        const sub = subs[si];
+        const loc = sub.getNearestLocation(target);
+        if (!loc) continue;
+        const dist = loc.point.getDistance(target);
+        if (!best || dist < best.dist) best = { dist, sub, loc, si };
+      }
+      pp.remove();
+      if (best && best.dist < edgeTolWorld) {
+        return {
+          kind: 'edge', layer, pathIdx, subPathIdx: best.si,
+          point: { x: best.loc.point.x, y: best.loc.point.y },
+        };
+      }
+    }
+    return null;
+  }
+
+  function removeAnchorOnLayer(hit) {
+    activatePaper();
+    const rec = hit.layer.vector.paths[hit.pathIdx];
+    if (!rec) return;
+    let pp;
+    try { pp = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = pp.children?.length ? pp.children : [pp];
+    const sub = subs[hit.subPathIdx];
+    if (!sub) { pp.remove(); return; }
+    if (sub.segments.length <= 2) sub.remove();
+    else                          sub.removeSegment(hit.segIdx);
+    const newD = pp.pathData;
+    pp.remove();
+    if (!newD) {
+      if (hit.layer.vector.paths.length === 1) doc.removeLayer(hit.layer.id);
+      else {
+        const next = hit.layer.vector.paths.slice();
+        next.splice(hit.pathIdx, 1);
+        doc.setVectorPaths(hit.layer.id, next);
+      }
+    } else {
+      doc.setVectorPath(hit.layer.id, hit.pathIdx, { d: newD });
+    }
+  }
+
+  function insertAnchorOnLayer(hit) {
+    activatePaper();
+    const rec = hit.layer.vector.paths[hit.pathIdx];
+    if (!rec) return;
+    let pp;
+    try { pp = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = pp.children?.length ? pp.children : [pp];
+    const sub = subs[hit.subPathIdx];
+    if (!sub) { pp.remove(); return; }
+    const target = new paper.Point(hit.point.x, hit.point.y);
+    const loc = sub.getNearestLocation(target);
+    if (!loc) { pp.remove(); return; }
+    sub.divideAt(loc);
+    const newD = pp.pathData;
+    pp.remove();
+    if (newD) doc.setVectorPath(hit.layer.id, hit.pathIdx, { d: newD });
+  }
+
   // ---------- Pointer handlers ----------
 
   function start() {
     if (getTool() !== 'pen') return false;
     const pt = worldXY();
     if (!state.drawing) {
+      // Pen +/- mode: clicking on an existing anchor REMOVES it; clicking
+      // on a path edge INSERTS a new anchor; clicking elsewhere starts /
+      // extends a path. Only consults the active vector layer — drawing
+      // a fresh path on top of an unrelated layer still works as before.
+      const hit = hitTestActiveVector(pt);
+      if (hit?.kind === 'anchor') {
+        removeAnchorOnLayer(hit);
+        return true;
+      }
+      if (hit?.kind === 'edge') {
+        insertAnchorOnLayer(hit);
+        return true;
+      }
       // First anchor — set up the layer + path.
       const { layer, pathIdx } = routeOrCreateLayer();
       state.drawing = true;
@@ -449,9 +546,6 @@ export function attachPenTool({ stage, document: doc }) {
     if (e.key === 'Escape') { e.preventDefault(); cancel(); }
     else if (e.key === 'Enter') { e.preventDefault(); finishClose(); }
   });
-
-  // Keep rubber overlay aligned with stage zoom/pan.
-  stage.on('xChange.penTool yChange.penTool scaleXChange.penTool scaleYChange.penTool', syncRubberTransform);
 
   return { start, move, up, cancel, finishOpen, finishClose, isDrawing: () => state.drawing };
 }

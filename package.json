@@ -13,6 +13,7 @@
     "konva": "^9.3.16",
     "opentype.js": "^1.3.5",
     "paper": "^0.12.18",
+    "paperjs-offset": "^1.0.8",
     "sortablejs": "^1.15.2"
   },
   "devDependencies": {

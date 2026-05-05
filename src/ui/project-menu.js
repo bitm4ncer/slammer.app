@@ -1,7 +1,7 @@
 // Advanced project file browser — Browse / Open / Rename / Duplicate / Delete / Folders.
 
 import { showNotification } from './notifications.js';
-import { exportSlmr } from '../io/project-file.js';
+import { exportSlmr, importSlmr } from '../io/project-file.js';
 
 export function initProjectMenu({ document: doc, projectStore, view }) {
   let backdrop = null;
@@ -207,17 +207,16 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
         const file = input.files?.[0];
         if (!file) return;
         try {
-          const { importSlmr } = await import('../io/project-file.js');
           await importSlmr(file, doc);
-          showNotification(`Loaded "${doc.state.name}"`);
-          // Refresh the browser to show the newly imported project
+          await projectStore.saveCurrent({ document: doc, view });
+          showNotification(`Imported "${doc.state.name}"`);
           projects = await projectStore.listProjects();
           folders = await projectStore.listFolders();
           renderSidebar();
           renderContent();
         } catch (err) {
           console.error('Import failed:', err);
-          showNotification('Import failed');
+          showNotification(`Import failed: ${err.message || err}`);
         }
       };
       input.click();

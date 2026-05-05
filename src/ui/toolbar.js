@@ -1,7 +1,7 @@
 // Toolbar — wires the top-bar buttons.
 
 import { showNotification } from './notifications.js';
-import { exportSlmr, importSlmr, importProjectFile } from '../io/project-file.js';
+import { exportSlmr, importSlmr } from '../io/project-file.js';
 import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
 import { importSvgFile } from './vector-tools/svg-import.js';
@@ -200,33 +200,20 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     projectMenu?.open();
   });
 
-  // Drop a .slmr, .slammerproj (or legacy .crushproj) file anywhere on the canvas to import it.
+  // Drop a .slmr file anywhere on the canvas to import it.
   view.stage.container().addEventListener('drop', async (e) => {
-    const files = Array.from(e.dataTransfer?.files || []);
-    const slmr = files.find((x) => x.name?.endsWith('.slmr'));
-    const legacy = files.find((x) =>
-      x.name?.endsWith('.slammerproj') || x.name?.endsWith('.crushproj')
+    const f = Array.from(e.dataTransfer?.files || []).find((x) =>
+      x.name?.endsWith('.slmr')
     );
-    const f = slmr || legacy;
     if (!f) return;
     e.preventDefault();
     e.stopPropagation();
     try {
-      if (slmr) {
-        await importSlmr(f, doc);
-      } else {
-        await importProjectFile(f, doc);
-        // Re-Blob any data-URL sources for uniform pipeline.
-        for (const l of doc.layers) {
-          if (typeof l.source === 'string' && l.source.startsWith('data:')) {
-            const blob = await fetch(l.source).then((r) => r.blob());
-            doc.setLayerSource(l.id, blob);
-          }
-        }
-      }
+      await importSlmr(f, doc);
+      await projectStore.saveCurrent({ document: doc, view });
       showNotification(`Loaded "${doc.state.name}"`);
     } catch (err) {
-      showNotification('Failed to import project file');
+      showNotification(`Import failed: ${err.message || err}`);
       console.error(err);
     }
   }, true);

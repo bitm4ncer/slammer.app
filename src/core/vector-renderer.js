@@ -5,16 +5,29 @@
 // boolean ops, simplification, hit-testing — all battle-tested. We use the
 // headless mode (no view, no DOM) and feed our own canvas.
 
-// CONVENTION: every vector layer's path d-strings are stored in WORLD
-// coordinates (the world-space pixel positions where the user drew them).
-// `layer.transform.x/y` mirrors the path-bbox top-left in world; it is the
-// rotation/scale anchor used by Konva.Transformer. The path data itself
-// already carries world geometry — `transform` is purely the layer's
-// origin marker and is set ONCE at creation. The renderer compensates for
-// later bbox shifts via `image.position` so non-edited anchors stay put.
+// COORDINATE CONVENTION (load-bearing — read this if you touch any vector
+// tool). Every vector layer's path d-strings are stored in WORLD
+// coordinates (the same world-space pixel positions where the user drew
+// them). `layer.transform.x/y` is the rotation/scale anchor — typically
+// the path-bbox top-left in world but not guaranteed (text→path keeps
+// the source text layer's transform so rotations are consistent across
+// the convert).
 //
-// All vector tooling (pen, pencil, shape-drawer, svg-import, text-to-path)
-// MUST emit world-coord path data so this invariant holds.
+// The renderer compensates for any drift between layer.transform and
+// pathBounds via `image.position` (see renderer.js around L207) so
+// non-edited anchors stay put as the path grows or shrinks. The math:
+//   world(lx) = group.x + image.x + canvas_x_for_lx
+//             = transform.x + (pathBounds.x - transform.x - pad)
+//                          + (lx + pad - pathBounds.x)
+//             = lx
+// — i.e. path-coord lx ALWAYS lands at world lx regardless of where
+// transform.x/y sits.
+//
+// All vector tooling (pen, pencil, shape-drawer, svg-import, text→path,
+// anchor-overlay) MUST emit / read world-coord path data so this
+// invariant holds. Text→path uses layer.transform = (sourceText.x,
+// sourceText.y) for rotation continuity; pen/pencil/shape use
+// (pathBounds.x, pathBounds.y).
 
 import { paper, ensurePaper } from './paper-context.js';
 
@@ -24,6 +37,22 @@ import { paper, ensurePaper } from './paper-context.js';
 const PAD = 16;
 
 function ensureProject() { return ensurePaper(); }
+
+// Translate a path d-string by (dx, dy) in WORLD coords. Used by the
+// renderer when a vector layer is dragged/transformed: layer.transform
+// updates to the new Konva.Group position, so the path d-coords need to
+// shift by the same amount or the next paint will jump the image back to
+// its creation-time world location (anchor overlay would also drift).
+export function translatePathD(d, dx, dy) {
+  if (!d || (dx === 0 && dy === 0)) return d;
+  ensurePaper();
+  let p;
+  try { p = new paper.CompoundPath({ pathData: d }); } catch { return d; }
+  p.translate(new paper.Point(dx, dy));
+  const out = p.pathData;
+  p.remove();
+  return out || d;
+}
 
 // Hydrate a serialised path-record back into a paper.Path / CompoundPath.
 // Path records: { d, closed, fill, stroke }
@@ -158,6 +187,94 @@ function withOpacity(hex, op) {
   return `rgba(${r},${g},${b},${op})`;
 }
 
+// Parse a #rgb / #rrggbb / rgba()/rgb() colour into [r, g, b, a] floats.
+function parseRGBA(spec) {
+  if (!spec) return [0, 0, 0, 1];
+  if (spec[0] === '#') {
+    let r, g, b;
+    if (spec.length === 4) {
+      r = parseInt(spec[1] + spec[1], 16); g = parseInt(spec[2] + spec[2], 16); b = parseInt(spec[3] + spec[3], 16);
+    } else {
+      r = parseInt(spec.slice(1, 3), 16); g = parseInt(spec.slice(3, 5), 16); b = parseInt(spec.slice(5, 7), 16);
+    }
+    return [r, g, b, 1];
+  }
+  const m = spec.match(/rgba?\(([^)]+)\)/i);
+  if (!m) return [0, 0, 0, 1];
+  const parts = m[1].split(',').map((s) => parseFloat(s));
+  return [parts[0] | 0, parts[1] | 0, parts[2] | 0, parts[3] == null ? 1 : parts[3]];
+}
+
+// Sample a gradient stops list at offset t (0..1) → "rgba(...)".
+function sampleGradient(stops, t) {
+  if (!stops || !stops.length) return 'rgba(0,0,0,1)';
+  const sorted = stops.slice().sort((a, b) => a.at - b.at);
+  if (t <= sorted[0].at) {
+    const c = parseRGBA(sorted[0].color);
+    const a = (sorted[0].opacity ?? 1) * c[3];
+    return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  }
+  if (t >= sorted[sorted.length - 1].at) {
+    const c = parseRGBA(sorted[sorted.length - 1].color);
+    const a = (sorted[sorted.length - 1].opacity ?? 1) * c[3];
+    return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  }
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].at >= t) {
+      const a0 = sorted[i - 1], a1 = sorted[i];
+      const u = (t - a0.at) / Math.max(1e-6, a1.at - a0.at);
+      const c0 = parseRGBA(a0.color), c1 = parseRGBA(a1.color);
+      const r = Math.round(c0[0] + (c1[0] - c0[0]) * u);
+      const g = Math.round(c0[1] + (c1[1] - c0[1]) * u);
+      const b = Math.round(c0[2] + (c1[2] - c0[2]) * u);
+      const op0 = (a0.opacity ?? 1) * c0[3];
+      const op1 = (a1.opacity ?? 1) * c1[3];
+      const op  = op0 + (op1 - op0) * u;
+      return `rgba(${r},${g},${b},${op})`;
+    }
+  }
+  return 'rgba(0,0,0,1)';
+}
+
+// Paint a stroke that follows the path direction — colour at arc-length
+// fraction t comes from the gradient stops. Implemented by walking the
+// path in ~2-px arc-length steps and stroking each tiny line segment with
+// the sampled colour. Supports compound paths (each subpath strokes
+// independently). Cap/join settings are inherited from `stroke`.
+function strokeGradientAlong(ctx, paperPath, stroke, dx, dy) {
+  const stops = stroke.stops || [{ at: 0, color: '#fff' }, { at: 1, color: '#000' }];
+  const lineWidth = stroke.width || 1;
+  const cap = stroke.cap || 'butt';
+  const join = stroke.join || 'miter';
+  ctx.save();
+  ctx.lineCap = cap;
+  ctx.lineJoin = join;
+  ctx.lineWidth = lineWidth;
+  if (stroke.dash && stroke.dash.length) ctx.setLineDash(stroke.dash);
+  const subs = paperPath.children && paperPath.children.length ? paperPath.children : [paperPath];
+  for (const sub of subs) {
+    if (!sub.segments || sub.segments.length < 2) continue;
+    const len = sub.length;
+    if (!(len > 0)) continue;
+    const stepPx = 2;  // arc-length step in pixels
+    const steps = Math.max(2, Math.ceil(len / stepPx));
+    let prev = sub.getPointAt(0);
+    for (let i = 1; i <= steps; i++) {
+      const offset = (i / steps) * len;
+      const pt = sub.getPointAt(Math.min(offset, len));
+      if (!pt) continue;
+      const t = i / steps;
+      ctx.strokeStyle = sampleGradient(stops, t);
+      ctx.beginPath();
+      ctx.moveTo(prev.x + dx, prev.y + dy);
+      ctx.lineTo(pt.x + dx, pt.y + dy);
+      ctx.stroke();
+      prev = pt;
+    }
+  }
+  ctx.restore();
+}
+
 // Walk a Paper.Path / CompoundPath and render its segments into a Canvas2D
 // path. Set `beginNew=true` to start a fresh path; pass false to ADD to the
 // existing path (used when building compound clips like outside-stroke).
@@ -270,11 +387,19 @@ export function rasterizeVectorLayer(layer) {
         ctx.clip('evenodd');
         widthScale = 2;
       }
-      // Now draw the stroke as a fresh path so the clip is applied correctly.
-      tracePathToCtx(ctx, p, dx, dy);
-      if (applyStroke(ctx, rec.stroke, localBounds)) {
-        if (widthScale !== 1) ctx.lineWidth *= widthScale;
-        ctx.stroke();
+      const isAlong = rec.stroke.type === 'gradient' && rec.stroke.alongPath;
+      if (isAlong) {
+        // Gradient sampled along arc-length: tiny line segments coloured
+        // by the stops at their offset. widthScale clipping still applies.
+        const lw = (rec.stroke.width || 1) * widthScale;
+        strokeGradientAlong(ctx, p, { ...rec.stroke, width: lw }, dx, dy);
+      } else {
+        // Now draw the stroke as a fresh path so the clip is applied correctly.
+        tracePathToCtx(ctx, p, dx, dy);
+        if (applyStroke(ctx, rec.stroke, localBounds)) {
+          if (widthScale !== 1) ctx.lineWidth *= widthScale;
+          ctx.stroke();
+        }
       }
       ctx.setLineDash([]);
       ctx.restore();

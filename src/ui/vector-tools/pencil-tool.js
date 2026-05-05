@@ -91,20 +91,11 @@ export function attachPencilTool({ stage, document: doc }) {
     return out;
   }
 
-  // Apply Konva.Layer transform so its world-space points draw at world
-  // pixels regardless of stage zoom/pan. Done once per drag (cheap).
-  function syncRubberTransform() {
-    if (!state.rubberLayer) return;
-    state.rubberLayer.position({ x: stage.x(), y: stage.y() });
-    state.rubberLayer.scale({ x: stage.scaleX(), y: stage.scaleY() });
-  }
-
   function start() {
     if (getTool() !== 'pencil') return false;
     state.samples = [worldXY()];
     state.drawing = true;
     ensureRubber();
-    syncRubberTransform();
     state.rubberLine.points(flatPoints());
     state.rubberLayer.batchDraw();
     return true;

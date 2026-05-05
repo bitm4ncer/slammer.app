@@ -226,7 +226,7 @@ export function initProjectStore() {
     if (name) doc.setName(name);
 
     // Convert image-layer Blob sources to Blobs (already Blobs typically).
-    // For .slammerproj export we'll convert to data URLs; here we store binary as-is.
+    // For .slmr export we'll convert to data URLs; here we store binary as-is.
     const docCopy = JSON.parse(JSON.stringify(doc.serialize(), (k, v) => {
       if (v && typeof v === 'object' && v.__isFile) return undefined; // safety
       return v;

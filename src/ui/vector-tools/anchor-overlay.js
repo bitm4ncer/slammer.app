@@ -7,26 +7,61 @@
 //   • Each non-zero handleIn / handleOut shows as a draggable round dot
 //     connected to its anchor by a tangent line.
 //
-// Dragging an anchor or handle mutates the path's d-string via
-// doc.setVectorPath, which triggers re-rasterise + overlay refresh.
-// This is the read+edit pass; pen-tool insertion comes in 13b.
+// Performance model (Phase 1.3): during a drag, we update Konva nodes +
+// the dashed outline's `data` attribute live, but we do NOT call
+// doc.setVectorPath until dragend. A single Paper.CompoundPath is parsed
+// once at dragstart and mutated in-place, so the dragend commit is one
+// parse + one serialise rather than N.
+//
+// Coordinate convention (see vector-renderer.js): path d-strings are
+// stored in WORLD coords. The overlay's anchor group is positioned at
+// the layer's Konva.Group transform; anchors and outlines are placed at
+// `worldCoord - layer.transform.x/y` so they live in the group's local
+// frame and pick up the layer's scale/rotation.
 
 import Konva from 'konva';
 import { getTool, onToolChange } from './active-tool.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
 
+// Marker the user can toggle via Alt-click on a handle dot. While set, a
+// handle drag mutates only the touched side; otherwise both sides mirror
+// (smooth-anchor behavior). Session-scoped — not persisted.
+const _asymKey = (layerId, pathIdx, subPathIdx, segIdx) =>
+  `${layerId}:${pathIdx}:${subPathIdx}:${segIdx}`;
+
+// Hit padding (path-space pixels at scale 1) added around small grab
+// targets so anchors and handles are easier to grab at low zoom.
+const ANCHOR_HIT_PAD = 8;
+const HANDLE_HIT_PAD = 6;
+
+// Composite key for selected anchors (multi-select via Shift-click).
+const _anchorKey = (layerId, pathIdx, subPathIdx, segIdx) =>
+  `${layerId}:${pathIdx}:${subPathIdx}:${segIdx}`;
+const _parseKey = (k) => {
+  const parts = k.split(':');
+  return {
+    layerId: parts[0],
+    pathIdx: +parts[1],
+    subPathIdx: +parts[2],
+    segIdx: +parts[3],
+  };
+};
+
 export function initAnchorOverlay({ stage, document: doc }) {
   const overlay = new Konva.Layer();
   stage.add(overlay);
   let liveDragOff = null;
-  // While the user is dragging an anchor or bezier handle, skip the
-  // overlay rebuild that would normally fire on layer:vectorChanged —
-  // otherwise we destroy the very Konva node Konva is dragging, killing
-  // the gesture after one tick (the symptom: handles only move 1 px).
   let anchorDragging = false;
-  // Currently-selected anchor (for Backspace / visual highlight).
-  // { layerId, pathIdx, segIdx } or null.
+  // Primary anchor (used for the panel's active-path sync).
   let selected = null;
+  // Multi-anchor selection (Shift-click extends; arrow keys nudge all).
+  const selectedSet = new Set();
+  const asymHandles = new Set();
+
+  // Per-drag cache. Exists only while a handle/anchor is being dragged.
+  //   { paperPath: paper.CompoundPath, sub, seg, layerId, pathIdx,
+  //     subPathIdx, segIdx, outline: Konva.Path, anchorSub: Konva.Group }
+  let dragCache = null;
 
   function refresh() {
     if (anchorDragging) return;
@@ -39,9 +74,6 @@ export function initAnchorOverlay({ stage, document: doc }) {
     attachLiveDrag(layer);
   }
 
-  // While the user drags / scales / rotates the layer's Konva.Group, the
-  // anchor overlay needs to track live (Konva fires dragmove + transform
-  // continuously; layer:transform in the doc model only fires on dragend).
   function attachLiveDrag(layer) {
     const layerGroup = stage.findOne((n) => n.id?.() === layer.id);
     if (!layerGroup) return;
@@ -57,8 +89,6 @@ export function initAnchorOverlay({ stage, document: doc }) {
       ['dragmove', 'xChange', 'yChange', 'scaleXChange', 'scaleYChange', 'rotationChange', 'transform']
         .forEach((evt) => layerGroup.off(`${evt}.anchorOverlay`));
     };
-    // Sync once immediately in case the layer was already in a transformed
-    // state (e.g. user moved it in Selection mode then switched to A).
     syncOverlayTransform(layerGroup);
   }
   function detachLiveDrag() { if (liveDragOff) { liveDragOff(); liveDragOff = null; } }
@@ -89,10 +119,6 @@ export function initAnchorOverlay({ stage, document: doc }) {
     });
     overlay.add(grp);
 
-    // Top-left origin: layerGroup has offset = 0. Path coords are stored
-    // in WORLD space; the layer group sits at world (transform.x, transform.y).
-    // To place an anchor at path-coord (px, py) we shift it by -transform
-    // into the group's local coord system.
     const offX = layer.transform.x;
     const offY = layer.transform.y;
     const accent = getAccent(layer);
@@ -101,10 +127,13 @@ export function initAnchorOverlay({ stage, document: doc }) {
       let p;
       try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
 
-      // Dashed path outline. listening:true so a double-click on the edge
-      // inserts a new anchor (Paper getNearestLocation). Tagged with the
-      // path index so commitAnchorEdit can patch its `data` attribute
-      // live during a drag without rebuilding the whole overlay.
+      // Gradient angle/origin handles — drawn first so anchors paint
+      // on top. Only when the path has a gradient fill or stroke.
+      drawGradientHandles(grp, layer, pathIdx, rec, p, offX, offY, accent);
+
+      // Dashed outline (one Konva.Path per top-level path record). d data
+      // is in WORLD coords; group is at layer.transform; outline is shifted
+      // by -offX/-offY so geometry maps correctly into group-local space.
       const outline = new Konva.Path({
         name: `path-outline-${pathIdx}`,
         data: rec.d,
@@ -113,25 +142,23 @@ export function initAnchorOverlay({ stage, document: doc }) {
         strokeWidth: 1,
         strokeScaleEnabled: false,
         dash: [3, 3],
-        // Boost hit-test width so the user doesn't need pixel-perfect aim.
-        hitStrokeWidth: 10,
+        hitStrokeWidth: 12,
         listening: true,
       });
       outline.on('dblclick dbltap', (e) => {
         e.cancelBubble = true;
-        // Convert pointer to path-local coords (undo overlay group offset).
+        // Path-d is in WORLD coords (see vector-renderer.js convention) —
+        // pass the click world coords straight through to Paper, no offset.
         const pos = stage.getPointerPosition();
         if (!pos) return;
         const sc = stage.scaleX() || 1;
         const worldX = (pos.x - stage.x()) / sc;
         const worldY = (pos.y - stage.y()) / sc;
-        // Path-local = world + offX (since outline is drawn at -offX).
-        insertAnchorAtPoint(layer, pathIdx, 0, { x: worldX + offX, y: worldY + offY });
+        insertAnchorAtNearestEdge(layer, pathIdx, { x: worldX, y: worldY });
       });
       grp.add(outline);
 
       const subpaths = p.children && p.children.length ? p.children : [p];
-      let segCounter = 0;
       for (let si = 0; si < subpaths.length; si++) {
         const sub = subpaths[si];
         if (!sub.segments) continue;
@@ -139,62 +166,7 @@ export function initAnchorOverlay({ stage, document: doc }) {
           const seg = sub.segments[segIdx];
           const px = seg.point.x - offX;
           const py = seg.point.y - offY;
-          const refIndex = segCounter++;
-
-          // Tangent handles (in / out).
-          addHandle({
-            grp, accent, layer, pathIdx, side: 'in',
-            subPathIdx: si, segIdx, refIndex,
-            anchorX: px, anchorY: py,
-            offset: seg.handleIn,
-          });
-          addHandle({
-            grp, accent, layer, pathIdx, side: 'out',
-            subPathIdx: si, segIdx, refIndex,
-            anchorX: px, anchorY: py,
-            offset: seg.handleOut,
-          });
-
-          // Anchor square (draggable).
-          // Selected anchor → larger + accent-filled, otherwise white-filled.
-          const isSelected = selected
-            && selected.layerId === layer.id
-            && selected.pathIdx === pathIdx
-            && selected.segIdx === segIdx;
-          const half = isSelected ? 4.5 : 3.5;
-          const anchor = new Konva.Rect({
-            x: px - half, y: py - half,
-            width: half * 2, height: half * 2,
-            fill: isSelected ? accent : '#fff',
-            stroke: '#0a0a0a',
-            strokeWidth: 1, strokeScaleEnabled: false,
-            draggable: true,
-          });
-          anchor.on('mousedown', (e) => { e.cancelBubble = true; });
-          // Plain click → select + tell the Vector panel to switch its
-          // active sub-path. Alt-click → toggle smooth/corner.
-          anchor.on('click', (e) => {
-            e.cancelBubble = true;
-            if (e.evt.altKey) toggleSmoothCorner(layer, pathIdx, si, segIdx);
-            else {
-              selected = { layerId: layer.id, pathIdx, segIdx };
-              doc._emitVectorActivePath?.(layer.id, pathIdx);
-              refresh();
-            }
-          });
-          anchor.on('dragstart', () => {
-            anchorDragging = true;
-            selected = { layerId: layer.id, pathIdx, segIdx };
-          });
-          anchor.on('dragend', () => { anchorDragging = false; refresh(); });
-          anchor.on('dragmove', () => {
-            const newPx = anchor.x() + half;
-            const newPy = anchor.y() + half;
-            const targetX = newPx + offX;
-            const targetY = newPy + offY;
-            commitAnchorEdit(layer, pathIdx, si, segIdx, { point: { x: targetX, y: targetY } });
-          });
-          grp.add(anchor);
+          buildAnchorGroup(grp, layer, pathIdx, si, segIdx, px, py, seg, accent);
         }
       }
       p.remove();
@@ -202,39 +174,310 @@ export function initAnchorOverlay({ stage, document: doc }) {
     overlay.batchDraw();
   }
 
-  function addHandle({ grp, accent, layer, pathIdx, side, subPathIdx, segIdx, anchorX, anchorY, offset }) {
-    if (!offset || (!offset.x && !offset.y)) return;
-    const hx = anchorX + offset.x;
-    const hy = anchorY + offset.y;
-    grp.add(new Konva.Line({
-      points: [anchorX, anchorY, hx, hy],
-      stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
-      opacity: 0.55, listening: false,
-    }));
-    const dot = new Konva.Circle({
-      x: hx, y: hy,
-      radius: 4, fill: '#fff', stroke: accent,
+  // Build the per-anchor sub-group (handles + dots + the anchor square).
+  // All four pieces live together so we can find them by name during a drag.
+  function buildAnchorGroup(parent, layer, pathIdx, subPathIdx, segIdx, px, py, paperSeg, accent) {
+    const key = _anchorKey(layer.id, pathIdx, subPathIdx, segIdx);
+    const isSelected = selectedSet.has(key) || (selected
+      && selected.layerId === layer.id
+      && selected.pathIdx === pathIdx
+      && selected.subPathIdx === subPathIdx
+      && selected.segIdx === segIdx);
+    const isAsym = asymHandles.has(_asymKey(layer.id, pathIdx, subPathIdx, segIdx));
+
+    const sub = new Konva.Group({ name: 'anchor-sub' });
+    sub._meta = { layerId: layer.id, pathIdx, subPathIdx, segIdx };
+    parent.add(sub);
+
+    // Tangent lines (drawn first so they sit beneath the dots).
+    const hi = paperSeg.handleIn;
+    const ho = paperSeg.handleOut;
+    if (hi && (hi.x || hi.y)) {
+      sub.add(new Konva.Line({
+        name: 'hi-line',
+        points: [px, py, px + hi.x, py + hi.y],
+        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
+        opacity: 0.55, listening: false,
+      }));
+    }
+    if (ho && (ho.x || ho.y)) {
+      sub.add(new Konva.Line({
+        name: 'ho-line',
+        points: [px, py, px + ho.x, py + ho.y],
+        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
+        opacity: 0.55, listening: false,
+      }));
+    }
+
+    // Handle dots — fat hit zones via hitFunc inflate.
+    if (hi && (hi.x || hi.y)) {
+      sub.add(makeHandleDot({
+        layer, pathIdx, subPathIdx, segIdx,
+        side: 'in',
+        anchorX: px, anchorY: py,
+        x: px + hi.x, y: py + hi.y,
+        accent, isAsym,
+      }));
+    }
+    if (ho && (ho.x || ho.y)) {
+      sub.add(makeHandleDot({
+        layer, pathIdx, subPathIdx, segIdx,
+        side: 'out',
+        anchorX: px, anchorY: py,
+        x: px + ho.x, y: py + ho.y,
+        accent, isAsym,
+      }));
+    }
+
+    // Anchor square.
+    const half = isSelected ? 4.5 : 3.5;
+    const anchor = new Konva.Rect({
+      name: 'anchor',
+      x: px - half, y: py - half,
+      width: half * 2, height: half * 2,
+      fill: isSelected ? accent : '#fff',
+      stroke: '#0a0a0a',
       strokeWidth: 1, strokeScaleEnabled: false,
       draggable: true,
     });
+    // Inflate the hit zone so the user doesn't need pixel-perfect aim.
+    anchor.hitFunc(function (ctx, shape) {
+      const pad = ANCHOR_HIT_PAD;
+      ctx.beginPath();
+      ctx.rect(-pad, -pad, shape.width() + pad * 2, shape.height() + pad * 2);
+      ctx.closePath();
+      ctx.fillStrokeShape(shape);
+    });
+    anchor.on('mousedown', (e) => { e.cancelBubble = true; });
+    anchor.on('click', (e) => {
+      e.cancelBubble = true;
+      if (e.evt.altKey) {
+        toggleSmoothCorner(layer, pathIdx, subPathIdx, segIdx);
+        return;
+      }
+      const k = _anchorKey(layer.id, pathIdx, subPathIdx, segIdx);
+      if (e.evt.shiftKey) {
+        // Toggle membership in the multi-selection set.
+        if (selectedSet.has(k)) selectedSet.delete(k);
+        else selectedSet.add(k);
+        selected = { layerId: layer.id, pathIdx, subPathIdx, segIdx };
+      } else {
+        selectedSet.clear();
+        selectedSet.add(k);
+        selected = { layerId: layer.id, pathIdx, subPathIdx, segIdx };
+      }
+      doc._emitVectorActivePath?.(layer.id, pathIdx);
+      refresh();
+    });
+    anchor.on('dragstart', () => {
+      anchorDragging = true;
+      selected = { layerId: layer.id, pathIdx, subPathIdx, segIdx };
+      beginDragCache(layer, pathIdx, subPathIdx, segIdx);
+    });
+    anchor.on('dragend', () => {
+      finalizeDragCache();
+      anchorDragging = false;
+      refresh();
+    });
+    anchor.on('dragmove', () => {
+      const newPx = anchor.x() + half;
+      const newPy = anchor.y() + half;
+      const offX = layer.transform.x;
+      const offY = layer.transform.y;
+      liveAnchorEdit(sub, { point: { x: newPx + offX, y: newPy + offY } }, offX, offY);
+    });
+    sub.add(anchor);
+  }
+
+  // Render gradient angle/origin handles for a path with a gradient fill
+  // (and/or stroke). The handles drag the gradient's `from` and `to`
+  // points, which are stored as fractions of the path's bbox (0..1).
+  function drawGradientHandles(parent, layer, pathIdx, rec, paperPath, offX, offY, accent) {
+    const haveFill = rec.fill && rec.fill.type === 'gradient';
+    const haveStroke = rec.stroke && rec.stroke.type === 'gradient';
+    if (!haveFill && !haveStroke) return;
+
+    const b = paperPath.bounds;
+    if (!b || !(b.width > 0) || !(b.height > 0)) return;
+
+    if (haveFill)   addPair('fill',   rec.fill,   '#fff', accent);
+    if (haveStroke) addPair('stroke', rec.stroke, accent, '#fff');
+
+    function addPair(kind, spec, fillFrom, fillTo) {
+      const from = spec.from || { x: 0, y: 0.5 };
+      const to   = spec.to   || { x: 1, y: 0.5 };
+      const fromW = { x: b.x + from.x * b.width, y: b.y + from.y * b.height };
+      const toW   = { x: b.x + to.x   * b.width, y: b.y + to.y   * b.height };
+      // Connector line + endpoints. All in group-local coords (worldX - offX).
+      parent.add(new Konva.Line({
+        points: [fromW.x - offX, fromW.y - offY, toW.x - offX, toW.y - offY],
+        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
+        opacity: 0.45, dash: [3, 3], listening: false,
+      }));
+      parent.add(makeGradientDot(fromW, fillFrom, accent, layer, pathIdx, kind, 'from', b, offX, offY));
+      parent.add(makeGradientDot(toW,   fillTo,   accent, layer, pathIdx, kind, 'to',   b, offX, offY));
+    }
+  }
+
+  function makeGradientDot(worldPt, fill, stroke, layer, pathIdx, kind, side, bounds, offX, offY) {
+    const dot = new Konva.Circle({
+      x: worldPt.x - offX, y: worldPt.y - offY,
+      radius: 5,
+      fill, stroke,
+      strokeWidth: 1.4, strokeScaleEnabled: false,
+      draggable: true,
+    });
+    dot.hitFunc(function (ctx, shape) {
+      const r = shape.radius() + HANDLE_HIT_PAD;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fillStrokeShape(shape);
+    });
     dot.on('mousedown', (e) => { e.cancelBubble = true; });
-    // Alt-click handle dot → break the symmetric pair so subsequent drags
-    // only move the touched side. We mark the segment with an
-    // _asymmetric flag so commitAnchorEdit doesn't auto-mirror.
+    dot.on('dragstart', () => { anchorDragging = true; });
+    dot.on('dragend', () => {
+      anchorDragging = false;
+      // Convert dot's group-local position back to world, then to fraction.
+      const wx = dot.x() + offX;
+      const wy = dot.y() + offY;
+      const fracX = (wx - bounds.x) / bounds.width;
+      const fracY = (wy - bounds.y) / bounds.height;
+      const layerNow = doc.findLayer(layer.id);
+      if (!layerNow) { refresh(); return; }
+      const recNow = layerNow.vector.paths[pathIdx];
+      if (!recNow) { refresh(); return; }
+      const cur = kind === 'fill' ? recNow.fill : recNow.stroke;
+      if (!cur || cur.type !== 'gradient') { refresh(); return; }
+      const next = { ...cur, [side]: { x: fracX, y: fracY } };
+      if (kind === 'fill') doc.setVectorFill(layer.id, pathIdx, next);
+      else                 doc.setVectorStroke(layer.id, pathIdx, next);
+    });
+    // Live preview: just move the dot; the connector line is rebuilt on refresh().
+    return dot;
+  }
+
+  function makeHandleDot({ layer, pathIdx, subPathIdx, segIdx, side, anchorX, anchorY, x, y, accent, isAsym }) {
+    const dot = new Konva.Circle({
+      name: side === 'in' ? 'hi-dot' : 'ho-dot',
+      x, y,
+      radius: 4,
+      fill: isAsym ? accent : '#fff',
+      stroke: accent,
+      strokeWidth: 1,
+      strokeScaleEnabled: false,
+      draggable: true,
+    });
+    dot._meta = { side, anchorX, anchorY };
+    dot.hitFunc(function (ctx, shape) {
+      const r = shape.radius() + HANDLE_HIT_PAD;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fillStrokeShape(shape);
+    });
+    dot.on('mousedown', (e) => { e.cancelBubble = true; });
     dot.on('click', (e) => {
       if (!e.evt.altKey) return;
       e.cancelBubble = true;
-      breakHandlePair(layer, pathIdx, subPathIdx, segIdx);
+      const k = _asymKey(layer.id, pathIdx, subPathIdx, segIdx);
+      if (asymHandles.has(k)) asymHandles.delete(k);
+      else asymHandles.add(k);
+      refresh();
     });
-    dot.on('dragstart', () => { anchorDragging = true; });
-    dot.on('dragend',   () => { anchorDragging = false; refresh(); });
+    dot.on('dragstart', () => {
+      anchorDragging = true;
+      beginDragCache(layer, pathIdx, subPathIdx, segIdx);
+    });
+    dot.on('dragend', () => {
+      finalizeDragCache();
+      anchorDragging = false;
+      refresh();
+    });
     dot.on('dragmove', () => {
       const dx = dot.x() - anchorX;
       const dy = dot.y() - anchorY;
+      const offX = layer.transform.x;
+      const offY = layer.transform.y;
+      const isAsym = asymHandles.has(_asymKey(layer.id, pathIdx, subPathIdx, segIdx));
       const patch = side === 'in' ? { handleIn: { x: dx, y: dy } } : { handleOut: { x: dx, y: dy } };
-      commitAnchorEdit(layer, pathIdx, subPathIdx, segIdx, patch);
+      // Default = smooth pair → mirror to the other side.
+      if (!isAsym) {
+        if (side === 'in') patch.handleOut = { x: -dx, y: -dy };
+        else patch.handleIn = { x: -dx, y: -dy };
+      }
+      const subGrp = dot.getParent();  // anchor-sub Konva.Group
+      liveAnchorEdit(subGrp, patch, offX, offY);
     });
-    grp.add(dot);
+    return dot;
+  }
+
+  // Create the per-drag Paper cache. We hydrate once + hold onto the
+  // CompoundPath + the specific sub/segment so live mutations are O(1)
+  // and the dragend serialise is one pathData read.
+  function beginDragCache(layer, pathIdx, subPathIdx, segIdx) {
+    activatePaper();
+    const rec = layer.vector.paths[pathIdx];
+    if (!rec) return;
+    let pp;
+    try { pp = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
+    const subs = pp.children && pp.children.length ? pp.children : [pp];
+    const sub = subs[subPathIdx];
+    const seg = sub?.segments?.[segIdx];
+    if (!seg) { pp.remove(); return; }
+    const outline = overlay.findOne(`.path-outline-${pathIdx}`);
+    dragCache = { paperPath: pp, sub, seg, layer, pathIdx, subPathIdx, segIdx, outline };
+  }
+
+  function finalizeDragCache() {
+    if (!dragCache) return;
+    const { paperPath, layer, pathIdx } = dragCache;
+    const newD = paperPath.pathData;
+    paperPath.remove();
+    dragCache = null;
+    if (newD) doc.setVectorPath(layer.id, pathIdx, { d: newD });
+  }
+
+  // Apply patch to the cached Paper segment + update the Konva visuals
+  // for THIS anchor sub-group only. The dashed outline's d-string is
+  // re-read from the cached Paper so all sibling subpaths stay in sync.
+  function liveAnchorEdit(sub, patch, offX, offY) {
+    if (!dragCache) return;
+    const seg = dragCache.seg;
+    if (patch.point)     { seg.point.x = patch.point.x; seg.point.y = patch.point.y; }
+    if (patch.handleIn)  { seg.handleIn = new paper.Point(patch.handleIn.x, patch.handleIn.y); }
+    if (patch.handleOut) { seg.handleOut = new paper.Point(patch.handleOut.x, patch.handleOut.y); }
+
+    // Outline update — reflect the new d on the dashed Konva.Path.
+    if (dragCache.outline) {
+      dragCache.outline.data(dragCache.paperPath.pathData);
+    }
+
+    // Update this sub-group's nodes in place.
+    const px = seg.point.x - offX;
+    const py = seg.point.y - offY;
+    const anchor = sub.findOne('.anchor');
+    if (anchor) {
+      const half = anchor.width() / 2;
+      anchor.position({ x: px - half, y: py - half });
+    }
+    const hi = seg.handleIn;
+    const ho = seg.handleOut;
+    const hiLine = sub.findOne('.hi-line');
+    const hoLine = sub.findOne('.ho-line');
+    const hiDot  = sub.findOne('.hi-dot');
+    const hoDot  = sub.findOne('.ho-dot');
+    if (hiLine) hiLine.points([px, py, px + (hi?.x || 0), py + (hi?.y || 0)]);
+    if (hoLine) hoLine.points([px, py, px + (ho?.x || 0), py + (ho?.y || 0)]);
+    if (hiDot) {
+      hiDot.position({ x: px + (hi?.x || 0), y: py + (hi?.y || 0) });
+      hiDot._meta.anchorX = px; hiDot._meta.anchorY = py;
+    }
+    if (hoDot) {
+      hoDot.position({ x: px + (ho?.x || 0), y: py + (ho?.y || 0) });
+      hoDot._meta.anchorX = px; hoDot._meta.anchorY = py;
+    }
+    overlay.batchDraw();
   }
 
   function toggleSmoothCorner(layer, pathIdx, subPathIdx, segIdx) {
@@ -249,7 +492,6 @@ export function initAnchorOverlay({ stage, document: doc }) {
     const isCorner = (!seg.handleIn || (!seg.handleIn.x && !seg.handleIn.y))
                   && (!seg.handleOut || (!seg.handleOut.x && !seg.handleOut.y));
     if (isCorner) {
-      // Make smooth — derive a sensible handle vector from neighbour points.
       const segs = sub.segments;
       const prev = segs[(segIdx - 1 + segs.length) % segs.length];
       const next = segs[(segIdx + 1) % segs.length];
@@ -267,103 +509,130 @@ export function initAnchorOverlay({ stage, document: doc }) {
     refresh();
   }
 
-  function breakHandlePair(layer, pathIdx, subPathIdx, segIdx) {
-    // We don't actually need a flag — Paper segments naturally support
-    // asymmetric handles. The symmetry came from our commitAnchorEdit
-    // patch. To "break" the pair we just leave them alone (the next drag
-    // already moves only the touched side via handleIn / handleOut keys).
-    // For visual feedback we briefly highlight via refresh.
-    refresh();
+  // Get every selected anchor (multi or just primary). Returned tuples are
+  // grouped by (layerId, pathIdx) so we can delete in one Paper round-trip
+  // per path. Within a sub-path, indexes are sorted descending so removing
+  // them in order doesn't shift earlier indexes.
+  function selectedTuples() {
+    const set = new Set(selectedSet);
+    if (selected) set.add(_anchorKey(selected.layerId, selected.pathIdx, selected.subPathIdx, selected.segIdx));
+    return [...set].map(_parseKey);
   }
 
   function deleteSelectedAnchor() {
-    if (!selected) return;
-    const layer = doc.findLayer(selected.layerId);
-    if (!layer) return;
-    const rec = layer.vector.paths[selected.pathIdx];
-    if (!rec) return;
+    const tuples = selectedTuples();
+    if (!tuples.length) return;
     activatePaper();
-    let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
-    const subs = p.children && p.children.length ? p.children : [p];
-    // We track segIdx as a flat index across subpaths; figure out which sub.
-    let walk = 0, sub = null, localIdx = -1;
-    for (const s of subs) {
-      const n = s.segments.length;
-      if (selected.segIdx < walk + n) { sub = s; localIdx = selected.segIdx - walk; break; }
-      walk += n;
+    // Group by layer + pathIdx.
+    const byPath = new Map();
+    for (const t of tuples) {
+      const k = `${t.layerId}:${t.pathIdx}`;
+      if (!byPath.has(k)) byPath.set(k, []);
+      byPath.get(k).push(t);
     }
-    if (!sub || localIdx < 0) { p.remove(); return; }
-    if (sub.segments.length <= 2) {
-      // Removing would leave 0 or 1 anchor — drop the whole sub-path.
-      sub.remove();
-    } else {
-      sub.removeSegment(localIdx);
-    }
-    const newD = p.pathData;
-    p.remove();
-    if (!newD) {
-      // Path empty — drop it. If the layer becomes empty too, drop the layer.
-      if (layer.vector.paths.length === 1) {
-        doc.removeLayer(layer.id);
-      } else {
-        const next = layer.vector.paths.slice();
-        next.splice(selected.pathIdx, 1);
-        doc.setVectorPaths(layer.id, next);
+    for (const [key, list] of byPath) {
+      const [layerId, pathIdxStr] = key.split(':');
+      const pathIdx = +pathIdxStr;
+      const layer = doc.findLayer(layerId);
+      if (!layer) continue;
+      const rec = layer.vector.paths[pathIdx];
+      if (!rec) continue;
+      let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { continue; }
+      const subs = p.children && p.children.length ? p.children : [p];
+      // Delete in descending segIdx within each subpath so earlier indexes
+      // stay valid.
+      const bySub = new Map();
+      for (const t of list) {
+        if (!bySub.has(t.subPathIdx)) bySub.set(t.subPathIdx, []);
+        bySub.get(t.subPathIdx).push(t.segIdx);
       }
-    } else {
-      doc.setVectorPath(layer.id, selected.pathIdx, { d: newD });
+      for (const [siStr, idxs] of bySub) {
+        const si = +siStr;
+        const sub = subs[si];
+        if (!sub) continue;
+        idxs.sort((a, b) => b - a);
+        if (idxs.length >= sub.segments.length - 1) {
+          sub.remove();
+        } else {
+          for (const i of idxs) sub.removeSegment(i);
+        }
+      }
+      const newD = p.pathData;
+      p.remove();
+      if (!newD) {
+        if (layer.vector.paths.length === 1) {
+          doc.removeLayer(layer.id);
+        } else {
+          const next = layer.vector.paths.slice();
+          next.splice(pathIdx, 1);
+          doc.setVectorPaths(layer.id, next);
+        }
+      } else {
+        doc.setVectorPath(layer.id, pathIdx, { d: newD });
+      }
     }
     selected = null;
+    selectedSet.clear();
     refresh();
   }
 
-  function insertAnchorAtPoint(layer, pathIdx, subPathIdx, point) {
+  // Nudge every selected anchor by (dx, dy) world units. Fires one
+  // setVectorPath per affected path so history captures one snapshot
+  // for the whole nudge.
+  function nudgeSelectedAnchors(dx, dy) {
+    const tuples = selectedTuples();
+    if (!tuples.length) return;
+    activatePaper();
+    const byPath = new Map();
+    for (const t of tuples) {
+      const k = `${t.layerId}:${t.pathIdx}`;
+      if (!byPath.has(k)) byPath.set(k, []);
+      byPath.get(k).push(t);
+    }
+    for (const [key, list] of byPath) {
+      const [layerId, pathIdxStr] = key.split(':');
+      const pathIdx = +pathIdxStr;
+      const layer = doc.findLayer(layerId);
+      if (!layer) continue;
+      const rec = layer.vector.paths[pathIdx];
+      if (!rec) continue;
+      let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { continue; }
+      const subs = p.children && p.children.length ? p.children : [p];
+      for (const t of list) {
+        const seg = subs[t.subPathIdx]?.segments?.[t.segIdx];
+        if (!seg) continue;
+        seg.point.x += dx;
+        seg.point.y += dy;
+      }
+      const newD = p.pathData;
+      p.remove();
+      if (newD) doc.setVectorPath(layer.id, pathIdx, { d: newD });
+    }
+  }
+
+  // Insert at the nearest point on ANY of this top-level path's subpaths
+  // — the SVG path's outline can have multiple disjoint subpaths, and we
+  // shouldn't force the user to know which subpath they double-clicked.
+  function insertAnchorAtNearestEdge(layer, pathIdx, point) {
     activatePaper();
     const rec = layer.vector.paths[pathIdx];
     if (!rec) return;
     let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
     const subs = p.children && p.children.length ? p.children : [p];
-    const sub = subs[subPathIdx];
-    if (!sub) { p.remove(); return; }
-    // Find the location on the sub-path nearest the click point.
-    const loc = sub.getNearestLocation(new paper.Point(point.x, point.y));
-    if (!loc) { p.remove(); return; }
-    sub.divideAt(loc);
+    let best = null;
+    const target = new paper.Point(point.x, point.y);
+    for (const s of subs) {
+      const loc = s.getNearestLocation(target);
+      if (!loc) continue;
+      const dist = loc.point.getDistance(target);
+      if (!best || dist < best.dist) best = { sub: s, loc, dist };
+    }
+    if (!best) { p.remove(); return; }
+    best.sub.divideAt(best.loc);
     const newD = p.pathData;
     p.remove();
     doc.setVectorPath(layer.id, pathIdx, { d: newD });
     refresh();
-  }
-
-  function commitAnchorEdit(layer, pathIdx, subPathIdx, segIdx, patch) {
-    activatePaper();
-    const rec = layer.vector.paths[pathIdx];
-    if (!rec) return;
-    let p;
-    try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
-    const subpaths = p.children && p.children.length ? p.children : [p];
-    const sub = subpaths[subPathIdx];
-    if (!sub || !sub.segments[segIdx]) { p.remove(); return; }
-    const seg = sub.segments[segIdx];
-    if (patch.point)     { seg.point.x = patch.point.x; seg.point.y = patch.point.y; }
-    if (patch.handleIn)  { seg.handleIn = new paper.Point(patch.handleIn.x, patch.handleIn.y); }
-    if (patch.handleOut) { seg.handleOut = new paper.Point(patch.handleOut.x, patch.handleOut.y); }
-    const newD = p.pathData;
-    p.remove();
-    // Anchor edits are non-destructive w.r.t. the shape record — we leave
-    // shape (kind/sides/cx/cy/r/cornerRadius) intact so the panel sliders
-    // still work. Changing a slider regenerates d and overwrites manual
-    // edits, which mirrors the mental model in Affinity / Illustrator.
-    doc.setVectorPath(layer.id, pathIdx, { d: newD });
-    // Top-left origin: layer.transform stays fixed at the layer's anchor
-    // point (set ONCE at creation by the shape/pen/pencil drawer). The
-    // renderer's image.position compensates for path-bounds shifts so
-    // non-moved anchors stay visually put without us touching transform.
-    // refresh() is short-circuited during anchorDragging — keep the
-    // dashed outline's `data` attribute in sync ourselves.
-    const outline = overlay.findOne(`.path-outline-${pathIdx}`);
-    if (outline) outline.data(newD);
-    overlay.batchDraw();
   }
 
   function getAccent(layer) {
@@ -375,6 +644,8 @@ export function initAnchorOverlay({ stage, document: doc }) {
   doc.subscribe((e) => {
     if (e.type === 'layer:active' || e.type === 'layer:removed' || e.type === 'doc:loaded') {
       selected = null;
+      selectedSet.clear();
+      asymHandles.clear();
     }
     if (
       e.type === 'layer:active' ||
@@ -385,26 +656,40 @@ export function initAnchorOverlay({ stage, document: doc }) {
       e.type === 'doc:loaded'
     ) refresh();
   });
-  onToolChange(() => { selected = null; refresh(); });
+  onToolChange(() => { selected = null; selectedSet.clear(); refresh(); });
 
-  // Backspace / Delete deletes the currently-selected anchor (Direct Select).
-  // Be conservative — only fire when the user isn't typing in an input
-  // and we have an anchor selected.
+  // Backspace / Delete removes the selected anchors; arrow keys nudge them.
   window.addEventListener('keydown', (e) => {
-    if (getTool() !== 'directSelect' || !selected) return;
+    if (getTool() !== 'directSelect') return;
+    if (!selected && !selectedSet.size) return;
     const ae = window.document.activeElement;
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       deleteSelectedAnchor();
+    } else if (e.key.startsWith('Arrow')) {
+      const step = e.shiftKey ? 10 : 1;
+      let dx = 0, dy = 0;
+      if (e.key === 'ArrowLeft')  dx = -step;
+      if (e.key === 'ArrowRight') dx =  step;
+      if (e.key === 'ArrowUp')    dy = -step;
+      if (e.key === 'ArrowDown')  dy =  step;
+      if (dx || dy) {
+        e.preventDefault();
+        nudgeSelectedAnchors(dx, dy);
+      }
     }
   });
 
-  // Click on empty stage area in directSelect → deselect anchor.
+  // Click on empty stage area in directSelect → deselect anchor(s).
   stage.on('click.anchorOverlayEmpty', (e) => {
     if (getTool() !== 'directSelect') return;
     if (e.target === stage) {
-      if (selected) { selected = null; refresh(); }
+      if (selected || selectedSet.size) {
+        selected = null;
+        selectedSet.clear();
+        refresh();
+      }
     }
   });
 

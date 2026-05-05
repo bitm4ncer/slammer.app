@@ -246,3 +246,33 @@
   background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 .typo-to-path-btn i { font-size: 10px; }
+
+/* ---------- Path actions / boolean ops button row ---------- */
+.vector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+.vector-action-btn {
+  flex: 1 0 auto;
+  min-width: 52px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.vector-action-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.vector-action-btn:active {
+  transform: translateY(1px);
+}

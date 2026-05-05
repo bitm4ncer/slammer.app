@@ -13,6 +13,10 @@ import { createGradientEditor } from '../plugins/shared/gradient-editor.js';
 import { rebuildShapePathD } from './vector-tools/shape-drawer.js';
 import { computePathBounds } from '../core/vector-renderer.js';
 import { showNotification } from './notifications.js';
+import {
+  simplifyPath, smoothPath, reversePath, toggleClosed, joinSubpaths,
+  outlineStroke, booleanOp,
+} from './vector-tools/path-actions.js';
 
 // Pills use icons instead of text labels for the type rows.
 //   Solid    = filled circle (currentColor)
@@ -123,6 +127,15 @@ export function initVectorTool({ document: doc }) {
       <span class="effect-label">Join</span>
       <div class="vector-pills" data-host="stroke-join"></div>
     </div>
+
+    <div class="effect-slider-row" data-row="path-actions">
+      <span class="effect-label">Path</span>
+      <div class="vector-actions" data-host="path-actions"></div>
+    </div>
+    <div class="effect-slider-row" data-row="bool-ops" hidden>
+      <span class="effect-label">Combine</span>
+      <div class="vector-actions" data-host="bool-ops"></div>
+    </div>
   `;
 
   // Mount above the Effects card (same as Typo panel).
@@ -148,6 +161,9 @@ export function initVectorTool({ document: doc }) {
   const strokeAlignRow    = panel.querySelector('[data-row=stroke-align]');
   const strokeCapRow      = panel.querySelector('[data-row=stroke-cap]');
   const strokeJoinRow     = panel.querySelector('[data-row=stroke-join]');
+  const pathActionsHost   = panel.querySelector('[data-host=path-actions]');
+  const boolOpsHost       = panel.querySelector('[data-host=bool-ops]');
+  const boolOpsRow        = panel.querySelector('[data-row=bool-ops]');
 
   // Build pill buttons inside a host. Opts may carry:
   //   { svg, title }   inline-SVG icon
@@ -223,11 +239,9 @@ export function initVectorTool({ document: doc }) {
       from: cur.from || { x: 0, y: 0.5 }, to: cur.to || { x: 1, y: 0.5 },
     };
     else if (type === 'gradientAlong') {
-      // True "gradient along the stroke direction" needs a per-segment
-      // canvas approach (sample stops along the path's arc-length and
-      // stroke each tiny segment with the sampled colour). It's a follow-up
-      // — for now we apply a regular linear gradient and surface a hint.
-      showNotification('Gradient-along-stroke is coming in a follow-up — using regular gradient for now.');
+      // Gradient sampled along the path's arc-length — see
+      // strokeGradientAlong() in vector-renderer.js. The from/to
+      // coordinates are unused in this mode (arc-length param is t∈[0,1]).
       next = {
         ...DEFAULT_VECTOR_STROKE(), ...cur, type: 'gradient', alongPath: true,
         gradientType: 'linear',
@@ -394,6 +408,76 @@ export function initVectorTool({ document: doc }) {
       strokeAlignBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === (p.stroke.align || 'center')));
       strokeCapBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === (p.stroke.cap || 'butt')));
       strokeJoinBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === (p.stroke.join || 'miter')));
+    }
+
+    renderPathActions(l, p);
+    renderBoolOps(l);
+  }
+
+  // Path actions — Simplify / Smooth / Reverse / Open or Close / Join
+  // subpaths. Each button calls into path-actions.js, which emits a
+  // single setVectorPath/setVectorPaths so history captures one snapshot.
+  function renderPathActions(l, p) {
+    pathActionsHost.innerHTML = '';
+    const isClosed = p?.closed !== false;
+    const buttons = [
+      { label: 'Simplify',  title: 'Reduce anchors while preserving the curve',
+        onClick: () => simplifyPath(doc, l, activePathIdx) },
+      { label: 'Smooth',    title: 'Make every anchor smooth via catmull-rom',
+        onClick: () => smoothPath(doc, l, activePathIdx) },
+      { label: 'Reverse',   title: 'Flip path direction',
+        onClick: () => reversePath(doc, l, activePathIdx) },
+      { label: isClosed ? 'Open' : 'Close', title: isClosed ? 'Open the path' : 'Close the path',
+        onClick: () => toggleClosed(doc, l, activePathIdx) },
+      { label: 'Join',      title: 'Connect this path’s subpaths into one',
+        onClick: () => {
+          if (!joinSubpaths(doc, l, activePathIdx)) {
+            showNotification('Join needs a path with multiple subpaths.');
+          }
+        } },
+      { label: 'Outline',   title: 'Convert the stroke band into a filled path',
+        onClick: () => outlineStroke(doc, l, activePathIdx) },
+    ];
+    for (const b of buttons) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vector-action-btn';
+      btn.textContent = b.label;
+      btn.title = b.title;
+      btn.addEventListener('click', b.onClick);
+      pathActionsHost.appendChild(btn);
+    }
+  }
+
+  // Boolean ops — operate on the active sub-path (A) against another path
+  // on the same layer (B). B defaults to the next path in the list,
+  // wrapping to path[0] if the active is last. Visible only when the layer
+  // has 2+ paths.
+  function renderBoolOps(l) {
+    boolOpsHost.innerHTML = '';
+    const n = l.vector.paths.length;
+    if (n < 2) { boolOpsRow.hidden = true; return; }
+    boolOpsRow.hidden = false;
+    const aIdx = Math.min(Math.max(0, activePathIdx), n - 1);
+    const bIdx = (aIdx + 1) % n;
+    const ops = [
+      { v: 'unite',     label: 'Unite',     title: 'Merge into one shape' },
+      { v: 'subtract',  label: 'Subtract',  title: 'Subtract B from A' },
+      { v: 'intersect', label: 'Intersect', title: 'Keep only the overlap' },
+      { v: 'exclude',   label: 'Exclude',   title: 'Keep everything except the overlap' },
+      { v: 'divide',    label: 'Divide',    title: 'Split into separate regions' },
+    ];
+    for (const o of ops) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vector-action-btn';
+      btn.textContent = o.label;
+      btn.title = `${o.title} — path ${aIdx + 1} ∘ path ${bIdx + 1}`;
+      btn.addEventListener('click', () => {
+        const ok = booleanOp(doc, l, o.v, aIdx, bIdx);
+        if (ok) activePathIdx = Math.min(aIdx, bIdx);
+      });
+      boolOpsHost.appendChild(btn);
     }
   }
 

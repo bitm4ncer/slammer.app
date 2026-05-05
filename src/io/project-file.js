@@ -1,6 +1,5 @@
 // .slmr — Self-contained portable project format.
 // ZIP archive containing manifest.json + raw binary assets.
-// Legacy .slammerproj and .crushproj imports are still accepted.
 
 import { zip, unzip, strToU8, strFromU8 } from 'fflate';
 import { registerEmbeddedFont, getUploadedBlob } from '../ui/typography/uploaded-fonts.js';
@@ -118,7 +117,7 @@ export async function importSlmr(file, doc) {
 
   const files = await new Promise((resolve, reject) => {
     unzip(bytes, (err, data) => {
-      if (err) return reject(err);
+      if (err) return reject(new Error(`Unzip failed: ${err.message || err}`));
       resolve(data);
     });
   });
@@ -127,13 +126,21 @@ export async function importSlmr(file, doc) {
     throw new Error('Invalid .slmr file: missing manifest.json');
   }
 
-  const manifest = JSON.parse(strFromU8(files['manifest.json']));
+  let manifest;
+  try {
+    manifest = JSON.parse(strFromU8(files['manifest.json']));
+  } catch (err) {
+    throw new Error(`Failed to parse manifest: ${err.message}`);
+  }
 
   // Build asset blobs.
   const assetBlobs = {};
   for (const asset of manifest.assets || []) {
     const data = files[asset.path];
-    if (!data) continue;
+    if (!data) {
+      console.warn(`[slmr] missing asset in ZIP: ${asset.path}`);
+      continue;
+    }
     assetBlobs[asset.id] = new Blob([data], { type: asset.mime });
   }
 
@@ -141,7 +148,11 @@ export async function importSlmr(file, doc) {
   for (const layer of manifest.document.layers || []) {
     if (layer.type === 'image' && layer.source && typeof layer.source === 'object' && layer.source.__asset) {
       const blob = assetBlobs[layer.source.__asset];
-      if (blob) layer.source = blob;
+      if (blob) {
+        layer.source = blob;
+      } else {
+        console.warn(`[slmr] missing asset for layer ${layer.id}: ${layer.source.__asset}`);
+      }
     }
     // Convert any remaining data-URL sources to Blobs for uniform pipeline.
     if (typeof layer.source === 'string' && layer.source.startsWith('data:')) {
@@ -152,39 +163,41 @@ export async function importSlmr(file, doc) {
   // Register embedded fonts.
   for (const font of manifest.fonts || []) {
     const blob = assetBlobs[font.assetId];
-    if (!blob) continue;
+    if (!blob) {
+      console.warn(`[slmr] missing font asset: ${font.assetId}`);
+      continue;
+    }
     const dataUrl = await blobToDataURL(blob);
-    await registerEmbeddedFont({
-      family: font.family,
-      dataUrl,
-      format: font.format,
-      axes: font.axes,
-      features: font.features,
-      weights: font.weights,
-      foundry: font.foundry,
-    });
+    try {
+      await registerEmbeddedFont({
+        family: font.family,
+        dataUrl,
+        format: font.format,
+        axes: font.axes,
+        features: font.features,
+        weights: font.weights,
+        foundry: font.foundry,
+      });
+    } catch (err) {
+      console.warn(`[slmr] failed to register font ${font.family}:`, err);
+    }
   }
 
   // Restore settings.
   if (manifest.settings && Object.keys(manifest.settings).length) {
-    setSettings(manifest.settings);
-  }
-
-  doc.load(manifest.document);
-}
-
-// ---------- Legacy .slammerproj Import ----------
-
-export async function importProjectFile(file, doc) {
-  const text = await file.text();
-  const json = JSON.parse(text);
-  // Restore embedded uploaded fonts BEFORE doc.load so text rasters use them.
-  if (Array.isArray(json.embeddedFonts)) {
-    for (const f of json.embeddedFonts) {
-      try { await registerEmbeddedFont(f); } catch (e) { console.warn('[project] embedded font failed', e); }
+    try {
+      setSettings(manifest.settings);
+    } catch (err) {
+      console.warn('[slmr] failed to restore settings:', err);
     }
   }
-  doc.load(json);
+
+  // Load document.
+  try {
+    doc.load(manifest.document);
+  } catch (err) {
+    throw new Error(`Document load failed: ${err.message || err}`);
+  }
 }
 
 // ---------- Helpers ----------

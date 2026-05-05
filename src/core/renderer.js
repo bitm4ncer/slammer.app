@@ -3,7 +3,7 @@
 import Konva from 'konva';
 import { getPlugin } from '../plugins/registry.js';
 import { findFont } from '../ui/typography/font-sources.js';
-import { rasterizeVectorLayer } from './vector-renderer.js';
+import { rasterizeVectorLayer, translatePathD } from './vector-renderer.js';
 import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 
 function resolveFontMeta(text) {
@@ -775,9 +775,21 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   }
 
   // When the active tool changes, re-evaluate the transformer for the
-  // currently-active layer (Direct Selection hides it; Selection shows it).
+  // currently-active layer (Direct Selection hides it; Selection shows it)
+  // AND lock dragging on every layer group while in Direct Selection /
+  // pen / pencil — empty-canvas mis-clicks shouldn't slide the layer.
+  function syncLayerInteractivity() {
+    const tool = getTool();
+    const lock = tool === 'directSelect' || tool === 'pen' || tool === 'pencil' || tool.startsWith('shape:');
+    layerState.forEach((st, id) => {
+      const layer = document.findLayer(id);
+      if (!layer || layer.type === 'fx') { st.group.draggable(false); return; }
+      st.group.draggable(!lock);
+    });
+  }
   onToolChange(() => {
     const layer = document.activeLayer;
+    syncLayerInteractivity();
     if (!layer) return;
     const st = layerState.get(layer.id);
     if (layer.type === 'fx' || getTool() === 'directSelect') attachTransformer(null);
@@ -791,6 +803,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         await createLayerNodes(event.layer);
         repaintFxAbove(event.layer.id);
         syncFxVisibility();
+        syncLayerInteractivity();
         break;
       case 'layer:removed': {
         const removedIdx = -1; // already removed; just refresh all FX
@@ -983,6 +996,43 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (transformer) transformer.forceUpdate();
         scheduleDraw();
         return;
+      }
+
+      // Vector layers store path d-coords in WORLD space (creation-time
+      // frozen). When the user drags the Konva.Group, layer.transform is
+      // about to be updated to the new world position — but the path d
+      // still points to the OLD world location. Translate every path d by
+      // the drag delta so anchor overlay + the next paintLayer find the
+      // path geometry where the user just dropped it. (Scale + rotation
+      // remain in layer.transform / Konva.Group; only translation needs
+      // baking into the path data.)
+      if (layer.type === 'vector') {
+        const dx = group.x() - layer.transform.x;
+        const dy = group.y() - layer.transform.y;
+        if (dx !== 0 || dy !== 0) {
+          const newPaths = layer.vector.paths.map((rec) => ({
+            ...rec,
+            d: translatePathD(rec.d, dx, dy),
+          }));
+          // Order matters: write transform first so paintLayer (triggered
+          // by setVectorPaths next) reads the new layer.transform.x and
+          // computes image.x consistently with the translated d.
+          document.setLayerTransform(layer.id, {
+            x: group.x(),
+            y: group.y(),
+            scaleX: group.scaleX(),
+            scaleY: group.scaleY(),
+            rotation: group.rotation(),
+          });
+          document.setVectorPaths(layer.id, newPaths);
+          if (liveDragLayerId) {
+            const stx = layerState.get(liveDragLayerId);
+            if (stx) stx.image.opacity(1);
+            liveDragLayerId = null;
+            scheduleDraw();
+          }
+          return;
+        }
       }
 
       document.setLayerTransform(layer.id, {

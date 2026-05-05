@@ -103,7 +103,7 @@ export async function uploadFontFile(file) {
   return stripBlob(meta);
 }
 
-// Public — register a font that was embedded inside a .slammerproj.
+// Public — register a font that was embedded inside a .slmr file.
 // Used during project load so foreign-uploaded fonts work even if the user
 // doesn't have them in their global IndexedDB store.
 export async function registerEmbeddedFont({ family, dataUrl, axes, features, weights, foundry }) {
