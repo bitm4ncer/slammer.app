@@ -300,61 +300,29 @@ export function initVectorTool({ document: doc }) {
     const shape = path?.shape;
     if (!shape) return;
     if (shape.kind === 'rect') {
-      const row = document.createElement('div');
-      row.className = 'effect-slider-row';
-      row.innerHTML = `<span class="effect-label">Radius</span>`;
-      const slot = document.createElement('div');
-      row.appendChild(slot);
-      shapeControlsHost.appendChild(row);
-      slot.appendChild(sliderRow({
-        label: '', min: 0, max: 200, step: 1,
+      shapeControlsHost.appendChild(sliderRow({
+        label: 'Radius', min: 0, max: 200, step: 1,
         value: shape.cornerRadius || 0, defaultValue: 0, suffix: 'px',
         onChange: (v) => setShapeParam({ cornerRadius: v }),
       }));
-      slot.querySelector('.effect-label').style.display = 'none';
     } else if (shape.kind === 'polygon') {
-      const row = document.createElement('div');
-      row.className = 'effect-slider-row';
-      row.innerHTML = `<span class="effect-label">Sides</span>`;
-      const slot = document.createElement('div');
-      slot.dataset.host = 'sides';
-      row.appendChild(slot);
-      shapeControlsHost.appendChild(row);
-      slot.appendChild(sliderRow({
-        label: '', min: 3, max: 24, step: 1,
+      shapeControlsHost.appendChild(sliderRow({
+        label: 'Sides', min: 3, max: 24, step: 1,
         value: shape.sides ?? 6, defaultValue: 6,
         onChange: (v) => setShapeParam({ sides: v }),
       }));
-      // Trim the duplicate empty label from the inner sliderRow.
-      const innerLabel = slot.querySelector('.effect-label');
-      if (innerLabel) innerLabel.style.display = 'none';
     } else if (shape.kind === 'star') {
-      const row1 = document.createElement('div');
-      row1.className = 'effect-slider-row';
-      row1.innerHTML = `<span class="effect-label">Points</span>`;
-      const slot1 = document.createElement('div');
-      row1.appendChild(slot1);
-      shapeControlsHost.appendChild(row1);
-      slot1.appendChild(sliderRow({
-        label: '', min: 3, max: 24, step: 1,
+      shapeControlsHost.appendChild(sliderRow({
+        label: 'Points', min: 3, max: 24, step: 1,
         value: shape.points ?? 5, defaultValue: 5,
         onChange: (v) => setShapeParam({ points: v }),
       }));
-      slot1.querySelector('.effect-label').style.display = 'none';
-
-      const row2 = document.createElement('div');
-      row2.className = 'effect-slider-row';
-      row2.innerHTML = `<span class="effect-label">Inner</span>`;
-      const slot2 = document.createElement('div');
-      row2.appendChild(slot2);
-      shapeControlsHost.appendChild(row2);
-      slot2.appendChild(sliderRow({
-        label: '', min: 5, max: 95, step: 1,
+      shapeControlsHost.appendChild(sliderRow({
+        label: 'Inner', min: 5, max: 95, step: 1,
         value: Math.round((shape.innerRatio ?? 0.42) * 100), defaultValue: 42,
-        onChange: (v) => setShapeParam({ innerRatio: v / 100 }),
         suffix: '%',
+        onChange: (v) => setShapeParam({ innerRatio: v / 100 }),
       }));
-      slot2.querySelector('.effect-label').style.display = 'none';
     }
   }
 

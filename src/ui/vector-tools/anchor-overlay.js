@@ -51,18 +51,27 @@ export function initAnchorOverlay({ stage, document: doc }) {
     attachLiveDrag(layer);
   }
 
-  // While the user drags the layer (Konva selection), fire updates so the
-  // overlay tracks live instead of waiting for layer:transform on dragend.
+  // While the user drags / scales / rotates the layer's Konva.Group, the
+  // anchor overlay needs to track live (Konva fires dragmove + transform
+  // continuously; layer:transform in the doc model only fires on dragend).
   function attachLiveDrag(layer) {
     const layerGroup = stage.findOne((n) => n.id?.() === layer.id);
     if (!layerGroup) return;
     const onMove = () => syncOverlayTransform(layerGroup);
     layerGroup.on('dragmove.anchorOverlay', onMove);
+    layerGroup.on('xChange.anchorOverlay', onMove);
+    layerGroup.on('yChange.anchorOverlay', onMove);
+    layerGroup.on('scaleXChange.anchorOverlay', onMove);
+    layerGroup.on('scaleYChange.anchorOverlay', onMove);
+    layerGroup.on('rotationChange.anchorOverlay', onMove);
     layerGroup.on('transform.anchorOverlay', onMove);
     liveDragOff = () => {
-      layerGroup.off('dragmove.anchorOverlay');
-      layerGroup.off('transform.anchorOverlay');
+      ['dragmove', 'xChange', 'yChange', 'scaleXChange', 'scaleYChange', 'rotationChange', 'transform']
+        .forEach((evt) => layerGroup.off(`${evt}.anchorOverlay`));
     };
+    // Sync once immediately in case the layer was already in a transformed
+    // state (e.g. user moved it in Selection mode then switched to A).
+    syncOverlayTransform(layerGroup);
   }
   function detachLiveDrag() { if (liveDragOff) { liveDragOff(); liveDragOff = null; } }
 
@@ -103,8 +112,13 @@ export function initAnchorOverlay({ stage, document: doc }) {
       let p;
       try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return; }
 
-      // Dashed path outline (read-only).
+      // Dashed path outline (read-only). Tagged with the path index so the
+      // anchor / handle drag handlers can patch its `data` attribute live
+      // — refresh() is short-circuited during drag (would destroy the very
+      // Konva node the user is dragging), so we have to keep the outline
+      // in sync ourselves.
       grp.add(new Konva.Path({
+        name: `path-outline-${pathIdx}`,
         data: rec.d,
         x: -offX, y: -offY,
         stroke: accent,
@@ -212,6 +226,13 @@ export function initAnchorOverlay({ stage, document: doc }) {
     // still work. Changing a slider regenerates d and overwrites manual
     // edits, which mirrors the mental model in Affinity / Illustrator.
     doc.setVectorPath(layer.id, pathIdx, { d: newD });
+    // refresh() is short-circuited during anchorDragging (so we don't
+    // destroy the live Konva node), so keep the dashed outline node's
+    // `data` attribute in sync ourselves. Tangent-line + dot positions
+    // resync on dragend's refresh().
+    const outline = overlay.findOne(`.path-outline-${pathIdx}`);
+    if (outline) outline.data(newD);
+    overlay.batchDraw();
   }
 
   function getAccent(layer) {
