@@ -25,24 +25,21 @@ async function loadOpentype() {
   return _opentypePromise;
 }
 
-// opentype.js can't decode woff2 on its own — it needs an external WASM
-// decompressor. Lazy-load wawoff2 only when we actually have a woff2 buffer.
-let _wawoffPromise = null;
-async function decompressWoff2IfNeeded(buffer) {
-  // SFNT magic bytes: a woff2 file starts with 'wOF2' (0x77 0x4F 0x46 0x32).
-  // TTF starts with 0x00010000, OTF with 'OTTO', WOFF1 with 'wOFF'. Only
-  // woff2 needs decompressing — everything else opentype can parse directly.
-  const view = new Uint8Array(buffer, 0, 4);
-  const isWoff2 = view[0] === 0x77 && view[1] === 0x4F && view[2] === 0x46 && view[3] === 0x32;
-  if (!isWoff2) return buffer;
-  if (!_wawoffPromise) {
-    _wawoffPromise = import('wawoff2').then((m) => m.default || m);
-  }
-  const wawoff2 = await _wawoffPromise;
-  // wawoff2.decompress takes a Uint8Array and returns Uint8Array of SFNT bytes.
-  const out = await wawoff2.decompress(new Uint8Array(buffer));
-  // Hand opentype a clean ArrayBuffer slice (avoid passing a SharedArrayBuffer view).
-  return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+// opentype.js v1.3.5 can't read woff2 (needs Brotli). Rather than ship a
+// WASM Brotli decoder, we route Google Fonts through Fontsource's jsDelivr
+// CDN which serves raw TTF directly — no decompression required.
+//
+// Family slug = lowercase, hyphen-separated. e.g. "Open Sans" → "open-sans".
+function fontsourceSlug(family) {
+  return String(family).toLowerCase().replace(/['']/g, '').replace(/\s+/g, '-');
+}
+
+// jsDelivr Fontsource asset — TTF for the chosen weight/style.
+// Static face URL example: .../fontsource/fonts/inter@latest/latin-400-normal.ttf
+function fontsourceUrl(family, weight, italic) {
+  const slug = fontsourceSlug(family);
+  const style = italic ? 'italic' : 'normal';
+  return `https://cdn.jsdelivr.net/fontsource/fonts/${slug}@latest/latin-${weight}-${style}.ttf`;
 }
 
 // Fetch a font binary as ArrayBuffer (suitable for opentype.parse()).
@@ -57,36 +54,57 @@ async function resolveFontBuffer(meta, t) {
   if (meta.source === 'system') {
     return null; // not reachable without Local Font Access raw binary access
   }
-  // Google + Fontshare — sniff the woff2 URL from the @font-face the loader
-  // injected, then fetch it as ArrayBuffer.
-  const fam = (meta.cssFamily || meta.family);
-  const wght = (t.variation && t.variation.wght != null) ? t.variation.wght : t.weight;
-  const url = await fetchFontFileUrl(fam, wght || 400, !!t.italic);
-  if (!url) return null;
+  if (meta.source === 'google') {
+    const fam = meta.cssFamily || meta.family;
+    const wght = pickClosestWeight(meta, t);
+    const url = fontsourceUrl(fam, wght, !!t.italic);
+    const buf = await fetchBuffer(url);
+    if (buf) return { buffer: buf, sourceLabel: 'google' };
+    // Fontsource sometimes lacks an italic file — fall back to upright.
+    if (t.italic) {
+      const fb = await fetchBuffer(fontsourceUrl(fam, wght, false));
+      if (fb) return { buffer: fb, sourceLabel: 'google' };
+    }
+    return null;
+  }
+  if (meta.source === 'fontshare') {
+    // Fontshare also ships TTFs via their public CDN — convention is
+    // https://api.fontshare.com/v2/css?f[]=<slug>@<weight>&display=swap
+    // returns CSS pointing at .ttf urls. Probe and fetch.
+    const url = await fetchFontshareTTF(meta, t);
+    if (!url) return null;
+    const buf = await fetchBuffer(url);
+    return buf ? { buffer: buf, sourceLabel: 'fontshare' } : null;
+  }
+  return null;
+}
+
+async function fetchBuffer(url) {
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
-    return { buffer: await r.arrayBuffer(), sourceLabel: meta.source };
+    return await r.arrayBuffer();
   } catch {
     return null;
   }
 }
 
-async function fetchFontFileUrl(family, weight, italic) {
-  // Probe Google's CSS endpoint with a precise spec, then read out the
-  // .woff2 URL the @font-face uses. fetch() in a modern browser sends a UA
-  // Google understands, so woff2 is returned by default.
-  const fam = family.replace(/\s+/g, '+');
-  const url = italic
-    ? `https://fonts.googleapis.com/css2?family=${fam}:ital,wght@1,${weight}&display=swap`
-    : `https://fonts.googleapis.com/css2?family=${fam}:wght@${weight}&display=swap`;
+function pickClosestWeight(meta, t) {
+  const target = (t.variation && t.variation.wght != null) ? t.variation.wght : (t.weight || 400);
+  const weights = (meta.weights && meta.weights.length) ? meta.weights : [400];
+  return weights.reduce((best, w) => Math.abs(w - target) < Math.abs(best - target) ? w : best, weights[0]);
+}
+
+async function fetchFontshareTTF(meta, t) {
+  const slug = (meta.family || '').toLowerCase().replace(/\s+/g, '-');
+  const wght = pickClosestWeight(meta, t);
+  const url = `https://api.fontshare.com/v2/css?f[]=${slug}@${wght}&display=swap`;
   try {
     const r = await fetch(url);
     const css = await r.text();
-    // Prefer woff2; fall back to any .ttf / .otf url if present.
-    const m = css.match(/url\((https?:\/\/[^)]+\.woff2)\)/)
-           || css.match(/url\((https?:\/\/[^)]+\.(?:ttf|otf))\)/);
-    return m ? m[1] : null;
+    const m = css.match(/url\(("|'|)(https?:\/\/[^)]+?\.ttf)\1\)/i)
+           || css.match(/url\(("|'|)(https?:\/\/[^)]+?\.otf)\1\)/i);
+    return m ? m[2] : null;
   } catch {
     return null;
   }
@@ -114,10 +132,7 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
   let otFont;
   try {
     const opentype = await loadOpentype();
-    // Google + Fontshare serve woff2 — decompress to SFNT first since
-    // opentype.js v1.3.5 can't read woff2 natively.
-    const sfntBuffer = await decompressWoff2IfNeeded(fontFile.buffer);
-    otFont = opentype.parse(sfntBuffer);
+    otFont = opentype.parse(fontFile.buffer);
   } catch (e) {
     console.error('[text-to-path] opentype.parse failed:', e);
     showNotification('Convert to Path: font failed to parse (' + (e.message || e) + ').');

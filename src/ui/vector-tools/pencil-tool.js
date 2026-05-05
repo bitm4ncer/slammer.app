@@ -11,25 +11,13 @@
 // Auto-close: if the user releases within 8 px (screen space) of the
 // path's first sample point, the resulting path is set closed = true.
 
-import paper from 'paper';
+import Konva from 'konva';
 import { DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
+import { paper, activatePaper } from '../../core/paper-context.js';
 
 const SMOOTH_KEY = 'slammer:pencilSmoothness';
-let _paperReady = false;
-
-function ensurePaper() {
-  if (_paperReady) return;
-  const c = document.createElement('canvas');
-  c.width = 1; c.height = 1;
-  paper.setup(c);
-  _paperReady = true;
-}
-function activatePaper() {
-  if (!_paperReady) { ensurePaper(); return; }
-  if (paper.project) paper.project.activate();
-}
 
 export function getPencilSmoothness() {
   const stored = parseFloat(localStorage.getItem(SMOOTH_KEY));

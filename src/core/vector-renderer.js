@@ -5,32 +5,25 @@
 // boolean ops, simplification, hit-testing — all battle-tested. We use the
 // headless mode (no view, no DOM) and feed our own canvas.
 
-import paper from 'paper';
+// CONVENTION: every vector layer's path d-strings are stored in WORLD
+// coordinates (the world-space pixel positions where the user drew them).
+// `layer.transform.x/y` mirrors the path-bbox top-left in world; it is the
+// rotation/scale anchor used by Konva.Transformer. The path data itself
+// already carries world geometry — `transform` is purely the layer's
+// origin marker and is set ONCE at creation. The renderer compensates for
+// later bbox shifts via `image.position` so non-edited anchors stay put.
+//
+// All vector tooling (pen, pencil, shape-drawer, svg-import, text-to-path)
+// MUST emit world-coord path data so this invariant holds.
+
+import { paper, ensurePaper } from './paper-context.js';
 
 // Padding around the path bbox so blur / displacement / glow don't clip.
 // Exported via the rasterise return so the consumer (renderer.js) can
 // position the Konva.Image to compensate for path-bounds shifts.
 const PAD = 16;
 
-let _project = null;
-function ensureProject() {
-  if (!_project) {
-    // Headless setup — create a tiny canvas just to keep paper happy. We
-    // never draw to it directly; we use Paper to compute paths + render via
-    // our own ctx in rasterizeVectorLayer().
-    const dummy = document.createElement('canvas');
-    dummy.width = 1; dummy.height = 1;
-    paper.setup(dummy);
-    _project = paper.project;
-  } else {
-    // Other modules (e.g. svg-import) may activate their own Paper project
-    // and then remove it, leaving paper.project pointing somewhere else.
-    // Re-activate ours every time so new objects land in our project and
-    // hydratePath() never throws "no active project".
-    _project.activate();
-  }
-  return _project;
-}
+function ensureProject() { return ensurePaper(); }
 
 // Hydrate a serialised path-record back into a paper.Path / CompoundPath.
 // Path records: { d, closed, fill, stroke }

@@ -14,23 +14,10 @@
 // added; if there's no vector layer at all, one is created.
 
 import Konva from 'konva';
-import paper from 'paper';
-import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
+import { DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool, onToolChange } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
-
-let _paperReady = false;
-function ensurePaper() {
-  if (_paperReady) return;
-  const c = document.createElement('canvas');
-  c.width = 1; c.height = 1;
-  paper.setup(c);
-  _paperReady = true;
-}
-function activatePaper() {
-  if (!_paperReady) { ensurePaper(); return; }
-  if (paper.project) paper.project.activate();
-}
+import { paper, activatePaper } from '../../core/paper-context.js';
 
 // Default style for a freshly-created Pen path: stroke only, accent colour.
 function freshStrokeStyle() {

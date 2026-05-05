@@ -12,24 +12,8 @@
 // This is the read+edit pass; pen-tool insertion comes in 13b.
 
 import Konva from 'konva';
-import paper from 'paper';
 import { getTool, onToolChange } from './active-tool.js';
-import { computePathBounds } from '../../core/vector-renderer.js';
-
-let _paperReady = false;
-function ensurePaper() {
-  if (_paperReady) return;
-  const c = document.createElement('canvas');
-  c.width = 1; c.height = 1;
-  paper.setup(c);
-  _paperReady = true;
-}
-function activatePaper() {
-  // Same trick as vector-renderer: re-activate after svg-import / others
-  // could have stolen the active project.
-  if (!_paperReady) { ensurePaper(); return; }
-  if (paper.project) paper.project.activate();
-}
+import { paper, activatePaper } from '../../core/paper-context.js';
 
 export function initAnchorOverlay({ stage, document: doc }) {
   const overlay = new Konva.Layer();
