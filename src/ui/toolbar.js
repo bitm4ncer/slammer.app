@@ -6,10 +6,12 @@ import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
 import { importSvgFile } from './vector-tools/svg-import.js';
 
+// Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
+const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
 const SHAPE_OPTIONS = [
   { id: 'rect',    label: 'Rectangle', icon: 'fa-square' },
   { id: 'ellipse', label: 'Ellipse',   icon: 'fa-circle' },
-  { id: 'polygon', label: 'Polygon',   icon: 'fa-draw-polygon' },
+  { id: 'polygon', label: 'Polygon',   svg: HEX_SVG },
   { id: 'star',    label: 'Star',      icon: 'fa-star' },
   { id: 'line',    label: 'Line',      icon: 'fa-minus' },
 ];
@@ -98,7 +100,8 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     for (const opt of SHAPE_OPTIONS) {
       const item = window.document.createElement('button');
       item.className = 'tool-flyout-item';
-      item.innerHTML = `<i class="fas ${opt.icon}"></i><span>${opt.label}</span>`;
+      const iconHtml = opt.svg ? opt.svg : `<i class="fas ${opt.icon}"></i>`;
+      item.innerHTML = `${iconHtml}<span>${opt.label}</span>`;
       item.addEventListener('click', () => {
         setTool(`shape:${opt.id}`);
         closeShapeFlyout();
@@ -146,7 +149,7 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       // Update the icon to match the chosen shape.
       const last = getLastShape().slice('shape:'.length);
       const opt = SHAPE_OPTIONS.find((s) => s.id === last);
-      if (opt) shapeBtn.innerHTML = `<i class="fas ${opt.icon}"></i>`;
+      if (opt) shapeBtn.innerHTML = opt.svg || `<i class="fas ${opt.icon}"></i>`;
     }
   }
   onToolChange(syncToolButtons);

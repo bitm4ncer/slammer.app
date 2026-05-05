@@ -41,8 +41,13 @@ export async function importSvgFile(file, doc) {
     console.warn('[svg] no paths found in', file.name);
     return null;
   }
+  // Compute combined bounds and set the layer's transform so the SVG renders
+  // at the world coords matching the path data inside the file.
+  const { computePathBounds } = await import('../../core/vector-renderer.js');
+  const b = computePathBounds(records);
   return doc.addVectorLayer({
     name: file.name.replace(/\.svg$/i, ''),
+    transform: { x: b.x, y: b.y },
     vector: { paths: records },
   });
 }

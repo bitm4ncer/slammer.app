@@ -273,12 +273,23 @@ export function rasterizeVectorLayer(layer) {
   }
 
   const imageData = ctx.getImageData(0, 0, w, h);
+  // Path-only bounds (no stroke / no pad) — the renderer + canvas-view use
+  // these to position the image inside the layer group so that group origin
+  // (0,0) coincides with the path's top-left in WORLD space. That keeps
+  // selection handles tight to the path geometry and makes Konva.Transformer
+  // scale around the path's actual top-left, not the padded canvas edge.
+  const pathBounds = computePathBounds(recs);
+  // contentOffsetInImage = where, in canvas pixels, the path's top-left sits.
+  // dx = pad - b.x (b includes stroke), so canvas x for path.bounds.x is
+  // path.bounds.x + dx = pad + (path.bounds.x - b.x) = pad + outsideStrokeGrow.
+  const contentOffsetInImage = {
+    x: pathBounds.x + dx,
+    y: pathBounds.y + dy,
+  };
   return {
     imageData,
     naturalSize: { w, h },
-    // Translate from layer-local space (paths' own coords) into the rasterised
-    // image's coords. Used so the layer's transform.x maps to the path origin
-    // rather than the image's top-left padded corner.
-    rasterOffset: { x: -dx, y: -dy },
+    pathBounds,
+    contentOffsetInImage,
   };
 }

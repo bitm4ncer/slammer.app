@@ -183,14 +183,26 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return rasterizeText(layer.text, st);
     }
     if (layer.type === 'vector') {
-      const { imageData, naturalSize } = rasterizeVectorLayer(layer);
+      const { imageData, naturalSize, pathBounds, contentOffsetInImage } = rasterizeVectorLayer(layer);
       st.naturalSize = naturalSize;
-      // Track the inner content rect so the Konva.Image can report tight
-      // selection bounds (mirrors what we do for text layers).
-      st.textPad = 16;
-      st.textContentSize = { w: Math.max(1, naturalSize.w - 32), h: Math.max(1, naturalSize.h - 32) };
-      // Persist on the layer so alignment-controls + project save reflect it.
-      layer.naturalSize = naturalSize;
+      st.vectorPathBounds = pathBounds;
+      st.vectorContentOffset = contentOffsetInImage;
+      // Position the image so the path's top-left sits at the GROUP origin
+      // (0,0). After this, layer.transform.x/y is the world coord of the
+      // path top-left, scaling pivots around that, and selection handles
+      // wrap exactly the path bbox.
+      st.image.position({
+        x: -contentOffsetInImage.x,
+        y: -contentOffsetInImage.y,
+      });
+      // Tight content bounds for the Konva.Image's getSelfRect override.
+      st.textPad = contentOffsetInImage.x;       // reuse the field; it's the
+      st.textContentSize = {                       // image-local rect of the
+        w: Math.max(1, Math.round(pathBounds.width)),  // path interior.
+        h: Math.max(1, Math.round(pathBounds.height)),
+      };
+      // Persist on the layer for alignment-controls + project save.
+      layer.naturalSize = { w: Math.round(pathBounds.width), h: Math.round(pathBounds.height) };
       return imageData;
     }
     if (layer.type === 'fx') {

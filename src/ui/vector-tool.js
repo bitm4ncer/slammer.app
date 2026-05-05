@@ -10,6 +10,9 @@
 import { sliderRow } from '../plugins/shared/ui-helpers.js';
 import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../core/layer.js';
 import { createGradientEditor } from '../plugins/shared/gradient-editor.js';
+import { rebuildShapePathD } from './vector-tools/shape-drawer.js';
+import { computePathBounds } from '../core/vector-renderer.js';
+import { showNotification } from './notifications.js';
 
 // Pills use icons instead of text labels for the type rows.
 //   Solid    = filled circle (currentColor)
@@ -42,6 +45,8 @@ export function initVectorTool({ document: doc }) {
   panel.style.display = 'none';
   panel.innerHTML = `
     <h3><i class="fas fa-bezier-curve"></i> Vector</h3>
+
+    <div data-host="shape-controls"></div>
 
     <div class="effect-slider-row">
       <span class="effect-label">Fill</span>
@@ -83,6 +88,7 @@ export function initVectorTool({ document: doc }) {
   if (effectsGroup && effectsGroup.parentNode === host) host.insertBefore(panel, effectsGroup);
   else host.appendChild(panel);
 
+  const shapeControlsHost = panel.querySelector('[data-host=shape-controls]');
   const fillTypeHost      = panel.querySelector('[data-host=fill-type]');
   const fillColorRow      = panel.querySelector('[data-row=fill-color]');
   const fillColorInput    = panel.querySelector('input[data-key=fillColor]');
@@ -172,18 +178,87 @@ export function initVectorTool({ document: doc }) {
       stops: cur.stops || [{ at: 0, color: '#ffffff' }, { at: 1, color: '#000000' }],
       from: cur.from || { x: 0, y: 0.5 }, to: cur.to || { x: 1, y: 0.5 },
     };
-    else if (type === 'gradientAlong') next = {
-      ...DEFAULT_VECTOR_STROKE(), ...cur, type: 'gradient', alongPath: true,
-      gradientType: 'linear',
-      stops: cur.stops || [{ at: 0, color: '#ffffff' }, { at: 1, color: '#000000' }],
-      from: { x: 0, y: 0.5 }, to: { x: 1, y: 0.5 },
-    };
+    else if (type === 'gradientAlong') {
+      // True "gradient along the stroke direction" needs a per-segment
+      // canvas approach (sample stops along the path's arc-length and
+      // stroke each tiny segment with the sampled colour). It's a follow-up
+      // — for now we apply a regular linear gradient and surface a hint.
+      showNotification('Gradient-along-stroke is coming in a follow-up — using regular gradient for now.');
+      next = {
+        ...DEFAULT_VECTOR_STROKE(), ...cur, type: 'gradient', alongPath: true,
+        gradientType: 'linear',
+        stops: cur.stops || [{ at: 0, color: '#ffffff' }, { at: 1, color: '#000000' }],
+        from: { x: 0, y: 0.5 }, to: { x: 1, y: 0.5 },
+      };
+    }
     doc.setVectorStroke(l.id, activePathIdx, next);
   }
 
   function setStrokeProp(patch) {
     const l = activeLayer(); const p = activePath(); if (!l || !p) return;
     doc.setVectorStroke(l.id, activePathIdx, { ...(p.stroke || DEFAULT_VECTOR_STROKE()), ...patch });
+  }
+
+  // Recompute the path's d-string from its current bbox and the new shape
+  // params (sides / points / innerRatio). Polygons + stars only.
+  function setShapeParam(patch) {
+    const l = activeLayer(); const p = activePath(); if (!l || !p || !p.shape) return;
+    const nextShape = { ...p.shape, ...patch };
+    const b = computePathBounds([p]);
+    if (!(b.width > 0) || !(b.height > 0)) return;
+    const d = rebuildShapePathD(nextShape, b);
+    if (!d) return;
+    doc.setVectorPath(l.id, activePathIdx, { shape: nextShape, d });
+  }
+
+  function renderShapeControls(layer, path) {
+    shapeControlsHost.innerHTML = '';
+    const shape = path?.shape;
+    if (!shape) return;
+    if (shape.kind === 'polygon') {
+      const row = document.createElement('div');
+      row.className = 'effect-slider-row';
+      row.innerHTML = `<span class="effect-label">Sides</span>`;
+      const slot = document.createElement('div');
+      slot.dataset.host = 'sides';
+      row.appendChild(slot);
+      shapeControlsHost.appendChild(row);
+      slot.appendChild(sliderRow({
+        label: '', min: 3, max: 24, step: 1,
+        value: shape.sides ?? 6, defaultValue: 6,
+        onChange: (v) => setShapeParam({ sides: v }),
+      }));
+      // Trim the duplicate empty label from the inner sliderRow.
+      const innerLabel = slot.querySelector('.effect-label');
+      if (innerLabel) innerLabel.style.display = 'none';
+    } else if (shape.kind === 'star') {
+      const row1 = document.createElement('div');
+      row1.className = 'effect-slider-row';
+      row1.innerHTML = `<span class="effect-label">Points</span>`;
+      const slot1 = document.createElement('div');
+      row1.appendChild(slot1);
+      shapeControlsHost.appendChild(row1);
+      slot1.appendChild(sliderRow({
+        label: '', min: 3, max: 24, step: 1,
+        value: shape.points ?? 5, defaultValue: 5,
+        onChange: (v) => setShapeParam({ points: v }),
+      }));
+      slot1.querySelector('.effect-label').style.display = 'none';
+
+      const row2 = document.createElement('div');
+      row2.className = 'effect-slider-row';
+      row2.innerHTML = `<span class="effect-label">Inner</span>`;
+      const slot2 = document.createElement('div');
+      row2.appendChild(slot2);
+      shapeControlsHost.appendChild(row2);
+      slot2.appendChild(sliderRow({
+        label: '', min: 5, max: 95, step: 1,
+        value: Math.round((shape.innerRatio ?? 0.42) * 100), defaultValue: 42,
+        onChange: (v) => setShapeParam({ innerRatio: v / 100 }),
+        suffix: '%',
+      }));
+      slot2.querySelector('.effect-label').style.display = 'none';
+    }
   }
 
   // ---------- Inputs ----------
@@ -204,6 +279,8 @@ export function initVectorTool({ document: doc }) {
     activePathIdx = Math.min(activePathIdx, (l.vector.paths.length || 1) - 1);
     if (activePathIdx < 0) activePathIdx = 0;
     const p = l.vector.paths[activePathIdx] || { fill: DEFAULT_VECTOR_FILL(), stroke: DEFAULT_VECTOR_STROKE() };
+
+    renderShapeControls(l, p);
 
     const fillType = (p.fill && p.fill.type) || 'none';
     fillTypeBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === fillType));

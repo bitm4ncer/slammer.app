@@ -1,6 +1,6 @@
 # slammer.app
 
-Multi-layer image editor for slamming, glitching, and dithering, with VST-like
+Multi-layer graphics editor for slamming, glitching, and dithering, with VST-like
 tool plugins and a typography layer. Konva-based free canvas, non-destructive
 per-layer effect stacks, IndexedDB project storage, Affinity Photo bridge.
 

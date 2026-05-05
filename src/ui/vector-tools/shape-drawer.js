@@ -10,12 +10,7 @@
 
 import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool } from './active-tool.js';
-import { computeBounds } from '../../core/vector-renderer.js';
-
-// The vector renderer pads its output canvas by this much for blur safety.
-// We must offset layer.transform by the same amount so the rendered pixels
-// land at the world coords the user actually drew at.
-const RASTER_PAD = 16;
+import { computePathBounds } from '../../core/vector-renderer.js';
 
 let active = null;
 
@@ -45,11 +40,21 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     };
     // Create the layer up-front with a placeholder path; we update on every move.
     const d = buildPathD(active);
+    // For parametric shapes (polygon / star), record the geometric params so
+    // the Vector panel can later edit sides / points / radii without losing
+    // the underlying definition.
+    const shapeMeta =
+      kind === 'polygon' ? { kind: 'polygon', sides: 6 } :
+      kind === 'star'    ? { kind: 'star', points: 5, innerRatio: 0.42 } :
+      kind === 'rect'    ? { kind: 'rect' } :
+      kind === 'ellipse' ? { kind: 'ellipse' } :
+      kind === 'line'    ? { kind: 'line' } : null;
     const layer = doc.addVectorLayer({
       name: niceName(kind),
       vector: {
         paths: [{
           d, closed: kind !== 'line',
+          shape: shapeMeta,
           fill: kind === 'line' ? { type: 'none' } : DEFAULT_VECTOR_FILL(),
           stroke: kind === 'line'
             ? { ...DEFAULT_VECTOR_STROKE(), type: 'solid' }
@@ -73,22 +78,17 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     return true;
   }
 
-  // Path coords are stored in WORLD space (where the user drew). The
-  // rasteriser produces a canvas of (b.width + 2*pad) × (b.height + 2*pad)
-  // where `b` is the stroke-expanded bbox; the path interior renders at
-  // canvas (pad - b.x + path.x, …). To make the rendered pixels appear at
-  // the world coords the user actually drew we set the layer transform so
-  // the canvas's pad-shifted origin lands on b.x / b.y.
+  // The renderer positions the image so canvas's path-interior pixel
+  // sits at group origin, so layer.transform.x/y === path bounds top-left
+  // in world coords. (No padding compensation needed here — that's the
+  // renderer's job via image.position().)
   function syncLayerTransform() {
     if (!active) return;
     const layer = doc.findLayer(active.layerId);
     if (!layer) return;
-    const b = computeBounds(layer.vector.paths);
+    const b = computePathBounds(layer.vector.paths);
     if (!(b.width > 0) || !(b.height > 0)) return;
-    doc.setLayerTransform(active.layerId, {
-      x: b.x - RASTER_PAD,
-      y: b.y - RASTER_PAD,
-    });
+    doc.setLayerTransform(active.layerId, { x: b.x, y: b.y });
   }
 
   function end() {
@@ -132,40 +132,28 @@ function buildPathD(state) {
     w = s; h = s;
   }
   if (alt && (kind === 'rect' || kind === 'ellipse' || kind === 'polygon' || kind === 'star')) {
-    // Treat start as centre — bbox is 2× drag distance.
     x = start.x - w; y = start.y - h;
     w *= 2; h *= 2;
   }
 
   switch (kind) {
-    case 'rect':
-      return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
-
-    case 'ellipse':
-      return ellipsePathD(x, y, w, h);
-
+    case 'rect':    return rectD(x, y, w, h);
+    case 'ellipse': return ellipsePathD(x, y, w, h);
     case 'polygon': {
-      // Default 6 sides; shift = perfect (radius = max axis).
-      const sides = 6;
       const cx = alt ? start.x : x + w / 2;
       const cy = alt ? start.y : y + h / 2;
       const r  = (alt || shift) ? Math.max(w, h) / 2 : Math.min(w, h) / 2;
-      return polygonD(cx, cy, r, sides, -Math.PI / 2);
+      return polygonD(cx, cy, r, 6, -Math.PI / 2);
     }
-
     case 'star': {
-      const points = 5;
       const cx = alt ? start.x : x + w / 2;
       const cy = alt ? start.y : y + h / 2;
       const rOuter = (alt || shift) ? Math.max(w, h) / 2 : Math.min(w, h) / 2;
-      const rInner = rOuter * 0.42;
-      return starD(cx, cy, rOuter, rInner, points, -Math.PI / 2);
+      return starD(cx, cy, rOuter, rOuter * 0.42, 5, -Math.PI / 2);
     }
-
     case 'line': {
       let ex = cur.x, ey = cur.y;
       if (shift) {
-        // Snap to 0/45/90 degrees.
         const ang = Math.atan2(ey - start.y, ex - start.x);
         const snap = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4);
         const len = Math.hypot(ex - start.x, ey - start.y);
@@ -174,10 +162,34 @@ function buildPathD(state) {
       }
       return `M ${start.x} ${start.y} L ${ex} ${ey}`;
     }
-
     default:
       return `M ${x} ${y} L ${x + w} ${y + h}`;
   }
+}
+
+// Re-generate a path's d-string from its bbox + parametric `shape` record.
+// Used by the Vector panel when the user changes sides / points / innerRatio
+// on an already-placed shape.
+export function rebuildShapePathD(shape, bounds) {
+  if (!shape || !bounds) return null;
+  const { x, y, width: w, height: h } = bounds;
+  const cx = x + w / 2, cy = y + h / 2;
+  const r = Math.min(w, h) / 2;
+  switch (shape.kind) {
+    case 'rect':    return rectD(x, y, w, h);
+    case 'ellipse': return ellipsePathD(x, y, w, h);
+    case 'polygon': return polygonD(cx, cy, r, Math.max(3, shape.sides | 0 || 6), -Math.PI / 2);
+    case 'star': {
+      const points = Math.max(3, shape.points | 0 || 5);
+      const inner = Math.max(0.05, Math.min(0.95, shape.innerRatio || 0.42));
+      return starD(cx, cy, r, r * inner, points, -Math.PI / 2);
+    }
+    default: return null;
+  }
+}
+
+function rectD(x, y, w, h) {
+  return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
 }
 
 // Cubic-bezier ellipse approximation (4 segments, kappa = 0.5522847…)
