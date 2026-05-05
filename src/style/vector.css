@@ -105,11 +105,19 @@
   border-color: var(--primary);
 }
 .vector-pill--icon {
-  width: 30px;
+  width: 32px;
   padding: 0;
   font-size: 11px;
 }
 .vector-pill--icon i { font-size: 11px; }
+.vector-pill--icon svg { display: block; }
+.vector-pill--icon svg circle[fill="currentColor"],
+.vector-pill--icon svg circle[stroke="currentColor"],
+.vector-pill--icon svg line[stroke="currentColor"] {
+  /* inherit currentColor so icon matches the pill's text colour, including
+   * inverted in the active state. */
+  color: inherit;
+}
 
 /* Color picker — strip browser chunky padding */
 .vector-tool-panel input[type="color"] {

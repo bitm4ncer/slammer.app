@@ -10,6 +10,12 @@
 
 import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool } from './active-tool.js';
+import { computeBounds } from '../../core/vector-renderer.js';
+
+// The vector renderer pads its output canvas by this much for blur safety.
+// We must offset layer.transform by the same amount so the rendered pixels
+// land at the world coords the user actually drew at.
+const RASTER_PAD = 16;
 
 let active = null;
 
@@ -52,6 +58,7 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
       },
     });
     active.layerId = layer.id;
+    syncLayerTransform();
     return true;
   }
 
@@ -62,7 +69,26 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     active.alt = !!(e.evt && e.evt.altKey);
     const d = buildPathD(active);
     doc.setVectorPath(active.layerId, 0, { d });
+    syncLayerTransform();
     return true;
+  }
+
+  // Path coords are stored in WORLD space (where the user drew). The
+  // rasteriser produces a canvas of (b.width + 2*pad) × (b.height + 2*pad)
+  // where `b` is the stroke-expanded bbox; the path interior renders at
+  // canvas (pad - b.x + path.x, …). To make the rendered pixels appear at
+  // the world coords the user actually drew we set the layer transform so
+  // the canvas's pad-shifted origin lands on b.x / b.y.
+  function syncLayerTransform() {
+    if (!active) return;
+    const layer = doc.findLayer(active.layerId);
+    if (!layer) return;
+    const b = computeBounds(layer.vector.paths);
+    if (!(b.width > 0) || !(b.height > 0)) return;
+    doc.setLayerTransform(active.layerId, {
+      x: b.x - RASTER_PAD,
+      y: b.y - RASTER_PAD,
+    });
   }
 
   function end() {

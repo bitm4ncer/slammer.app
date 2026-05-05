@@ -12,20 +12,25 @@ import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../core/layer.js';
 import { createGradientEditor } from '../plugins/shared/gradient-editor.js';
 
 // Pills use icons instead of text labels for the type rows.
-//   Solid    = filled square        (fa-square)
-//   Gradient = gradient swatch      (fa-fill-drip — best FA proxy)
-//   Along    = gradient along path  (fa-arrow-trend-up)
-//   None     = nothing / blocked    (fa-ban)
+//   Solid    = filled circle (currentColor)
+//   Gradient = inline-SVG gradient swatch (literal black→white gradient)
+//   Along    = gradient along path (fa-arrow-trend-up)
+//   None     = empty circle outline   (fa-ban)
+const SOLID_SVG    = '<svg viewBox="0 0 12 12" width="11" height="11"><circle cx="6" cy="6" r="5" fill="currentColor"/></svg>';
+const GRADIENT_SVG = '<svg viewBox="0 0 12 12" width="11" height="11"><defs><linearGradient id="vpgr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient></defs><circle cx="6" cy="6" r="5" fill="url(#vpgr)" stroke="currentColor" stroke-width="0.6"/></svg>';
+const ALONG_SVG    = '<svg viewBox="0 0 14 12" width="13" height="11"><defs><linearGradient id="vpga" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient></defs><path d="M 1 9 C 4 9, 4 3, 7 3 S 10 9, 13 9" fill="none" stroke="url(#vpga)" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const NONE_SVG     = '<svg viewBox="0 0 12 12" width="11" height="11"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1"/><line x1="2.5" y1="9.5" x2="9.5" y2="2.5" stroke="currentColor" stroke-width="1"/></svg>';
+
 const FILL_TYPES   = [
-  { v: 'solid',    icon: 'fa-square',          title: 'Solid color' },
-  { v: 'gradient', icon: 'fa-fill-drip',       title: 'Gradient fill' },
-  { v: 'none',     icon: 'fa-ban',             title: 'No fill' },
+  { v: 'solid',    svg: SOLID_SVG,    title: 'Solid color' },
+  { v: 'gradient', svg: GRADIENT_SVG, title: 'Gradient fill' },
+  { v: 'none',     svg: NONE_SVG,     title: 'No fill' },
 ];
 const STROKE_TYPES = [
-  { v: 'solid',         icon: 'fa-square',          title: 'Solid color' },
-  { v: 'gradient',      icon: 'fa-fill-drip',       title: 'Gradient stroke' },
-  { v: 'gradientAlong', icon: 'fa-arrow-trend-up',  title: 'Gradient along the stroke direction' },
-  { v: 'none',          icon: 'fa-ban',             title: 'No stroke' },
+  { v: 'solid',         svg: SOLID_SVG,    title: 'Solid color' },
+  { v: 'gradient',      svg: GRADIENT_SVG, title: 'Gradient stroke' },
+  { v: 'gradientAlong', svg: ALONG_SVG,    title: 'Gradient along the stroke direction' },
+  { v: 'none',          svg: NONE_SVG,     title: 'No stroke' },
 ];
 const STROKE_ALIGN = [{ v: 'inside', l: 'Inside' }, { v: 'center', l: 'Center' }, { v: 'outside', l: 'Outside' }];
 const STROKE_CAP   = [{ v: 'butt', l: 'Butt' }, { v: 'round', l: 'Round' }, { v: 'square', l: 'Square' }];
@@ -94,16 +99,21 @@ export function initVectorTool({ document: doc }) {
   const strokeCapRow      = panel.querySelector('[data-row=stroke-cap]');
   const strokeJoinRow     = panel.querySelector('[data-row=stroke-join]');
 
-  // Build pill buttons inside a host. Returns the array of buttons.
-  // Opts may carry { icon, title } for icon-pills or { l } for text-pills.
+  // Build pill buttons inside a host. Opts may carry:
+  //   { svg, title }   inline-SVG icon
+  //   { icon, title }  Font Awesome icon class
+  //   { l }            plain text label
   function buildPills(host, opts, onPick) {
     host.innerHTML = '';
     return opts.map((opt) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'vector-pill' + (opt.icon ? ' vector-pill--icon' : '');
+      b.className = 'vector-pill' + (opt.svg || opt.icon ? ' vector-pill--icon' : '');
       b.dataset.value = opt.v;
-      if (opt.icon) {
+      if (opt.svg) {
+        b.innerHTML = opt.svg;
+        b.title = opt.title || opt.v;
+      } else if (opt.icon) {
         b.innerHTML = `<i class="fas ${opt.icon}"></i>`;
         b.title = opt.title || opt.v;
       } else {
@@ -201,7 +211,7 @@ export function initVectorTool({ document: doc }) {
     if (fillType === 'gradient') {
       mountGradientEditor(fillGradHost, p.fill, (next) => doc.setVectorFill(l.id, activePathIdx, next));
     } else {
-      fillGradHost.innerHTML = '';
+      clearGradientEditor(fillGradHost);
     }
     if (fillType === 'solid') fillColorInput.value = p.fill.color || '#ffffff';
 
@@ -213,7 +223,7 @@ export function initVectorTool({ document: doc }) {
     if (strokeType === 'gradient' || strokeType === 'gradientAlong') {
       mountGradientEditor(strokeGradHost, p.stroke, (next) => doc.setVectorStroke(l.id, activePathIdx, next));
     } else {
-      strokeGradHost.innerHTML = '';
+      clearGradientEditor(strokeGradHost);
     }
     strokeWidthHost.style.display  = strokeOn ? '' : 'none';
     strokeAlignRow.style.display = strokeOn ? '' : 'none';
@@ -234,10 +244,24 @@ export function initVectorTool({ document: doc }) {
     }
   }
 
-  // Mount a real multi-stop gradient editor (same component as the
-  // Gradient Map filter) into the given host element.
+  // Mount a real multi-stop gradient editor into the given host. Reuses the
+  // editor across rebuilds — without this, dragging a stop fires onChange
+  // → vectorChanged → rebuild → editor recreated → handle destroyed mid-drag.
+  // We track the live editor on the host and just push the new stops.
   function mountGradientEditor(host, spec, commit) {
     if (!spec || spec.type !== 'gradient') return;
+    const existing = host._editor;
+    if (existing) {
+      // Same kind of spec — only update stops (preserve drag state).
+      // Skip the update if the stops are referentially equal (we wrote them
+      // and the round-trip just brought them back) to avoid a setStops
+      // rebuild that would still glitch the handle.
+      if (existing.lastStops !== spec.stops) {
+        existing.setStops(spec.stops);
+        existing.lastStops = spec.stops;
+      }
+      return;
+    }
     const row = document.createElement('div');
     row.className = 'effect-slider-row vector-grad-row';
     const label = document.createElement('span');
@@ -250,11 +274,24 @@ export function initVectorTool({ document: doc }) {
     const editor = createGradientEditor({
       stops: spec.stops,
       hint: false,
-      onChange: (stops) => commit({ ...spec, stops }),
+      onChange: (stops) => {
+        // Mark the stops as "ours" so the next mountGradientEditor doesn't
+        // try to push them back into the editor (which would reset drag).
+        editor.lastStops = stops;
+        commit({ ...spec, stops });
+      },
     });
+    editor.lastStops = spec.stops;
     slot.appendChild(editor.root);
     host.innerHTML = '';
     host.appendChild(row);
+    host._editor = editor;
+  }
+  // Drop the cached editor when the host should fully reset (type change
+  // away from gradient, or layer change).
+  function clearGradientEditor(host) {
+    host._editor = null;
+    host.innerHTML = '';
   }
 
   doc.subscribe((e) => {

@@ -34,6 +34,28 @@ export function hydratePath(record) {
   return path;
 }
 
+// Just the path geometry bbox (NO stroke expansion). Used by tools that
+// need to position layers at the user's drawn coords without flinching as
+// stroke width changes.
+export function computePathBounds(paths) {
+  ensureProject();
+  if (!paths || !paths.length) return { x: 0, y: 0, width: 0, height: 0 };
+  let union = null;
+  const created = [];
+  for (const rec of paths) {
+    try {
+      const p = hydratePath(rec);
+      created.push(p);
+      const b = p.bounds;
+      union = union ? union.unite(b) : b;
+    } catch (e) { /* skip */ }
+  }
+  for (const p of created) p.remove();
+  return union
+    ? { x: union.x, y: union.y, width: union.width, height: union.height }
+    : { x: 0, y: 0, width: 0, height: 0 };
+}
+
 // Compute the union bounding-box of every path in the layer.
 // Stroke expansion depends on alignment:
 //   inside  → 0          (stroke fits within the path)
