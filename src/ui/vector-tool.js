@@ -35,9 +35,38 @@ const STROKE_TYPES = [
   { v: 'gradientAlong', svg: ALONG_SVG,    title: 'Gradient along the stroke direction' },
   { v: 'none',          svg: NONE_SVG,     title: 'No stroke' },
 ];
-const STROKE_ALIGN = [{ v: 'inside', l: 'Inside' }, { v: 'center', l: 'Center' }, { v: 'outside', l: 'Outside' }];
-const STROKE_CAP   = [{ v: 'butt', l: 'Butt' }, { v: 'round', l: 'Round' }, { v: 'square', l: 'Square' }];
-const STROKE_JOIN  = [{ v: 'miter', l: 'Miter' }, { v: 'round', l: 'Round' }, { v: 'bevel', l: 'Bevel' }];
+// Inline SVG icons for Align / Cap / Join — show stroke position relative
+// to the path edge, the cap end style, and the corner join style.
+//
+// All icons use currentColor so they invert in active pills, like the rest
+// of the vector control pills.
+const ALIGN_INSIDE_SVG  = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/><rect x="3" y="3" width="10" height="10" fill="currentColor" opacity="0.55"/></svg>';
+const ALIGN_CENTER_SVG  = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.55"/><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+const ALIGN_OUTSIDE_SVG = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="1" y="1" width="14" height="14" fill="currentColor" opacity="0.55"/><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+
+const CAP_BUTT_SVG   = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="butt"/></svg>';
+const CAP_ROUND_SVG  = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="3" y1="6" x2="15" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+const CAP_SQUARE_SVG = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="3" y1="6" x2="15" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="square"/></svg>';
+
+const JOIN_MITER_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter"/></svg>';
+const JOIN_ROUND_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>';
+const JOIN_BEVEL_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="bevel"/></svg>';
+
+const STROKE_ALIGN = [
+  { v: 'inside',  svg: ALIGN_INSIDE_SVG,  title: 'Stroke inside the path' },
+  { v: 'center',  svg: ALIGN_CENTER_SVG,  title: 'Stroke centred on the path' },
+  { v: 'outside', svg: ALIGN_OUTSIDE_SVG, title: 'Stroke outside the path' },
+];
+const STROKE_CAP = [
+  { v: 'butt',   svg: CAP_BUTT_SVG,   title: 'Butt cap (flush end)' },
+  { v: 'round',  svg: CAP_ROUND_SVG,  title: 'Round cap' },
+  { v: 'square', svg: CAP_SQUARE_SVG, title: 'Square cap (extends past end)' },
+];
+const STROKE_JOIN = [
+  { v: 'miter', svg: JOIN_MITER_SVG, title: 'Miter join (sharp corner)' },
+  { v: 'round', svg: JOIN_ROUND_SVG, title: 'Round join' },
+  { v: 'bevel', svg: JOIN_BEVEL_SVG, title: 'Bevel join (cut corner)' },
+];
 
 export function initVectorTool({ document: doc }) {
   const panel = document.createElement('div');
@@ -215,7 +244,20 @@ export function initVectorTool({ document: doc }) {
     shapeControlsHost.innerHTML = '';
     const shape = path?.shape;
     if (!shape) return;
-    if (shape.kind === 'polygon') {
+    if (shape.kind === 'rect') {
+      const row = document.createElement('div');
+      row.className = 'effect-slider-row';
+      row.innerHTML = `<span class="effect-label">Radius</span>`;
+      const slot = document.createElement('div');
+      row.appendChild(slot);
+      shapeControlsHost.appendChild(row);
+      slot.appendChild(sliderRow({
+        label: '', min: 0, max: 200, step: 1,
+        value: shape.cornerRadius || 0, defaultValue: 0, suffix: 'px',
+        onChange: (v) => setShapeParam({ cornerRadius: v }),
+      }));
+      slot.querySelector('.effect-label').style.display = 'none';
+    } else if (shape.kind === 'polygon') {
       const row = document.createElement('div');
       row.className = 'effect-slider-row';
       row.innerHTML = `<span class="effect-label">Sides</span>`;

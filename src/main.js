@@ -16,6 +16,7 @@ import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
 import { initTextTool } from './ui/text-tool.js';
 import { initVectorTool } from './ui/vector-tool.js';
+import { initAnchorOverlay } from './ui/vector-tools/anchor-overlay.js';
 import { preloadFontsForDoc } from './ui/typography/font-loader.js';
 import { bootUploadedFonts } from './ui/typography/uploaded-fonts.js';
 import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupported } from './ui/typography/local-system-fonts.js';
@@ -93,6 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const textTool = initTextTool({ document: doc });
   initVectorTool({ document: doc });
+  initAnchorOverlay({
+    stage: view.stage,
+    contentLayer: view.contentLayer,
+    document: doc,
+  });
 
   const projectStore = initProjectStore();
   const projectMenu = initProjectMenu({ document: doc, projectStore, view });

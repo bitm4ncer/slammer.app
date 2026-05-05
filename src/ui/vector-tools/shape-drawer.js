@@ -40,15 +40,7 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     };
     // Create the layer up-front with a placeholder path; we update on every move.
     const d = buildPathD(active);
-    // For parametric shapes (polygon / star), record the geometric params so
-    // the Vector panel can later edit sides / points / radii without losing
-    // the underlying definition.
-    const shapeMeta =
-      kind === 'polygon' ? { kind: 'polygon', sides: 6 } :
-      kind === 'star'    ? { kind: 'star', points: 5, innerRatio: 0.42 } :
-      kind === 'rect'    ? { kind: 'rect' } :
-      kind === 'ellipse' ? { kind: 'ellipse' } :
-      kind === 'line'    ? { kind: 'line' } : null;
+    const shapeMeta = makeShapeMeta(active);
     const layer = doc.addVectorLayer({
       name: niceName(kind),
       vector: {
@@ -73,7 +65,8 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     active.shift = !!(e.evt && e.evt.shiftKey);
     active.alt = !!(e.evt && e.evt.altKey);
     const d = buildPathD(active);
-    doc.setVectorPath(active.layerId, 0, { d });
+    const shape = makeShapeMeta(active);
+    doc.setVectorPath(active.layerId, 0, { d, shape });
     syncLayerTransform();
     return true;
   }
@@ -167,20 +160,35 @@ function buildPathD(state) {
   }
 }
 
-// Re-generate a path's d-string from its bbox + parametric `shape` record.
-// Used by the Vector panel when the user changes sides / points / innerRatio
-// on an already-placed shape.
+// Re-generate a path's d-string from its parametric `shape` record. Falls
+// back to the supplied bounds when the shape doesn't carry its own
+// geometry (older paths created before we stored cx/cy/r).
+//
+// Polygons + stars store cx/cy/r so changing sides preserves the
+// circumscribing circle (the user-drawn outer dimensions). Rectangles
+// regenerate from bounds + cornerRadius.
 export function rebuildShapePathD(shape, bounds) {
-  if (!shape || !bounds) return null;
-  const { x, y, width: w, height: h } = bounds;
-  const cx = x + w / 2, cy = y + h / 2;
-  const r = Math.min(w, h) / 2;
+  if (!shape) return null;
   switch (shape.kind) {
-    case 'rect':    return rectD(x, y, w, h);
-    case 'ellipse': return ellipsePathD(x, y, w, h);
-    case 'polygon': return polygonD(cx, cy, r, Math.max(3, shape.sides | 0 || 6), -Math.PI / 2);
+    case 'rect': {
+      const b = (bounds && bounds.width > 0) ? bounds : { x: 0, y: 0, width: 100, height: 100 };
+      return rectD(b.x, b.y, b.width, b.height, shape.cornerRadius || 0);
+    }
+    case 'ellipse': {
+      const b = (bounds && bounds.width > 0) ? bounds : { x: 0, y: 0, width: 100, height: 100 };
+      return ellipsePathD(b.x, b.y, b.width, b.height);
+    }
+    case 'polygon': {
+      const cx = shape.cx ?? (bounds ? bounds.x + bounds.width / 2 : 0);
+      const cy = shape.cy ?? (bounds ? bounds.y + bounds.height / 2 : 0);
+      const r  = shape.r  ?? (bounds ? Math.min(bounds.width, bounds.height) / 2 : 50);
+      return polygonD(cx, cy, r, Math.max(3, (shape.sides | 0) || 6), -Math.PI / 2);
+    }
     case 'star': {
-      const points = Math.max(3, shape.points | 0 || 5);
+      const cx = shape.cx ?? (bounds ? bounds.x + bounds.width / 2 : 0);
+      const cy = shape.cy ?? (bounds ? bounds.y + bounds.height / 2 : 0);
+      const r  = shape.r  ?? (bounds ? Math.min(bounds.width, bounds.height) / 2 : 50);
+      const points = Math.max(3, (shape.points | 0) || 5);
       const inner = Math.max(0.05, Math.min(0.95, shape.innerRatio || 0.42));
       return starD(cx, cy, r, r * inner, points, -Math.PI / 2);
     }
@@ -188,8 +196,47 @@ export function rebuildShapePathD(shape, bounds) {
   }
 }
 
-function rectD(x, y, w, h) {
-  return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+// Build the shape metadata record from the in-progress drag state. Captures
+// cx/cy/r for polygon/star so the panel can later regen at the same outer
+// size when the user changes sides/points.
+function makeShapeMeta(state) {
+  const { kind, start, cur, shift, alt } = state;
+  if (kind === 'rect')    return { kind: 'rect', cornerRadius: 0 };
+  if (kind === 'ellipse') return { kind: 'ellipse' };
+  if (kind === 'line')    return { kind: 'line' };
+  if (kind === 'polygon' || kind === 'star') {
+    let x = Math.min(start.x, cur.x);
+    let y = Math.min(start.y, cur.y);
+    let w = Math.abs(cur.x - start.x);
+    let h = Math.abs(cur.y - start.y);
+    if (alt) { x = start.x - w; y = start.y - h; w *= 2; h *= 2; }
+    const cx = alt ? start.x : x + w / 2;
+    const cy = alt ? start.y : y + h / 2;
+    const r  = (alt || shift) ? Math.max(w, h) / 2 : Math.min(w, h) / 2;
+    if (kind === 'polygon') return { kind: 'polygon', sides: 6, cx, cy, r };
+    if (kind === 'star')    return { kind: 'star', points: 5, innerRatio: 0.42, cx, cy, r };
+  }
+  return null;
+}
+
+function rectD(x, y, w, h, cr = 0) {
+  if (cr <= 0) {
+    return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+  }
+  const r = Math.min(cr, w / 2, h / 2);
+  // SVG arc-curve rounded rect.
+  return [
+    `M ${x + r} ${y}`,
+    `L ${x + w - r} ${y}`,
+    `A ${r} ${r} 0 0 1 ${x + w} ${y + r}`,
+    `L ${x + w} ${y + h - r}`,
+    `A ${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
+    `L ${x + r} ${y + h}`,
+    `A ${r} ${r} 0 0 1 ${x} ${y + h - r}`,
+    `L ${x} ${y + r}`,
+    `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+    'Z',
+  ].join(' ');
 }
 
 // Cubic-bezier ellipse approximation (4 segments, kappa = 0.5522847…)
