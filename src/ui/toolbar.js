@@ -3,6 +3,16 @@
 import { showNotification } from './notifications.js';
 import { exportProjectFile, importProjectFile } from '../io/project-file.js';
 import { openExportPopup } from './export-popup.js';
+import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
+import { importSvgFile } from './vector-tools/svg-import.js';
+
+const SHAPE_OPTIONS = [
+  { id: 'rect',    label: 'Rectangle', icon: 'fa-square' },
+  { id: 'ellipse', label: 'Ellipse',   icon: 'fa-circle' },
+  { id: 'polygon', label: 'Polygon',   icon: 'fa-draw-polygon' },
+  { id: 'star',    label: 'Star',      icon: 'fa-star' },
+  { id: 'line',    label: 'Line',      icon: 'fa-minus' },
+];
 
 export function initToolbar({ document: doc, view, renderer, exportPng, projectStore, projectMenu, openTextLayer }) {
   const $ = (id) => window.document.getElementById(id);
@@ -42,6 +52,97 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     openTextLayer?.(layer);
   }
   $('btnAddText').addEventListener('click', addText);
+
+  // ---------- Vector tools ----------
+  // Select / Direct Selection / Pen / Pencil — set the active tool when
+  // clicked. Pen + Pencil are 13b; the buttons are present but inactive.
+  $('btnSelect')?.addEventListener('click', () => setTool('select'));
+  $('btnDirectSelect')?.addEventListener('click', () => setTool('directSelect'));
+  $('btnPen')?.addEventListener('click', () => {
+    showNotification('Pen tool coming in Phase 13b');
+  });
+  $('btnPencil')?.addEventListener('click', () => {
+    showNotification('Pencil tool coming in Phase 13b');
+  });
+
+  // Shape button — single-click activates the last-used shape;
+  // long-press / right-click opens the flyout.
+  const shapeBtn = $('btnShape');
+  if (shapeBtn) {
+    let pressTimer = null;
+    let opened = false;
+    shapeBtn.addEventListener('click', () => {
+      if (opened) { opened = false; return; }
+      setTool(getLastShape());
+    });
+    shapeBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openShapeFlyout(shapeBtn);
+      opened = true;
+      setTimeout(() => { opened = false; }, 50);
+    });
+    shapeBtn.addEventListener('mousedown', () => {
+      pressTimer = setTimeout(() => {
+        openShapeFlyout(shapeBtn);
+        opened = true;
+      }, 350);
+    });
+    shapeBtn.addEventListener('mouseup', () => clearTimeout(pressTimer));
+    shapeBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+  }
+
+  function openShapeFlyout(anchor) {
+    closeShapeFlyout();
+    const fly = window.document.createElement('div');
+    fly.className = 'tool-flyout open';
+    for (const opt of SHAPE_OPTIONS) {
+      const item = window.document.createElement('button');
+      item.className = 'tool-flyout-item';
+      item.innerHTML = `<i class="fas ${opt.icon}"></i><span>${opt.label}</span>`;
+      item.addEventListener('click', () => {
+        setTool(`shape:${opt.id}`);
+        closeShapeFlyout();
+      });
+      fly.appendChild(item);
+    }
+    const r = anchor.getBoundingClientRect();
+    fly.style.left = `${r.right + 6}px`;
+    fly.style.top = `${r.top}px`;
+    fly.style.position = 'fixed';
+    fly.style.zIndex = '500';
+    window.document.body.appendChild(fly);
+    setTimeout(() => {
+      window.addEventListener('mousedown', closeShapeFlyout, { once: true, capture: true });
+    });
+  }
+  function closeShapeFlyout() {
+    window.document.querySelectorAll('.tool-flyout.open').forEach((el) => el.remove());
+  }
+
+  // Reflect active-tool state on the buttons (aria-pressed for highlight).
+  function syncToolButtons() {
+    const cur = getTool();
+    const map = {
+      btnSelect: 'select',
+      btnDirectSelect: 'directSelect',
+      btnPen: 'pen',
+      btnPencil: 'pencil',
+    };
+    for (const [id, tool] of Object.entries(map)) {
+      const b = $(id);
+      if (b) b.setAttribute('aria-pressed', cur === tool ? 'true' : 'false');
+    }
+    if (shapeBtn) {
+      const isShape = cur.startsWith('shape:');
+      shapeBtn.setAttribute('aria-pressed', isShape ? 'true' : 'false');
+      // Update the icon to match the chosen shape.
+      const last = getLastShape().slice('shape:'.length);
+      const opt = SHAPE_OPTIONS.find((s) => s.id === last);
+      if (opt) shapeBtn.innerHTML = `<i class="fas ${opt.icon}"></i>`;
+    }
+  }
+  onToolChange(syncToolButtons);
+  syncToolButtons();
 
   $('btnNew').addEventListener('click', () => {
     if (doc.layers.length && !confirm('Discard current document and start a new blank?')) return;
@@ -158,6 +259,21 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     if (inField) return;
     if (key === 'i') { e.preventDefault(); $('btnAddImage')?.click(); }
     else if (key === 't') { e.preventDefault(); $('btnAddText')?.click(); }
+    else if (key === 'v') { e.preventDefault(); setTool('select'); }
+    else if (key === 'a') { e.preventDefault(); setTool('directSelect'); }
+    else if (key === 'p') { e.preventDefault(); setTool('pen'); }
+    else if (key === 'b') { e.preventDefault(); setTool('pencil'); }
+    else if (key === 'r') {
+      e.preventDefault();
+      // R cycles through shapes if pressed repeatedly while a shape is active.
+      if (getTool().startsWith('shape:')) {
+        const idx = SHAPE_OPTIONS.findIndex((s) => `shape:${s.id}` === getTool());
+        const next = SHAPE_OPTIONS[(idx + 1) % SHAPE_OPTIONS.length];
+        setTool(`shape:${next.id}`);
+      } else {
+        setTool(getLastShape());
+      }
+    }
   });
 
   // Update canvas hint visibility based on layer presence.

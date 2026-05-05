@@ -14,7 +14,7 @@ const STRUCTURAL_EVENTS = new Set([
 ]);
 
 const PROP_EVENTS = new Set([
-  'layer:propChanged', 'layer:transform', 'layer:textChanged',
+  'layer:propChanged', 'layer:transform', 'layer:textChanged', 'layer:vectorChanged',
   'effect:propChanged', 'layer:sourceChanged', 'doc:exportFrame',
 ]);
 

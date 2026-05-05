@@ -75,6 +75,47 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
   };
 }
 
+// Vector layer — holds an array of paths, each with its own fill + stroke.
+// Paths are stored as SVG path-data strings so the format is portable + tiny;
+// Paper.js hydrates them at paint time for boolean ops, hit-testing, etc.
+//
+// fill / stroke shapes:
+//   { type: 'solid',    color: '#fff', opacity: 1 }
+//   { type: 'gradient', gradientType: 'linear'|'radial',
+//                       stops: [{ at: 0, color: '#fff' }, { at: 1, color: '#000' }],
+//                       from: { x, y }, to: { x, y } }   // in path-local coords
+//   { type: 'none' }
+//
+// stroke also carries: width, align ('center'|'inside'|'outside'),
+//                      cap ('butt'|'round'|'square'), join ('miter'|'round'|'bevel'),
+//                      dash [], alongPath (boolean — gradient follows direction)
+export function createVectorLayer({ id, name, transform, accentColor, vector } = {}) {
+  return {
+    id,
+    type: 'vector',
+    name: name || 'Vector Layer',
+    visible: true,
+    opacity: 1,
+    blendMode: 'source-over',
+    accentColor: accentColor || randomPastelHex(),
+    transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
+    effects: [],
+    naturalSize: null,        // filled by the renderer after first paint (bbox of paths)
+    vector: {
+      paths: [],              // array of { d, closed, fill, stroke }
+      ...(vector || {}),
+    },
+  };
+}
+
+export const DEFAULT_VECTOR_FILL = () => ({ type: 'solid', color: '#FFFFFF', opacity: 1 });
+export const DEFAULT_VECTOR_STROKE = () => ({
+  type: 'none',
+  color: '#000000', width: 2,
+  align: 'center', cap: 'butt', join: 'miter',
+  dash: [], alongPath: false, opacity: 1,
+});
+
 // FX (Adjustment) layer — has no own pixels. Its "source" is the composite of
 // all layers BELOW it. Its effect stack is then applied to that composite.
 // Affinity Live-filter style: non-destructive, affects everything beneath.

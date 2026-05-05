@@ -5,6 +5,7 @@ import './style/layout.css';
 import './style/components.css';
 import './style/effects.css';
 import './style/typography.css';
+import './style/vector.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';
@@ -14,6 +15,7 @@ import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
 import { initTextTool } from './ui/text-tool.js';
+import { initVectorTool } from './ui/vector-tool.js';
 import { preloadFontsForDoc } from './ui/typography/font-loader.js';
 import { bootUploadedFonts } from './ui/typography/uploaded-fonts.js';
 import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupported } from './ui/typography/local-system-fonts.js';
@@ -90,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   const textTool = initTextTool({ document: doc });
+  initVectorTool({ document: doc });
 
   const projectStore = initProjectStore();
   const projectMenu = initProjectMenu({ document: doc, projectStore, view });

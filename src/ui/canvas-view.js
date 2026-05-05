@@ -2,6 +2,8 @@
 
 import Konva from 'konva';
 import { getSettings, onSettingsChange } from './settings-popup.js';
+import { getTool, setTool, onToolChange, TOOL_CURSORS } from './vector-tools/active-tool.js';
+import { attachShapeDrawer } from './vector-tools/shape-drawer.js';
 
 // Restrict Konva drag-start to the left mouse button so middle-mouse pan
 // never accidentally drags overlay handles.
@@ -474,8 +476,12 @@ export function initCanvasView({ container, document, onImageDropped }) {
   let lastPan = null;
 
   function syncCursor() {
-    container.style.cursor = panning ? 'grabbing' : (spaceDown ? 'grab' : '');
+    if (panning) { container.style.cursor = 'grabbing'; return; }
+    if (spaceDown) { container.style.cursor = 'grab'; return; }
+    container.style.cursor = TOOL_CURSORS[getTool()] || '';
   }
+  // Re-sync the cursor whenever the active tool changes.
+  onToolChange(() => syncCursor());
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !isEditingText()) {
@@ -508,6 +514,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
     return !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
   }
 
+  // Shape drawer wires into mousedown/move/up below.
+  const shapeDrawer = attachShapeDrawer({
+    stage,
+    document,
+    getStageScale: () => stage.scaleX() || 1,
+  });
+
   stage.on('mousedown touchstart', (e) => {
     if (spaceDown || e.evt.button === 1) {
       panning = true;
@@ -515,6 +528,14 @@ export function initCanvasView({ container, document, onImageDropped }) {
       syncCursor();
       e.evt.preventDefault();
       return;
+    }
+    // Active vector tool? Hand off to its drawer.
+    const tool = getTool();
+    if (tool.startsWith('shape:')) {
+      if (shapeDrawer.start(e)) {
+        e.evt.preventDefault();
+        return;
+      }
     }
     // Activate layer immediately on mousedown so selection handles appear
     // even when the user mouse-downs and drags in one motion (no clean click).
@@ -529,6 +550,16 @@ export function initCanvasView({ container, document, onImageDropped }) {
       }
       node = node.getParent && node.getParent();
     }
+  });
+  stage.on('mousemove touchmove', (e) => {
+    shapeDrawer.move(e);
+  });
+  stage.on('mouseup touchend', () => {
+    shapeDrawer.end();
+  });
+  // Esc cancels in-progress shape draw.
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') shapeDrawer.cancel();
   });
   window.addEventListener('mousemove', (e) => {
     if (!panning || !lastPan) return;
@@ -679,13 +710,23 @@ export function initCanvasView({ container, document, onImageDropped }) {
     container.classList.add('drag-over');
   });
   container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
-  container.addEventListener('drop', (e) => {
+  container.addEventListener('drop', async (e) => {
     e.preventDefault();
     container.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer?.files || []);
-    files.forEach((f) => {
+    for (const f of files) {
+      // SVG → vector layer (Phase 13a). image/svg+xml MIME OR .svg extension.
+      if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) {
+        try {
+          const { importSvgFile } = await import('./vector-tools/svg-import.js');
+          await importSvgFile(f, document);
+        } catch (err) {
+          console.warn('[svg] import failed', err);
+        }
+        continue;
+      }
       if (f.type.startsWith('image/')) onImageDropped?.(f);
-    });
+    }
   });
 
   function zoomBy(factor) {

@@ -1,7 +1,7 @@
 // Document — the editable state container.
 // Mutate via methods so listeners can react with precise change events.
 
-import { createImageLayer, createTextLayer, createFxLayer } from './layer.js';
+import { createImageLayer, createTextLayer, createFxLayer, createVectorLayer } from './layer.js';
 
 const uid = () => crypto.randomUUID();
 
@@ -76,6 +76,43 @@ export function createDocument() {
       emit({ type: 'layer:added', layer });
       emit({ type: 'layer:active', id: layer.id });
       return layer;
+    },
+
+    addVectorLayer(opts) {
+      const layer = createVectorLayer({ id: uid(), ...opts });
+      state.layers.push(layer);
+      state.activeLayerId = layer.id;
+      emit({ type: 'layer:added', layer });
+      emit({ type: 'layer:active', id: layer.id });
+      return layer;
+    },
+
+    // Replace the entire `paths` array. Used by Pen / Pencil drawers and
+    // boolean-op pipelines that want to commit a fully-formed result.
+    setVectorPaths(id, paths) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'vector') return;
+      layer.vector.paths = paths;
+      emit({ type: 'layer:vectorChanged', id, prop: 'paths' });
+    },
+
+    // Patch a single path (by index) — partial merge of fields like d / fill / stroke.
+    setVectorPath(id, pathIdx, partial) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'vector') return;
+      const p = layer.vector.paths[pathIdx];
+      if (!p) return;
+      Object.assign(p, partial);
+      emit({ type: 'layer:vectorChanged', id, prop: 'path', pathIdx });
+    },
+
+    // Convenience setters that broadcast the same vectorChanged event so the
+    // renderer can re-rasterise and the panel can refresh.
+    setVectorFill(id, pathIdx, fill) {
+      this.setVectorPath(id, pathIdx, { fill });
+    },
+    setVectorStroke(id, pathIdx, stroke) {
+      this.setVectorPath(id, pathIdx, { stroke });
     },
 
     removeLayer(id) {

@@ -3,6 +3,8 @@
 import Konva from 'konva';
 import { getPlugin } from '../plugins/registry.js';
 import { findFont } from '../ui/typography/font-sources.js';
+import { rasterizeVectorLayer } from './vector-renderer.js';
+import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 
 function resolveFontMeta(text) {
   if (!text) return null;
@@ -179,6 +181,17 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
     if (layer.type === 'text') {
       return rasterizeText(layer.text, st);
+    }
+    if (layer.type === 'vector') {
+      const { imageData, naturalSize } = rasterizeVectorLayer(layer);
+      st.naturalSize = naturalSize;
+      // Track the inner content rect so the Konva.Image can report tight
+      // selection bounds (mirrors what we do for text layers).
+      st.textPad = 16;
+      st.textContentSize = { w: Math.max(1, naturalSize.w - 32), h: Math.max(1, naturalSize.h - 32) };
+      // Persist on the layer so alignment-controls + project save reflect it.
+      layer.naturalSize = naturalSize;
+      return imageData;
     }
     if (layer.type === 'fx') {
       // FX layer's "source" is the composite of every visible layer beneath it.
@@ -629,10 +642,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     };
     layerState.set(layer.id, st);
 
-    // For text layers, expose a tight content rect so the Transformer's
-    // selection handles wrap the actual text — not the padded canvas (which
-    // exists so blur / displacement / etc. don't get clipped).
-    if (layer.type === 'text') {
+    // For text + vector layers, expose a tight content rect so the
+    // Transformer's selection handles wrap the actual content — not the
+    // padded canvas (which exists so blur / displacement etc. don't clip).
+    if (layer.type === 'text' || layer.type === 'vector') {
       image.getSelfRect = function () {
         const pad = st.textPad || 0;
         const cs = st.textContentSize;
@@ -736,6 +749,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
   }
 
+  // When the active tool changes, re-evaluate the transformer for the
+  // currently-active layer (Direct Selection hides it; Selection shows it).
+  onToolChange(() => {
+    const layer = document.activeLayer;
+    if (!layer) return;
+    const st = layerState.get(layer.id);
+    if (layer.type === 'fx' || getTool() === 'directSelect') attachTransformer(null);
+    else attachTransformer(st ? st.group : null);
+  });
+
   // Subscribe to document changes
   document.subscribe(async (event) => {
     switch (event.type) {
@@ -800,7 +823,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         }
         break;
       }
-      case 'layer:textChanged': {
+      case 'layer:textChanged':
+      case 'layer:vectorChanged': {
         const layer = document.findLayer(event.id);
         if (!layer) break;
         const st = layerState.get(event.id);
@@ -819,7 +843,9 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         const st = layer ? layerState.get(layer.id) : null;
         // FX layers are pseudo-layers — no selection handles, no on-canvas
         // transform. They're just position markers in the stack.
-        if (layer?.type === 'fx') attachTransformer(null);
+        // Direct Selection mode also hides the transformer (anchor handles
+        // will appear in 13b).
+        if (layer?.type === 'fx' || getTool() === 'directSelect') attachTransformer(null);
         else attachTransformer(st ? st.group : null);
         break;
       }

@@ -1,0 +1,247 @@
+// vector-renderer — rasterise a vector layer's paths to a 2D canvas via
+// Paper.js, then return ImageData for the existing effect pipeline.
+//
+// Why Paper.js: gives us bezier paths, gradient fills, stroke alignment,
+// boolean ops, simplification, hit-testing — all battle-tested. We use the
+// headless mode (no view, no DOM) and feed our own canvas.
+
+import paper from 'paper';
+
+let _project = null;
+function ensureProject() {
+  if (_project) return _project;
+  // Headless setup — create a tiny canvas just to keep paper happy. We never
+  // draw to it directly; we use Paper to compute paths + render via our own
+  // ctx in rasterizeVectorLayer().
+  const dummy = document.createElement('canvas');
+  dummy.width = 1; dummy.height = 1;
+  paper.setup(dummy);
+  _project = paper.project;
+  return _project;
+}
+
+// Hydrate a serialised path-record back into a paper.Path / CompoundPath.
+// Path records: { d, closed, fill, stroke }
+export function hydratePath(record) {
+  ensureProject();
+  // paper.Path supports SVG d-strings directly.
+  const path = new paper.CompoundPath({ pathData: record.d });
+  if (record.closed != null) {
+    for (const child of path.children || [path]) {
+      if (child.closed !== undefined) child.closed = !!record.closed;
+    }
+  }
+  return path;
+}
+
+// Compute the union bounding-box of every path in the layer.
+export function computeBounds(paths) {
+  ensureProject();
+  if (!paths || !paths.length) return { x: 0, y: 0, width: 0, height: 0 };
+  let union = null;
+  const created = [];
+  for (const rec of paths) {
+    try {
+      const p = hydratePath(rec);
+      created.push(p);
+      // Account for stroke width if visible.
+      const strokeW = rec.stroke && rec.stroke.type !== 'none' ? (rec.stroke.width || 0) : 0;
+      const b = p.strokeBounds || p.bounds;
+      const expanded = strokeW > 0
+        ? new paper.Rectangle(b.x - strokeW / 2, b.y - strokeW / 2, b.width + strokeW, b.height + strokeW)
+        : b;
+      union = union ? union.unite(expanded) : expanded;
+    } catch (e) { /* skip malformed */ }
+  }
+  // Clean up so Paper's project doesn't grow.
+  for (const p of created) p.remove();
+  return union
+    ? { x: union.x, y: union.y, width: union.width, height: union.height }
+    : { x: 0, y: 0, width: 0, height: 0 };
+}
+
+// Apply a fill / stroke style spec to a Canvas2D context for one drawing.
+// Origin is the path's local-space (after we've translated the ctx so the
+// path's bounding-box top-left is at 0,0 with `pad` padding for stroke halo).
+function applyFill(ctx, fill, bounds) {
+  if (!fill || fill.type === 'none') { ctx.fillStyle = 'rgba(0,0,0,0)'; return false; }
+  if (fill.type === 'solid') {
+    ctx.fillStyle = withOpacity(fill.color, fill.opacity ?? 1);
+    return true;
+  }
+  if (fill.type === 'gradient') {
+    const grad = makeGradient(ctx, fill, bounds);
+    if (grad) { ctx.fillStyle = grad; return true; }
+  }
+  return false;
+}
+
+function applyStroke(ctx, stroke, bounds) {
+  if (!stroke || stroke.type === 'none') return false;
+  if (stroke.type === 'solid') {
+    ctx.strokeStyle = withOpacity(stroke.color, stroke.opacity ?? 1);
+  } else if (stroke.type === 'gradient' || stroke.type === 'gradientAlong') {
+    const grad = makeGradient(ctx, stroke, bounds);
+    if (!grad) return false;
+    ctx.strokeStyle = grad;
+  }
+  ctx.lineWidth   = stroke.width || 1;
+  ctx.lineCap     = stroke.cap || 'butt';
+  ctx.lineJoin    = stroke.join || 'miter';
+  if (stroke.dash && stroke.dash.length) ctx.setLineDash(stroke.dash);
+  return true;
+}
+
+function makeGradient(ctx, spec, bounds) {
+  // bounds is { x, y, width, height } in pad-translated coords.
+  // For 'linear' the from/to positions are FRACTIONS of bounds (0..1) so
+  // gradients survive resizing without recomputation.
+  const from = spec.from || { x: 0, y: 0.5 };
+  const to   = spec.to   || { x: 1, y: 0.5 };
+  const x1 = bounds.x + from.x * bounds.width;
+  const y1 = bounds.y + from.y * bounds.height;
+  const x2 = bounds.x + to.x * bounds.width;
+  const y2 = bounds.y + to.y * bounds.height;
+  let g;
+  if ((spec.gradientType || 'linear') === 'linear') {
+    g = ctx.createLinearGradient(x1, y1, x2, y2);
+  } else {
+    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+    const r = Math.hypot(x2 - x1, y2 - y1) / 2;
+    g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, r));
+  }
+  for (const stop of (spec.stops || [{ at: 0, color: '#fff' }, { at: 1, color: '#000' }])) {
+    g.addColorStop(Math.max(0, Math.min(1, stop.at)), withOpacity(stop.color, stop.opacity ?? 1));
+  }
+  return g;
+}
+
+function withOpacity(hex, op) {
+  if (op == null || op >= 1) return hex;
+  // accept #rgb, #rrggbb
+  let r, g, b;
+  if (hex.length === 4) { r = parseInt(hex[1] + hex[1], 16); g = parseInt(hex[2] + hex[2], 16); b = parseInt(hex[3] + hex[3], 16); }
+  else                  { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16); }
+  return `rgba(${r},${g},${b},${op})`;
+}
+
+// Walk a Paper.Path / CompoundPath and render its segments into a Canvas2D
+// path (so we can fill/stroke through ctx — which gives us native gradient
+// support that Paper alone doesn't expose to arbitrary canvases).
+function tracePathToCtx(ctx, paperPath, dx, dy) {
+  ctx.beginPath();
+  const walk = (path) => {
+    if (!path.segments || !path.segments.length) return;
+    let prev = null;
+    for (let i = 0; i < path.segments.length; i++) {
+      const s = path.segments[i];
+      const pt = s.point;
+      if (i === 0) {
+        ctx.moveTo(pt.x + dx, pt.y + dy);
+      } else {
+        // Cubic bezier from prev.handleOut + s.handleIn
+        const h1x = prev.point.x + (prev.handleOut?.x || 0);
+        const h1y = prev.point.y + (prev.handleOut?.y || 0);
+        const h2x = pt.x + (s.handleIn?.x || 0);
+        const h2y = pt.y + (s.handleIn?.y || 0);
+        if ((prev.handleOut && (prev.handleOut.x || prev.handleOut.y)) ||
+            (s.handleIn && (s.handleIn.x || s.handleIn.y))) {
+          ctx.bezierCurveTo(h1x + dx, h1y + dy, h2x + dx, h2y + dy, pt.x + dx, pt.y + dy);
+        } else {
+          ctx.lineTo(pt.x + dx, pt.y + dy);
+        }
+      }
+      prev = s;
+    }
+    if (path.closed && path.segments.length > 1) {
+      const first = path.segments[0];
+      const h1x = prev.point.x + (prev.handleOut?.x || 0);
+      const h1y = prev.point.y + (prev.handleOut?.y || 0);
+      const h2x = first.point.x + (first.handleIn?.x || 0);
+      const h2y = first.point.y + (first.handleIn?.y || 0);
+      if ((prev.handleOut && (prev.handleOut.x || prev.handleOut.y)) ||
+          (first.handleIn && (first.handleIn.x || first.handleIn.y))) {
+        ctx.bezierCurveTo(h1x + dx, h1y + dy, h2x + dx, h2y + dy, first.point.x + dx, first.point.y + dy);
+      }
+      ctx.closePath();
+    }
+  };
+  if (paperPath.children && paperPath.children.length) {
+    for (const c of paperPath.children) walk(c);
+  } else {
+    walk(paperPath);
+  }
+}
+
+// Main entry: rasterise an entire vector layer to ImageData.
+//   layer.vector.paths → series of SVG d-strings + fill/stroke specs
+//   Returns { imageData, naturalSize }
+export function rasterizeVectorLayer(layer) {
+  ensureProject();
+  const recs = (layer.vector && layer.vector.paths) || [];
+  if (!recs.length) {
+    return { imageData: new ImageData(1, 1), naturalSize: { w: 1, h: 1 } };
+  }
+
+  // Bounds + breathing room for stroke / blur safety (effect pipeline).
+  const b = computeBounds(recs);
+  if (b.width <= 0 || b.height <= 0) {
+    return { imageData: new ImageData(1, 1), naturalSize: { w: 1, h: 1 } };
+  }
+  const pad = 16;
+  const w = Math.max(1, Math.ceil(b.width + pad * 2));
+  const h = Math.max(1, Math.ceil(b.height + pad * 2));
+  const dx = -b.x + pad;
+  const dy = -b.y + pad;
+
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+
+  for (const rec of recs) {
+    let p;
+    try { p = hydratePath(rec); } catch { continue; }
+    const localBounds = {
+      x: (p.bounds?.x || 0) + dx,
+      y: (p.bounds?.y || 0) + dy,
+      width: p.bounds?.width || 1,
+      height: p.bounds?.height || 1,
+    };
+    // Fill
+    tracePathToCtx(ctx, p, dx, dy);
+    if (applyFill(ctx, rec.fill, localBounds)) ctx.fill();
+    // Stroke
+    if (rec.stroke && rec.stroke.type !== 'none') {
+      ctx.save();
+      // Stroke alignment is approximated with clipping (Canvas2D natively
+      // strokes centered). For 'inside' we clip to fill, for 'outside' we
+      // clip outside via even-odd with a giant outer rect.
+      if (rec.stroke.align === 'inside') {
+        ctx.clip();
+        ctx.lineWidth = (rec.stroke.width || 1) * 2;  // double then clip to inside half
+      } else if (rec.stroke.align === 'outside') {
+        // Build an even-odd path: huge outer rect minus the path.
+        ctx.beginPath();
+        ctx.rect(-1e5, -1e5, 2e5, 2e5);
+        tracePathToCtx(ctx, p, dx, dy);
+        ctx.clip('evenodd');
+        ctx.lineWidth = (rec.stroke.width || 1) * 2;
+      }
+      tracePathToCtx(ctx, p, dx, dy);
+      if (applyStroke(ctx, rec.stroke, localBounds)) ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    p.remove();
+  }
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  return {
+    imageData,
+    naturalSize: { w, h },
+    // Translate from layer-local space (paths' own coords) into the rasterised
+    // image's coords. Used so the layer's transform.x maps to the path origin
+    // rather than the image's top-left padded corner.
+    rasterOffset: { x: -dx, y: -dy },
+  };
+}
