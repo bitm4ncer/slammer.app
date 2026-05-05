@@ -35,22 +35,27 @@ const STROKE_TYPES = [
   { v: 'gradientAlong', svg: ALONG_SVG,    title: 'Gradient along the stroke direction' },
   { v: 'none',          svg: NONE_SVG,     title: 'No stroke' },
 ];
-// Inline SVG icons for Align / Cap / Join — show stroke position relative
-// to the path edge, the cap end style, and the corner join style.
+// Inline SVG icons for Align / Cap / Join. All icons use currentColor so
+// they invert when the pill is active.
 //
-// All icons use currentColor so they invert in active pills, like the rest
-// of the vector control pills.
-const ALIGN_INSIDE_SVG  = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/><rect x="3" y="3" width="10" height="10" fill="currentColor" opacity="0.55"/></svg>';
-const ALIGN_CENTER_SVG  = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.55"/><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
-const ALIGN_OUTSIDE_SVG = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="1" y="1" width="14" height="14" fill="currentColor" opacity="0.55"/><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+// For Align the path-edge is drawn as a thin solid line; the stroke band
+// (currentColor at full alpha) sits clearly inside / centred / outside it,
+// so the three options are visually distinct at glance size.
+// Align icons: a thin currentColor "path edge" rect at fixed position, plus
+// a thick stroke band drawn inside / centred-on / outside that edge so the
+// three options read at a glance. The stroke band uses fill-rule="evenodd"
+// to carve out an inner hole, simulating an actual stroke.
+const ALIGN_INSIDE_SVG  = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 3 3 H 15 V 15 H 3 Z M 5 5 V 13 H 13 V 5 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+const ALIGN_CENTER_SVG  = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 1 1 H 17 V 17 H 1 Z M 5 5 V 13 H 13 V 5 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+const ALIGN_OUTSIDE_SVG = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 0 0 H 18 V 18 H 0 Z M 3 3 V 15 H 15 V 3 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
 
-const CAP_BUTT_SVG   = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="butt"/></svg>';
-const CAP_ROUND_SVG  = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="3" y1="6" x2="15" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
-const CAP_SQUARE_SVG = '<svg viewBox="0 0 18 12" width="15" height="11"><line x1="3" y1="6" x2="15" y2="6" stroke="currentColor" stroke-width="3" stroke-linecap="square"/></svg>';
+const CAP_BUTT_SVG   = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="butt"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
+const CAP_ROUND_SVG  = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
+const CAP_SQUARE_SVG = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="square"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
 
-const JOIN_MITER_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter"/></svg>';
-const JOIN_ROUND_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>';
-const JOIN_BEVEL_SVG = '<svg viewBox="0 0 16 14" width="14" height="12"><polyline points="2,2 14,2 14,12" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="bevel"/></svg>';
+const JOIN_MITER_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="miter"/></svg>';
+const JOIN_ROUND_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>';
+const JOIN_BEVEL_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="bevel"/></svg>';
 
 const STROKE_ALIGN = [
   { v: 'inside',  svg: ALIGN_INSIDE_SVG,  title: 'Stroke inside the path' },

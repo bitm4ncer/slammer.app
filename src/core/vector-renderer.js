@@ -9,14 +9,21 @@ import paper from 'paper';
 
 let _project = null;
 function ensureProject() {
-  if (_project) return _project;
-  // Headless setup — create a tiny canvas just to keep paper happy. We never
-  // draw to it directly; we use Paper to compute paths + render via our own
-  // ctx in rasterizeVectorLayer().
-  const dummy = document.createElement('canvas');
-  dummy.width = 1; dummy.height = 1;
-  paper.setup(dummy);
-  _project = paper.project;
+  if (!_project) {
+    // Headless setup — create a tiny canvas just to keep paper happy. We
+    // never draw to it directly; we use Paper to compute paths + render via
+    // our own ctx in rasterizeVectorLayer().
+    const dummy = document.createElement('canvas');
+    dummy.width = 1; dummy.height = 1;
+    paper.setup(dummy);
+    _project = paper.project;
+  } else {
+    // Other modules (e.g. svg-import) may activate their own Paper project
+    // and then remove it, leaving paper.project pointing somewhere else.
+    // Re-activate ours every time so new objects land in our project and
+    // hydratePath() never throws "no active project".
+    _project.activate();
+  }
   return _project;
 }
 
