@@ -32,6 +32,14 @@ export function createDocument() {
       return () => listeners.delete(fn);
     },
 
+    // Lightweight notifier used during gestures (e.g. Ctrl+Shift text-box
+    // resize): pushes the current value to subscribers WITHOUT going through
+    // the full layer:textChanged → re-rasterise pipeline. Use only when the
+    // visual is being driven by another mechanism (Konva scale, etc.).
+    _emitTextBoxLive(id, value) {
+      emit({ type: 'layer:textBoxLive', id, value });
+    },
+
     setName(name) {
       state.name = name;
       emit({ type: 'doc:propChanged', prop: 'name' });
@@ -114,6 +122,27 @@ export function createDocument() {
       if (!layer || layer.type !== 'text') return;
       layer.text[prop] = value;
       emit({ type: 'layer:textChanged', id, prop, value });
+    },
+
+    // Set/clear a single OpenType variation axis (e.g. 'wght', 'wdth', 'slnt').
+    // Pass `null` to remove the axis entirely (font's default takes over).
+    setTextVariation(id, axisTag, value) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'text') return;
+      if (!layer.text.variation) layer.text.variation = {};
+      if (value == null) delete layer.text.variation[axisTag];
+      else layer.text.variation[axisTag] = value;
+      emit({ type: 'layer:textChanged', id, prop: 'variation', value: { ...layer.text.variation } });
+    },
+
+    // Toggle/set a single OpenType feature flag (e.g. 'liga', 'smcp', 'ss01').
+    setTextFeature(id, featureTag, enabled) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'text') return;
+      if (!layer.text.features) layer.text.features = {};
+      if (enabled === null) delete layer.text.features[featureTag];
+      else layer.text.features[featureTag] = !!enabled;
+      emit({ type: 'layer:textChanged', id, prop: 'features', value: { ...layer.text.features } });
     },
 
     addEffect(layerId, effect) {

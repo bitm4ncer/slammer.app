@@ -26,6 +26,19 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     const layer = doc.addTextLayer({
       text: { value: 'Typo', mode: 'text', boxWidth: 600 },
     });
+    // Ensure the default Google font (Inter) is loaded so the first paint
+    // renders in the correct face — otherwise the canvas falls back to
+    // system sans until the user opens the picker.
+    import('./typography/font-loader.js').then(async ({ loadFont }) => {
+      const { findFont } = await import('./typography/font-sources.js');
+      const meta = findFont(layer.text.font, layer.text.provider);
+      if (meta) {
+        await loadFont(meta);
+        try { await document.fonts.load(`${layer.text.weight || 400} ${layer.text.size || 96}px "${meta.cssFamily || meta.family}"`); } catch {}
+        // Force a re-rasterise so the freshly-loaded font appears.
+        doc.setTextProp(layer.id, 'value', layer.text.value);
+      }
+    });
     openTextLayer?.(layer);
   }
   $('btnAddText').addEventListener('click', addText);

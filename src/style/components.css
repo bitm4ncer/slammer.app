@@ -721,8 +721,9 @@
 }
 .alignment-strip[hidden] { display: none; }
 .align-btn {
-  width: 30px;
+  min-width: 30px;
   height: 22px;
+  padding: 0 4px;
   font-size: 10px;
   border-radius: 999px;
   display: inline-flex;
@@ -769,14 +770,10 @@
   flex-direction: column;
   gap: 6px;
 }
-/* Typography panel: cap at half the bottom section so Effects always has room.
- * If its own content exceeds that, it scrolls internally with the global custom scrollbar.
- */
+/* Typography panel: natural height so Typography + Effects scroll as one column
+ * inside .side-panel-bottom (no internal clip when the bottom section gets short). */
 .text-tool-panel {
-  flex: 0 1 auto;
-  max-height: 50%;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
 }
 
 .layer-empty, .effect-empty {

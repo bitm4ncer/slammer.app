@@ -545,6 +545,114 @@ export function initCanvasView({ container, document, onImageDropped }) {
     syncCursor();
   });
 
+  // ---------- Double-click text → edit inline on canvas ----------
+  stage.on('dblclick dbltap', (e) => {
+    if (panning || spaceDown) return;
+    let node = e.target;
+    while (node && node !== stage) {
+      const id = node.id?.();
+      const layer = id && document.findLayer(id);
+      if (layer && layer.type === 'text') {
+        openInlineTextEditor(layer);
+        return;
+      }
+      node = node.getParent && node.getParent();
+    }
+  });
+
+  let activeInlineEditor = null;
+  function openInlineTextEditor(layer) {
+    closeInlineTextEditor();
+    const t = layer.text;
+    // Find the layer's group on stage to derive screen-space rect.
+    const group = stage.findOne((n) => n.id?.() === layer.id);
+    if (!group) return;
+    // getClientRect() with default skipTransform:false returns the absolute
+    // rect after ALL transforms — including stage scale + position. The
+    // canvas-text-editor is appended to the same container as the stage
+    // canvas, so these coordinates map 1:1 to the container's local space.
+    // (Earlier code multiplied by stage scale + added stage position, which
+    // double-counted the stage transform and threw the editor off-screen.)
+    const rect = group.getClientRect({ skipTransform: false });
+    const sc = stage.scaleX() || 1;
+    const sx = rect.x;
+    const sy = rect.y;
+    const sw = Math.max(120, rect.width);
+    const sh = Math.max(40, rect.height);
+
+    // Use a contenteditable <div> instead of a <textarea> so the editor
+    // auto-sizes to content (no padding-induced wrap, no fixed width).
+    const ed = window.document.createElement('div');
+    ed.className = 'canvas-text-editor';
+    ed.contentEditable = 'plaintext-only';
+    ed.spellcheck = false;
+    // Multi-line: convert \n in the model to <br> on display, and the inverse
+    // when reading back. plaintext-only keeps Enter producing \n on read.
+    ed.textContent = t.value;
+    ed.style.left = `${sx}px`;
+    ed.style.top = `${sy}px`;
+    // Match the rasterised text styling so the editor sits over the glyphs.
+    const cssFamily = t.font;
+    ed.style.fontFamily = `"${cssFamily}", system-ui, sans-serif`;
+    ed.style.fontSize = `${(t.size || 96) * sc}px`;
+    ed.style.fontWeight = `${(t.variation?.wght != null ? t.variation.wght : t.weight) || 400}`;
+    ed.style.color = t.color || '#fff';
+    ed.style.textAlign = (t.align === 'justify' ? 'left' : t.align) || 'left';
+    ed.style.lineHeight = `${t.lineHeight ?? 1.2}`;
+    // Canvas adds letterSpacing in raw pixels per glyph; mirror that in CSS
+    // (scaled by stage zoom so the editor box matches the rendered text).
+    const lsCss = (t.letterSpacing || 0) * sc;
+    ed.style.letterSpacing = `${lsCss}px`;
+    // The canvas rasteriser also adds one tracking step AFTER the last glyph
+    // (so the visible line is one ls wider than CSS would render). Add the
+    // matching padding so the editor box ends where the text actually ends.
+    if (lsCss > 0) ed.style.paddingRight = `${lsCss}px`;
+    else if (lsCss < 0) ed.style.paddingLeft = `${-lsCss}px`;
+    ed.style.textTransform = t.transform && t.transform !== 'none' ? t.transform : 'none';
+    // textBox mode wraps to box width; plain text mode flows on one line per paragraph.
+    if ((t.mode || 'text') === 'textBox') {
+      ed.style.width = `${(t.boxWidth || sw) * sc}px`;
+      ed.style.whiteSpace = 'pre-wrap';
+    } else {
+      ed.style.whiteSpace = 'pre';
+    }
+    // Editor's text is invisible — the canvas-rendered text shows through
+    // as the user types. This avoids the few-pixel baseline mismatch between
+    // browser line-box metrics and ctx.fillText baseline placement (which
+    // would make the text "jump" when the editor opens). The browser still
+    // draws the caret + selection highlight.
+    ed.style.color = 'transparent';
+    container.appendChild(ed);
+    ed.focus();
+    // Place caret at end (designers usually want to append, not retype).
+    const sel = window.getSelection();
+    const range = window.document.createRange();
+    range.selectNodeContents(ed);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    // Keep the canvas text visible — it's the source of truth for visual
+    // position. Re-rasterising on each keystroke shows the user their edit.
+
+    const onInput = () => document.setTextProp(layer.id, 'value', ed.innerText);
+    const onBlur = () => closeInlineTextEditor();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeInlineTextEditor(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); closeInlineTextEditor(); }
+    };
+    ed.addEventListener('input', onInput);
+    ed.addEventListener('blur', onBlur);
+    ed.addEventListener('keydown', onKey);
+    activeInlineEditor = { ed, group, layer, onInput, onBlur, onKey };
+  }
+  function closeInlineTextEditor() {
+    if (!activeInlineEditor) return;
+    const { ed, onBlur } = activeInlineEditor;
+    ed.removeEventListener('blur', onBlur);
+    ed.remove();
+    activeInlineEditor = null;
+  }
+
   // ---------- Click selection ----------
   stage.on('click tap', (e) => {
     if (panning || spaceDown) return;

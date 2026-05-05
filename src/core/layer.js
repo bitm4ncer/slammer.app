@@ -50,7 +50,8 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
     effects: [],
     text: {
       value: 'Type here',
-      font: 'Chicago',
+      font: 'Inter',
+      provider: 'google',    // 'system' | 'google' | 'fontshare' | 'uploaded'
       size: 96,
       weight: 400,
       color: '#FFFFFF',
@@ -59,6 +60,16 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
       lineHeight: 1.2,
       mode: 'text',          // 'text' (free-flow) | 'textBox' (word-wrap to boxWidth)
       boxWidth: 600,         // pixels — only used when mode === 'textBox'
+      bold: false,           // forces weight → 700 (or variable wght 700) when true
+      italic: false,         // applies font-style: italic in the font shorthand
+      underline: false,      // draws an underline beneath the text
+      strike: false,         // draws a strike-through line through the text
+      transform: 'none',     // 'none' | 'uppercase' | 'lowercase' | 'capitalize' (CSS text-transform)
+      variation: {},         // OpenType axes for variable fonts: { wght, wdth, slnt, opsz, ... }
+      features: {            // OpenType feature toggles (kern + liga ON by default)
+        kern: true,
+        liga: true,
+      },
       ...(text || {}),
     },
   };

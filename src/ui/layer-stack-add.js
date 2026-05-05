@@ -34,6 +34,16 @@ export function initLayerStackAdd({ document: doc, openTextLayer }) {
     });
     appendCustomItem(m, '<span class="dropdown-glyph-t">T</span>', 'Text', () => {
       const layer = doc.addTextLayer({ text: { value: 'slammer', mode: 'text', boxWidth: 600 } });
+      // Preload the default Google font (Inter) so the first paint uses it.
+      import('./typography/font-loader.js').then(async ({ loadFont }) => {
+        const { findFont } = await import('./typography/font-sources.js');
+        const meta = findFont(layer.text.font, layer.text.provider);
+        if (meta) {
+          await loadFont(meta);
+          try { await document.fonts.load(`${layer.text.weight || 400} ${layer.text.size || 96}px "${meta.cssFamily || meta.family}"`); } catch {}
+          doc.setTextProp(layer.id, 'value', layer.text.value);
+        }
+      });
       openTextLayer?.(layer);
     });
 

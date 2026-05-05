@@ -1,7 +1,7 @@
 {
   "name": "slammer-app",
   "version": "1.0.0-alpha.0",
-  "description": "slammer.app \u2014 multi-layer image editor with VST-like effect plugins",
+  "description": "slammer.app — multi-layer image editor with VST-like effect plugins",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "konva": "^9.3.16",
+    "opentype.js": "^1.3.5",
     "sortablejs": "^1.15.2"
   },
   "devDependencies": {

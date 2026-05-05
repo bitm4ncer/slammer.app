@@ -4,6 +4,7 @@ import './style/variables.css';
 import './style/layout.css';
 import './style/components.css';
 import './style/effects.css';
+import './style/typography.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';
@@ -12,7 +13,10 @@ import { initCanvasView } from './ui/canvas-view.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
-import { initTextTool, preloadFontsForDoc } from './ui/text-tool.js';
+import { initTextTool } from './ui/text-tool.js';
+import { preloadFontsForDoc } from './ui/typography/font-loader.js';
+import { bootUploadedFonts } from './ui/typography/uploaded-fonts.js';
+import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupported } from './ui/typography/local-system-fonts.js';
 import { showNotification } from './ui/notifications.js';
 import { registerPlugin } from './plugins/registry.js';
 
@@ -210,6 +214,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, 5000);
   try {
+    // Register all uploaded fonts into document.fonts BEFORE restoring the
+    // doc — otherwise text layers using uploads would render with fallback.
+    await bootUploadedFonts();
+    // If the user previously granted Local Font Access, silently re-load
+    // installed system fonts so the picker reflects them on every visit.
+    if (localFontsSupported() && wasPreviouslyGranted()) {
+      loadSystemFonts({ requestPermission: false }).catch(() => {});
+    }
     await restoreLastSession({ doc, projectStore });
   } finally {
     clearTimeout(restoreSafetyTimer);

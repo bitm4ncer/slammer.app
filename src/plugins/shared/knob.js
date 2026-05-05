@@ -5,7 +5,7 @@ const START_ANGLE = 0.75 * Math.PI;   // 135°  → 7:30
 const END_ANGLE = 2.25 * Math.PI;     // 405°  → 4:30  (270° sweep)
 const SWEEP = END_ANGLE - START_ANGLE;
 
-export function createKnob({ size = 32, min, max, step = 1, value, defaultValue, onChange }) {
+export function createKnob({ size = 32, min, max, step = 1, value, defaultValue, onChange, snapWithShift = 0 }) {
   const wrap = document.createElement('span');
   wrap.className = 'knob-container';
   wrap.style.cssText = `display:inline-block;width:${size}px;height:${size}px;position:relative;flex-shrink:0;`;
@@ -146,10 +146,18 @@ export function createKnob({ size = 32, min, max, step = 1, value, defaultValue,
     const range = max - min;
     // Sensitivity: 120px of drag = full range
     let delta = (dy / 120) * range;
-    if (shift) delta *= 0.1;
+    // When `snapWithShift` is configured (e.g. 100 for variable wght axis),
+    // Shift switches to coarse snap-to-nearest-multiple. Otherwise Shift
+    // acts as fine-control (0.1× sensitivity) — original behaviour.
+    if (shift && !snapWithShift) delta *= 0.1;
     let next = dragStartVal + delta;
     next = clamp(next, min, max);
-    next = roundForStep(next, step);
+    if (shift && snapWithShift) {
+      next = Math.round(next / snapWithShift) * snapWithShift;
+      next = clamp(next, min, max);
+    } else {
+      next = roundForStep(next, step);
+    }
     if (next !== current) {
       current = next;
       onChange(next);

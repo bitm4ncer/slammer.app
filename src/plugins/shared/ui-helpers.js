@@ -15,7 +15,7 @@ export function makeToolRoot(extra = '') {
   return el;
 }
 
-export function sliderRow({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix }) {
+export function sliderRow({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix, snapWithShift = 0 }) {
   const row = document.createElement('label');
   row.className = 'effect-slider-row';
 
@@ -29,6 +29,7 @@ export function sliderRow({ label, min, max, step = 1, value, defaultValue, onCh
     min, max, step,
     value,
     defaultValue: defaultValue !== undefined ? defaultValue : value,
+    snapWithShift,
     onChange: (v) => {
       numWrap.setValue(format ? format(v) : v);
       onChange(format ? format(v) : v);

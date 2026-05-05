@@ -2,6 +2,12 @@
 
 import Konva from 'konva';
 import { getPlugin } from '../plugins/registry.js';
+import { findFont } from '../ui/typography/font-sources.js';
+
+function resolveFontMeta(text) {
+  if (!text) return null;
+  return findFont(text.font, text.provider);
+}
 
 export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Per-layer state: { group, image, srcCanvas, dstCanvas, sourceImageData, steps, dirtyFromIndex, naturalSize }
@@ -58,9 +64,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       keepRatio: false,
       flipEnabled: false,
       boundBoxFunc: (oldBox, newBox) => {
-        // Auto-detect a Ctrl+Shift-held resize on a text layer here, so we don't
-        // depend on transformstart firing first (it fires AFTER the first
-        // boundBoxFunc tick in some Konva versions, missing our anchor capture).
+        // Auto-detect a Ctrl+Shift-held resize on a text layer. Capture the
+        // starting boxWidth + a fixed reference width on the first tick so
+        // we can derive a proportional new width every tick from a CONSTANT
+        // anchor (avoids the quadratic-growth bug from earlier versions).
         if (!ctrlShiftDown) {
           if (textBoxResize) textBoxResize = null;
           return newBox;
@@ -72,26 +79,37 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         const layer = document.findLayer(layerId);
         if (!layer || layer.type !== 'text') { textBoxResize = null; return newBox; }
 
-        // First tick of a fresh gesture (or layer changed) — anchor everything.
+        // First tick of a fresh gesture — anchor.
         if (!textBoxResize || textBoxResize.layerId !== layer.id) {
           textBoxResize = {
             layerId: layer.id,
             startBoxWidth: (layer.text.mode === 'textBox' && Number.isFinite(layer.text.boxWidth))
               ? layer.text.boxWidth
               : (layer.naturalSize?.w ?? oldBox.width ?? 600),
-            startNewBoxW: newBox.width,
+            startReferenceW: oldBox.width,  // FIXED, never re-anchored
           };
-          return oldBox;
+          if (layer.text.mode !== 'textBox') document.setTextProp(layer.id, 'mode', 'textBox');
         }
 
-        const totalDelta = newBox.width - textBoxResize.startNewBoxW;
-        const target = Math.max(40, textBoxResize.startBoxWidth + totalDelta);
-        if (Math.abs((layer.text.boxWidth ?? 0) - target) > 0.4) {
-          if (layer.text.mode !== 'textBox') document.setTextProp(layer.id, 'mode', 'textBox');
+        // Live: compute the proportional width and push it through to the
+        // text model. setTextProp fires layer:textChanged → renderer
+        // re-rasterises immediately, so the user sees the text REWRAP to
+        // the new box width during the drag (not stretched, not snapping
+        // back at the end). We RETURN oldBox so Konva keeps the node's
+        // scaleX at 1 — otherwise it would visually stretch the rasterised
+        // image on top of our re-rasterise.
+        const ratio = newBox.width / (textBoxResize.startReferenceW || 1);
+        const target = Math.max(40, Math.round(textBoxResize.startBoxWidth * ratio));
+        if (Math.abs((layer.text.boxWidth ?? 0) - target) >= 1) {
           document.setTextProp(layer.id, 'boxWidth', target);
         }
         return oldBox;
       },
+    });
+    transformer.on('transformend', () => {
+      // No special cleanup needed — boxWidth was committed live during the
+      // drag and we never let Konva apply a scale. Just clear the flag.
+      textBoxResize = null;
     });
     contentLayer.add(transformer);
     return transformer;
@@ -229,15 +247,29 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
   function rasterizeText(text, st) {
     const meas = window.document.createElement('canvas').getContext('2d');
-    const fontSpec = `${text.weight} ${text.size}px "${text.font}", sans-serif`;
+    // Variable-font weight: prefer text.variation.wght when present so the
+    // user's slider drives weight directly (browser picks the variable
+    // instance if the font supports it), otherwise fall back to text.weight.
+    let wght = (text.variation && text.variation.wght != null) ? text.variation.wght : text.weight;
+    // Bold toggle forces 700 (overriding the slider/axis value).
+    if (text.bold) wght = Math.max(wght || 400, 700);
+    // Resolve the CSS family — for some catalog entries (e.g. system fonts
+    // aliased as "Inter (System)") the actual font face name differs from
+    // the catalog's display family.
+    const meta = resolveFontMeta(text);
+    const cssFam = (meta?.cssFamily) || text.font;
+    const styleKw = text.italic ? 'italic ' : '';
+    const fontSpec = `${styleKw}${wght} ${text.size}px "${cssFam}", sans-serif`;
     meas.font = fontSpec;
+    applyTextModifiers(meas, text);
     const ls = +text.letterSpacing || 0;
     const lineH = text.size * (+text.lineHeight || 1.2);
     const align = text.align || 'left';
     const mode = text.mode || 'text';
 
     // Build lines: split on \n, then word-wrap each line to boxWidth in textBox mode.
-    const rawLines = String(text.value || '').split('\n');
+    const rawText = applyTextTransform(String(text.value || ''), text.transform);
+    const rawLines = rawText.split('\n');
     const lines = mode === 'textBox'
       ? rawLines.flatMap((ln) => wrapToWidth(meas, ln, ls, Math.max(40, +text.boxWidth || 600)))
       : rawLines;
@@ -255,16 +287,28 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     const contentH = Math.max(visualLineBox, (lines.length - 1) * lineH + visualLineBox);
 
     // Horizontal extent: max line width (tracked).
+    // In textBox mode the box defines the width — but a single word that
+    // exceeds the box must still render in full (otherwise it's clipped at
+    // the canvas edge). So we widen the canvas to the larger of (box, longest line).
+    const longestLine = Math.ceil(Math.max(...lineWidths, 1));
     const contentW = mode === 'textBox'
-      ? Math.max(40, +text.boxWidth || 600)
-      : Math.max(1, Math.ceil(Math.max(...lineWidths, 1)));
+      ? Math.max(40, Math.max(+text.boxWidth || 600, longestLine))
+      : Math.max(1, longestLine);
 
     const w = Math.max(1, Math.ceil(contentW + pad * 2));
     const h = Math.max(1, Math.ceil(contentH + pad * 2));
 
+    // Cache the inner content rect on the layer state so the Konva.Image
+    // can report it via getSelfRect — keeping selection handles tight to
+    // the text while the canvas itself keeps padding for blur/displacement.
+    st.textPad = pad;
+    st.textContentSize = { w: Math.ceil(contentW), h: Math.ceil(contentH) };
+
     const c = makeCanvas(w, h);
     const ctx = c.getContext('2d');
     ctx.font = fontSpec;
+    applyTextModifiers(ctx, text);
+    void meta;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = text.color || '#fff';
     ctx.textAlign = align === 'justify' ? 'left' : align;
@@ -291,20 +335,42 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         return;
       }
 
+      let lineLeft, lineRight;
       if (ls !== 0) {
         // Render character-by-character so we can apply tracking. Honour alignment ourselves.
         const lineWidth = measureLineWidth(meas, ln, ls);
         let x = align === 'center' ? xRef - lineWidth / 2
               : align === 'right'  ? xRef - lineWidth
               :                      xRef;
+        lineLeft = x;
         ctx.textAlign = 'left';
         for (const ch of ln) {
           ctx.fillText(ch, x, baseline);
           x += meas.measureText(ch).width + ls;
         }
         ctx.textAlign = align;
+        lineRight = x - ls; // last advance shouldn't include trailing tracking
       } else {
         ctx.fillText(ln, xRef, baseline);
+        const lineWidth = lineWidths[i] || measureLineWidth(meas, ln, 0);
+        lineLeft = align === 'center' ? xRef - lineWidth / 2
+                 : align === 'right'  ? xRef - lineWidth
+                 :                      xRef;
+        lineRight = lineLeft + lineWidth;
+      }
+      // Underline / strike — drawn after the glyph for the line so they sit
+      // on top of the rasterised text. Thickness scales with size.
+      if (text.underline || text.strike) {
+        const thickness = Math.max(1, Math.round(text.size / 18));
+        ctx.fillStyle = text.color || '#fff';
+        if (text.underline) {
+          const y = baseline + Math.max(2, Math.round(text.size * 0.12));
+          ctx.fillRect(Math.floor(lineLeft), Math.floor(y), Math.ceil(lineRight - lineLeft), thickness);
+        }
+        if (text.strike) {
+          const y = baseline - Math.round(text.size * 0.28);
+          ctx.fillRect(Math.floor(lineLeft), Math.floor(y), Math.ceil(lineRight - lineLeft), thickness);
+        }
       }
     });
 
@@ -468,7 +534,15 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
-    if (dimsChanged && transformer && document.activeLayerId === layer.id && !isResizingTextBox()) {
+    if (dimsChanged && transformer && document.activeLayerId === layer.id) {
+      transformer.forceUpdate();
+    }
+    // Text layers: even when the padded canvas dimensions stayed the same,
+    // the inner content rect may have shifted (e.g. a single-character edit
+    // changed line widths). Refresh the transformer so selection handles
+    // track the new content bounds — including during a Ctrl+Shift box
+    // resize, where we want the handles to grow with the text.
+    if (layer.type === 'text' && transformer && document.activeLayerId === layer.id) {
       transformer.forceUpdate();
     }
     syncFxVisibility();
@@ -550,8 +624,25 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       steps: [],
       dirtyFromIndex: 0,
       naturalSize: null,
+      textPad: 0,
+      textContentSize: null,
     };
     layerState.set(layer.id, st);
+
+    // For text layers, expose a tight content rect so the Transformer's
+    // selection handles wrap the actual text — not the padded canvas (which
+    // exists so blur / displacement / etc. don't get clipped).
+    if (layer.type === 'text') {
+      image.getSelfRect = function () {
+        const pad = st.textPad || 0;
+        const cs = st.textContentSize;
+        if (cs && cs.w > 0 && cs.h > 0) {
+          return { x: pad, y: pad, width: cs.w, height: cs.h };
+        }
+        // Fallback: use the full image while the first paint hasn't happened.
+        return { x: 0, y: 0, width: image.width(), height: image.height() };
+      };
+    }
 
     // Decode source -> sourceImageData
     const imgData = await rasterizeSource(layer, st);
@@ -929,4 +1020,44 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
     return out;
   }
+}
+
+// Apply OpenType-feature + variable-font modifiers to a 2D context. Uses
+// Canvas Text Level 2 properties (fontKerning / fontStretch / fontVariantCaps)
+// where the browser supports them. Other features (stylistic sets, fractions,
+// etc.) are not yet representable on canvas — they apply only in DOM previews.
+// CSS text-transform applied at rasterise time (preserves the user's typed value).
+function applyTextTransform(s, mode) {
+  if (!mode || mode === 'none') return s;
+  if (mode === 'uppercase') return s.toUpperCase();
+  if (mode === 'lowercase') return s.toLowerCase();
+  if (mode === 'capitalize') return s.replace(/(^|\s)(\S)/g, (_, sp, ch) => sp + ch.toUpperCase());
+  return s;
+}
+
+function applyTextModifiers(ctx, text) {
+  const f = text.features || {};
+  // Kerning (default ON)
+  try { ctx.fontKerning = f.kern === false ? 'none' : 'normal'; } catch {}
+  // Small caps (smcp / c2sc)
+  try {
+    if (f.smcp || f.c2sc) ctx.fontVariantCaps = f.c2sc ? 'all-small-caps' : 'small-caps';
+    else ctx.fontVariantCaps = 'normal';
+  } catch {}
+  // Numeric features → ctx.fontVariantNumeric (Canvas Text Level 2).
+  // Multiple keywords combine; normal resets.
+  try {
+    const num = [];
+    if (f.lnum) num.push('lining-nums');
+    if (f.onum) num.push('oldstyle-nums');
+    if (f.tnum) num.push('tabular-nums');
+    if (f.pnum) num.push('proportional-nums');
+    if (f.frac) num.push('diagonal-fractions');
+    ctx.fontVariantNumeric = num.length ? num.join(' ') : 'normal';
+  } catch {}
+  // Width axis (wdth) → fontStretch percentage
+  try {
+    const wdth = text.variation?.wdth;
+    if (wdth != null) ctx.fontStretch = `${wdth}%`;
+  } catch {}
 }

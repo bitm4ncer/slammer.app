@@ -1,0 +1,548 @@
+/* ---------- Font picker popup ---------- */
+
+.font-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.font-picker-backdrop.anchored { background: transparent; pointer-events: auto; }
+.font-picker-backdrop.anchored .font-picker {
+  position: fixed;
+  margin: 0;
+}
+
+.font-picker {
+  width: 580px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 60px);
+  height: 540px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 6px;
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.font-picker.drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: -6px;
+}
+
+.fp-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
+}
+.fp-search-icon { color: var(--text-secondary); font-size: 12px; }
+.fp-search {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  outline: none;
+}
+.fp-search:focus { border-color: var(--primary); }
+.fp-close {
+  width: 26px; height: 22px;
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.fp-close:hover { color: var(--primary); border-color: var(--primary); }
+
+.fp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.fp-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.fp-chip:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+.fp-chip.active {
+  color: var(--surface);
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), 0 0 8px -2px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+.fp-chip i { margin-right: 4px; font-size: 9px; }
+
+.fp-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+}
+.fp-preview-text {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  outline: none;
+}
+.fp-preview-text:focus { border-color: var(--primary); }
+.fp-preview-size-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 130px;
+}
+.fp-preview-size {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--surface);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.fp-preview-size::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: grab;
+  border: 1px solid var(--vhs-shadow);
+}
+.fp-preview-size::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: grab;
+  border: 1px solid var(--vhs-shadow);
+}
+.fp-preview-size-readout {
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  width: 32px;
+  text-align: right;
+}
+
+.fp-tile-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+  outline: none;
+}
+
+.fp-tile {
+  padding: 8px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.1s;
+}
+.fp-tile:hover, .fp-tile.active {
+  background: rgba(255, 255, 255, 0.04);
+}
+.fp-tile.selected {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.fp-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.fp-tile-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.fp-tile-vf {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.fp-tile-badge {
+  font-family: 'Inter', monospace;
+  font-size: 10px;
+  width: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.fp-tile-badge--google    { color: #4285F4; }
+.fp-tile-badge--fontshare { color: #ff6f47; }
+.fp-tile-badge--uploaded  { color: var(--primary); }
+.fp-tile-badge--system    { color: var(--text-secondary); }
+
+.fp-tile-fav {
+  width: 22px; height: 22px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.12s;
+}
+.fp-tile-fav:hover, .fp-tile-fav.is-fav { color: #ffd34d; }
+
+.fp-tile-delete {
+  width: 22px; height: 22px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.14s, color 0.14s;
+}
+.fp-tile:hover .fp-tile-delete { opacity: 0.6; }
+.fp-tile-delete:hover { opacity: 1; color: #ff6464; }
+
+.fp-tile-preview {
+  /* font-size set inline from picker preview-size slider */
+  line-height: 1.25;
+  color: var(--text-primary);
+  font-family: system-ui, sans-serif;
+  opacity: 0.4;
+  transition: opacity 0.18s ease, font-family 0s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fp-tile-preview.loaded { opacity: 1; }
+
+.fp-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.fp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+}
+.fp-count {
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.fp-upload-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.fp-upload-btn:hover { color: var(--primary); border-color: var(--primary); }
+.fp-upload-btn i { margin-right: 4px; font-size: 10px; }
+
+/* ---------- Typography panel: full-width inputs ----------
+ * Override the shared .effect-slider-row grid so the value column stretches
+ * to fill the side-panel width (font name needs the room).
+ */
+.text-tool-panel .effect-slider-row {
+  grid-template-columns: 88px 28px 1fr;
+}
+/* Knob rows: cap the numeric input width and keep it nestled next to the
+ * knob (left-aligned in the value column) — not pushed to the panel's right
+ * edge. */
+.text-tool-panel .effect-slider-row .effect-num-wrap {
+  width: 84px;
+  margin-left: 0;
+  margin-right: auto;
+}
+.text-tool-panel .effect-slider-row .effect-num {
+  width: 100%;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+/* Color picker — strip the browser's chunky white inner padding around the swatch. */
+.text-tool-panel input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+}
+.text-tool-panel input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 2px;
+}
+.text-tool-panel input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+.text-tool-panel input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+/* Text-transform pills (in main panel, below Align) */
+.typo-transform-row { align-items: center; }
+.typo-transform-pills {
+  grid-column: 2 / span 2;
+  display: inline-flex;
+  gap: 3px;
+}
+.typo-transform-pills .typo-feat-pill {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 4px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Style toggles — Bold / Italic / Underline / Strike */
+.typo-style-row { align-items: center; }
+.typo-style-pills {
+  grid-column: 2 / span 2;
+  display: inline-flex;
+  gap: 3px;
+}
+.typo-style-btn {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.typo-style-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+.typo-style-btn.active {
+  color: var(--surface);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Box-mode toggle row */
+.typo-boxmode-row { align-items: center; }
+.typo-boxmode-toggle {
+  grid-column: 2 / span 2;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---------- Font button (replaces the old <select>) ---------- */
+
+.typo-font-row { align-items: center; }
+.typo-font-btn {
+  grid-column: 2 / span 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  text-align: left;
+}
+.typo-font-btn:hover { border-color: var(--primary); }
+.typo-font-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.typo-font-meta {
+  color: var(--text-secondary);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.typo-font-btn .fa-chevron-down { font-size: 8px; color: var(--text-secondary); }
+
+/* ---------- Align pills (replaces the <select>) ---------- */
+.typo-align-row { align-items: center; }
+.typo-align-pills {
+  grid-column: 2 / span 2;
+  display: inline-flex;
+  gap: 3px;
+}
+.typo-align-btn {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.typo-align-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+.typo-align-btn.active {
+  color: var(--surface);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.typo-align-btn svg { display: block; }
+
+/* Load-installed-fonts chip */
+.fp-chip.fp-load-installed {
+  border-style: dashed;
+  opacity: 0.85;
+}
+.fp-chip.fp-load-installed:hover { opacity: 1; }
+.fp-chip.disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------- Advanced typography (collapsible) ---------- */
+
+.typo-features {
+  margin-top: 8px;
+  border-top: 1px solid var(--vhs-shadow);
+  padding-top: 6px;
+}
+.typo-features-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+.typo-features-head:hover { color: var(--text-primary); }
+.typo-features-head i { font-size: 8px; opacity: 0.7; }
+
+/* Variable axes inside Advanced Typography use the same wider label column */
+.typo-axes-slot .effect-slider-row {
+  grid-template-columns: 88px 28px 1fr;
+}
+.typo-features-body {
+  padding: 6px 2px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.typo-feat-grp-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-bottom: 3px;
+}
+.typo-feat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.typo-feat-pill {
+  padding: 2px 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.typo-feat-pill:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.16); }
+.typo-feat-pill.active {
+  color: var(--surface);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ---------- Inline canvas text editor (contenteditable div) ---------- */
+.canvas-text-editor {
+  position: absolute;
+  z-index: 50;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  border: none;
+  caret-color: var(--primary);
+  /* font / size / etc. set inline from the layer */
+  display: inline-block;
+  min-width: 1ch;
+  /* Subtle outline so the user can see the editor is active without
+   * obscuring the canvas text underneath. */
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.canvas-text-editor::selection {
+  /* Translucent — canvas text shows through highlighted regions. */
+  background: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+/* ---------- Picker chip divider ---------- */
+.fp-chip-divider {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--vhs-shadow);
+  margin: 0 4px;
+  vertical-align: middle;
+}
