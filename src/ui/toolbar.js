@@ -111,8 +111,16 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     fly.style.position = 'fixed';
     fly.style.zIndex = '500';
     window.document.body.appendChild(fly);
+    // Capture-phase outside-click handler — but ignore mousedowns landing
+    // inside the flyout itself, otherwise the close fires before the item's
+    // click handler can pick a shape.
     setTimeout(() => {
-      window.addEventListener('mousedown', closeShapeFlyout, { once: true, capture: true });
+      const handler = (e) => {
+        if (e.target.closest('.tool-flyout')) return;
+        closeShapeFlyout();
+        window.removeEventListener('mousedown', handler, true);
+      };
+      window.addEventListener('mousedown', handler, true);
     });
   }
   function closeShapeFlyout() {

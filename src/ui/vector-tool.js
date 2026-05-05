@@ -9,9 +9,24 @@
 
 import { sliderRow } from '../plugins/shared/ui-helpers.js';
 import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../core/layer.js';
+import { createGradientEditor } from '../plugins/shared/gradient-editor.js';
 
-const FILL_TYPES   = [{ v: 'solid', l: 'Solid' }, { v: 'gradient', l: 'Gradient' }, { v: 'none', l: 'None' }];
-const STROKE_TYPES = [{ v: 'solid', l: 'Solid' }, { v: 'gradient', l: 'Gradient' }, { v: 'gradientAlong', l: 'Along' }, { v: 'none', l: 'None' }];
+// Pills use icons instead of text labels for the type rows.
+//   Solid    = filled square        (fa-square)
+//   Gradient = gradient swatch      (fa-fill-drip — best FA proxy)
+//   Along    = gradient along path  (fa-arrow-trend-up)
+//   None     = nothing / blocked    (fa-ban)
+const FILL_TYPES   = [
+  { v: 'solid',    icon: 'fa-square',          title: 'Solid color' },
+  { v: 'gradient', icon: 'fa-fill-drip',       title: 'Gradient fill' },
+  { v: 'none',     icon: 'fa-ban',             title: 'No fill' },
+];
+const STROKE_TYPES = [
+  { v: 'solid',         icon: 'fa-square',          title: 'Solid color' },
+  { v: 'gradient',      icon: 'fa-fill-drip',       title: 'Gradient stroke' },
+  { v: 'gradientAlong', icon: 'fa-arrow-trend-up',  title: 'Gradient along the stroke direction' },
+  { v: 'none',          icon: 'fa-ban',             title: 'No stroke' },
+];
 const STROKE_ALIGN = [{ v: 'inside', l: 'Inside' }, { v: 'center', l: 'Center' }, { v: 'outside', l: 'Outside' }];
 const STROKE_CAP   = [{ v: 'butt', l: 'Butt' }, { v: 'round', l: 'Round' }, { v: 'square', l: 'Square' }];
 const STROKE_JOIN  = [{ v: 'miter', l: 'Miter' }, { v: 'round', l: 'Round' }, { v: 'bevel', l: 'Bevel' }];
@@ -79,15 +94,21 @@ export function initVectorTool({ document: doc }) {
   const strokeCapRow      = panel.querySelector('[data-row=stroke-cap]');
   const strokeJoinRow     = panel.querySelector('[data-row=stroke-join]');
 
-  // Build pill buttons inside a host. Returns the host's array of buttons.
+  // Build pill buttons inside a host. Returns the array of buttons.
+  // Opts may carry { icon, title } for icon-pills or { l } for text-pills.
   function buildPills(host, opts, onPick) {
     host.innerHTML = '';
     return opts.map((opt) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'vector-pill';
+      b.className = 'vector-pill' + (opt.icon ? ' vector-pill--icon' : '');
       b.dataset.value = opt.v;
-      b.textContent = opt.l;
+      if (opt.icon) {
+        b.innerHTML = `<i class="fas ${opt.icon}"></i>`;
+        b.title = opt.title || opt.v;
+      } else {
+        b.textContent = opt.l;
+      }
       b.addEventListener('click', () => onPick(opt.v));
       host.appendChild(b);
       return b;
@@ -177,7 +198,11 @@ export function initVectorTool({ document: doc }) {
     const fillType = (p.fill && p.fill.type) || 'none';
     fillTypeBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === fillType));
     fillColorRow.style.display = fillType === 'solid' ? '' : 'none';
-    fillGradHost.innerHTML = fillType === 'gradient' ? renderGradientStub(p.fill, (next) => doc.setVectorFill(l.id, activePathIdx, next)) : '';
+    if (fillType === 'gradient') {
+      mountGradientEditor(fillGradHost, p.fill, (next) => doc.setVectorFill(l.id, activePathIdx, next));
+    } else {
+      fillGradHost.innerHTML = '';
+    }
     if (fillType === 'solid') fillColorInput.value = p.fill.color || '#ffffff';
 
     let strokeType = (p.stroke && p.stroke.type) || 'none';
@@ -185,8 +210,11 @@ export function initVectorTool({ document: doc }) {
     strokeTypeBtns.forEach((b) => b.classList.toggle('active', b.dataset.value === strokeType));
     const strokeOn = strokeType !== 'none';
     strokeColorRow.style.display = strokeType === 'solid' ? '' : 'none';
-    strokeGradHost.innerHTML = (strokeType === 'gradient' || strokeType === 'gradientAlong')
-      ? renderGradientStub(p.stroke, (next) => doc.setVectorStroke(l.id, activePathIdx, next)) : '';
+    if (strokeType === 'gradient' || strokeType === 'gradientAlong') {
+      mountGradientEditor(strokeGradHost, p.stroke, (next) => doc.setVectorStroke(l.id, activePathIdx, next));
+    } else {
+      strokeGradHost.innerHTML = '';
+    }
     strokeWidthHost.style.display  = strokeOn ? '' : 'none';
     strokeAlignRow.style.display = strokeOn ? '' : 'none';
     strokeCapRow.style.display   = strokeOn ? '' : 'none';
@@ -206,32 +234,27 @@ export function initVectorTool({ document: doc }) {
     }
   }
 
-  // Minimal gradient stub editor — two color inputs (start / end) + horizontal swap.
-  // Full multi-stop UI lives in the existing Gradient Map plugin; reuse later.
-  function renderGradientStub(spec, commit) {
-    if (!spec || spec.type !== 'gradient') return '';
-    const stops = spec.stops || [{ at: 0, color: '#fff' }, { at: 1, color: '#000' }];
-    setTimeout(() => wireGradientStub(spec, commit), 0);
-    return `
-      <div class="effect-slider-row vector-grad-row">
-        <span class="effect-label">Stops</span>
-        <div class="vector-grad-controls">
-          <input type="color" data-grad="0" value="${stops[0].color}" />
-          <input type="color" data-grad="1" value="${stops[stops.length - 1].color}" />
-        </div>
-      </div>
-    `;
-  }
-  function wireGradientStub(spec, commit) {
-    const c0 = panel.querySelector('input[data-grad="0"]');
-    const c1 = panel.querySelector('input[data-grad="1"]');
-    if (!c0 || !c1) return;
-    const update = () => {
-      const stops = [{ at: 0, color: c0.value }, { at: 1, color: c1.value }];
-      commit({ ...spec, stops });
-    };
-    c0.addEventListener('input', update);
-    c1.addEventListener('input', update);
+  // Mount a real multi-stop gradient editor (same component as the
+  // Gradient Map filter) into the given host element.
+  function mountGradientEditor(host, spec, commit) {
+    if (!spec || spec.type !== 'gradient') return;
+    const row = document.createElement('div');
+    row.className = 'effect-slider-row vector-grad-row';
+    const label = document.createElement('span');
+    label.className = 'effect-label';
+    label.textContent = 'Stops';
+    row.appendChild(label);
+    const slot = document.createElement('div');
+    slot.className = 'vector-grad-slot';
+    row.appendChild(slot);
+    const editor = createGradientEditor({
+      stops: spec.stops,
+      hint: false,
+      onChange: (stops) => commit({ ...spec, stops }),
+    });
+    slot.appendChild(editor.root);
+    host.innerHTML = '';
+    host.appendChild(row);
   }
 
   doc.subscribe((e) => {

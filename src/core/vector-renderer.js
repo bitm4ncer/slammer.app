@@ -35,6 +35,10 @@ export function hydratePath(record) {
 }
 
 // Compute the union bounding-box of every path in the layer.
+// Stroke expansion depends on alignment:
+//   inside  → 0          (stroke fits within the path)
+//   center  → width / 2  (half on each side of the path)
+//   outside → width      (stroke sits entirely outside the path)
 export function computeBounds(paths) {
   ensureProject();
   if (!paths || !paths.length) return { x: 0, y: 0, width: 0, height: 0 };
@@ -44,16 +48,18 @@ export function computeBounds(paths) {
     try {
       const p = hydratePath(rec);
       created.push(p);
-      // Account for stroke width if visible.
       const strokeW = rec.stroke && rec.stroke.type !== 'none' ? (rec.stroke.width || 0) : 0;
-      const b = p.strokeBounds || p.bounds;
-      const expanded = strokeW > 0
-        ? new paper.Rectangle(b.x - strokeW / 2, b.y - strokeW / 2, b.width + strokeW, b.height + strokeW)
+      const align = rec.stroke?.align || 'center';
+      const grow = strokeW > 0
+        ? (align === 'inside' ? 0 : align === 'outside' ? strokeW : strokeW / 2)
+        : 0;
+      const b = p.bounds;
+      const expanded = grow > 0
+        ? new paper.Rectangle(b.x - grow, b.y - grow, b.width + grow * 2, b.height + grow * 2)
         : b;
       union = union ? union.unite(expanded) : expanded;
     } catch (e) { /* skip malformed */ }
   }
-  // Clean up so Paper's project doesn't grow.
   for (const p of created) p.remove();
   return union
     ? { x: union.x, y: union.y, width: union.width, height: union.height }
@@ -126,10 +132,10 @@ function withOpacity(hex, op) {
 }
 
 // Walk a Paper.Path / CompoundPath and render its segments into a Canvas2D
-// path (so we can fill/stroke through ctx — which gives us native gradient
-// support that Paper alone doesn't expose to arbitrary canvases).
-function tracePathToCtx(ctx, paperPath, dx, dy) {
-  ctx.beginPath();
+// path. Set `beginNew=true` to start a fresh path; pass false to ADD to the
+// existing path (used when building compound clips like outside-stroke).
+function tracePathToCtx(ctx, paperPath, dx, dy, beginNew = true) {
+  if (beginNew) ctx.beginPath();
   const walk = (path) => {
     if (!path.segments || !path.segments.length) return;
     let prev = null;
@@ -210,25 +216,34 @@ export function rasterizeVectorLayer(layer) {
     // Fill
     tracePathToCtx(ctx, p, dx, dy);
     if (applyFill(ctx, rec.fill, localBounds)) ctx.fill();
-    // Stroke
+
+    // Stroke — Canvas2D natively centres strokes on the path. For 'inside'
+    // we clip to the path then double the line width (half clipped outside).
+    // For 'outside' we build an even-odd clip = (giant rect) ⊕ path so only
+    // the area OUTSIDE the path passes; stroke at 2× width keeps the outer half.
     if (rec.stroke && rec.stroke.type !== 'none') {
       ctx.save();
-      // Stroke alignment is approximated with clipping (Canvas2D natively
-      // strokes centered). For 'inside' we clip to fill, for 'outside' we
-      // clip outside via even-odd with a giant outer rect.
-      if (rec.stroke.align === 'inside') {
+      const align = rec.stroke.align || 'center';
+      let widthScale = 1;
+      if (align === 'inside') {
+        // Clip uses the path we already traced + filled.
+        tracePathToCtx(ctx, p, dx, dy);
         ctx.clip();
-        ctx.lineWidth = (rec.stroke.width || 1) * 2;  // double then clip to inside half
-      } else if (rec.stroke.align === 'outside') {
-        // Build an even-odd path: huge outer rect minus the path.
+        widthScale = 2;
+      } else if (align === 'outside') {
+        // Build a compound path: outer rect (CCW) + path → even-odd carves the path out.
         ctx.beginPath();
         ctx.rect(-1e5, -1e5, 2e5, 2e5);
-        tracePathToCtx(ctx, p, dx, dy);
+        tracePathToCtx(ctx, p, dx, dy, /* beginNew */ false); // ADD to current path
         ctx.clip('evenodd');
-        ctx.lineWidth = (rec.stroke.width || 1) * 2;
+        widthScale = 2;
       }
+      // Now draw the stroke as a fresh path so the clip is applied correctly.
       tracePathToCtx(ctx, p, dx, dy);
-      if (applyStroke(ctx, rec.stroke, localBounds)) ctx.stroke();
+      if (applyStroke(ctx, rec.stroke, localBounds)) {
+        if (widthScale !== 1) ctx.lineWidth *= widthScale;
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
       ctx.restore();
     }

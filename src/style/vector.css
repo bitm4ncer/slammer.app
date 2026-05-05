@@ -104,6 +104,12 @@
   background: var(--primary);
   border-color: var(--primary);
 }
+.vector-pill--icon {
+  width: 30px;
+  padding: 0;
+  font-size: 11px;
+}
+.vector-pill--icon i { font-size: 11px; }
 
 /* Color picker — strip browser chunky padding */
 .vector-tool-panel input[type="color"] {
@@ -121,15 +127,8 @@
 .vector-tool-panel input[type="color"]::-webkit-color-swatch        { border: none; border-radius: 2px; }
 .vector-tool-panel input[type="color"]::-moz-color-swatch           { border: none; border-radius: 2px; }
 
-/* Gradient stub editor row */
-.vector-grad-row .vector-grad-controls {
+/* Gradient editor row — full-width slot using the shared editor */
+.vector-grad-row .vector-grad-slot {
   grid-column: 2 / span 2;
-  display: inline-flex;
-  gap: 6px;
 }
-.vector-grad-controls input[type="color"] {
-  width: 36px;
-  height: 22px;
-  border: 1px solid var(--vhs-shadow);
-  border-radius: 3px;
-}
+.vector-grad-slot .gradient-editor { width: 100%; }
