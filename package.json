@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
     "konva": "^9.3.16",
     "opentype.js": "^1.3.5",
     "paper": "^0.12.18",

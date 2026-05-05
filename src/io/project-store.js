@@ -1,11 +1,12 @@
 // IndexedDB-backed project store + localStorage index.
-// Index entries: { id, name, thumbnail, updatedAt }.
+// Index entries: { id, name, thumbnail, updatedAt, folderId? }.
 // Full project document lives under projects.<id>.
 
 const DB_NAME = 'slammer';
 const LEGACY_DB_NAME = 'crush';
 const STORE = 'projects';
 const INDEX_KEY = 'slammer:projects';
+const FOLDERS_KEY = 'slammer:projectFolders';
 const CURRENT_KEY = 'slammer:current';
 const LEGACY_INDEX_KEY = 'crush:projects';
 const LEGACY_CURRENT_KEY = 'crush:current';
@@ -149,6 +150,13 @@ function writeIndex(list) {
   localStorage.setItem(INDEX_KEY, JSON.stringify(list));
 }
 
+function readFolders() {
+  try { return JSON.parse(localStorage.getItem(FOLDERS_KEY) || '[]'); } catch { return []; }
+}
+function writeFolders(list) {
+  localStorage.setItem(FOLDERS_KEY, JSON.stringify(list));
+}
+
 async function makeThumbnail(doc) {
   // Use the active layer's offscreen canvas if available, otherwise no thumbnail.
   // The renderer maintains layer dstCanvases — but we don't have access here. Caller
@@ -159,6 +167,51 @@ async function makeThumbnail(doc) {
 export function initProjectStore() {
   async function listProjects() {
     return readIndex().sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async function listFolders() {
+    return readFolders().sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async function createFolder(name) {
+    const folder = { id: crypto.randomUUID(), name: name.trim() || 'New Folder', createdAt: Date.now() };
+    const list = readFolders();
+    list.push(folder);
+    writeFolders(list);
+    return folder;
+  }
+
+  async function renameFolder(id, newName) {
+    const list = readFolders();
+    const f = list.find((x) => x.id === id);
+    if (f) {
+      f.name = newName.trim() || f.name;
+      writeFolders(list);
+    }
+  }
+
+  async function deleteFolder(id) {
+    // Move all projects in this folder to uncategorized (remove folderId).
+    const idx = readIndex();
+    let changed = false;
+    for (const p of idx) {
+      if (p.folderId === id) {
+        delete p.folderId;
+        changed = true;
+      }
+    }
+    if (changed) writeIndex(idx);
+    const list = readFolders().filter((x) => x.id !== id);
+    writeFolders(list);
+  }
+
+  async function moveProjectToFolder(projectId, folderId) {
+    const idx = readIndex();
+    const p = idx.find((x) => x.id === projectId);
+    if (!p) return;
+    if (folderId) p.folderId = folderId;
+    else delete p.folderId;
+    writeIndex(idx);
   }
 
   async function loadProject(id) {
@@ -195,9 +248,13 @@ export function initProjectStore() {
     await putProject(rec);
 
     const list = readIndex();
-    const idx = list.findIndex((p) => p.id === id);
+    const existing = list.find((p) => p.id === id);
     const entry = { id, name: doc.state.name, thumbnail, updatedAt: rec.updatedAt };
-    if (idx >= 0) list[idx] = entry; else list.push(entry);
+    if (existing) {
+      Object.assign(existing, entry);
+    } else {
+      list.push(entry);
+    }
     writeIndex(list);
 
     localStorage.setItem(CURRENT_KEY, id);
@@ -276,21 +333,55 @@ export function initProjectStore() {
     const rec = await getProject(id);
     if (!rec) return null;
     const newId = crypto.randomUUID();
+    // Deep-clone so the duplicate is fully independent of the original.
+    const newDoc = JSON.parse(JSON.stringify(rec.document));
+    newDoc.name = (newDoc.name || 'Untitled') + ' copy';
     const newRec = {
       id: newId,
-      document: { ...rec.document, name: rec.document.name + ' copy' },
+      document: newDoc,
       updatedAt: Date.now(),
     };
     await putProject(newRec);
     const list = readIndex();
     const meta = list.find((p) => p.id === id);
-    list.push({ id: newId, name: newRec.document.name, thumbnail: meta?.thumbnail, updatedAt: newRec.updatedAt });
+    list.push({
+      id: newId,
+      name: newDoc.name,
+      thumbnail: meta?.thumbnail,
+      updatedAt: newRec.updatedAt,
+      folderId: meta?.folderId,
+    });
     writeIndex(list);
     return newId;
   }
 
+  async function saveAs({ document: doc, view, name }) {
+    const id = crypto.randomUUID();
+    const docCopy = JSON.parse(JSON.stringify(doc.serialize(), (k, v) => {
+      if (v && typeof v === 'object' && v.__isFile) return undefined;
+      return v;
+    }));
+    for (let i = 0; i < doc.layers.length; i++) {
+      const src = doc.layers[i].source;
+      if (src instanceof Blob) {
+        docCopy.layers[i].source = await blobToDataURL(src);
+      } else {
+        docCopy.layers[i].source = src;
+      }
+    }
+    const thumbnail = await captureThumbnail(view);
+    const rec = { id, document: docCopy, updatedAt: Date.now() };
+    await putProject(rec);
+    const list = readIndex();
+    const entry = { id, name: name || doc.state.name || 'Untitled', thumbnail, updatedAt: rec.updatedAt };
+    list.push(entry);
+    writeIndex(list);
+    return id;
+  }
+
   return {
-    listProjects, loadProject, saveCurrent, autosave,
+    listProjects, listFolders, createFolder, renameFolder, deleteFolder,
+    moveProjectToFolder, loadProject, saveCurrent, autosave, saveAs,
     deleteProject, renameProject, duplicateProject,
     setCurrent: (id) => localStorage.setItem(CURRENT_KEY, id),
     getCurrent: () => localStorage.getItem(CURRENT_KEY),
