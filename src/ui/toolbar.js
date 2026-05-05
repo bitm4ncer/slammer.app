@@ -176,6 +176,7 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     if (doc.layers.length && !confirm('Discard current document and start a new blank?')) return;
     while (doc.layers.length) doc.removeLayer(doc.layers[0].id);
     doc.setName('Untitled');
+    projectStore.clearCurrent();
     showNotification('New blank document');
   });
 
@@ -210,6 +211,7 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     e.stopPropagation();
     try {
       await importSlmr(f, doc);
+      projectStore.clearCurrent();
       await projectStore.saveCurrent({ document: doc, view });
       showNotification(`Loaded "${doc.state.name}"`);
     } catch (err) {

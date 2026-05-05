@@ -208,6 +208,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
         if (!file) return;
         try {
           await importSlmr(file, doc);
+          projectStore.clearCurrent();
           await projectStore.saveCurrent({ document: doc, view });
           showNotification(`Imported "${doc.state.name}"`);
           projects = await projectStore.listProjects();
@@ -414,7 +415,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
     content.querySelectorAll('[data-id]').forEach((el) => {
       const id = el.dataset.id;
 
-      const doOpen = async () => {
+      const performOpen = async () => {
         const projDoc = await projectStore.loadProject(id);
         if (!projDoc) return;
         for (const l of projDoc.layers || []) {
@@ -428,7 +429,31 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
         close();
       };
 
+      const doOpen = async () => {
+        // Warn before discarding an unsaved untitled document with content.
+        if (!projectStore.getCurrent() && doc.layers.length > 0) {
+          showConfirm({
+            title: 'Discard current work?',
+            message: 'The current document has unsaved changes that will be lost. Open this project anyway?',
+            confirmText: 'Open Anyway',
+            onConfirm: performOpen,
+          });
+          return;
+        }
+        await performOpen();
+      };
+
       el.querySelectorAll('[data-act=open]').forEach((b) => b.addEventListener('click', doOpen));
+
+      // Click the thumbnail to open (ignore clicks on the download button inside it).
+      const thumb = el.querySelector('.project-browser-card-thumb, .project-browser-list-thumb');
+      if (thumb) {
+        thumb.style.cursor = 'pointer';
+        thumb.addEventListener('click', (e) => {
+          if (e.target.closest('[data-act=download]')) return;
+          doOpen();
+        });
+      }
 
       const renameBtn = el.querySelector('[data-act=rename]');
       if (renameBtn) {

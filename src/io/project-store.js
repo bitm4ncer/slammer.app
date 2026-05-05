@@ -385,6 +385,7 @@ export function initProjectStore() {
     deleteProject, renameProject, duplicateProject,
     setCurrent: (id) => localStorage.setItem(CURRENT_KEY, id),
     getCurrent: () => localStorage.getItem(CURRENT_KEY),
+    clearCurrent: () => localStorage.removeItem(CURRENT_KEY),
   };
 }
 
