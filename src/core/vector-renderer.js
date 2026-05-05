@@ -214,15 +214,20 @@ function tracePathToCtx(ctx, paperPath, dx, dy, beginNew = true) {
 export function rasterizeVectorLayer(layer) {
   ensureProject();
   const recs = (layer.vector && layer.vector.paths) || [];
-  if (!recs.length) {
-    return { imageData: new ImageData(1, 1), naturalSize: { w: 1, h: 1 } };
-  }
+  // Empty placeholder used by the early-out branches. Always include
+  // pathBounds + contentOffsetInImage so the renderer can call
+  // image.position(...) without `undefined` crashes — the symptom of the
+  // bug we used to ship: TypeError reading 'x' on initial shape draw.
+  const empty = () => ({
+    imageData: new ImageData(1, 1),
+    naturalSize: { w: 1, h: 1 },
+    pathBounds: { x: 0, y: 0, width: 1, height: 1 },
+    contentOffsetInImage: { x: 0, y: 0 },
+  });
+  if (!recs.length) return empty();
 
-  // Bounds + breathing room for stroke / blur safety (effect pipeline).
   const b = computeBounds(recs);
-  if (b.width <= 0 || b.height <= 0) {
-    return { imageData: new ImageData(1, 1), naturalSize: { w: 1, h: 1 } };
-  }
+  if (b.width <= 0 || b.height <= 0) return empty();
   const pad = 16;
   const w = Math.max(1, Math.ceil(b.width + pad * 2));
   const h = Math.max(1, Math.ceil(b.height + pad * 2));

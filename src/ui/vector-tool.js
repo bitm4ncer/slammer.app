@@ -45,17 +45,25 @@ const STROKE_TYPES = [
 // a thick stroke band drawn inside / centred-on / outside that edge so the
 // three options read at a glance. The stroke band uses fill-rule="evenodd"
 // to carve out an inner hole, simulating an actual stroke.
-const ALIGN_INSIDE_SVG  = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 3 3 H 15 V 15 H 3 Z M 5 5 V 13 H 13 V 5 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
-const ALIGN_CENTER_SVG  = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 1 1 H 17 V 17 H 1 Z M 5 5 V 13 H 13 V 5 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
-const ALIGN_OUTSIDE_SVG = '<svg viewBox="0 0 18 18" width="16" height="16"><path fill="currentColor" fill-rule="evenodd" d="M 0 0 H 18 V 18 H 0 Z M 3 3 V 15 H 15 V 3 Z"/><rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+// Each icon shows the actual stroke (thick currentColor) PLUS a thin
+// path-edge reference (1.4 px outline) so the user sees the relationship
+// between the path and the stroke. Without the reference, "inside" and
+// "outside" look near-identical at glance size.
+const ALIGN_INSIDE_SVG  = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" fill-rule="evenodd" d="M 4 4 H 20 V 20 H 4 Z M 7 7 V 17 H 17 V 7 Z"/><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+const ALIGN_CENTER_SVG  = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" fill-rule="evenodd" d="M 2 2 H 22 V 22 H 2 Z M 6 6 V 18 H 18 V 6 Z"/><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+const ALIGN_OUTSIDE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" fill-rule="evenodd" d="M 0 0 H 24 V 24 H 0 Z M 4 4 V 20 H 20 V 4 Z"/><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
 
-const CAP_BUTT_SVG   = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="butt"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
-const CAP_ROUND_SVG  = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
-const CAP_SQUARE_SVG = '<svg viewBox="0 0 24 14" width="20" height="12"><line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="6" stroke-linecap="square"/><line x1="14" y1="2" x2="14" y2="12" stroke="currentColor" stroke-width="0.8" opacity="0.5" stroke-dasharray="1.5,1"/></svg>';
+// Cap — thick stroke + thin reference line on top + an end-marker dashed
+// line so the cap shape (butt/round/square) is unambiguous.
+const CAP_BUTT_SVG   = '<svg viewBox="0 0 28 16" width="22" height="13"><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="6" stroke-linecap="butt"/><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="1.2" opacity="0.55"/><line x1="18" y1="2" x2="18" y2="14" stroke="currentColor" stroke-width="1" opacity="0.55" stroke-dasharray="2,1.5"/></svg>';
+const CAP_ROUND_SVG  = '<svg viewBox="0 0 28 16" width="22" height="13"><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="1.2" opacity="0.55"/><line x1="18" y1="2" x2="18" y2="14" stroke="currentColor" stroke-width="1" opacity="0.55" stroke-dasharray="2,1.5"/></svg>';
+const CAP_SQUARE_SVG = '<svg viewBox="0 0 28 16" width="22" height="13"><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="6" stroke-linecap="square"/><line x1="3" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="1.2" opacity="0.55"/><line x1="18" y1="2" x2="18" y2="14" stroke="currentColor" stroke-width="1" opacity="0.55" stroke-dasharray="2,1.5"/></svg>';
 
-const JOIN_MITER_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="miter"/></svg>';
-const JOIN_ROUND_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>';
-const JOIN_BEVEL_SVG = '<svg viewBox="0 0 18 18" width="15" height="15"><polyline points="2,2 16,2 16,16" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="bevel"/></svg>';
+// Join — corner polyline drawn TWICE: thick stroke (the actual join style)
+// + thin solid line on top (the path edge reference).
+const JOIN_MITER_SVG = '<svg viewBox="0 0 22 22" width="18" height="18"><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="miter"/><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/></svg>';
+const JOIN_ROUND_SVG = '<svg viewBox="0 0 22 22" width="18" height="18"><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/></svg>';
+const JOIN_BEVEL_SVG = '<svg viewBox="0 0 22 22" width="18" height="18"><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="bevel"/><polyline points="3,3 19,3 19,19" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/></svg>';
 
 const STROKE_ALIGN = [
   { v: 'inside',  svg: ALIGN_INSIDE_SVG,  title: 'Stroke inside the path' },
@@ -236,7 +244,9 @@ export function initVectorTool({ document: doc }) {
   }
 
   // Recompute the path's d-string from its current bbox and the new shape
-  // params (sides / points / innerRatio). Polygons + stars only.
+  // params (sides / points / innerRatio / cornerRadius). Also update the
+  // layer's centre transform so non-changing anchors stay visually put
+  // (different polygon side counts produce slightly different bboxes).
   function setShapeParam(patch) {
     const l = activeLayer(); const p = activePath(); if (!l || !p || !p.shape) return;
     const nextShape = { ...p.shape, ...patch };
@@ -245,6 +255,15 @@ export function initVectorTool({ document: doc }) {
     const d = rebuildShapePathD(nextShape, b);
     if (!d) return;
     doc.setVectorPath(l.id, activePathIdx, { shape: nextShape, d });
+    // Push the new path-bounds centre back to layer.transform so the
+    // renderer's centre-origin convention stays consistent.
+    const updated = computePathBounds(l.vector.paths);
+    if (updated.width > 0 && updated.height > 0) {
+      doc.setLayerTransform(l.id, {
+        x: updated.x + updated.width / 2,
+        y: updated.y + updated.height / 2,
+      });
+    }
   }
 
   // Sub-path picker: shows a horizontal strip of colour swatches, one per

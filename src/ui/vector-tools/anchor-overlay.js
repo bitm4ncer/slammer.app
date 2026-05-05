@@ -14,6 +14,7 @@
 import Konva from 'konva';
 import paper from 'paper';
 import { getTool, onToolChange } from './active-tool.js';
+import { computePathBounds } from '../../core/vector-renderer.js';
 
 let _paperReady = false;
 function ensurePaper() {
@@ -226,12 +227,25 @@ export function initAnchorOverlay({ stage, document: doc }) {
     // still work. Changing a slider regenerates d and overwrites manual
     // edits, which mirrors the mental model in Affinity / Illustrator.
     doc.setVectorPath(layer.id, pathIdx, { d: newD });
-    // refresh() is short-circuited during anchorDragging (so we don't
-    // destroy the live Konva node), so keep the dashed outline node's
-    // `data` attribute in sync ourselves. Tangent-line + dot positions
-    // resync on dragend's refresh().
+    // The path's bounding-box may have shifted (the user moved an anchor
+    // outside the old bbox). With the centre-origin convention the layer's
+    // transform.x must equal the new bbox centre, otherwise the rasteriser
+    // (which positions the image relative to the new bbox) would visually
+    // drift the entire shape every frame. Push the new centre.
+    const allPaths = doc.findLayer(layer.id)?.vector?.paths || [];
+    const nb = computePathBounds(allPaths);
+    if (nb.width > 0 && nb.height > 0) {
+      doc.setLayerTransform(layer.id, {
+        x: nb.x + nb.width / 2,
+        y: nb.y + nb.height / 2,
+      });
+    }
+    // refresh() is short-circuited during anchorDragging — keep the dashed
+    // outline + the overlay group's transform in sync ourselves.
     const outline = overlay.findOne(`.path-outline-${pathIdx}`);
     if (outline) outline.data(newD);
+    const layerGroup = stage.findOne((n) => n.id?.() === layer.id);
+    if (layerGroup) syncOverlayTransform(layerGroup);
     overlay.batchDraw();
   }
 

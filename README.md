@@ -1,6 +1,9 @@
 # slammer.app
 
-Multi-layer graphics editor - Non Destructive Filters, Datamosh, Dithering, Generative Plugins
+Multi-layer graphics editor - Non Destructive Filters, Datamosh, Dithering, Generative Plugins.
+
+Frame Export - Work freely on an infinite canvas, choose a format on export. 
+Progressive Disclosure - Context-aware UI design. See only the settings you need.
 
 ## Getting started
 
