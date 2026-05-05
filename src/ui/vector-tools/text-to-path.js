@@ -25,6 +25,26 @@ async function loadOpentype() {
   return _opentypePromise;
 }
 
+// opentype.js can't decode woff2 on its own — it needs an external WASM
+// decompressor. Lazy-load wawoff2 only when we actually have a woff2 buffer.
+let _wawoffPromise = null;
+async function decompressWoff2IfNeeded(buffer) {
+  // SFNT magic bytes: a woff2 file starts with 'wOF2' (0x77 0x4F 0x46 0x32).
+  // TTF starts with 0x00010000, OTF with 'OTTO', WOFF1 with 'wOFF'. Only
+  // woff2 needs decompressing — everything else opentype can parse directly.
+  const view = new Uint8Array(buffer, 0, 4);
+  const isWoff2 = view[0] === 0x77 && view[1] === 0x4F && view[2] === 0x46 && view[3] === 0x32;
+  if (!isWoff2) return buffer;
+  if (!_wawoffPromise) {
+    _wawoffPromise = import('wawoff2').then((m) => m.default || m);
+  }
+  const wawoff2 = await _wawoffPromise;
+  // wawoff2.decompress takes a Uint8Array and returns Uint8Array of SFNT bytes.
+  const out = await wawoff2.decompress(new Uint8Array(buffer));
+  // Hand opentype a clean ArrayBuffer slice (avoid passing a SharedArrayBuffer view).
+  return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+}
+
 // Fetch a font binary as ArrayBuffer (suitable for opentype.parse()).
 // Returns { buffer, sourceLabel } or null on failure.
 async function resolveFontBuffer(meta, t) {
@@ -94,9 +114,10 @@ export async function convertTextLayerToPath(doc, layer, { replace = true } = {}
   let otFont;
   try {
     const opentype = await loadOpentype();
-    // Modern API — synchronous parse on a fetched ArrayBuffer. Avoids
-    // opentype.load()'s deprecated callback path.
-    otFont = opentype.parse(fontFile.buffer);
+    // Google + Fontshare serve woff2 — decompress to SFNT first since
+    // opentype.js v1.3.5 can't read woff2 natively.
+    const sfntBuffer = await decompressWoff2IfNeeded(fontFile.buffer);
+    otFont = opentype.parse(sfntBuffer);
   } catch (e) {
     console.error('[text-to-path] opentype.parse failed:', e);
     showNotification('Convert to Path: font failed to parse (' + (e.message || e) + ').');
