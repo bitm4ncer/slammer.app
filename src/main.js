@@ -22,6 +22,12 @@ import brightnessPlugin from './plugins/filters/brightness/index.js';
 import contrastPlugin from './plugins/filters/contrast/index.js';
 import levelsPlugin from './plugins/filters/levels/index.js';
 import blurPlugin from './plugins/filters/blur/index.js';
+import huePlugin from './plugins/filters/hue/index.js';
+import colorOverlayPlugin from './plugins/filters/color-overlay/index.js';
+import gradientMapPlugin from './plugins/filters/gradient-map/index.js';
+import curvesPlugin from './plugins/filters/curves/index.js';
+import grainPlugin from './plugins/filters/grain/index.js';
+import displacementPlugin from './plugins/filters/displacement/index.js';
 import ditheringPlugin from './plugins/tools/dithering/index.js';
 import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
 import jpegPlugin from './plugins/tools/jpeg-compression/index.js';
@@ -46,6 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Register plugins (order = order shown in Add menus, sort of).
   [
     invertPlugin, brightnessPlugin, contrastPlugin, levelsPlugin, blurPlugin,
+    huePlugin, colorOverlayPlugin, gradientMapPlugin, curvesPlugin,
+    grainPlugin, displacementPlugin,
     ditheringPlugin, pixelsortPlugin, jpegPlugin, datamoshPlugin,
   ].forEach(registerPlugin);
 

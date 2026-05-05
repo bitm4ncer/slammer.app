@@ -110,12 +110,13 @@
 
 ## PHASE 10 — New filters
 
-- [ ] **Curves** filter with GUI curve editor
-- [ ] **Hue** filter
-- [ ] **Color Overlay** filter (recolor free-form PNG, and other transparent files types via alpha)
-- [ ] **Gradient Map** filter
-- [ ] **Grain** filter (random / perlin / film / digital etc — adjustable, as filter or layer. develop versitile noise settings)
-- [ ] **Displacement** FX (default noise + custom displacement texture + scale)
+- [x] **Hue** — RGB ↔ HSL with hue / sat / lit sliders.
+- [x] **Color Overlay** — Tint (luminance-preserving multiply) or Solid (RGB replace, alpha preserved — recolours free-form PNGs).
+- [x] **Grain** — four types: Film (perlin + warm tint, multi-octave), Perlin (smooth value-noise), Random (uniform white), Digital (harsh contrast). Monochrome toggle, seeded mulberry32 PRNG so output is identical across reloads.
+- [x] **Gradient Map** — luminance → N-stop gradient via 256-LUT. Visual gradient bar + add/remove stops, defaults to 2 stops (black → white). Amount slider blends with original.
+- [x] **Curves** — per-channel tone curves (Master / R / G / B). 220×140 interactive editor with click-to-add / drag / double-click-remove, Catmull-Rom interpolation between points, dark grid background. Master curve composes after the per-channel curves. Reset-active-channel button.
+- [x] **Displacement** — for each pixel, sample source at (x+dx, y+dy) where (dx, dy) come from a 2-channel value-noise map. Edge mode: clamp. Custom-texture upload deferred to a later phase.
+- [x] All available as both per-layer effects (Effects panel `+`) and as FX adjustment layers (Layer Stack `+`).
 
 ## PHASE 11 — Document sizes & alignment
 
