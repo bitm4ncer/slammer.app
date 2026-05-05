@@ -80,10 +80,11 @@
 ## PHASE 6 — Typography polish
 
 - [x] Selection handles aligned to actual text bounding box (rasterizer now derives canvas from `text.size * 1.2` line-box + accurate per-line widths, so the Konva transformer naturally fits)
-- [x] Two text modes: **Text** / **Text Box** — slide-out mode picker on Add Text button hover, last-used persisted as `slammer:lastTextMode`
+- [x] Single Text tool (no mode flyout). **Ctrl+Shift+drag a transformer handle** on a text layer → expands `boxWidth` and auto-promotes to text-box mode, so text wraps live during the drag (state machine lives inside Konva's `boundBoxFunc` for predictable absolute-delta math; `forceUpdate` suppressed during the gesture so the transformer doesn't fight the resize).
 - [x] Extended negative tracking range to `-200…+200` (was `-10…+60`)
 - [x] Line-height min lowered to `0.2` (was `0.6`); rasterizer now uses a `1.2× size` visual line-box so descenders aren't clipped when lines overlap
 - [x] Filter-safe padding (16…96 px each side, scales with font size) baked into the text canvas so Blur etc. has room to expand without being cut off
+- [x] **Justified** alignment added — words stretch to fill `boxWidth` (or longest natural line in plain text mode); last line of a paragraph stays left-aligned per typographic convention.
 
 ## PHASE 7 — Knobs & GUI control system
 

@@ -72,7 +72,10 @@ export function initTextTool({ document: doc }) {
     <label class="effect-slider-row">
       <span class="effect-label">Align</span>
       <select class="effect-select" data-key="align" style="grid-column: 2 / span 2">
-        <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+        <option value="left">Left</option>
+        <option value="center">Center</option>
+        <option value="right">Right</option>
+        <option value="justify">Justified</option>
       </select>
     </label>
     <div data-host="letterSpacing"></div>

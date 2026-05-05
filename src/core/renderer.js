@@ -29,6 +29,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
   }
 
+  // Track Ctrl+Shift state so the transformer can switch into "text-box resize"
+  // mode when the user drags a handle on a text layer with the modifier held.
+  let ctrlShiftDown = false;
+  function refreshMods(e) {
+    ctrlShiftDown = !!(e && (e.ctrlKey || e.metaKey) && e.shiftKey);
+  }
+  window.addEventListener('keydown', refreshMods);
+  window.addEventListener('keyup', refreshMods);
+  window.addEventListener('mousedown', refreshMods);
+  window.addEventListener('mousemove', refreshMods);
+
+  // Active text-box resize gesture state. Captured on transformstart so we can
+  // compute width as ABSOLUTE from start instead of accumulating per-tick deltas
+  // (which grew quadratically because each tick read the latest boxWidth and
+  // added the cumulative-from-start newBox delta to it).
+  let textBoxResize = null;
+
   function ensureTransformer() {
     if (transformer) return transformer;
     transformer = new Konva.Transformer({
@@ -40,10 +57,50 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       borderDash: [4, 4],
       keepRatio: false,
       flipEnabled: false,
+      boundBoxFunc: (oldBox, newBox) => {
+        // Auto-detect a Ctrl+Shift-held resize on a text layer here, so we don't
+        // depend on transformstart firing first (it fires AFTER the first
+        // boundBoxFunc tick in some Konva versions, missing our anchor capture).
+        if (!ctrlShiftDown) {
+          if (textBoxResize) textBoxResize = null;
+          return newBox;
+        }
+        const targets = transformer.nodes();
+        if (!targets.length) { textBoxResize = null; return newBox; }
+        const node = targets[0];
+        const layerId = node.id?.();
+        const layer = document.findLayer(layerId);
+        if (!layer || layer.type !== 'text') { textBoxResize = null; return newBox; }
+
+        // First tick of a fresh gesture (or layer changed) — anchor everything.
+        if (!textBoxResize || textBoxResize.layerId !== layer.id) {
+          textBoxResize = {
+            layerId: layer.id,
+            startBoxWidth: (layer.text.mode === 'textBox' && Number.isFinite(layer.text.boxWidth))
+              ? layer.text.boxWidth
+              : (layer.naturalSize?.w ?? oldBox.width ?? 600),
+            startNewBoxW: newBox.width,
+          };
+          return oldBox;
+        }
+
+        const totalDelta = newBox.width - textBoxResize.startNewBoxW;
+        const target = Math.max(40, textBoxResize.startBoxWidth + totalDelta);
+        if (Math.abs((layer.text.boxWidth ?? 0) - target) > 0.4) {
+          if (layer.text.mode !== 'textBox') document.setTextProp(layer.id, 'mode', 'textBox');
+          document.setTextProp(layer.id, 'boxWidth', target);
+        }
+        return oldBox;
+      },
     });
     contentLayer.add(transformer);
     return transformer;
   }
+
+  // Skip the in-paint transformer.forceUpdate() during a Ctrl+Shift gesture —
+  // re-anchoring the transformer mid-drag would re-trigger boundBoxFunc with a
+  // shifted reference, producing the runaway-growth glitch.
+  function isResizingTextBox() { return textBoxResize != null; }
 
   function attachTransformer(node) {
     ensureTransformer();
@@ -210,17 +267,30 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     ctx.font = fontSpec;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = text.color || '#fff';
-    ctx.textAlign = align;
+    ctx.textAlign = align === 'justify' ? 'left' : align;
 
     // Baseline of the FIRST line: top padding + ascent (~size). After that, advance by lineH.
     const firstBaseline = pad + text.size * 0.85;
     // Reference X depends on alignment.
     const xRef = align === 'center' ? pad + contentW / 2
                : align === 'right'  ? pad + contentW
-               : pad;
+               :                      pad;
+
+    // Justify target width — in textBox mode it's the box width; in plain text
+    // mode we stretch shorter lines to the longest line's natural width.
+    const justifyTargetW = align === 'justify'
+      ? (mode === 'textBox' ? Math.max(40, +text.boxWidth || 600) : Math.max(...lineWidths, 1))
+      : 0;
 
     lines.forEach((ln, i) => {
       const baseline = firstBaseline + i * lineH;
+      const isLast = i === lines.length - 1;
+
+      if (align === 'justify') {
+        renderJustifiedLine(ctx, meas, ln, ls, justifyTargetW, baseline, pad, isLast);
+        return;
+      }
+
       if (ls !== 0) {
         // Render character-by-character so we can apply tracking. Honour alignment ourselves.
         const lineWidth = measureLineWidth(meas, ln, ls);
@@ -240,6 +310,38 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
     st.naturalSize = { w, h };
     return ctx.getImageData(0, 0, w, h);
+  }
+
+  // Render a single line stretched to targetWidth by inflating inter-word gaps.
+  // Last line of a paragraph stays left-aligned (standard typography practice).
+  function renderJustifiedLine(ctx, meas, line, ls, targetWidth, baseline, leftX, isLastLine) {
+    const words = line.trim().split(/\s+/).filter(Boolean);
+    ctx.textAlign = 'left';
+    const drawWord = (word, x) => {
+      if (ls !== 0) {
+        for (const ch of word) {
+          ctx.fillText(ch, x, baseline);
+          x += meas.measureText(ch).width + ls;
+        }
+      } else {
+        ctx.fillText(word, x, baseline);
+        x += meas.measureText(word).width;
+      }
+      return x;
+    };
+    if (!words.length) return;
+    if (words.length === 1 || isLastLine) {
+      drawWord(words.join(' '), leftX);
+      return;
+    }
+    const wordWidths = words.map((w) => measureLineWidth(meas, w, ls));
+    const naturalWidth = wordWidths.reduce((a, b) => a + b, 0);
+    const gapSize = Math.max(0, (targetWidth - naturalWidth) / (words.length - 1));
+    let x = leftX;
+    for (let wi = 0; wi < words.length; wi++) {
+      x = drawWord(words[wi], x);
+      if (wi < words.length - 1) x += gapSize;
+    }
   }
 
   // Greedy word-wrap to a target pixel width, respecting per-character tracking.
@@ -366,7 +468,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
-    if (dimsChanged && transformer && document.activeLayerId === layer.id) {
+    if (dimsChanged && transformer && document.activeLayerId === layer.id && !isResizingTextBox()) {
       transformer.forceUpdate();
     }
     syncFxVisibility();
@@ -709,7 +811,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const target = e.target;
       const layerId = target.id?.() || target._slammerLayerId;
       const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
-      if (!layer || layer.type === 'fx') return;
+      if (!layer) return;
+      if (layer.type === 'fx') return;
       // Only bother hiding when there's actually an FX layer above this one.
       if (!isLayerUnderTopFx(layer.id)) return;
       liveDragLayerId = layer.id;
@@ -730,6 +833,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       if (!layer) return;
       const group = layer.id === layerId ? target : target.parent;
       if (!group) return;
+
+      // End of a Ctrl+Shift text-box resize: clear gesture state and snap the
+      // transformer ring to the final text dimensions.
+      if (textBoxResize && e.type === 'transformend') {
+        textBoxResize = null;
+        if (transformer) transformer.forceUpdate();
+        scheduleDraw();
+        return;
+      }
+
       document.setLayerTransform(layer.id, {
         x: group.x(),
         y: group.y(),
