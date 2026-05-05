@@ -92,7 +92,8 @@ Vector layers can hold multiple paths (`layer.vector.paths[]`). The vector panel
 - **Phase 12 — Fonts**: ✅ shipped. Google + Fontshare + Uploaded (IndexedDB) + System (Local Font Access). Variable-font axes, OpenType features, font upload UI.
 - **Phase 13a — Vector foundation**: ✅ shipped. Vector layer type, shape primitives, fill/stroke/gradient, SVG drag-drop import, anchor overlay + handles.
 - **Phase 13b — Pen/Pencil/anchor edits/Text→Path**: ✅ shipped.
-- **Phase 13c — Boolean ops, simplify slider, multi-select**: ⏳ pending. Stack: Paper.js `PathItem.unite/subtract/intersect/exclude/divide`, marquee select, shift-click anchors.
+- **Phase 13c — Boolean ops, path actions, Outline Stroke**: ✅ shipped. Stack: Paper.js `PathItem.unite/subtract/intersect/exclude/divide` for booleans (operate on the active sub-path vs the next, wrapping); `paperjs-offset` for Outline Stroke (Paper v0.12 has no native `expand()`); single-path actions (Simplify, Smooth, Reverse, Open/Close, Join, Outline) live in `src/ui/vector-tools/path-actions.js`.
+- **Phase 13d — Multi-layer select + simplify slider**: ⏳ pending. Marquee select, shift-click anchors, slider-driven simplify with live preview.
 
 ## Default text font
 
