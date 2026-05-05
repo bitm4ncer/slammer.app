@@ -166,6 +166,16 @@ export function createDocument() {
       emit({ type: 'effect:reordered', layerId, fromIndex: firstChange < 0 ? 0 : firstChange });
     },
 
+    setExportFrame(partial) {
+      // null clears the frame; partial object merges into current.
+      if (partial == null) {
+        state.exportFrame = null;
+      } else {
+        state.exportFrame = { ...(state.exportFrame || {}), ...partial };
+      }
+      emit({ type: 'doc:exportFrame', frame: state.exportFrame });
+    },
+
     findLayer,
     serialize() {
       return JSON.parse(JSON.stringify(state, (k, v) => (k === 'naturalSize' ? v : v)));

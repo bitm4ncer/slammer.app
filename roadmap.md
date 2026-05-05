@@ -120,10 +120,12 @@
 
 ## PHASE 11 — Document sizes & alignment
 
-- [ ] Document size frames (screens, social 1:1 / 4:5 / 9:16 / Stories, full DIN range, common standards)
-- [ ] Frames feel like adjustable export regions, not strict page bounds
-- [ ] Export popup: size, file type, quality
-- [ ] Alignment controls (visible only when a document size is set)
+- [x] Document Size footer button (`fa-vector-square`) → modal popup with **Screens** (HD / FHD / QHD / 4K), **Social** (IG Square / IG Portrait / IG Story / Twitter Post / Twitter Header / FB Cover / YT Thumb / LinkedIn Banner), **Print @ 300 dpi** (A0–A6) presets + custom W × H inputs + Clear-frame button.
+- [x] Frame visualised on canvas as a dashed `--primary` outline + dimmed (35 % black) backdrop covering everything outside it. `listening: false` on the overlay so layers stay clickable through it. Acts as an **export region**, not a strict page boundary — layers extend freely.
+- [x] **Alignment controls** in the footer: 6 icon buttons (left / centre H / right / top / centre V / bottom) — visible only when a frame is set AND a non-FX layer is active. Aligns the active layer relative to the frame.
+- [x] **Export popup** replaces direct PNG export: region (frame | visible) + format (PNG | JPEG) + quality slider (JPEG only) + scale (1× / 2× / 4×) + background (transparent / white / black / custom) + filename. Last-used settings persist to `slammer:lastExportSettings`. Shift+Click on Export still bypasses the popup and exports `.slammerproj`.
+- [x] `renderer.flattenVisible()` extended with `region` + `scale` so frame export crops to exact frame coords at the chosen pixel scale.
+- [x] `doc.setExportFrame(partial)` + `doc:exportFrame` event; history treats it as a prop event so undo/redo works.
 
 ## PHASE 12 — Fonts (Fontshare + variable + upload)
 

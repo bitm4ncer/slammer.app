@@ -2,8 +2,9 @@
 
 import { showNotification } from './notifications.js';
 import { exportProjectFile, importProjectFile } from '../io/project-file.js';
+import { openExportPopup } from './export-popup.js';
 
-export function initToolbar({ document: doc, view, exportPng, projectStore, projectMenu, openTextLayer }) {
+export function initToolbar({ document: doc, view, renderer, exportPng, projectStore, projectMenu, openTextLayer }) {
   const $ = (id) => window.document.getElementById(id);
 
   $('btnAddImage').addEventListener('click', () => {
@@ -40,6 +41,8 @@ export function initToolbar({ document: doc, view, exportPng, projectStore, proj
     if (e.shiftKey) {
       exportProjectFile({ document: doc });
       showNotification('.slammerproj exported');
+    } else if (renderer) {
+      openExportPopup({ document: doc, renderer });
     } else {
       exportPng?.();
     }

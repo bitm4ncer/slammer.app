@@ -15,7 +15,7 @@ const STRUCTURAL_EVENTS = new Set([
 
 const PROP_EVENTS = new Set([
   'layer:propChanged', 'layer:transform', 'layer:textChanged',
-  'effect:propChanged', 'layer:sourceChanged',
+  'effect:propChanged', 'layer:sourceChanged', 'doc:exportFrame',
 ]);
 
 export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {

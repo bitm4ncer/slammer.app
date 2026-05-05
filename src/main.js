@@ -40,6 +40,9 @@ import { initAffinityBridge } from './integrations/affinity/index.js';
 import { initSettingsPopup, getSettings, onSettingsChange } from './ui/settings-popup.js';
 import { initSidePanelSplit } from './ui/side-panel-split.js';
 import { initLayerStackAdd } from './ui/layer-stack-add.js';
+import { initDocumentSizePopup } from './ui/document-size-popup.js';
+import { initAlignmentControls } from './ui/alignment-controls.js';
+import { openExportPopup } from './ui/export-popup.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -90,6 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initToolbar({
     document: doc,
     view,
+    renderer,
     exportPng: () => exportVisibleAsPng({ renderer, document: doc }),
     projectStore,
     projectMenu,
@@ -99,6 +103,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   initLayerStackAdd({
     document: doc,
     openTextLayer: (layer) => textTool.focus(layer),
+  });
+
+  initDocumentSizePopup({
+    document: doc,
+    view,
+    button: document.getElementById('btnDocSize'),
+  });
+  initAlignmentControls({
+    document: doc,
+    container: document.getElementById('alignmentStrip'),
   });
 
   initAffinityBridge({ document: doc, renderer });

@@ -873,36 +873,49 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   };
 
   // ---------- Helpers exposed for export-png ----------
-  function flattenVisible({ background = null } = {}) {
-    // Compute bounding box of all visible layers, render to single canvas.
+  // `region` (optional) = { x, y, w, h } in world coordinates; if provided, the
+  // export crops to exactly that rectangle (used by the export-frame). If not
+  // provided, falls back to the union bbox of all visible layers.
+  // `scale` (optional) = output multiplier for high-DPI exports.
+  function flattenVisible({ background = null, region = null, scale = 1 } = {}) {
     const visible = document.layers.filter((l) => l.visible);
     if (!visible.length) return null;
 
     const stRefs = visible.map((l) => ({ layer: l, st: layerState.get(l.id) })).filter((x) => x.st && x.st.dstCanvas);
     if (!stRefs.length) return null;
 
-    // Use Konva's clientRect on each group for bbox in stage coordinates.
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const { st } of stRefs) {
-      const r = st.group.getClientRect({ relativeTo: contentLayer });
-      minX = Math.min(minX, r.x);
-      minY = Math.min(minY, r.y);
-      maxX = Math.max(maxX, r.x + r.width);
-      maxY = Math.max(maxY, r.y + r.height);
+    let originX, originY, w, h;
+    if (region && region.w > 0 && region.h > 0) {
+      originX = region.x;
+      originY = region.y;
+      w = Math.ceil(region.w);
+      h = Math.ceil(region.h);
+    } else {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const { st } of stRefs) {
+        const r = st.group.getClientRect({ relativeTo: contentLayer });
+        minX = Math.min(minX, r.x);
+        minY = Math.min(minY, r.y);
+        maxX = Math.max(maxX, r.x + r.width);
+        maxY = Math.max(maxY, r.y + r.height);
+      }
+      if (!isFinite(minX)) return null;
+      originX = minX;
+      originY = minY;
+      w = Math.ceil(maxX - minX);
+      h = Math.ceil(maxY - minY);
+      if (w <= 0 || h <= 0) return null;
     }
-    if (!isFinite(minX)) return null;
 
-    const w = Math.ceil(maxX - minX);
-    const h = Math.ceil(maxY - minY);
-    if (w <= 0 || h <= 0) return null;
-
-    const out = makeCanvas(w, h);
+    const sc = Math.max(0.1, Math.min(8, scale || 1));
+    const out = makeCanvas(Math.round(w * sc), Math.round(h * sc));
     const octx = out.getContext('2d');
     if (background && background !== 'transparent') {
       octx.fillStyle = background;
-      octx.fillRect(0, 0, w, h);
+      octx.fillRect(0, 0, out.width, out.height);
     }
-    octx.translate(-minX, -minY);
+    octx.scale(sc, sc);
+    octx.translate(-originX, -originY);
     for (const { st, layer } of stRefs) {
       const sx = layer.transform.scaleX, sy = layer.transform.scaleY;
       octx.save();

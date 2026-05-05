@@ -536,6 +536,128 @@
   align-items: center;
 }
 
+/* ---------- Document Size popup ---------- */
+.docsize-modal { width: min(560px, calc(100vw - 40px)); }
+.docsize-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.docsize-custom input[type="number"] {
+  width: 80px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.docsize-x { color: var(--text-secondary); font-size: 11px; }
+.settings-apply, .export-go {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-apply:hover, .export-go:hover {
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+}
+.settings-clear {
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-clear:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+.docsize-presets .docsize-group-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin: 8px 0 4px;
+}
+.docsize-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+.docsize-card {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.docsize-card:hover { border-color: var(--primary); color: var(--primary); }
+.docsize-card-name { font-size: 11px; letter-spacing: 0.04em; }
+.docsize-card-dim { font-size: 9px; color: var(--text-secondary); font-family: ui-monospace, monospace; }
+
+/* ---------- Export popup ---------- */
+.export-modal { width: min(440px, calc(100vw - 40px)); }
+.export-pillgroup {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.export-bg-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.export-bg-row input[type="color"] {
+  width: 30px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.export-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ---------- Footer alignment strip ---------- */
+.alignment-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-left: 1px solid var(--vhs-shadow);
+  border-right: 1px solid var(--vhs-shadow);
+  margin: 0 4px;
+  height: 100%;
+}
+.alignment-strip[hidden] { display: none; }
+.align-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
 /* ---------- Layer Stack fills the top section ---------- */
 .layers-group {
   flex: 1;

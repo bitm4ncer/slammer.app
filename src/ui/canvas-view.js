@@ -12,6 +12,60 @@ export function initCanvasView({ container, document, onImageDropped }) {
   stage.add(bgLayer);
   const contentLayer = new Konva.Layer();
   stage.add(contentLayer);
+  // Overlay layer for the export-frame (dashed outline + dimmed backdrop).
+  // Sits ABOVE the content so it draws over layers, but listening:false so
+  // it never intercepts pointer events.
+  const overlayLayer = new Konva.Layer({ listening: false });
+  stage.add(overlayLayer);
+
+  // ---------- Export frame overlay ----------
+  // Built lazily; rebuilt whenever doc:exportFrame fires or the stage resizes.
+  let frameRect = null;
+  let dimShape = null;
+  function syncExportFrame() {
+    const f = document.state?.exportFrame;
+    overlayLayer.destroyChildren();
+    frameRect = null;
+    dimShape = null;
+    if (!f || !(f.w > 0) || !(f.h > 0)) {
+      overlayLayer.batchDraw();
+      return;
+    }
+    const x = f.x ?? 0, y = f.y ?? 0, w = f.w, h = f.h;
+    // Dimmed backdrop covering everything OUTSIDE the frame.
+    dimShape = new Konva.Shape({
+      sceneFunc: (ctx) => {
+        // Convert "world" coords to local (the layer has no scale of its own;
+        // stage scaling applies at the canvas level so we just draw raw rects).
+        // Use a really big bounding rect to cover any pan/zoom situation.
+        const big = 1e6;
+        ctx.beginPath();
+        // Outer (winding rule "evenodd" carves the inner hole).
+        ctx.rect(-big, -big, big * 2, big * 2);
+        ctx.rect(x, y, w, h);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.fill('evenodd');
+      },
+      listening: false,
+      perfectDrawEnabled: false,
+    });
+    overlayLayer.add(dimShape);
+    // Dashed frame outline.
+    frameRect = new Konva.Rect({
+      x, y, width: w, height: h,
+      stroke: getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c',
+      strokeWidth: 1,
+      // Konva strokes scale with the stage; cap the visible thickness.
+      strokeScaleEnabled: false,
+      dash: [6, 4],
+      listening: false,
+    });
+    overlayLayer.add(frameRect);
+    overlayLayer.batchDraw();
+  }
+  document.subscribe?.((e) => {
+    if (e.type === 'doc:exportFrame' || e.type === 'doc:loaded') syncExportFrame();
+  });
 
   // Resize stage with container.
   const resize = () => {
