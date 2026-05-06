@@ -8,7 +8,7 @@
 
 ## Confirmed decisions
 
-1. **Affinity reference**: working code at `C:\Users\konta\Desktop\CRUSH_app\affinity.js` — SSE + JSON-RPC 2.0 on `http://localhost:6767/sse`, talks to Affinity Photo 2's bundled MCP server, no helper needed.
+1. **Affinity reference**: SSE + JSON-RPC 2.0 on `http://localhost:6767/sse`, talks to Affinity Photo 2's bundled MCP server, no helper needed (Phase 3 shipped — see [src/integrations/affinity/index.js](src/integrations/affinity/index.js)).
 2. **Tools+Filters merged panel**: named **Effects**.
 3. **Masks**: Affinity-style nested (drag layer → child mask).
 4. **Rename**: full (display, code identifiers, file extension `.slammerproj`, package.json) + new GitHub repo `slammer.app`.
