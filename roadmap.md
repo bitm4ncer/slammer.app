@@ -253,9 +253,9 @@
 - [x] Audit: events missing from undo coverage — `doc:propChanged` (project rename) was the only gap. Added to history's PROP_EVENTS so renaming a project commits to history; `statesLookEqual` extended to compare `state.name` + `state.exportFrame` so renames + frame edits aren't dropped as duplicate snapshots.
 
 ### Cluster G — Typography polish
-- [ ] Text layer auto-renames to its text content (live, debounced)
-- [ ] Font preview: tiny "import selected layer's text" icon next to Lorem Ipsum input
-- [ ] **Live font preview**: while browsing fonts with a text layer selected, canvas updates realtime. Settings toggle.
+- [x] Text layer auto-renames to its text content (debounced 300 ms; first 30 chars; stops the moment the user manually renames via layer-card double-click — tracked by a `_autoNamed` flag that persists across reload)
+- [x] Font picker: "Use selected layer's text" icon button next to the Preview-text input — disabled when no text layer is active or content is empty
+- [x] **Live font preview** with Settings → Workflow → Typography toggle (default ON). Hovering a font card temporarily previews it on the active text layer via a new `setTextPropEphemeral()` API + `layer:textChangedEphemeral` event — NOT in PROP_EVENTS, so hover-spam doesn't bloat undo history. Click commits permanently.
 
 ### Cluster H — Vector
 - [ ] **Split** button on multi-path vector layer → splits into N independent vector layers, preserves fills/strokes

@@ -671,8 +671,11 @@ export function initLayerPanel({ container, document, renderer }) {
       nameEl.removeAttribute('contenteditable');
       nameEl.classList.remove('renaming');
       const next = nameEl.textContent.trim() || layer.name;
-      if (next !== layer.name) document.setLayerProp(id, 'name', next);
-      else nameEl.textContent = layer.name;
+      if (next !== layer.name) {
+        // User typed a new name — disable auto-rename so it stays.
+        document.setLayerProp(id, '_autoNamed', false);
+        document.setLayerProp(id, 'name', next);
+      } else nameEl.textContent = layer.name;
     };
     const cancel = () => {
       nameEl.removeAttribute('contenteditable');

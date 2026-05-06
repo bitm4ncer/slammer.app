@@ -6,6 +6,7 @@ import { sliderRow } from '../plugins/shared/ui-helpers.js';
 import { findFont } from './typography/font-sources.js';
 import { loadFont, cssFamily } from './typography/font-loader.js';
 import { openFontPicker } from './typography/font-picker.js';
+import { getSettings } from './settings-popup.js';
 import { renderVariableAxes } from './typography/variable-axis-controls.js';
 import { renderFeaturesSection } from './typography/opentype-features.js';
 
@@ -268,9 +269,28 @@ export function initTextTool({ document: doc }) {
     });
   }
 
+  // G1 — auto-rename: keep layer.name in sync with text content while _autoNamed is true.
+  // Debounced so a fast typing burst produces one history entry, not one per keystroke.
+  let _autoRenameTimer = null;
+  function scheduleAutoRename(layer) {
+    if (!layer._autoNamed) return;
+    if (_autoRenameTimer) clearTimeout(_autoRenameTimer);
+    _autoRenameTimer = setTimeout(() => {
+      _autoRenameTimer = null;
+      const currentLayer = doc.findLayer(layer.id);
+      if (!currentLayer || !currentLayer._autoNamed) return;
+      const raw = (currentLayer.text.value || '').replace(/\s+/g, ' ').trim();
+      const name = raw ? raw.slice(0, 30) : 'Text Layer';
+      if (currentLayer.name !== name) doc.setLayerProp(currentLayer.id, 'name', name);
+    }, 300);
+  }
+
   textarea.addEventListener('input', () => {
     const layer = doc.activeLayer;
-    if (layer && layer.type === 'text') doc.setTextProp(layer.id, 'value', textarea.value);
+    if (layer && layer.type === 'text') {
+      doc.setTextProp(layer.id, 'value', textarea.value);
+      scheduleAutoRename(layer);
+    }
   });
   colorInp.addEventListener('input', () => {
     const layer = doc.activeLayer;
@@ -296,6 +316,8 @@ export function initTextTool({ document: doc }) {
     openFontPicker({
       current: { family: layer.text.font, provider: layer.text.provider || 'system' },
       anchor: fontBtn,
+      doc,
+      getSettings,
       onPick: async ({ family, provider }) => {
         const meta = findFont(family, provider);
         await loadFont(meta);
@@ -363,7 +385,6 @@ export function initTextTool({ document: doc }) {
     const layer = doc.activeLayer;
     if (!layer || layer.type !== 'text') return;
     const { convertTextLayerToPath } = await import('./vector-tools/text-to-path.js');
-    const { getSettings } = await import('./settings-popup.js');
     const replace = e.shiftKey ? !getSettings().textToPathReplace : getSettings().textToPathReplace;
     await convertTextLayerToPath(doc, layer, { replace });
   });

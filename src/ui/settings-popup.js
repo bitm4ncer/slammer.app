@@ -15,6 +15,8 @@ const DEFAULTS = {
   textToPathReplace: true,
   marqueeMode: 'touch',          // 'touch' | 'contain'
   clickThroughGroups: false,
+  // Typography
+  liveFontPreview: true,         // G3 — hover a font card → canvas updates live
   // Canvas & Export
   frameDimOpacity: 0.80,
   autosaveMs: 800,
@@ -289,6 +291,12 @@ function renderWorkflow() {
         ${toggleRowHTML('setTextToPathReplace', 'Convert to Path replaces text', s.textToPathReplace,
           'When ON, Convert to Path removes the original text layer (Affinity-style). Shift-click the convert button to invert for one conversion.')}
       </div>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Typography</div>
+        ${toggleRowHTML('setLiveFontPreview', 'Live font preview', s.liveFontPreview,
+          'When ON, hovering a font card in the picker temporarily previews it on the active text layer. Click commits permanently.')}
+      </div>
     </section>
   `;
 }
@@ -297,6 +305,7 @@ function wireWorkflow(root) {
   bindToggle(root, 'setKeepEffectsOpen', 'keepEffectsOpen');
   bindToggle(root, 'setTextToPathReplace', 'textToPathReplace');
   bindToggle(root, 'setClickThroughGroups', 'clickThroughGroups');
+  bindToggle(root, 'setLiveFontPreview', 'liveFontPreview');
   // Segmented control for marquee mode
   const seg = root.querySelector('#setMarqueeMode');
   if (seg) {

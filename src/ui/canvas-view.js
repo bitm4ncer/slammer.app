@@ -976,7 +976,24 @@ export function initCanvasView({ container, document, onImageDropped }) {
     // Keep the canvas text visible — it's the source of truth for visual
     // position. Re-rasterising on each keystroke shows the user their edit.
 
-    const onInput = () => document.setTextProp(layer.id, 'value', ed.innerText);
+    // G1 — debounced auto-rename: keep layer.name in sync while _autoNamed is true.
+    let _inlineAutoRenameTimer = null;
+    const onInput = () => {
+      const text = ed.innerText;
+      document.setTextProp(layer.id, 'value', text);
+      const current = document.findLayer(layer.id);
+      if (current?._autoNamed) {
+        if (_inlineAutoRenameTimer) clearTimeout(_inlineAutoRenameTimer);
+        _inlineAutoRenameTimer = setTimeout(() => {
+          _inlineAutoRenameTimer = null;
+          const l = document.findLayer(layer.id);
+          if (!l || !l._autoNamed) return;
+          const raw = (l.text.value || '').replace(/\s+/g, ' ').trim();
+          const name = raw ? raw.slice(0, 30) : 'Text Layer';
+          if (l.name !== name) document.setLayerProp(l.id, 'name', name);
+        }, 300);
+      }
+    };
     const onBlur = () => closeInlineTextEditor();
     const onKey = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); closeInlineTextEditor(); }

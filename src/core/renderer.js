@@ -1244,6 +1244,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         break;
       }
       case 'layer:textChanged':
+      case 'layer:textChangedEphemeral':
       case 'layer:vectorChanged':
       case 'vectorEffect:added':
       case 'vectorEffect:removed':

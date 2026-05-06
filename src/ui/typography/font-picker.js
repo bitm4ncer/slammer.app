@@ -2,6 +2,8 @@
 //   • Fuzzy search + provider/category chips + favourite/recent filters
 //   • Live-preview tiles ("The quick brown fox") loaded lazily
 //   • Drag + drop file upload at the bottom of the popup
+//   • G2: "import layer text" icon button next to preview-text input
+//   • G3: live hover preview on the active text layer (settings-gated)
 
 import {
   listAllFonts, findFont, SOURCE_LABELS, SOURCE_BADGES,
@@ -38,7 +40,7 @@ function pushRecent(family, source) {
   try { localStorage.setItem(STORE_RECENT, JSON.stringify(list)); } catch {}
 }
 
-export function openFontPicker({ current, onPick, anchor } = {}) {
+export function openFontPicker({ current, onPick, anchor, doc, getSettings } = {}) {
   if (openPopup) { openPopup.close(); }
 
   const state = {
@@ -71,7 +73,12 @@ export function openFontPicker({ current, onPick, anchor } = {}) {
         <button class="fp-chip" data-toggle="variable" title="Variable fonts only (one file, multiple axes)">VF</button>
       </div>
       <div class="fp-preview-row">
-        <input type="text" class="fp-preview-text" placeholder="Preview text…" />
+        <div class="fp-preview-text-wrap">
+          <input type="text" class="fp-preview-text" placeholder="Preview text…" />
+          <button type="button" class="fp-import-text-btn" title="Use selected layer's text" aria-label="Use selected layer's text">
+            <i class="fas fa-arrow-down-to-line"></i>
+          </button>
+        </div>
         <div class="fp-preview-size-wrap">
           <input type="range" class="fp-preview-size" min="10" max="80" step="1" />
           <span class="fp-preview-size-readout">18px</span>
@@ -93,6 +100,7 @@ export function openFontPicker({ current, onPick, anchor } = {}) {
   const fileInput = backdrop.querySelector('.fp-file-input');
   const countEl = backdrop.querySelector('.fp-count');
   const prevTextInput = backdrop.querySelector('.fp-preview-text');
+  const importTextBtn = backdrop.querySelector('.fp-import-text-btn');
   const prevSizeInput = backdrop.querySelector('.fp-preview-size');
   const prevSizeReadout = backdrop.querySelector('.fp-preview-size-readout');
   prevTextInput.value = state.previewText;
@@ -103,6 +111,27 @@ export function openFontPicker({ current, onPick, anchor } = {}) {
     try { localStorage.setItem(STORE_PREVIEW_TEXT, state.previewText); } catch {}
     // Just update preview text in-place — no need to rebuild tiles.
     backdrop.querySelectorAll('.fp-tile-preview').forEach((p) => { p.textContent = state.previewText; });
+  });
+
+  // G2 — import layer text button: populate preview text from active text layer.
+  function syncImportBtn() {
+    if (!doc) { importTextBtn.style.display = 'none'; return; }
+    const activeLayer = doc.activeLayer;
+    const hasText = activeLayer?.type === 'text' && activeLayer.text?.value?.trim();
+    importTextBtn.disabled = !hasText;
+    importTextBtn.classList.toggle('disabled', !hasText);
+  }
+  syncImportBtn();
+  importTextBtn.addEventListener('click', () => {
+    if (!doc) return;
+    const activeLayer = doc.activeLayer;
+    if (!activeLayer || activeLayer.type !== 'text') return;
+    const content = activeLayer.text?.value || '';
+    if (!content.trim()) return;
+    prevTextInput.value = content;
+    state.previewText = content;
+    try { localStorage.setItem(STORE_PREVIEW_TEXT, content); } catch {}
+    backdrop.querySelectorAll('.fp-tile-preview').forEach((p) => { p.textContent = content; });
   });
   prevSizeInput.addEventListener('input', () => {
     state.previewSize = parseInt(prevSizeInput.value, 10);
@@ -310,12 +339,62 @@ export function openFontPicker({ current, onPick, anchor } = {}) {
           }
           return;
         }
+        // G3: on click revert any ephemeral preview and commit permanently.
+        if (_livePreviewActive) revertLivePreview();
         selectFont(f.family, f.source);
       });
+
+      // G3 — live font preview on hover.
+      tile.addEventListener('mouseenter', () => {
+        if (!doc || !getSettings) return;
+        const settings = getSettings();
+        if (!settings.liveFontPreview) return;
+        const layer = doc.activeLayer;
+        if (!layer || layer.type !== 'text') return;
+        activateLivePreview(layer, f.family, f.source);
+      });
+      tile.addEventListener('mouseleave', () => {
+        if (_livePreviewActive) revertLivePreview();
+      });
+
       if (i === state.activeIdx) tile.classList.add('active');
       tileList.appendChild(tile);
       observer.observe(tile);
     }
+  }
+
+  // G3 — live preview state: store original font so we can revert.
+  let _livePreviewActive = false;
+  let _livePreviewLayerId = null;
+  let _livePreviewOrigFont = null;
+  let _livePreviewOrigProvider = null;
+
+  function activateLivePreview(layer, family, source) {
+    if (!doc) return;
+    if (!_livePreviewActive) {
+      _livePreviewLayerId = layer.id;
+      _livePreviewOrigFont = layer.text.font;
+      _livePreviewOrigProvider = layer.text.provider;
+    }
+    _livePreviewActive = true;
+    // Load the font first so the canvas preview is crisp.
+    const meta = findFont(family, source);
+    if (meta) loadFont(meta).catch(() => {});
+    doc.setTextPropEphemeral(layer.id, 'font', family);
+    doc.setTextPropEphemeral(layer.id, 'provider', source);
+  }
+
+  function revertLivePreview() {
+    if (!doc || !_livePreviewActive) return;
+    const layer = doc.findLayer(_livePreviewLayerId);
+    if (layer) {
+      doc.setTextPropEphemeral(layer.id, 'font', _livePreviewOrigFont);
+      doc.setTextPropEphemeral(layer.id, 'provider', _livePreviewOrigProvider);
+    }
+    _livePreviewActive = false;
+    _livePreviewLayerId = null;
+    _livePreviewOrigFont = null;
+    _livePreviewOrigProvider = null;
   }
 
   function selectFont(family, source) {
@@ -360,6 +439,8 @@ export function openFontPicker({ current, onPick, anchor } = {}) {
 
   // ---------- Close handling ----------
   function close() {
+    // G3: revert live preview if picker closed without clicking a tile.
+    if (_livePreviewActive) revertLivePreview();
     offUpload();
     offSystem();
     if (observer) observer.disconnect();

@@ -101,6 +101,13 @@
   border-bottom: 1px solid var(--vhs-shadow);
   background: var(--surface-2);
 }
+/* G2: wrap to hold import button */
+.fp-preview-text-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .fp-preview-text {
   flex: 1;
   background: var(--surface);
@@ -113,6 +120,32 @@
   outline: none;
 }
 .fp-preview-text:focus { border-color: var(--primary); }
+/* G2: import-layer-text icon button */
+.fp-import-text-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.fp-import-text-btn:not(:disabled):hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.fp-import-text-btn:disabled,
+.fp-import-text-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 .fp-preview-size-wrap {
   display: flex;
   align-items: center;

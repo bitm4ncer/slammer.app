@@ -52,6 +52,10 @@ export function createTextLayer({ id, name, text, transform, accentColor, parent
     id,
     type: 'text',
     name: name || 'Text Layer',
+    // _autoNamed: true means the layer name was never manually set by the user
+    // — auto-rename (G1) keeps it in sync with text.value. Cleared when the
+    // user double-click renames via the layer panel.
+    _autoNamed: !name,
     ...COMMON_LAYER({ parentGroupId }),
     accentColor: accentColor || randomPastelHex(),
     transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },

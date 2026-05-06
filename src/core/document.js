@@ -428,6 +428,17 @@ export function createDocument() {
       emit({ type: 'layer:textChanged', id, prop, value });
     },
 
+    // Ephemeral setter — mutates the model + fires a render-only event so the
+    // canvas rasterises the preview WITHOUT entering undo history.
+    // Used by live font-preview hover (G3). On click, callers follow up with
+    // setTextProp to commit the final value into history.
+    setTextPropEphemeral(id, prop, value) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'text') return;
+      layer.text[prop] = value;
+      emit({ type: 'layer:textChangedEphemeral', id, prop, value });
+    },
+
     // Set/clear a single OpenType variation axis (e.g. 'wght', 'wdth', 'slnt').
     // Pass `null` to remove the axis entirely (font's default takes over).
     setTextVariation(id, axisTag, value) {
