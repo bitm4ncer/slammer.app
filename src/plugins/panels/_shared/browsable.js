@@ -40,12 +40,14 @@ export function createBrowsable({
 
     <div class="browsable-tab-panel browsable-tab-panel--search browsable-landing" data-tab="search">
       <div class="browsable-landing-headline">${escapeHtml(landingHeadline)}</div>
-      <div class="browsable-search-row">
-        <input type="text" class="browsable-search-input" placeholder="${escapeAttr(landingPlaceholder)}" />
-        <button class="browsable-search-btn" type="button"><i class="fas fa-search"></i></button>
-      </div>
-      <div class="browsable-landing-tags" data-landing-tags>
-        <div class="browsable-tags-track"></div>
+      <div class="browsable-search-header">
+        <div class="browsable-search-row">
+          <input type="text" class="browsable-search-input" placeholder="${escapeAttr(landingPlaceholder)}" />
+          <button class="browsable-search-btn" type="button"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="browsable-landing-tags" data-landing-tags>
+          <div class="browsable-tags-track"></div>
+        </div>
       </div>
       <div class="browsable-grid" data-grid="search"></div>
       <div class="browsable-grid-sentinel" data-sentinel="search"></div>

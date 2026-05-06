@@ -265,6 +265,13 @@ export default {
       `;
       detailEl.appendChild(actions);
 
+      // Progress bar — hidden until a job is in-flight.
+      const progressBar = document.createElement('div');
+      progressBar.className = 'falai-progress-bar';
+      progressBar.hidden = true;
+      progressBar.innerHTML = `<div class="falai-progress-track"><div class="falai-progress-fill"></div></div>`;
+      detailEl.appendChild(progressBar);
+
       const status = document.createElement('div');
       status.className = 'plugin-section plugin-status';
       status.hidden = true;
@@ -297,6 +304,17 @@ export default {
 
       cancelBtn.addEventListener('click', () => currentAborter?.abort());
 
+      function setRunning(running) {
+        runBtn.disabled = running;
+        cancelBtn.hidden = !running;
+        progressBar.hidden = !running;
+        if (running) {
+          runBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating…';
+        } else {
+          runBtn.innerHTML = '<i class="fas fa-bolt"></i> Generate';
+        }
+      }
+
       runBtn.addEventListener('click', async () => {
         cta.hidden = isConfigured();
         if (!isConfigured()) { openSettings('apikeys'); return; }
@@ -304,8 +322,7 @@ export default {
         const missing = form.getRequiredMissing();
         if (missing.length) { setStatus(`Missing: ${missing.join(', ')}`, 'warn'); return; }
 
-        runBtn.disabled = true;
-        cancelBtn.hidden = false;
+        setRunning(true);
         currentAborter = new AbortController();
         try {
           setStatus('Preparing input…');
@@ -321,10 +338,12 @@ export default {
             input: finalInput,
             signal: currentAborter.signal,
             onQueueUpdate: (update) => {
-              const s = update.status === 'IN_QUEUE' ? `queued (#${update.queue_position ?? '?'})`
-                : update.status === 'IN_PROGRESS' ? 'generating'
-                : update.status?.toLowerCase() || 'working';
-              setStatus(`${s}…`);
+              const pos = update.queue_position;
+              const s = update.status === 'IN_QUEUE'
+                ? `Queued${pos != null ? ` · ${pos} ahead` : ''}…`
+                : update.status === 'IN_PROGRESS' ? 'Generating…'
+                : (update.status?.toLowerCase() || 'Working') + '…';
+              setStatus(s);
             },
           });
 
@@ -351,8 +370,7 @@ export default {
             setStatus(`Failed: ${err.message || err}`, 'error');
           }
         } finally {
-          runBtn.disabled = false;
-          cancelBtn.hidden = true;
+          setRunning(false);
           currentAborter = null;
         }
       });

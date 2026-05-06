@@ -2266,6 +2266,27 @@
 .browsable-tab-panel:not(.browsable-landing) .browsable-landing-headline {
   display: none;
 }
+/* Sticky search header — wraps the search row + tag pills.
+ * Only sticks once the landing state is exited (landing centres everything,
+ * so sticky would fight the centred layout there). After the user's first
+ * search the .browsable-landing class is removed and this kicks in.
+ * top = tabs bar height (~38px) so the header docks just below the tab strip. */
+.browsable-search-header {
+  display: contents; /* transparent in landing: lets flex parent centre it */
+}
+.browsable-tab-panel:not(.browsable-landing) .browsable-search-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 38px;
+  z-index: 4;
+  background: var(--floating-bg, var(--surface-2));
+  padding: 10px 0 8px;
+  margin: -12px -12px 0; /* cancel panel padding so bg bleeds edge-to-edge */
+  padding-left: 12px;
+  padding-right: 12px;
+}
 .browsable-search-row {
   display: flex;
   gap: 6px;

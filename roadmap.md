@@ -261,9 +261,9 @@
 - [x] **Split** button on the path picker (visible only on multi-path vector layers) — turns the layer into N independent vector layers, preserves per-path fill/stroke/shape, copies transform/accent/opacity/blendMode/visible/locked + parent group membership, removes the source. New `doc.splitVectorLayer(id)` mutator emits one `layer:removed` + N `layer:added` so history captures it as a single structural commit.
 
 ### Cluster I — Plugin polish
-- [ ] Image plugins (Unsplash / Pexels / Openverse): sticky search/header bar
-- [ ] fal.ai: visible progress indicator while a job runs
-- [ ] fal.ai: accept group-layer drops (renders the group → image, then uploads)
+- [x] Image plugins (Unsplash / Pexels / Met): sticky search header — search row + tag pills now wrap in a `.browsable-search-header` that uses `display: contents` in landing state (so the centred landing layout is unaffected) and `position: sticky; top: 38px` once the user's first search exits the landing state.
+- [x] fal.ai: progress indicator — a `setRunning(bool)` helper swaps the Run button to a spinner + "Generating…" label, shows a 3 px indeterminate animated progress bar below the actions row, and surfaces queue position when known ("Queued · N ahead…"). Hidden on success / error / cancel.
+- [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
 
 ## PHASE 20 — New Effects Library 🆕
 
