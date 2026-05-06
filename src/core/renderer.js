@@ -109,6 +109,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       // nearest 5° while Konva handles the pivot maths.
       rotationSnaps: ROTATION_SNAPS_5DEG,
       rotationSnapTolerance: 0,
+      // Konva sets stage.content.style.cursor on the rotater anchor's
+      // mouseenter/mouseout. Default is 'crosshair'; override to 'grab' so
+      // the user gets the standard rotation affordance.
+      rotateAnchorCursor: 'grab',
       boundBoxFunc: (oldBox, newBox) => {
         // Auto-detect a Ctrl+Shift-held resize on a text layer. Capture the
         // starting boxWidth + a fixed reference width on the first tick so
@@ -177,11 +181,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       hideRotationReadout();
     });
 
-    // Wire grab/grabbing cursor to the rotater anchor node.
-    // We defer until after Konva has rendered the transformer so the rotater
-    // node actually exists in the tree.
-    requestAnimationFrame(() => {
-      _wireRotaterCursor();
+    // Switch cursor to 'grabbing' while the user is actively rotating;
+    // Konva's own enter/leave handler restores it on mouseout.
+    transformer.on('transformstart', () => {
+      if (transformer.getActiveAnchor?.() === 'rotater') {
+        const c = stage.content;
+        if (c) c.style.cursor = 'grabbing';
+      }
     });
 
     contentLayer.add(transformer);
@@ -193,32 +199,6 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // shifted reference, producing the runaway-growth glitch.
   function isResizingTextBox() { return textBoxResize != null; }
 
-  // Wire hover/drag cursors to the rotater anchor of the transformer.
-  // Safe to call multiple times — skips if the anchor isn't in the tree yet.
-  let _rotaterCursorWired = false;
-  function _wireRotaterCursor() {
-    if (!transformer || _rotaterCursorWired) return;
-    const rotater = transformer.findOne('.rotater');
-    if (!rotater) return; // not yet rendered — caller should retry via rAF
-    _rotaterCursorWired = true;
-    const stageEl = stage.container();
-    let prevCursor = '';
-    rotater.on('mouseenter', () => {
-      prevCursor = stageEl.style.cursor;
-      stageEl.style.cursor = 'grab';
-    });
-    rotater.on('mouseleave', () => {
-      stageEl.style.cursor = prevCursor;
-    });
-    transformer.on('transformstart', () => {
-      if (transformer.getActiveAnchor?.() === 'rotater') {
-        stageEl.style.cursor = 'grabbing';
-      }
-    });
-    transformer.on('transformend', () => {
-      stageEl.style.cursor = prevCursor;
-    });
-  }
 
   function attachTransformer(node) {
     ensureTransformer();

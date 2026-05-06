@@ -1068,6 +1068,31 @@ export function initCanvasView({ container, document, onImageDropped }) {
     stage.batchDraw();
   }
 
+  // After doc.load fires, the renderer's doc:loaded handler asynchronously
+  // tears down + recreates Konva groups (it awaits `createLayerNodes` per
+  // layer). A naïve fitTo() right after doc.load runs BEFORE those groups
+  // exist, finds zero, and resets the view to scale=1/pos=(0,0). This helper
+  // waits for groups to appear (with non-zero rects), up to ~500 ms, then fits.
+  function fitWhenReady() {
+    let frames = 0;
+    const maxFrames = 30; // ~500 ms at 60 fps
+    function tick() {
+      const groups = stage.find('.slammer-layer').filter((g) => g.visible());
+      if (groups.length) {
+        // Confirm at least one group has a non-zero bounding rect (image
+        // bitmaps may still be loading on the very first frame).
+        const anyReal = groups.some((g) => {
+          const r = g.getClientRect({ skipTransform: false, relativeTo: contentLayer });
+          return r.width > 0 && r.height > 0;
+        });
+        if (anyReal) { fitTo(); return; }
+      }
+      if (++frames >= maxFrames) { fitTo(); return; }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
   function fitTo() {
     // Fit all visible layer bounding rects into the viewport.
     const groups = stage.find('.slammer-layer').filter((g) => g.visible());
@@ -1106,6 +1131,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
     contentLayer,
     zoomBy,
     fitTo,
+    fitWhenReady,
     getStage: () => stage,
   };
 }

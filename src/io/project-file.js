@@ -242,9 +242,10 @@ export async function importSlmr(file, doc) {
   } catch (err) {
     throw new Error(`Document load failed: ${err.message || err}`);
   }
-  // Fit the viewport on explicit .slmr import (Phase 19 Cluster C). Defer one
-  // tick so Konva groups mount before the bounding-rect math.
-  setTimeout(() => window.__slammer?.view?.fitTo?.(), 0);
+  // Fit the viewport on explicit .slmr import (Phase 19 Cluster C). Use
+  // fitWhenReady — the renderer's doc:loaded handler is async, so we have
+  // to wait for Konva groups to actually mount.
+  window.__slammer?.view?.fitWhenReady?.();
 }
 
 // ---------- Helpers ----------
