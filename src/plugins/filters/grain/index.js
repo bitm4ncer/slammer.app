@@ -13,7 +13,7 @@ export default {
   category: 'glitch',
 
   defaultParams() {
-    return { type: 'film', amount: 30, size: 2, monochrome: true, seed: 1, contrast: 0, blendMode: 'source-over' };
+    return { type: 'film', amount: 30, size: 1, monochrome: true, seed: 1, contrast: 0, blendMode: 'source-over' };
   },
 
   process(imageData, params) {
@@ -91,7 +91,7 @@ export default {
       onChange: (v) => onChange({ amount: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Size', min: 0.1, max: 20, step: 0.1, value: params.size ?? 2, defaultValue: 2,
+      label: 'Size', min: 0.1, max: 20, step: 0.1, value: params.size ?? 1, defaultValue: 1,
       onChange: (v) => onChange({ size: v }),
     }));
     root.appendChild(sliderRow({

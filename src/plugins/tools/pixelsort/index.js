@@ -15,7 +15,7 @@ export default {
     return {
       direction: 'horizontal',
       criteria: 'brightness',
-      threshold: 80,
+      threshold: 9,
       amount: 1.0,
     };
   },
@@ -23,7 +23,7 @@ export default {
   process(imageData, params, ctx) {
     const dir = params.direction || 'horizontal';
     const crit = params.criteria || 'brightness';
-    const threshold = (params.threshold ?? 80) / 100; // 0..1
+    const threshold = (params.threshold ?? 9) / 100; // 0..1
     const amount = Math.max(0, Math.min(1, params.amount ?? 1));
     const d = imageData.data;
     const w = imageData.width, h = imageData.height;
@@ -127,7 +127,7 @@ export default {
       onChange: (v) => onChange({ criteria: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Threshold', min: 0, max: 100, step: 1, value: params.threshold, defaultValue: 80,
+      label: 'Threshold', min: 0, max: 100, step: 1, value: params.threshold, defaultValue: 9,
       onChange: (v) => onChange({ threshold: v }),
     }));
     root.appendChild(sliderRow({

@@ -66,6 +66,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Pre-built snap array — every multiple of 5° in [0, 360).
   const ROTATION_SNAPS_5DEG = Array.from({ length: 72 }, (_, i) => i * 5);
 
+  // One-shot listeners that fire when doc:loaded finishes mounting all
+  // layer groups. Drained by the doc:loaded case below, populated via
+  // the renderer's `onceLayersMounted(cb)` API.
+  const _onceLayersMountedListeners = [];
+
   // Rotation readout — a fixed DOM pill shown near the rotater anchor during drag.
   const rotationReadout = window.document.createElement('div');
   rotationReadout.className = 'rotation-readout';
@@ -1308,6 +1313,12 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           if (st) attachTransformer(st.group);
         }
         scheduleDraw();
+        // Fire any one-shot listeners registered before the (async) load
+        // completed — used by project-menu / .slmr import to call view.fitTo()
+        // exactly when all layer groups have actually mounted.
+        for (const cb of _onceLayersMountedListeners.splice(0)) {
+          try { cb(); } catch (err) { console.error('[renderer] onceLayersMounted callback failed:', err); }
+        }
         break;
       }
     }
@@ -1544,6 +1555,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // contentLayer dragmove listener doesn't fire).
     redrawSelectionOutlines,
     scheduleLiveFxRecompute,
+    // One-shot subscription that fires after the next doc:loaded handler
+    // finishes mounting every layer group. Used by project-menu / .slmr
+    // import to call view.fitTo() at exactly the right moment.
+    onceLayersMounted: (cb) => { if (typeof cb === 'function') _onceLayersMountedListeners.push(cb); },
   };
 
   // Read-only export of a single layer's processed pixels as a Blob. Used by

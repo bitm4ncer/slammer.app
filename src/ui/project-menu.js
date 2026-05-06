@@ -434,11 +434,13 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
         } catch (err) {
           console.warn('[slammer.app] font preload skipped on open:', err);
         }
+        // Register the fit BEFORE doc.load so the renderer's doc:loaded
+        // async handler picks up the listener and fires it right after
+        // every layer group has mounted.
+        window.__slammer?.renderer?.onceLayersMounted?.(() => {
+          window.__slammer?.view?.fitTo?.();
+        });
         doc.load(projDoc);
-        // Fit the viewport on explicit Open (Phase 19 Cluster C). Use
-        // fitWhenReady — the renderer's doc:loaded handler is async (image
-        // bitmaps), so we have to wait for Konva groups to actually mount.
-        window.__slammer?.view?.fitWhenReady?.();
         projectStore.setCurrent(id);
         showNotification(`Opened "${projDoc.name}"`);
         close();

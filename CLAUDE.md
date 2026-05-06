@@ -75,6 +75,12 @@ The main agent reviews every subagent's diff before committing. Subagents do not
 
 - **Custom scrollbars only** — never ship the native OS scrollbar. Applies to in-page scroll containers AND custom dropdowns.
 - **Never mutate the live document via `preview_eval`** — verification probes must be READ-ONLY. Any `addLayer`/`setProp`/etc. via `preview_eval` gets autosaved over the user's real project. Use eval to *inspect* state; use the UI (or actual code edits + HMR) to *change* it.
+- **No left colour-accent borders** on cards / list items / sidebar rows. Use a dot, icon tint, or hover glow.
+- **Every user operation must register in undo history AND survive a page reload.** This applies to *every* mutation surface — transform (drag / scale / **rotation**), effect param changes, layer add/remove/reorder, blend mode, opacity, frame edits, vector path edits, text content / font / size, plugin actions, settings changes that affect document state. If a new feature mutates document state and the user does it through the UI:
+  1. The change must flow through `doc.setX(...)` or another `document.js` mutator that the history layer already debounces+commits, OR you must call `history.commit()` explicitly after the change.
+  2. The change must round-trip: edit → reload page → edit is still there. Verify in `preview_eval` (READ-ONLY): mutate via UI, refresh, inspect `doc.layers`/`doc.state` — values match.
+  3. Direct Konva node mutations (e.g. setting `node.rotation()` or `node.position()` outside a `transform`/`drag` event) are forbidden as the *only* mutation — they bypass history. Always reflect the change back into the document model so autosave + undo see it.
+  Common trap: setting a Konva property in an event handler updates the *visual* state but if you don't also call `doc.setLayerTransform(id, { rotation })` (or equivalent), refresh wipes the change and undo skips it.
 
 ## Stack additions beyond AGENTS.md
 
