@@ -258,7 +258,7 @@
 - [x] **Live font preview** with Settings → Workflow → Typography toggle (default ON). Hovering a font card temporarily previews it on the active text layer via a new `setTextPropEphemeral()` API + `layer:textChangedEphemeral` event — NOT in PROP_EVENTS, so hover-spam doesn't bloat undo history. Click commits permanently.
 
 ### Cluster H — Vector
-- [ ] **Split** button on multi-path vector layer → splits into N independent vector layers, preserves fills/strokes
+- [x] **Split** button on the path picker (visible only on multi-path vector layers) — turns the layer into N independent vector layers, preserves per-path fill/stroke/shape, copies transform/accent/opacity/blendMode/visible/locked + parent group membership, removes the source. New `doc.splitVectorLayer(id)` mutator emits one `layer:removed` + N `layer:added` so history captures it as a single structural commit.
 
 ### Cluster I — Plugin polish
 - [ ] Image plugins (Unsplash / Pexels / Openverse): sticky search/header bar

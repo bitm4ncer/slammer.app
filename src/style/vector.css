@@ -173,6 +173,31 @@
   box-shadow: 0 0 0 2px var(--primary), 0 0 6px -1px color-mix(in srgb, var(--primary) 70%, transparent);
 }
 
+/* Cluster H — "Split" button next to the path-picker strip. Sits on the
+ * far right of the row; turns the multi-path layer into N separate ones. */
+.vector-path-split-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.vector-path-split-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.vector-path-split-btn i { font-size: 11px; }
+
 /* ---------- Pencil smoothness slider in the footer (visible only when
  *            the pencil tool is active). ---------- */
 .pencil-smoothness {

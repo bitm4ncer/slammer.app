@@ -339,6 +339,67 @@ export function createDocument() {
 
     // Replace the entire `paths` array. Used by Pen / Pencil drawers and
     // boolean-op pipelines that want to commit a fully-formed result.
+    // Phase 19 Cluster H — split a multi-path vector layer into N separate
+    // vector layers, one per path. Preserves fill/stroke/shape per path,
+    // copies the source layer's transform + accent + locked/visible flags,
+    // inserts the new layers at the source's z-position (top of the slice
+    // first), removes the source, and activates the first new layer.
+    // Returns the array of created layer ids (or null if not splittable).
+    splitVectorLayer(id) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'vector') return null;
+      const paths = layer.vector?.paths || [];
+      if (paths.length < 2) return null;
+      const idx = findIndex(id);
+      if (idx < 0) return null;
+
+      // Build the new layers BEFORE mutating state.layers so we can splice
+      // them in atomically.
+      const created = paths.map((p, i) => {
+        const newId = uid();
+        const newLayer = createVectorLayer({
+          id: newId,
+          name: `${layer.name} · Path ${i + 1}`,
+          transform: { ...layer.transform },
+          accentColor: layer.accentColor,
+          parentGroupId: layer.parentGroupId,
+          vector: { paths: [JSON.parse(JSON.stringify(p))] },
+        });
+        // Inherit visible / opacity / blendMode / locked. Keep effects empty
+        // — duplicating an effect stack on every split would be surprising;
+        // the user can re-add what they need on the layer they're working on.
+        newLayer.visible = layer.visible;
+        newLayer.opacity = layer.opacity;
+        newLayer.blendMode = layer.blendMode;
+        newLayer.locked = layer.locked;
+        return newLayer;
+      });
+
+      // Splice: remove the source, insert the new layers in its place.
+      state.layers.splice(idx, 1, ...created);
+
+      // Mirror the parent-group child list if the source was inside a group.
+      if (layer.parentGroupId) {
+        const parent = findLayer(layer.parentGroupId);
+        if (parent && Array.isArray(parent.childIds)) {
+          const cIdx = parent.childIds.indexOf(id);
+          if (cIdx >= 0) parent.childIds.splice(cIdx, 1, ...created.map((l) => l.id));
+        }
+      }
+
+      // Active layer: pick the first new one if the source was active.
+      const wasActive = state.activeLayerId === id;
+      if (wasActive) state.activeLayerId = created[0].id;
+
+      // Emit removal of the source first, then add events for each new layer.
+      // History debounces / coalesces these into one structural commit.
+      emit({ type: 'layer:removed', id, layer });
+      for (const l of created) emit({ type: 'layer:added', layer: l });
+      if (wasActive) emit({ type: 'layer:active', id: state.activeLayerId });
+
+      return created.map((l) => l.id);
+    },
+
     setVectorPaths(id, paths) {
       const layer = findLayer(id);
       if (!layer || layer.type !== 'vector') return;

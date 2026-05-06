@@ -304,6 +304,21 @@ export function initVectorTool({ document: doc }) {
       strip.appendChild(sw);
     });
     row.appendChild(strip);
+    // Cluster H — Split: turn the multi-path layer into N independent layers.
+    const splitBtn = document.createElement('button');
+    splitBtn.type = 'button';
+    splitBtn.className = 'vector-path-split-btn';
+    splitBtn.title = `Split into ${paths.length} separate vector layers`;
+    splitBtn.innerHTML = '<i class="fas fa-arrows-split-up-and-left"></i><span>Split</span>';
+    splitBtn.addEventListener('click', () => {
+      const ids = doc.splitVectorLayer(layer.id);
+      if (ids?.length) {
+        activePathIdx = 0;
+        clearGradientEditor(fillGradHost);
+        clearGradientEditor(strokeGradHost);
+      }
+    });
+    row.appendChild(splitBtn);
     pathPickerHost.appendChild(row);
   }
   // CSS background for a path's swatch (solid colour or linear gradient).
