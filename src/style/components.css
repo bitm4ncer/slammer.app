@@ -2196,3 +2196,542 @@
 .browsable-tab-panel:not(.browsable-landing) .browsable-landing-tags {
   display: none;
 }
+
+/* ====================================================================== */
+/* Settings popup — sidebar redesign (Cluster D follow-up)                 */
+/* ====================================================================== */
+
+.settings-modal--sidebar {
+  /* Fixed dimensions — medium, dense but breathable. */
+  width: 760px;
+  height: 580px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 var(--vhs-highlight);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-modal--sidebar .settings-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: linear-gradient(to bottom, var(--surface) 0%, var(--surface-2) 100%);
+}
+.settings-modal--sidebar .settings-header::after {
+  /* Faint scan-line stripe — slammer's quiet retro nod */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    var(--vhs-stripe) 2px,
+    var(--vhs-stripe) 3px
+  );
+  opacity: 0.6;
+}
+
+.settings-modal--sidebar .settings-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+.settings-modal--sidebar .settings-title i {
+  color: var(--primary);
+  font-size: 13px;
+  margin: 0;
+}
+.settings-modal--sidebar .settings-title-text {
+  font-family: 'Chicago', 'Inter', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+.settings-modal--sidebar .settings-close { z-index: 1; }
+
+.settings-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  min-height: 0;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+
+.settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  border-right: 1px solid var(--vhs-shadow);
+  padding: 14px 0;
+  overflow-y: auto;
+}
+.settings-sidebar-spacer { flex: 1; }
+.settings-sidebar-stamp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  text-align: center;
+  padding: 12px 8px 4px;
+  letter-spacing: 0.04em;
+}
+
+.settings-sidetab {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 18px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  padding: 9px 14px 9px 12px;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.settings-sidetab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.025);
+}
+.settings-sidetab.active {
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.08);
+}
+.settings-sidetab-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.settings-sidetab.active .settings-sidetab-dot {
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.7);
+}
+.settings-sidetab-icon {
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+}
+.settings-sidetab.active .settings-sidetab-icon { color: var(--primary); }
+.settings-sidetab-label { font-weight: 500; }
+
+/* ── Content area ────────────────────────────────────────────────────── */
+
+.settings-content {
+  position: relative;
+  overflow-y: auto;
+  padding: 24px 28px 28px;
+}
+
+.settings-modal--sidebar .settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  /* Override max-height from the legacy .settings-tab-panel rule above. */
+  max-height: none;
+  overflow: visible;
+  animation: settingsPanelIn 0.22s cubic-bezier(.2,.7,.2,1);
+}
+.settings-modal--sidebar .settings-tab-panel[hidden] { display: none; }
+@keyframes settingsPanelIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.settings-panel-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  color: var(--primary);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.settings-panel-title {
+  margin: 0;
+  font-family: 'Chicago', 'Inter', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+.settings-panel-desc {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  max-width: 56ch;
+}
+
+/* ── Group sections within a tab ─────────────────────────────────────── */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-group-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.settings-group-tick {
+  width: 6px; height: 6px;
+  background: var(--primary);
+  border-radius: 1px;
+  display: inline-block;
+}
+.settings-group-tick--danger { background: #ff5b5b; }
+.settings-group-head--danger { color: #ff5b5b; }
+.settings-group--placeholder { opacity: 0.7; }
+.settings-group--danger {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--vhs-shadow);
+}
+
+/* ── Rows ─────────────────────────────────────────────────────────────── */
+
+.settings-modal--sidebar .settings-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vhs-shadow) 50%, transparent);
+}
+.settings-modal--sidebar .settings-row:last-child { border-bottom: 0; }
+.settings-modal--sidebar .settings-row[hidden] { display: none; }
+.settings-row--stack {
+  grid-template-columns: 1fr;
+}
+.settings-row--accent-custom {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--vhs-shadow) 35%, transparent) !important;
+  border-bottom: 0 !important;
+}
+
+.settings-rowlabelblock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.settings-rowlabel {
+  font-size: 12px;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.settings-rowhint {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.settings-rowhelp {
+  font-size: 9.5px;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: 999px;
+}
+.settings-rowhelp:hover {
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+/* Pull readout to the right end of the row */
+.settings-modal--sidebar .settings-readout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  background: var(--background);
+  padding: 2px 7px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.settings-readout--inline { margin-left: 10px; }
+
+/* ── Toggle switch (compact, Apple-ish) ──────────────────────────────── */
+
+.settings-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+}
+.settings-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.settings-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-3);
+  border-radius: 999px;
+  border: 1px solid var(--vhs-shadow);
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.settings-toggle-thumb {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: transform 0.18s cubic-bezier(.4,0,.2,1), background 0.16s ease;
+}
+.settings-toggle input:checked + .settings-toggle-track {
+  background: rgba(var(--primary-rgb), 0.25);
+  border-color: rgba(var(--primary-rgb), 0.5);
+}
+.settings-toggle input:checked + .settings-toggle-track .settings-toggle-thumb {
+  transform: translateX(16px);
+  background: var(--primary);
+}
+
+/* ── Accent: swatches + custom row ───────────────────────────────────── */
+
+.settings-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.settings-swatch {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--swatch);
+  border: 1px solid color-mix(in srgb, white 18%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  padding: 0;
+}
+.settings-swatch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.settings-swatch.active {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--swatch),
+              0 6px 14px rgba(0, 0, 0, 0.5);
+}
+.settings-swatch.active::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--background);
+  border-radius: 3px;
+  mix-blend-mode: difference;
+}
+.settings-control--accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.settings-control--accent input[type="color"] {
+  width: 26px;
+  height: 22px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ── Segmented control (used for marquee mode) ───────────────────────── */
+
+.settings-segmented {
+  display: inline-flex;
+  background: var(--background);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.settings-seg {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.settings-seg:hover { color: var(--text-primary); }
+.settings-seg.active {
+  background: var(--surface-2);
+  color: var(--primary);
+  box-shadow: 0 1px 0 var(--vhs-highlight), 0 0 0 1px rgba(var(--primary-rgb), 0.25);
+}
+
+/* ── Stack-row controls (slider, knob) ───────────────────────────────── */
+
+.settings-control--full {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.settings-control--full input[type="range"] {
+  flex: 1;
+  accent-color: var(--primary);
+}
+.settings-control--knob {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── API key input ───────────────────────────────────────────────────── */
+
+.settings-modal--sidebar .settings-text-input {
+  width: 100%;
+  background: var(--background);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+.settings-modal--sidebar .settings-text-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* ── About: action buttons row ───────────────────────────────────────── */
+
+.settings-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Danger zone ─────────────────────────────────────────────────────── */
+
+.settings-danger-btn {
+  background: transparent;
+  border: 1px solid #ff5b5b;
+  color: #ff5b5b;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.settings-danger-btn:hover {
+  background: rgba(255, 91, 91, 0.12);
+}
+
+/* ── Roadmap list (placeholder groups) ───────────────────────────────── */
+
+.settings-roadmap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-roadmap-list li {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+  font-size: 11px;
+  padding: 6px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--vhs-shadow) 60%, transparent);
+}
+.settings-roadmap-list li:last-child { border-bottom: 0; }
+.settings-roadmap-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+.settings-roadmap-desc {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Shortcuts table — re-tweak inside the new layout ───────────────── */
+
+.settings-modal--sidebar .settings-shortcuts {
+  width: 100%;
+}
+.settings-modal--sidebar .settings-shortcuts tr.settings-shortcuts-head th {
+  background: transparent;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--primary);
+  padding-top: 14px;
+  padding-left: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.settings-modal--sidebar .settings-shortcuts td {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vhs-shadow) 40%, transparent);
+  font-size: 11.5px;
+}
+.settings-modal--sidebar .settings-shortcuts kbd {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-bottom-width: 1px;
+  background: var(--background);
+}
+.settings-group--shortcuts { gap: 0; }
+
