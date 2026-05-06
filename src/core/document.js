@@ -1,7 +1,7 @@
 // Document — the editable state container.
 // Mutate via methods so listeners can react with precise change events.
 
-import { createImageLayer, createTextLayer, createFxLayer, createVectorLayer } from './layer.js';
+import { createImageLayer, createTextLayer, createFxLayer, createVectorLayer, createGroupLayer, isVectorOnlyGroup as _isVectorOnly } from './layer.js';
 
 const uid = () => crypto.randomUUID();
 
@@ -94,6 +94,160 @@ export function createDocument() {
       return layer;
     },
 
+    // Group ops — see plan: a group wraps N children of any type via
+    // childIds + each child's parentGroupId mirror. Nested groups are
+    // allowed. childIds order = panel display order (top-of-stack first).
+    addGroupLayer(opts = {}) {
+      const layer = createGroupLayer({ id: uid(), ...opts });
+      // Stamp parentGroupId on each child + drop them from any prior group.
+      for (const childId of layer.childIds) {
+        const child = findLayer(childId);
+        if (!child) continue;
+        // Detach from previous parent group (single-membership invariant).
+        if (child.parentGroupId && child.parentGroupId !== layer.id) {
+          const prev = findLayer(child.parentGroupId);
+          if (prev && Array.isArray(prev.childIds)) {
+            prev.childIds = prev.childIds.filter((cid) => cid !== childId);
+          }
+        }
+        child.parentGroupId = layer.id;
+      }
+      // Insert near the topmost existing child so the group appears at
+      // the same z-position as the layers it now wraps. Default = top.
+      let insertAt = state.layers.length;
+      for (const cid of layer.childIds) {
+        const idx = findIndex(cid);
+        if (idx > insertAt) insertAt = idx + 1;
+        else if (idx >= 0 && insertAt === state.layers.length) insertAt = idx + 1;
+      }
+      state.layers.splice(insertAt, 0, layer);
+      state.activeLayerId = layer.id;
+      emit({ type: 'layer:added', layer });
+      emit({ type: 'layer:active', id: layer.id });
+      return layer;
+    },
+
+    addToGroup(groupId, childId, atIndex) {
+      const group = findLayer(groupId);
+      const child = findLayer(childId);
+      if (!group || group.type !== 'group' || !child) return;
+      // Detach from previous parent.
+      if (child.parentGroupId && child.parentGroupId !== groupId) {
+        const prev = findLayer(child.parentGroupId);
+        if (prev && Array.isArray(prev.childIds)) {
+          prev.childIds = prev.childIds.filter((id) => id !== childId);
+          emit({ type: 'group:childrenChanged', layerId: prev.id });
+        }
+      }
+      child.parentGroupId = groupId;
+      if (!group.childIds.includes(childId)) {
+        if (typeof atIndex === 'number') group.childIds.splice(atIndex, 0, childId);
+        else group.childIds.push(childId);
+      }
+      emit({ type: 'group:childrenChanged', layerId: groupId });
+    },
+
+    removeFromGroup(groupId, childId) {
+      const group = findLayer(groupId);
+      const child = findLayer(childId);
+      if (!group || group.type !== 'group') return;
+      group.childIds = group.childIds.filter((id) => id !== childId);
+      if (child) child.parentGroupId = null;
+      emit({ type: 'group:childrenChanged', layerId: groupId });
+    },
+
+    reorderGroupChildren(groupId, orderedIds) {
+      const group = findLayer(groupId);
+      if (!group || group.type !== 'group') return;
+      const set = new Set(orderedIds);
+      const kept = orderedIds.filter((id) => group.childIds.includes(id));
+      const tail = group.childIds.filter((id) => !set.has(id));
+      group.childIds = kept.concat(tail);
+      emit({ type: 'group:childrenChanged', layerId: groupId });
+    },
+
+    // Dissolve a group — children stay in the layer list; their
+    // parentGroupId clears. The group layer is removed.
+    dissolveGroup(groupId) {
+      const group = findLayer(groupId);
+      if (!group || group.type !== 'group') return;
+      for (const cid of group.childIds) {
+        const child = findLayer(cid);
+        if (child) child.parentGroupId = group.parentGroupId || null;
+      }
+      const idx = findIndex(groupId);
+      if (idx >= 0) state.layers.splice(idx, 1);
+      if (state.activeLayerId === groupId) {
+        state.activeLayerId = group.childIds[0] || state.layers[idx]?.id || null;
+        emit({ type: 'layer:active', id: state.activeLayerId });
+      }
+      emit({ type: 'group:dissolved', layerId: groupId });
+      emit({ type: 'layer:removed', id: groupId, layer: group });
+    },
+
+    findParentGroup(layerId) {
+      const layer = findLayer(layerId);
+      if (!layer || !layer.parentGroupId) return null;
+      return findLayer(layer.parentGroupId) || null;
+    },
+
+    descendantsOf(groupId) {
+      const out = [];
+      const group = findLayer(groupId);
+      if (!group || group.type !== 'group') return out;
+      const visit = (g) => {
+        for (const cid of (g.childIds || [])) {
+          const child = findLayer(cid);
+          if (!child) continue;
+          out.push(child);
+          if (child.type === 'group') visit(child);
+        }
+      };
+      visit(group);
+      return out;
+    },
+
+    isLayerInAnyGroup(layerId) {
+      const layer = findLayer(layerId);
+      return !!(layer && layer.parentGroupId);
+    },
+
+    isVectorOnlyGroup(groupId) {
+      const group = findLayer(groupId);
+      return _isVectorOnly(group, findLayer);
+    },
+
+    // Insert an already-fully-formed layer into the document at the
+    // given index (or end). Used by clone / duplicate flows where the
+    // caller has already constructed the layer via JSON and just needs
+    // it wired into the renderer + panel. Fires the same events the
+    // type-specific add* methods do.
+    _addLayerRaw(layer, atIndex) {
+      if (!layer || !layer.id) return null;
+      const idx = (typeof atIndex === 'number' && atIndex >= 0 && atIndex <= state.layers.length)
+        ? atIndex
+        : state.layers.length;
+      state.layers.splice(idx, 0, layer);
+      emit({ type: 'layer:added', layer });
+      return layer;
+    },
+
+    setLayerLocked(id, locked) {
+      const layer = findLayer(id);
+      if (!layer) return;
+      layer.locked = !!locked;
+      emit({ type: 'layer:propChanged', id, prop: 'locked', value: !!locked });
+      // Cascade: lock state propagates to descendants of a group.
+      if (layer.type === 'group') {
+        for (const child of (layer.childIds || []).map(findLayer).filter(Boolean)) {
+          if (!!child.locked !== !!locked) {
+            child.locked = !!locked;
+            emit({ type: 'layer:propChanged', id: child.id, prop: 'locked', value: !!locked });
+          }
+        }
+      }
+    },
+
     // Replace the entire `paths` array. Used by Pen / Pencil drawers and
     // boolean-op pipelines that want to commit a fully-formed result.
     setVectorPaths(id, paths) {
@@ -126,6 +280,23 @@ export function createDocument() {
       const idx = findIndex(id);
       if (idx < 0) return;
       const [removed] = state.layers.splice(idx, 1);
+      // If the removed layer was a member of a group, drop it from the
+      // group's childIds so the group renders the remainder cleanly.
+      if (removed.parentGroupId) {
+        const parent = findLayer(removed.parentGroupId);
+        if (parent && Array.isArray(parent.childIds)) {
+          parent.childIds = parent.childIds.filter((cid) => cid !== id);
+          emit({ type: 'group:childrenChanged', layerId: parent.id });
+        }
+      }
+      // If the removed layer was a group itself, orphan its children
+      // (they survive at the top level).
+      if (removed.type === 'group' && Array.isArray(removed.childIds)) {
+        for (const cid of removed.childIds) {
+          const child = findLayer(cid);
+          if (child) child.parentGroupId = removed.parentGroupId || null;
+        }
+      }
       if (state.activeLayerId === id) {
         state.activeLayerId = state.layers[idx]?.id ?? state.layers[idx - 1]?.id ?? null;
         emit({ type: 'layer:active', id: state.activeLayerId });
@@ -187,6 +358,55 @@ export function createDocument() {
       if (enabled === null) delete layer.text.features[featureTag];
       else layer.text.features[featureTag] = !!enabled;
       emit({ type: 'layer:textChanged', id, prop: 'features', value: { ...layer.text.features } });
+    },
+
+    // Vector-effect crud — separate stack on vector layers, applied
+    // pre-rasterise inside vector-renderer. The pixel-level effect
+    // stack (addEffect / removeEffect / etc.) stays unchanged and runs
+    // on the resulting ImageData.
+    addVectorEffect(layerId, effect) {
+      const layer = findLayer(layerId);
+      if (!layer || (layer.type !== 'vector' && layer.type !== 'group')) return null;
+      if (!layer.vectorEffects) layer.vectorEffects = [];
+      const inst = { id: uid(), enabled: true, expanded: true, ...effect };
+      layer.vectorEffects.push(inst);
+      emit({ type: 'vectorEffect:added', layerId, effect: inst, atIndex: layer.vectorEffects.length - 1 });
+      return inst;
+    },
+
+    removeVectorEffect(layerId, effectId) {
+      const layer = findLayer(layerId);
+      if (!layer || !layer.vectorEffects) return;
+      const idx = layer.vectorEffects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.vectorEffects.splice(idx, 1);
+      emit({ type: 'vectorEffect:removed', layerId, effectId, fromIndex: idx });
+    },
+
+    setVectorEffectProp(layerId, effectId, prop, value) {
+      const layer = findLayer(layerId);
+      if (!layer || !layer.vectorEffects) return;
+      const idx = layer.vectorEffects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.vectorEffects[idx][prop] = value;
+      emit({ type: 'vectorEffect:propChanged', layerId, effectId, prop, value, fromIndex: idx });
+    },
+
+    setVectorEffectParams(layerId, effectId, params) {
+      const layer = findLayer(layerId);
+      if (!layer || !layer.vectorEffects) return;
+      const idx = layer.vectorEffects.findIndex((e) => e.id === effectId);
+      if (idx < 0) return;
+      layer.vectorEffects[idx].params = { ...layer.vectorEffects[idx].params, ...params };
+      emit({ type: 'vectorEffect:propChanged', layerId, effectId, prop: 'params', value: layer.vectorEffects[idx].params, fromIndex: idx });
+    },
+
+    reorderVectorEffects(layerId, orderedIds) {
+      const layer = findLayer(layerId);
+      if (!layer || !layer.vectorEffects) return;
+      const map = new Map(layer.vectorEffects.map((e) => [e.id, e]));
+      layer.vectorEffects = orderedIds.map((id) => map.get(id)).filter(Boolean);
+      emit({ type: 'vectorEffect:reordered', layerId });
     },
 
     addEffect(layerId, effect) {

@@ -18,12 +18,24 @@ export function createBrowsable({
   apiKeyConfigured,
   landingHeadline = 'Search for images',     // Big text shown on first open.
   landingPlaceholder = 'Search…',             // Bigger placeholder on the landing input.
+  landingTags = [],       // Clickable search suggestion pills.
+  landingQueries = [],    // Random pool for the preview feed.
+  curatedFn = null,       // Optional async (page) => { results, hasMore } (e.g. Pexels curated).
 }) {
   container.innerHTML = `
     <div class="browsable-tabs">
-      <button class="browsable-tab active" data-tab="search">Search</button>
-      <button class="browsable-tab" data-tab="favorites">Favorites</button>
-      <button class="browsable-tab" data-tab="folders">Folders</button>
+      <div class="browsable-tabs-left">
+        <button class="browsable-tab active" data-tab="search">Search</button>
+        <button class="browsable-tab" data-tab="favorites">Favorites</button>
+        <button class="browsable-tab" data-tab="folders">Folders</button>
+      </div>
+      <div class="browsable-col-knob" data-col-knob>
+        <button class="browsable-col-btn" data-cols="1">1</button>
+        <button class="browsable-col-btn" data-cols="2">2</button>
+        <button class="browsable-col-btn active" data-cols="3">3</button>
+        <button class="browsable-col-btn" data-cols="4">4</button>
+        <button class="browsable-col-btn" data-cols="5">5</button>
+      </div>
     </div>
 
     <div class="browsable-tab-panel browsable-tab-panel--search browsable-landing" data-tab="search">
@@ -32,10 +44,16 @@ export function createBrowsable({
         <input type="text" class="browsable-search-input" placeholder="${escapeAttr(landingPlaceholder)}" />
         <button class="browsable-search-btn" type="button"><i class="fas fa-search"></i></button>
       </div>
+      <div class="browsable-landing-tags" data-landing-tags>
+        <div class="browsable-tags-track"></div>
+      </div>
       <div class="browsable-grid" data-grid="search"></div>
       <div class="browsable-grid-sentinel" data-sentinel="search"></div>
-      <div class="browsable-loading" hidden>Loading…</div>
+      <div class="browsable-loading" hidden><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>
       <div class="browsable-empty" hidden></div>
+      <div class="browsable-landing-loader" data-landing-loader>
+        <i class="fas fa-circle-notch fa-spin"></i>
+      </div>
     </div>
 
     <div class="browsable-tab-panel" data-tab="favorites" hidden>
@@ -53,7 +71,35 @@ export function createBrowsable({
     </div>
   `;
 
-  const COLUMN_COUNT = 3;
+  const STORAGE_KEY = `slammer:browsable-cols:${pluginId}`;
+  function getSavedCols() {
+    try {
+      const v = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+      if (v >= 1 && v <= 5) return v;
+    } catch {}
+    return 3;
+  }
+  let COLUMN_COUNT = getSavedCols();
+
+  // ---------- Landing recommendation pills ----------
+  const tagsContainer = container.querySelector('[data-landing-tags]');
+  const tagsTrack = tagsContainer?.querySelector('.browsable-tags-track');
+  if (landingTags.length > 0 && tagsTrack) {
+    const makePill = (text) => {
+      const btn = document.createElement('button');
+      btn.className = 'browsable-tag-pill';
+      btn.textContent = text;
+      btn.addEventListener('click', () => {
+        searchInput.value = text;
+        runSearch();
+      });
+      return btn;
+    };
+    for (const text of landingTags) tagsTrack.appendChild(makePill(text));
+    for (const text of landingTags) tagsTrack.appendChild(makePill(text));
+  } else if (tagsContainer) {
+    tagsContainer.hidden = true;
+  }
 
   const tabs = container.querySelectorAll('.browsable-tab');
   const panels = container.querySelectorAll('.browsable-tab-panel');
@@ -62,6 +108,8 @@ export function createBrowsable({
   const searchGrid = container.querySelector('[data-grid="search"]');
   const favGrid = container.querySelector('[data-grid="favorites"]');
   const folderGrid = container.querySelector('[data-grid="folder"]');
+  const searchPanel = container.querySelector('.browsable-tab-panel--search');
+  searchPanel.style.opacity = '0';
 
   // ---------- Column-based masonry helpers ----------
   // Resets a grid to N empty columns, each tracking its own predicted height
@@ -81,7 +129,7 @@ export function createBrowsable({
   // Append a card to whichever existing column is currently shortest.
   // Predicted height = (item.height / item.width); columns share equal widths
   // so ratios are sufficient — no need to measure DOM.
-  function appendToColumns(grid, card, item) {
+  function appendToColumns(grid, card) {
     const cols = grid.querySelectorAll('.browsable-column');
     if (!cols.length) {
       // Grid was rendered without columns (legacy state). Treat the grid as
@@ -96,8 +144,16 @@ export function createBrowsable({
       if (h < shortestH) { shortest = cols[i]; shortestH = h; }
     }
     shortest.appendChild(card);
-    const ratio = (item.width && item.height) ? (item.height / item.width) : 1;
+    const ratio = parseFloat(card.dataset.ratio) || 1;
     shortest.dataset.h = String(shortestH + ratio);
+  }
+
+  function redistributeGrid(grid) {
+    const cards = Array.from(grid.querySelectorAll('.browsable-card'));
+    resetColumns(grid);
+    for (const card of cards) {
+      appendToColumns(grid, card);
+    }
   }
   const folderList = container.querySelector('.browsable-folder-list');
   const newFolderBtn = container.querySelector('.browsable-new-folder');
@@ -123,6 +179,7 @@ export function createBrowsable({
   async function loadPage({ append }) {
     if (searching) return;
     if (append && !hasMore) return;
+    if (append && !lastQuery) return;
     if (!apiKeyConfigured()) {
       emptyEl.hidden = false;
       emptyEl.textContent = apiKeyMissingMessage;
@@ -145,7 +202,7 @@ export function createBrowsable({
         return;
       }
       for (const item of mapped) {
-        appendToColumns(searchGrid, renderCard(item, 'search'), item);
+        appendToColumns(searchGrid, renderCard(item, 'search'));
       }
     } catch (err) {
       if (!append) {
@@ -165,7 +222,10 @@ export function createBrowsable({
     if (!q) return;
     // Once the user searches, drop the landing layout so the search bar
     // docks at its normal top position.
-    container.querySelector('.browsable-tab-panel--search')?.classList.remove('browsable-landing');
+    searchPanel.style.opacity = '1';
+    searchPanel.classList.remove('browsable-landing');
+    const landingLoader = container.querySelector('[data-landing-loader]');
+    landingLoader?.classList.remove('visible');
     lastQuery = q;
     currentPage = 0;
     hasMore = true;
@@ -173,6 +233,56 @@ export function createBrowsable({
   }
   searchBtn.addEventListener('click', runSearch);
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+
+  // ---------- Curated landing feed ----------
+  async function loadCurated() {
+    const landingLoader = container.querySelector('[data-landing-loader]');
+    let loaderTimeout = null;
+    const showLoader = () => landingLoader?.classList.add('visible');
+
+    if (!apiKeyConfigured()) {
+      searchPanel.style.opacity = '1';
+      return;
+    }
+
+    loaderTimeout = setTimeout(showLoader, 500);
+
+    let results = [];
+    try {
+      let res;
+      if (curatedFn) {
+        res = await curatedFn(1);
+      } else if (landingQueries.length > 0) {
+        const q = landingQueries[Math.floor(Math.random() * landingQueries.length)];
+        res = await searchFn(q, 1);
+      }
+      if (res) {
+        results = (res.results || []).map(mapResult);
+      }
+    } catch {
+      // Silently fail for auto-loaded curated preview — don't spam error state.
+    }
+    if (results.length) {
+      searchPanel.classList.add('has-curated');
+      resetColumns(searchGrid);
+      for (const item of results) {
+        const card = renderCard(item, 'search', { eager: true });
+        appendToColumns(searchGrid, card);
+      }
+      // Preload all thumbnail images before revealing so the fade-in is crisp.
+      const imgs = searchGrid.querySelectorAll('.browsable-card-img');
+      await Promise.all(Array.from(imgs).map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }));
+    }
+    clearTimeout(loaderTimeout);
+    landingLoader?.classList.remove('visible');
+    searchPanel.style.opacity = '1';
+  }
 
   // Infinite scroll — observe a sentinel below the grid. The scroll container
   // is the plugin window's floating-body (defer lookup; the IntersectionObserver
@@ -196,7 +306,7 @@ export function createBrowsable({
     favEmptyEl.hidden = true;
     for (const f of favs) {
       const item = { ...f.payload, _favoriteRecordId: f.id };
-      appendToColumns(favGrid, renderCard(item, 'favorites'), item);
+      appendToColumns(favGrid, renderCard(item, 'favorites'));
     }
   }
 
@@ -298,7 +408,7 @@ export function createBrowsable({
       resetColumns(folderGrid);
       for (const f of inFolder) {
         const item = { ...f.payload, _favoriteRecordId: f.id };
-        appendToColumns(folderGrid, renderCard(item, 'favorites'), item);
+        appendToColumns(folderGrid, renderCard(item, 'favorites'));
       }
     }
   }
@@ -313,16 +423,19 @@ export function createBrowsable({
   });
 
   // ---------- Card renderer ----------
-  function renderCard(item, mode) {
+  function renderCard(item, mode, { eager = false } = {}) {
     const card = document.createElement('div');
     card.className = 'browsable-card';
     card.draggable = true;
     // Native width/height attrs let the browser reserve the right aspect-ratio
     // box before the image loads — no layout shift, no jumpy scroll.
+    const ratio = (item.width && item.height) ? (item.height / item.width) : 1;
+    card.dataset.ratio = String(ratio);
     const wAttr = item.width ? `width="${item.width}"` : '';
     const hAttr = item.height ? `height="${item.height}"` : '';
+    const lazyAttr = eager ? '' : 'loading="lazy"';
     card.innerHTML = `
-      <img class="browsable-card-img" src="${escapeAttr(item.thumbUrl)}" ${wAttr} ${hAttr} alt="${escapeAttr(item.attribution || '')}" loading="lazy" />
+      <img class="browsable-card-img" src="${escapeAttr(item.thumbUrl)}" ${wAttr} ${hAttr} alt="${escapeAttr(item.attribution || '')}" ${lazyAttr} referrerpolicy="no-referrer" />
       <div class="browsable-card-overlay">
         <button class="browsable-card-add" title="Add to canvas"><i class="fas fa-plus"></i></button>
         <button class="browsable-card-folder" title="Add to folder"><i class="fas fa-folder-plus"></i></button>
@@ -330,6 +443,18 @@ export function createBrowsable({
       </div>
       <div class="browsable-card-attr">${escapeHtml(item.attribution || '')}</div>
     `;
+
+    // If the thumbnail fails (rate-limited CDN), retry once with the full URL
+    // after a short stagger delay so we don't hammer the server again.
+    const img = card.querySelector('img');
+    if (img && item.thumbUrl !== item.fullUrl) {
+      img.addEventListener('error', () => {
+        if (!img.dataset.retried) {
+          img.dataset.retried = '1';
+          setTimeout(() => { img.src = item.fullUrl; }, 800 + Math.random() * 1200);
+        }
+      }, { once: true });
+    }
 
     card.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/uri-list', item.fullUrl);
@@ -471,18 +596,56 @@ export function createBrowsable({
   }
 
   async function importItem(item) {
+    const name = item.name || `${pluginId} · ${item.attribution || item.id}`;
     try {
       ctx.notify('Importing image…');
-      const res = await fetch(item.fullUrl);
+      // Strip referrer — some CDNs (Wikimedia, Flickr) reject third-party Referers.
+      let res = await fetch(item.fullUrl, { referrerPolicy: 'no-referrer' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      const name = item.name || `${pluginId} · ${item.attribution || item.id}`;
       ctx.importImage(blob, name);
       ctx.notify('Imported.');
     } catch (err) {
+      // fullUrl may be CORS-blocked (e.g. Flickr CDN). Fall back to the
+      // thumbnail URL which often goes through a CORS-friendly proxy.
+      if (item.thumbUrl && item.thumbUrl !== item.fullUrl) {
+        try {
+          const res2 = await fetch(item.thumbUrl, { referrerPolicy: 'no-referrer' });
+          if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+          const blob2 = await res2.blob();
+          ctx.importImage(blob2, name);
+          ctx.notify('Imported (thumbnail — source CDN blocked full-res).');
+          return;
+        } catch { /* fall through to error */ }
+      }
       ctx.notify(`Import failed: ${err.message}`);
     }
   }
+
+  // ---------- Column count knob ----------
+  const colKnob = container.querySelector('[data-col-knob]');
+  function updateColKnobUI() {
+    colKnob?.querySelectorAll('.browsable-col-btn').forEach((btn) => {
+      btn.classList.toggle('active', parseInt(btn.dataset.cols, 10) === COLUMN_COUNT);
+    });
+  }
+  function setColumnCount(n) {
+    if (n < 1 || n > 5 || n === COLUMN_COUNT) return;
+    COLUMN_COUNT = n;
+    try { localStorage.setItem(STORAGE_KEY, String(n)); } catch {}
+    updateColKnobUI();
+    const activeTab = container.querySelector('.browsable-tab.active')?.dataset.tab;
+    if (activeTab === 'search') redistributeGrid(searchGrid);
+    else if (activeTab === 'favorites') redistributeGrid(favGrid);
+    else if (activeTab === 'folders' && !folderGrid.hidden) redistributeGrid(folderGrid);
+  }
+  colKnob?.querySelectorAll('.browsable-col-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setColumnCount(parseInt(btn.dataset.cols, 10)));
+  });
+  updateColKnobUI();
+
+  // Kick off curated preview feed immediately.
+  loadCurated();
 
   return {
     selectTab,

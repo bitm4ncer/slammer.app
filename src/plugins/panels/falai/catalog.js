@@ -16,9 +16,57 @@
 // image URLs. Default is 'images[].url'. Some models use { image: { url } }
 // (single image) — they need outputPath: 'image.url'.
 
-export const CATEGORIES = ['edit', 'stylize', 'upscale', 'background'];
+export const CATEGORIES = ['generate', 'edit', 'stylize', 'upscale', 'background'];
 
 export const CATALOG = [
+  // ---------- Generate (LoRA-based text-to-image) ----------
+  {
+    id: '90sbadtrip',
+    endpoint: 'fal-ai/flux-lora',
+    name: '90s Bad Trip',
+    category: 'generate',
+    cost: 0.035,
+    description: 'Trippy 90s bad CGI aesthetic — melting chrome, neon grids, early 3D renders. LoRA by markredito.',
+    fields: [
+      { key: 'prompt', type: 'textarea', label: 'Prompt', required: true, placeholder: 'a melting chrome skull floating over a neon purple grid', rows: 3 },
+      { key: 'image_url', type: 'image', label: 'Image (optional)', required: false },
+      { key: 'strength', type: 'slider', label: 'Img Strength', min: 0, max: 1, step: 0.05, default: 0.85 },
+      { key: 'lora_scale', type: 'slider', label: 'LoRA Strength', min: 0.5, max: 2, step: 0.1, default: 1.3 },
+      { key: 'image_size', type: 'enum', label: 'Size', options: ['square_hd', 'landscape_4_3', 'landscape_16_9', 'portrait_4_3', 'portrait_16_9'], default: 'landscape_4_3' },
+      { key: 'num_inference_steps', type: 'slider', label: 'Steps', min: 10, max: 50, step: 1, default: 28 },
+      { key: 'guidance_scale', type: 'slider', label: 'Guidance', min: 1, max: 10, step: 0.1, default: 3.5 },
+      { key: 'num_images', type: 'enum', label: 'Variants', options: [1, 2, 4], default: 1 },
+      { key: 'output_format', type: 'enum', label: 'Format', options: ['png', 'jpeg'], default: 'png' },
+    ],
+    // The LoRA is hosted on HuggingFace. `prepareInput` injects the loras array
+    // and auto-prepends the TRP90S trigger word so the user doesn't have to.
+    // If an image is provided, switches to the img2img endpoint automatically.
+    prepareInput(values) {
+      const { lora_scale, strength, prompt, image_url, ...rest } = values;
+      const trigger = 'TRP90S';
+      const finalPrompt = prompt && !prompt.toUpperCase().includes(trigger)
+        ? `${trigger} ${prompt}`
+        : prompt;
+      const loras = [{
+        path: 'https://huggingface.co/markredito/90sbadtrip/resolve/main/lora.safetensors',
+        scale: lora_scale ?? 1.3,
+      }];
+      // If an image was dropped, route to the img2img endpoint.
+      if (image_url) {
+        return {
+          __endpoint: 'fal-ai/flux-lora/image-to-image',
+          ...rest,
+          prompt: finalPrompt,
+          image_url,
+          strength: strength ?? 0.85,
+          loras,
+        };
+      }
+      // Text-to-image — drop the unused img2img fields.
+      return { ...rest, prompt: finalPrompt, loras };
+    },
+  },
+
   // ---------- Edit ----------
   {
     id: 'fal-ai/nano-banana/edit',

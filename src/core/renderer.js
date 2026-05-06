@@ -3,8 +3,9 @@
 import Konva from 'konva';
 import { getPlugin } from '../plugins/registry.js';
 import { findFont } from '../ui/typography/font-sources.js';
-import { rasterizeVectorLayer, translatePathD } from './vector-renderer.js';
+import { rasterizeVectorLayer, rasterizeVectorGroup, translatePathD } from './vector-renderer.js';
 import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
+import { getSelection, onSelectionChange } from '../ui/selection-state.js';
 
 function resolveFontMeta(text) {
   if (!text) return null;
@@ -124,7 +125,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
   function attachTransformer(node) {
     ensureTransformer();
-    transformer.nodes(node ? [node] : []);
+    transformer.nodes(node ? (Array.isArray(node) ? node : [node]) : []);
     // Tint handles using live --ctx-accent (which already respects the
     // "custom layer colours" setting set in main.js).
     if (node) {
@@ -138,6 +139,114 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     transformer.moveToTop();
     contentLayer.batchDraw();
   }
+
+  // Build the Konva node array for the current selection-state set —
+  // skips locked / hidden layers + FX layers (no transformer).
+  function selectionNodes() {
+    const sel = getSelection();
+    const out = [];
+    for (const id of sel) {
+      const layer = document.findLayer(id);
+      if (!layer || layer.type === 'fx' || layer.locked || !layer.visible) continue;
+      const st = layerState.get(id);
+      if (st && st.group) out.push(st.group);
+    }
+    return out;
+  }
+
+  // Per-layer dashed outlines for multi-selection. The Konva.Transformer
+  // shows ONE union bounding box + handles; these outlines tell the
+  // user WHICH layers are part of the selection (matches Figma).
+  let selectionOverlayLayer = null;
+  function ensureSelectionOverlay() {
+    if (selectionOverlayLayer) return selectionOverlayLayer;
+    selectionOverlayLayer = new Konva.Layer({ listening: false });
+    stage.add(selectionOverlayLayer);
+    return selectionOverlayLayer;
+  }
+  function redrawSelectionOutlines() {
+    const layer = ensureSelectionOverlay();
+    layer.destroyChildren();
+    const sel = getSelection();
+    const accent = getComputedStyle(window.document.documentElement)
+      .getPropertyValue('--primary').trim() || '#8aff8c';
+    // Build the set of layers we want to outline:
+    //   • Every selected layer (multi-select primary outlines).
+    //   • Every descendant of any selected group (subdued "part of
+    //     selection hierarchy" outlines so the user can see which leaves
+    //     fall under a selected group).
+    // Layers WITHOUT extras get no outline when selection size === 1
+    // (the Transformer alone is enough).
+    const primaryIds = new Set(sel);
+    const childIds = new Set();
+    for (const id of sel) {
+      const l = document.findLayer(id);
+      if (!l || l.type !== 'group') continue;
+      for (const desc of (document.descendantsOf?.(id) || [])) {
+        if (!primaryIds.has(desc.id)) childIds.add(desc.id);
+      }
+    }
+    const showPrimaries = sel.size > 1 || (sel.size === 1 && childIds.size > 0);
+    if (showPrimaries) {
+      for (const id of primaryIds) {
+        const l = document.findLayer(id);
+        if (!l || l.type === 'fx' || !l.visible) continue;
+        const st = layerState.get(id);
+        if (!st || !st.group) continue;
+        const r = st.group.getClientRect({ relativeTo: contentLayer });
+        if (!r || !(r.width > 0) || !(r.height > 0)) continue;
+        layer.add(new Konva.Rect({
+          x: r.x, y: r.y, width: r.width, height: r.height,
+          stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
+          dash: [4, 3], listening: false,
+        }));
+      }
+    }
+    // Subdued outlines for descendants of selected groups — communicate
+    // the selection's "footprint" without drowning out the primary one.
+    for (const id of childIds) {
+      const l = document.findLayer(id);
+      if (!l || l.type === 'fx' || !l.visible) continue;
+      const st = layerState.get(id);
+      if (!st || !st.group) continue;
+      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      if (!r || !(r.width > 0) || !(r.height > 0)) continue;
+      layer.add(new Konva.Rect({
+        x: r.x, y: r.y, width: r.width, height: r.height,
+        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
+        opacity: 0.45, dash: [2, 4], listening: false,
+      }));
+    }
+    layer.moveToTop();
+    layer.batchDraw();
+  }
+
+  // Refresh the transformer based on selection-state + the currently
+  // active layer. Called on selection change AND on tool change AND on
+  // layer:active. Single rule: selection > 1 → multi-node Transformer;
+  // selection = 1 → just the active layer; selection = 0 → no Transformer
+  // (or fall back to active layer if any).
+  function syncTransformer() {
+    const tool = getTool();
+    if (tool === 'directSelect') { attachTransformer(null); return; }
+    const sel = getSelection();
+    if (sel.size > 1) {
+      const nodes = selectionNodes();
+      attachTransformer(nodes.length ? nodes : null);
+      return;
+    }
+    const layer = document.activeLayer;
+    if (!layer || layer.type === 'fx' || layer.locked) { attachTransformer(null); return; }
+    const st = layerState.get(layer.id);
+    attachTransformer(st ? st.group : null);
+  }
+
+  onSelectionChange(() => { syncTransformer(); redrawSelectionOutlines(); });
+  // Re-draw outlines whenever a selected layer is dragged or its
+  // transform changes (so the dashed rect tracks the layer live).
+  contentLayer.on('dragmove transform', () => {
+    if (getSelection().size > 1) redrawSelectionOutlines();
+  });
 
   function scheduleDraw() {
     if (pendingRedraw) return;
@@ -222,6 +331,47 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       // FX layer's "source" is the composite of every visible layer beneath it.
       // Re-computed lazily in paintLayerSync; this initial pass returns an empty
       // 1×1 placeholder so the layer has valid dimensions before the first paint.
+      const c = makeCanvas(1, 1);
+      st.naturalSize = { w: 1, h: 1 };
+      return c.getContext('2d').getImageData(0, 0, 1, 1);
+    }
+    if (layer.type === 'group') {
+      // Vector-only group: rasterise the union of descendant paths +
+      // group's vectorEffects (Metaball, Boolean, etc.) into one
+      // bitmap. Hide individual children so they don't double-render.
+      // Mixed-type group: fall through to the empty-placeholder branch
+      // and render via Konva nesting (child Konva.Groups visible).
+      if (document.isVectorOnlyGroup(layer.id) && (layer.vectorEffects || []).length) {
+        const { imageData, naturalSize, pathBounds, pad } = rasterizeVectorGroup(layer, document.findLayer);
+        st.naturalSize = naturalSize;
+        st.vectorPathBounds = pathBounds;
+        st.vectorPad = pad;
+        st.group.offset({ x: 0, y: 0 });
+        if (st.image) {
+          st.image.position({
+            x: pathBounds.x - (layer.transform?.x || 0) - pad,
+            y: pathBounds.y - (layer.transform?.y || 0) - pad,
+          });
+        }
+        // Hide every direct child's Konva.Group while the composite is
+        // active so they don't paint over the group's bitmap.
+        for (const cid of (layer.childIds || [])) {
+          const cst = layerState.get(cid);
+          if (cst && cst.group) cst.group.visible(false);
+        }
+        return imageData;
+      }
+      // Mixed group OR vector-only group with no group-level vectorEffects
+      // → use Konva nesting: children render normally inside the group.
+      // Make sure child Konva.Groups are visible (in case we'd hidden them
+      // in a previous paint when group-level effects were active).
+      for (const cid of (layer.childIds || [])) {
+        const cst = layerState.get(cid);
+        if (cst && cst.group) {
+          const child = document.findLayer(cid);
+          if (child) cst.group.visible(child.visible !== false);
+        }
+      }
       const c = makeCanvas(1, 1);
       st.naturalSize = { w: 1, h: 1 };
       return c.getContext('2d').getImageData(0, 0, 1, 1);
@@ -614,7 +764,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const st = layerState.get(l.id);
       if (!st) return;
       st.group.visible(!!l.visible);
-      if (l.type === 'fx') {
+      if (l.type === 'fx' && st.image) {
         st.image.listening(false);
         st.group.listening(false);
         st.group.draggable(false);
@@ -632,7 +782,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       rotation: layer.transform.rotation,
       opacity: layer.opacity,
       visible: layer.visible,
-      draggable: true,
+      // Konva auto-drag is OFF across the board — canvas-view's manual
+      // gesture handler drives all layer translation (so an unselected
+      // layer's mousedown can't clobber the active selection's drag).
+      // syncLayerInteractivity flips this in concert with the lock + tool
+      // state; setting it false here at creation time guarantees the
+      // initial state is correct even before the first sync.
+      draggable: false,
       name: 'slammer-layer',
     });
     // Initialise with finite dimensions so the Transformer (which can attach
@@ -643,16 +799,39 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // with the rasterised size on the first paint.
     const initW = Math.max(1, layer.naturalSize?.w | 0 || 1);
     const initH = Math.max(1, layer.naturalSize?.h | 0 || 1);
+    // Every layer (including groups, for the vector-only composite
+    // path) gets a Konva.Image. For mixed groups it stays empty + the
+    // children render via nesting.
     const image = new Konva.Image({
       image: null,
-      listening: true,
+      listening: layer.type !== 'group',  // groups don't intercept clicks; children do
       globalCompositeOperation: layer.blendMode,
       width: initW,
       height: initH,
     });
     image._slammerLayerId = layer.id;
     group.add(image);
-    contentLayer.add(group);
+    // Attach to parent: nested under another group's Konva.Group when
+    // this layer is a member of one; otherwise straight to contentLayer.
+    if (layer.parentGroupId) {
+      const parentSt = layerState.get(layer.parentGroupId);
+      if (parentSt && parentSt.group) parentSt.group.add(group);
+      else contentLayer.add(group);
+    } else {
+      contentLayer.add(group);
+    }
+    // If this is a freshly-created group, re-parent any pre-existing
+    // children's Konva.Groups into us. Necessary for Ctrl+G grouping
+    // existing layers — they were already in contentLayer and need to
+    // move into this group's Konva node.
+    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
+      for (const cid of layer.childIds) {
+        const childSt = layerState.get(cid);
+        if (childSt && childSt.group && childSt.group.getParent() !== group) {
+          childSt.group.moveTo(group);
+        }
+      }
+    }
 
     const st = {
       group,
@@ -679,6 +858,22 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         }
         // Fallback: use the full image while the first paint hasn't happened.
         return { x: 0, y: 0, width: image.width(), height: image.height() };
+      };
+    }
+    // Group layers carry a Konva.Image purely for the vector-only
+    // composite path (Metaball etc.). When no composite is active the
+    // image holds a 1×1 placeholder dstCanvas — its bbox would inflate
+    // the group's selection rectangle out to (0, 0). Override so the
+    // placeholder contributes ZERO bbox; the real bitmap path falls
+    // through to the default getSelfRect once the dstCanvas has real
+    // dimensions.
+    if (layer.type === 'group') {
+      image.getSelfRect = function () {
+        const dst = st.dstCanvas;
+        if (dst && dst.width > 1 && dst.height > 1) {
+          return { x: 0, y: 0, width: image.width(), height: image.height() };
+        }
+        return { x: 0, y: 0, width: 0, height: 0 };
       };
     }
 
@@ -719,10 +914,27 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   }
 
   function syncZOrder() {
-    document.layers.forEach((layer, idx) => {
+    // Pass 1: top-level layers — their Konva.Groups are direct
+    // children of contentLayer, so zIndex is the contiguous index
+    // among non-grouped layers.
+    let topIdx = 0;
+    for (const layer of document.layers) {
+      if (layer.parentGroupId) continue;
       const st = layerState.get(layer.id);
-      if (st) st.group.zIndex(idx);
-    });
+      if (st) st.group.zIndex(topIdx);
+      topIdx++;
+    }
+    // Pass 2: each group — order children's Konva.Groups within the
+    // parent's Konva.Group based on group.childIds. childIds[0] =
+    // bottom of stack (drawn first); [N-1] = top (drawn last). Matches
+    // the document.layers convention so panel reordering propagates.
+    for (const layer of document.layers) {
+      if (layer.type !== 'group') continue;
+      (layer.childIds || []).forEach((cid, i) => {
+        const cst = layerState.get(cid);
+        if (cst && cst.group && cst.group.getParent()) cst.group.zIndex(i);
+      });
+    }
     if (transformer) transformer.moveToTop();
   }
 
@@ -731,7 +943,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     if (!st) return;
     st.group.visible(layer.visible);
     st.group.opacity(layer.opacity);
-    st.image.globalCompositeOperation(layer.blendMode);
+    if (st.image) st.image.globalCompositeOperation(layer.blendMode);
   }
 
   function applyTransform(layer) {
@@ -740,6 +952,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.group.position({ x: layer.transform.x, y: layer.transform.y });
     st.group.scale({ x: layer.transform.scaleX, y: layer.transform.scaleY });
     st.group.rotation(layer.transform.rotation);
+    // Vector layers position the rasterised image with an offset that
+    // depends on layer.transform.x/y (so canvas-pixel for path-coord lx
+    // lands at world lx). Moving the group without re-computing image.x
+    // would shift the visible path by the transform delta. Recompute
+    // here so e.g. setLayerTransform(...) on a freshly-pencilled layer
+    // doesn't make the path jump.
+    if (layer.type === 'vector' && st.vectorPathBounds && st.vectorPad != null) {
+      const pb = st.vectorPathBounds;
+      const pad = st.vectorPad;
+      st.image.position({
+        x: pb.x - layer.transform.x - pad,
+        y: pb.y - layer.transform.y - pad,
+      });
+    }
     scheduleDraw();
   }
 
@@ -780,31 +1006,43 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // pen / pencil — empty-canvas mis-clicks shouldn't slide the layer.
   function syncLayerInteractivity() {
     const tool = getTool();
-    const lock = tool === 'directSelect' || tool === 'pen' || tool === 'pencil' || tool.startsWith('shape:');
+    // Konva's per-node auto-drag is disabled across the board now —
+    // canvas-view's manual gesture handler drives layer movement so
+    // that mousedown-on-overlapping-layer no longer auto-selects +
+    // drags the wrong layer. The Konva.Transformer's anchor handles
+    // still drive scale/rotate (those use Konva's transform pipeline,
+    // not the body drag).
     layerState.forEach((st, id) => {
       const layer = document.findLayer(id);
       if (!layer || layer.type === 'fx') { st.group.draggable(false); return; }
-      st.group.draggable(!lock);
+      st.group.draggable(false);
+      // Locked layers don't intercept clicks either (the click falls
+      // through to whatever is beneath, matching Figma). Edit tools
+      // (directSelect / pen / pencil / shape) also keep listening so
+      // their own canvas handlers can hit-test layer Konva nodes.
+      void tool;
+      st.group.listening(!layer.locked);
     });
   }
   onToolChange(() => {
-    const layer = document.activeLayer;
     syncLayerInteractivity();
-    if (!layer) return;
-    const st = layerState.get(layer.id);
-    if (layer.type === 'fx' || getTool() === 'directSelect') attachTransformer(null);
-    else attachTransformer(st ? st.group : null);
+    syncTransformer();
   });
 
   // Subscribe to document changes
   document.subscribe(async (event) => {
     switch (event.type) {
-      case 'layer:added':
-        await createLayerNodes(event.layer);
+      case 'layer:added': {
+        try {
+          await createLayerNodes(event.layer);
+        } catch (err) {
+          console.error(`[renderer] failed to create layer nodes for ${event.layer.id}:`, err);
+        }
         repaintFxAbove(event.layer.id);
         syncFxVisibility();
         syncLayerInteractivity();
         break;
+      }
       case 'layer:removed': {
         const removedIdx = -1; // already removed; just refresh all FX
         destroyLayerNodes(event.id);
@@ -813,6 +1051,53 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           if (st) { st.dirtyFromIndex = 0; paintLayer(l, st); }
         }
         syncFxVisibility();
+        break;
+      }
+      case 'group:childrenChanged': {
+        // A group gained or lost a child — re-parent the affected
+        // layers' Konva.Groups so the visual nesting matches the model.
+        const group = document.findLayer(event.layerId);
+        if (!group) break;
+        const groupSt = layerState.get(group.id);
+        if (!groupSt) break;
+        // Re-attach every current child under the group's Konva.Group.
+        for (const cid of group.childIds || []) {
+          const childSt = layerState.get(cid);
+          if (childSt && childSt.group && childSt.group.getParent() !== groupSt.group) {
+            childSt.group.moveTo(groupSt.group);
+          }
+        }
+        // Layers that USED to be children but were removed should pop
+        // back to contentLayer. Walk every layer and check parentage.
+        for (const l of document.layers) {
+          if (l.id === group.id) continue;
+          if (l.parentGroupId === group.id) continue;  // still a child
+          const st = layerState.get(l.id);
+          if (!st) continue;
+          if (st.group.getParent() === groupSt.group) {
+            st.group.moveTo(contentLayer);
+          }
+        }
+        // Reordering childIds (or adding/removing) changes the visual
+        // z-stack inside the group → re-run the z-order pass.
+        syncZOrder();
+        scheduleDraw();
+        break;
+      }
+      case 'group:dissolved': {
+        // Group's children should already be reattached at the doc-model
+        // level (parentGroupId nulled by dissolveGroup). Move their Konva
+        // nodes back to contentLayer before the group's destroyLayerNodes
+        // runs in the imminent layer:removed event.
+        for (const l of document.layers) {
+          if (l.parentGroupId) continue;
+          const st = layerState.get(l.id);
+          if (!st) continue;
+          if (st.group.getParent() !== contentLayer) {
+            st.group.moveTo(contentLayer);
+          }
+        }
+        scheduleDraw();
         break;
       }
       case 'layer:reordered':
@@ -837,6 +1122,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           repaintFxAbove(event.id);
           if (event.prop === 'visible') syncFxVisibility();
         }
+        // Lock toggle → re-evaluate draggability + Transformer (a freshly
+        // locked layer should drop its handles + cursor).
+        if (event.prop === 'locked') {
+          syncLayerInteractivity();
+          syncTransformer();
+          redrawSelectionOutlines();
+        }
         scheduleDraw();
         break;
       }
@@ -845,6 +1137,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (layer) applyTransform(layer);
         // Moving / scaling / rotating an underlying layer changes the composite.
         repaintFxAbove(event.id);
+        if (getSelection().size > 1) redrawSelectionOutlines();
         break;
       }
       case 'layer:sourceChanged': {
@@ -862,29 +1155,28 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         break;
       }
       case 'layer:textChanged':
-      case 'layer:vectorChanged': {
-        const layer = document.findLayer(event.id);
+      case 'layer:vectorChanged':
+      case 'vectorEffect:added':
+      case 'vectorEffect:removed':
+      case 'vectorEffect:reordered':
+      case 'vectorEffect:propChanged': {
+        const targetId = event.id || event.layerId;
+        const layer = document.findLayer(targetId);
         if (!layer) break;
-        const st = layerState.get(event.id);
+        const st = layerState.get(targetId);
         if (!st) break;
         const imgData = await rasterizeSource(layer, st);
         if (imgData) {
           st.sourceImageData = imgData;
           st.dirtyFromIndex = 0;
           paintLayer(layer, st);
-          repaintFxAbove(event.id);
+          repaintFxAbove(targetId);
         }
         break;
       }
       case 'layer:active': {
-        const layer = document.findLayer(event.id);
-        const st = layer ? layerState.get(layer.id) : null;
-        // FX layers are pseudo-layers — no selection handles, no on-canvas
-        // transform. They're just position markers in the stack.
-        // Direct Selection mode also hides the transformer (anchor handles
-        // will appear in 13b).
-        if (layer?.type === 'fx' || getTool() === 'directSelect') attachTransformer(null);
-        else attachTransformer(st ? st.group : null);
+        // Selection-state owns the Transformer wiring; just resync.
+        syncTransformer();
         break;
       }
       case 'effect:added':
@@ -912,16 +1204,28 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (layer.type !== 'fx') repaintFxAbove(layer.id);
         break;
       }
-      case 'doc:loaded':
+      case 'doc:loaded': {
         // Tear down all layer state, then rebuild from document.
         for (const id of Array.from(layerState.keys())) destroyLayerNodes(id);
-        for (const layer of document.layers) await createLayerNodes(layer);
+        for (const layer of document.layers) {
+          try {
+            await createLayerNodes(layer);
+          } catch (err) {
+            console.error(`[renderer] failed to create layer nodes for ${layer.id}:`, err);
+          }
+        }
+        // Apply lock / tool-driven draggability state to the freshly
+        // recreated nodes — without this, a reloaded project leaves
+        // every layer Konva-draggable until the user flips a tool.
+        syncLayerInteractivity();
+        syncFxVisibility();
         if (document.activeLayerId) {
           const st = layerState.get(document.activeLayerId);
           if (st) attachTransformer(st.group);
         }
         scheduleDraw();
         break;
+      }
     }
   });
 
@@ -961,6 +1265,12 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     return idx >= 0 && idx < topmostFxIdx;
   }
 
+  // Multi-drag bookkeeping. Konva fires drag events on the ONE node
+  // the user grabbed; the other selected layers don't move on their own.
+  // We record every selected layer's start position on dragstart, then
+  // on each dragmove apply the dragged layer's delta to the rest.
+  let multiDragSession = null;
+
   function bindTransformerEvents() {
     contentLayer.on('dragstart transformstart', (e) => {
       const target = e.target;
@@ -968,17 +1278,56 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
       if (!layer) return;
       if (layer.type === 'fx') return;
+      // If the dragged layer is part of a multi-selection, capture every
+      // member's start position so dragmove can keep them in lockstep.
+      // Only translation drags get this treatment — Transformer-driven
+      // scale/rotate (transformstart) already affects all attached nodes
+      // via Konva's multi-node Transformer math.
+      if (e.type === 'dragstart' && getSelection().size > 1 && getSelection().has(layer.id)) {
+        const starts = new Map();
+        for (const id of getSelection()) {
+          const l = document.findLayer(id);
+          if (!l || l.type === 'fx' || l.locked) continue;
+          const st = layerState.get(id);
+          if (!st || !st.group) continue;
+          starts.set(id, { x: st.group.x(), y: st.group.y() });
+        }
+        multiDragSession = { anchorId: layer.id, starts };
+      } else {
+        multiDragSession = null;
+      }
       // Only bother hiding when there's actually an FX layer above this one.
       if (!isLayerUnderTopFx(layer.id)) return;
       liveDragLayerId = layer.id;
       const st = layerState.get(layer.id);
-      if (st) st.image.opacity(0);
+      if (st && st.image) st.image.opacity(0);
     });
     contentLayer.on('dragmove transform', (e) => {
       const target = e.target;
       const layerId = target.id?.() || target._slammerLayerId;
       const layer = document.findLayer(layerId) || (target.parent && document.findLayer(target.parent.id?.()));
       if (layer?.type === 'fx') return;
+      // Multi-drag: replicate the anchor's delta onto every OTHER
+      // selected layer's Konva.Group. Konva fires the events only on
+      // the node the user grabbed, so this is how the rest move.
+      if (multiDragSession && layer && multiDragSession.anchorId === layer.id) {
+        const start = multiDragSession.starts.get(layer.id);
+        if (start) {
+          const st = layerState.get(layer.id);
+          if (st) {
+            const dx = st.group.x() - start.x;
+            const dy = st.group.y() - start.y;
+            for (const [otherId, s0] of multiDragSession.starts) {
+              if (otherId === layer.id) continue;
+              const ost = layerState.get(otherId);
+              if (!ost || !ost.group) continue;
+              ost.group.position({ x: s0.x + dx, y: s0.y + dy });
+            }
+            // Per-layer outlines should follow the live drag.
+            if (typeof redrawSelectionOutlines === 'function') redrawSelectionOutlines();
+          }
+        }
+      }
       scheduleLiveFxRecompute();
     });
     contentLayer.on('dragend transformend', (e) => {
@@ -996,6 +1345,49 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (transformer) transformer.forceUpdate();
         scheduleDraw();
         return;
+      }
+
+      // Multi-drag: commit every OTHER selected layer too. Their Konva
+      // groups were translated live in dragmove; now write each one's
+      // new transform to the doc + bake the delta into vector path d
+      // (same translation-bake logic the single-layer branch below uses).
+      // We do this BEFORE the anchor's own commit so a vector anchor's
+      // early `return` in the vector branch can't skip it.
+      if (multiDragSession && multiDragSession.anchorId === layer.id) {
+        for (const [otherId, s0] of multiDragSession.starts) {
+          if (otherId === layer.id) continue;
+          const oth = document.findLayer(otherId);
+          const ost = layerState.get(otherId);
+          if (!oth || !ost) continue;
+          if (oth.type === 'vector') {
+            const dx = ost.group.x() - oth.transform.x;
+            const dy = ost.group.y() - oth.transform.y;
+            if (dx !== 0 || dy !== 0) {
+              const newPaths = oth.vector.paths.map((rec) => ({
+                ...rec,
+                d: translatePathD(rec.d, dx, dy),
+              }));
+              document.setLayerTransform(oth.id, {
+                x: ost.group.x(),
+                y: ost.group.y(),
+                scaleX: ost.group.scaleX(),
+                scaleY: ost.group.scaleY(),
+                rotation: ost.group.rotation(),
+              });
+              document.setVectorPaths(oth.id, newPaths);
+              void s0;  // unused — kept on the iterator for future deltas vs start.
+              continue;
+            }
+          }
+          document.setLayerTransform(oth.id, {
+            x: ost.group.x(),
+            y: ost.group.y(),
+            scaleX: ost.group.scaleX(),
+            scaleY: ost.group.scaleY(),
+            rotation: ost.group.rotation(),
+          });
+        }
+        multiDragSession = null;
       }
 
       // Vector layers store path d-coords in WORLD space (creation-time
@@ -1046,7 +1438,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       // covers the final position.
       if (liveDragLayerId) {
         const st = layerState.get(liveDragLayerId);
-        if (st) st.image.opacity(1);
+        if (st && st.image) st.image.opacity(1);
         liveDragLayerId = null;
         scheduleDraw();
       }
@@ -1062,7 +1454,35 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     reprocessAll,
     scheduleDraw,
     flattenVisible,
+    rasterizeLayerToBlob,
+    // Exposed so canvas-view's manual gesture handler can refresh the
+    // overlay during a drag (Konva auto-drag is off, so the renderer's
+    // contentLayer dragmove listener doesn't fire).
+    redrawSelectionOutlines,
+    scheduleLiveFxRecompute,
   };
+
+  // Read-only export of a single layer's processed pixels as a Blob. Used by
+  // panel plugins that send a layer to an external service (Replicate, etc.).
+  // Downscales when the layer's longest side exceeds maxSide.
+  async function rasterizeLayerToBlob(layerId, { mimeType = 'image/png', maxSide = 2048, quality = 0.92 } = {}) {
+    const st = layerState.get(layerId);
+    if (!st || !st.dstCanvas) return null;
+    const src = st.dstCanvas;
+    const sw = src.width;
+    const sh = src.height;
+    if (!sw || !sh) return null;
+
+    const longest = Math.max(sw, sh);
+    const sc = longest > maxSide ? maxSide / longest : 1;
+    const dw = Math.max(1, Math.round(sw * sc));
+    const dh = Math.max(1, Math.round(sh * sc));
+
+    const out = makeCanvas(dw, dh);
+    const octx = out.getContext('2d');
+    octx.drawImage(src, 0, 0, dw, dh);
+    return await new Promise((resolve) => out.toBlob(resolve, mimeType, quality));
+  }
 
   // ---------- Helpers exposed for export-png ----------
   // `region` (optional) = { x, y, w, h } in world coordinates; if provided, the

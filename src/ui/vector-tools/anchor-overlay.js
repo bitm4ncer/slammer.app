@@ -52,6 +52,22 @@ export function initAnchorOverlay({ stage, document: doc }) {
   stage.add(overlay);
   let liveDragOff = null;
   let anchorDragging = false;
+
+  // Cursor helper — give every draggable handle a `grab` cursor on hover
+  // and `grabbing` while it's being dragged. Konva doesn't manage the
+  // container cursor itself; we toggle stage.container().style.cursor
+  // directly. Restoring on leave/dragend keeps it from sticking.
+  function wireGrabCursor(node) {
+    const el = stage.container();
+    node.on('mouseenter', () => {
+      if (!anchorDragging) el.style.cursor = 'grab';
+    });
+    node.on('mouseleave', () => {
+      if (!anchorDragging) el.style.cursor = '';
+    });
+    node.on('dragstart', () => { el.style.cursor = 'grabbing'; });
+    node.on('dragend',   () => { el.style.cursor = ''; });
+  }
   // Primary anchor (used for the panel's active-path sync).
   let selected = null;
   // Multi-anchor selection (Shift-click extends; arrow keys nudge all).
@@ -139,10 +155,14 @@ export function initAnchorOverlay({ stage, document: doc }) {
         data: rec.d,
         x: -offX, y: -offY,
         stroke: accent,
-        strokeWidth: 1,
+        strokeWidth: 2.5,
         strokeScaleEnabled: false,
-        dash: [3, 3],
-        hitStrokeWidth: 12,
+        // Solid bold line in edit mode — was dashed/thin and got lost
+        // against the rasterised stroke beneath it.
+        hitStrokeWidth: 14,
+        shadowColor: accent,
+        shadowBlur: 4,
+        shadowOpacity: 0.55,
         listening: true,
       });
       outline.on('dblclick dbltap', (e) => {
@@ -196,16 +216,16 @@ export function initAnchorOverlay({ stage, document: doc }) {
       sub.add(new Konva.Line({
         name: 'hi-line',
         points: [px, py, px + hi.x, py + hi.y],
-        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
-        opacity: 0.55, listening: false,
+        stroke: accent, strokeWidth: 1.5, strokeScaleEnabled: false,
+        opacity: 0.7, listening: false,
       }));
     }
     if (ho && (ho.x || ho.y)) {
       sub.add(new Konva.Line({
         name: 'ho-line',
         points: [px, py, px + ho.x, py + ho.y],
-        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
-        opacity: 0.55, listening: false,
+        stroke: accent, strokeWidth: 1.5, strokeScaleEnabled: false,
+        opacity: 0.7, listening: false,
       }));
     }
 
@@ -230,14 +250,14 @@ export function initAnchorOverlay({ stage, document: doc }) {
     }
 
     // Anchor square.
-    const half = isSelected ? 4.5 : 3.5;
+    const half = isSelected ? 8 : 7;
     const anchor = new Konva.Rect({
       name: 'anchor',
       x: px - half, y: py - half,
       width: half * 2, height: half * 2,
       fill: isSelected ? accent : '#fff',
       stroke: '#0a0a0a',
-      strokeWidth: 1, strokeScaleEnabled: false,
+      strokeWidth: 1.4, strokeScaleEnabled: false,
       draggable: true,
     });
     // Inflate the hit zone so the user doesn't need pixel-perfect aim.
@@ -248,6 +268,7 @@ export function initAnchorOverlay({ stage, document: doc }) {
       ctx.closePath();
       ctx.fillStrokeShape(shape);
     });
+    wireGrabCursor(anchor);
     anchor.on('mousedown', (e) => { e.cancelBubble = true; });
     anchor.on('click', (e) => {
       e.cancelBubble = true;
@@ -322,9 +343,9 @@ export function initAnchorOverlay({ stage, document: doc }) {
   function makeGradientDot(worldPt, fill, stroke, layer, pathIdx, kind, side, bounds, offX, offY) {
     const dot = new Konva.Circle({
       x: worldPt.x - offX, y: worldPt.y - offY,
-      radius: 5,
+      radius: 9,
       fill, stroke,
-      strokeWidth: 1.4, strokeScaleEnabled: false,
+      strokeWidth: 1.8, strokeScaleEnabled: false,
       draggable: true,
     });
     dot.hitFunc(function (ctx, shape) {
@@ -334,6 +355,7 @@ export function initAnchorOverlay({ stage, document: doc }) {
       ctx.closePath();
       ctx.fillStrokeShape(shape);
     });
+    wireGrabCursor(dot);
     dot.on('mousedown', (e) => { e.cancelBubble = true; });
     dot.on('dragstart', () => { anchorDragging = true; });
     dot.on('dragend', () => {
@@ -361,10 +383,10 @@ export function initAnchorOverlay({ stage, document: doc }) {
     const dot = new Konva.Circle({
       name: side === 'in' ? 'hi-dot' : 'ho-dot',
       x, y,
-      radius: 4,
+      radius: 7,
       fill: isAsym ? accent : '#fff',
       stroke: accent,
-      strokeWidth: 1,
+      strokeWidth: 1.6,
       strokeScaleEnabled: false,
       draggable: true,
     });
@@ -376,6 +398,7 @@ export function initAnchorOverlay({ stage, document: doc }) {
       ctx.closePath();
       ctx.fillStrokeShape(shape);
     });
+    wireGrabCursor(dot);
     dot.on('mousedown', (e) => { e.cancelBubble = true; });
     dot.on('click', (e) => {
       if (!e.evt.altKey) return;

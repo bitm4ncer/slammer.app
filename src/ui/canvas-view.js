@@ -6,8 +6,9 @@ import { getTool, setTool, onToolChange, TOOL_CURSORS } from './vector-tools/act
 import { attachShapeDrawer } from './vector-tools/shape-drawer.js';
 import { attachPenTool } from './vector-tools/pen-tool.js';
 import { attachPencilTool } from './vector-tools/pencil-tool.js';
-import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection } from './selection-state.js';
+import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection, onSelectionChange } from './selection-state.js';
 import { attachMarquee } from './marquee.js';
+import { translatePathD } from '../core/vector-renderer.js';
 
 // Restrict Konva drag-start to the left mouse button so middle-mouse pan
 // never accidentally drags overlay handles.
@@ -479,20 +480,49 @@ export function initCanvasView({ container, document, onImageDropped }) {
   let panning = false;
   let lastPan = null;
 
+  // Tracks the layer the cursor is currently over (in select tool).
+  // Drives the grab/grabbing cursor when over a draggable selected layer.
+  let hoverLayerId = null;
+  // True when the cursor sits inside the bbox of any selected layer —
+  // even if an unselected layer is rendered on top of that area. The
+  // grab cursor + drag gesture both honour this so the user can pick
+  // up a selected layer through an overlapping one.
+  let hoverOverSelected = false;
+
   function syncCursor() {
     if (panning) { container.style.cursor = 'grabbing'; return; }
     if (spaceDown) { container.style.cursor = 'grab'; return; }
+    // Active drag of the selection → closed-hand cursor.
+    if (pendingGesture && pendingGesture.dragging && pendingGesture.starts.size > 0) {
+      container.style.cursor = 'grabbing';
+      return;
+    }
+    // In Select tool, the cursor flips to open-hand when EITHER:
+    //   • it's hovering a layer that's part of the current selection, OR
+    //   • it's inside the bbox of a selected layer that another layer
+    //     happens to overlay (drag-through).
+    if (getTool() === 'select'
+        && ((hoverLayerId && getSelection().has(hoverLayerId)) || hoverOverSelected)) {
+      container.style.cursor = 'grab';
+      return;
+    }
     container.style.cursor = TOOL_CURSORS[getTool()] || '';
   }
   // Re-sync the cursor whenever the active tool changes.
   onToolChange(() => syncCursor());
+  // Re-sync the cursor when the selection changes — a layer just
+  // selected at the cursor's position should immediately show the grab
+  // affordance without requiring a fresh mousemove.
+  onSelectionChange(() => syncCursor());
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !isEditingText()) {
       spaceDown = true;
-      stage.find('.slammer-layer').forEach((g) => g.draggable(false));
-      // Space takes over for pan — kill any in-progress marquee.
+      // Per-node draggability is already off (manual gesture model);
+      // no need to flip it. Space takes over for pan, so cancel any
+      // in-progress marquee + selection drag.
       if (marquee.isActive()) marquee.cancel();
+      if (pendingGesture) pendingGesture = null;
       syncCursor();
       e.preventDefault();
     }
@@ -513,8 +543,9 @@ export function initCanvasView({ container, document, onImageDropped }) {
     if (e.code === 'Space') {
       spaceDown = false;
       panning = false;
-      // Restore draggable state on all layers.
-      stage.find('.slammer-layer').forEach((g) => g.draggable(true));
+      // Per-node Konva drag is permanently off in the new gesture model
+      // (canvas-view's manual handler drives selection drags). So no
+      // need to "restore" draggable here — used to flip it back on.
       syncCursor();
     }
   });
@@ -534,6 +565,73 @@ export function initCanvasView({ container, document, onImageDropped }) {
   const pencilTool = attachPencilTool({ stage, document });
   const marquee = attachMarquee({ stage, document });
 
+  // Manual gesture state — replaces Konva's per-node draggable so that
+  // mousedown on a layer NEVER auto-changes selection. Selection only
+  // updates on a clean click (mousedown + mouseup with no significant
+  // movement). Mousedown + drag moves the CURRENTLY SELECTED layers,
+  // regardless of which layer the cursor was over at mousedown — so
+  // grabbing the overlap region of two layers no longer hijacks the
+  // selection to whichever is on top.
+  const DRAG_THRESHOLD = 4;        // screen px before "click" becomes "drag"
+  let pendingGesture = null;       // { startWorld, hitLayerId, mods, dragging, starts: Map<id, {x, y, node}> }
+  // Group click-through drill state — Figma-style. Repeated clicks on
+  // the same leaf walk one level deeper through the parent-group chain
+  // (outermost group → … → leaf). Reset on click elsewhere.
+  let clickDrill = null;           // { leafId, depth }
+
+  // Build [outermost group, …, parent, leaf] from a leaf layer ID by
+  // walking parentGroupId. Used by the click-through drill.
+  function ancestorChain(leafId) {
+    const chain = [];
+    let cur = document.findLayer(leafId);
+    while (cur) {
+      chain.unshift(cur.id);
+      cur = cur.parentGroupId ? document.findLayer(cur.parentGroupId) : null;
+    }
+    return chain;
+  }
+
+  function findLayerIdUnder(target) {
+    let node = target;
+    while (node && node !== stage) {
+      const nid = node.id?.();
+      if (nid && document.findLayer(nid)) return nid;
+      node = node.getParent && node.getParent();
+    }
+    return null;
+  }
+
+  function snapshotSelectionPositions() {
+    const map = new Map();
+    for (const id of getSelection()) {
+      const layer = document.findLayer(id);
+      if (!layer || layer.type === 'fx' || layer.locked) continue;
+      const node = stage.findOne((n) => n.id?.() === id);
+      if (!node) continue;
+      map.set(id, { x: node.x(), y: node.y(), node });
+    }
+    return map;
+  }
+
+  // True when world `pt` lies geometrically inside the bbox of ANY
+  // currently-selected layer. Used so a mousedown over an OVERLAPPING
+  // unselected layer still triggers a drag of the selection underneath
+  // — Konva's hit-test would otherwise hand us the top-most layer.
+  function cursorInsideAnySelected(pt) {
+    for (const id of getSelection()) {
+      const layer = document.findLayer(id);
+      if (!layer || layer.type === 'fx' || layer.locked) continue;
+      const node = stage.findOne((n) => n.id?.() === id);
+      if (!node) continue;
+      const r = node.getClientRect({ relativeTo: contentLayer });
+      if (!r || !(r.width > 0) || !(r.height > 0)) continue;
+      if (pt.x >= r.x && pt.x <= r.x + r.width && pt.y >= r.y && pt.y <= r.y + r.height) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   stage.on('mousedown touchstart', (e) => {
     if (spaceDown || e.evt.button === 1) {
       panning = true;
@@ -551,61 +649,177 @@ export function initCanvasView({ container, document, onImageDropped }) {
     } else if (tool === 'pencil') {
       if (pencilTool.start(e)) { e.evt.preventDefault(); return; }
     }
-    // Activate layer immediately on mousedown so selection handles appear
-    // even when the user mouse-downs and drags in one motion (no clean click).
+    if (tool !== 'select') return;
     const target = e.target;
     if (target === stage) {
-      // Mousedown on empty stage in Select mode → start a marquee.
-      // Modifier-less drag clears existing multi-selection on commit
-      // (handled by the marquee module).
-      if (tool === 'select') {
-        if (marquee.start(e)) {
-          if (!e.evt.shiftKey && !e.evt.metaKey && !e.evt.ctrlKey) {
-            if (getSelection().size > 1) clearSelection();
-          }
-          e.evt.preventDefault();
-          return;
+      // Empty-stage mousedown → marquee. Modifier-less drag clears
+      // multi-selection on commit (the marquee module handles that).
+      // Reset the group-drill state — clicking outside breaks the
+      // "drill deeper" sequence.
+      clickDrill = null;
+      if (marquee.start(e)) {
+        if (!e.evt.shiftKey && !e.evt.metaKey && !e.evt.ctrlKey) {
+          if (getSelection().size > 1) clearSelection();
         }
+        e.evt.preventDefault();
       }
       return;
     }
-    let node = target;
-    while (node && node !== stage) {
-      const id = node.id?.();
-      if (id && document.findLayer(id)) {
-        const meta = e.evt.metaKey || e.evt.ctrlKey;
-        const shift = e.evt.shiftKey;
-        if (meta || shift) {
-          // Modifier-click extends multi-selection without changing the
-          // active layer's panel scope. Plain shift-click adds; cmd-click toggles.
-          if (meta) toggleInSelection(id);
-          else      addToSelection(id);
-        } else {
-          // Plain click → reduce selection to just this layer.
-          selectOnly(id);
-        }
-        if (document.activeLayerId !== id) document.setActiveLayer(id);
-        return;
-      }
-      node = node.getParent && node.getParent();
-    }
+    // Cursor over a layer: capture intent. STRICT click-first rule —
+    // selection NEVER changes on mousedown. The decision is made on
+    // mouseup: clean release → click → selection logic; movement past
+    // threshold → drag (only if the hit layer is already selected).
+    const hitLayerId = findLayerIdUnder(target);
+    if (!hitLayerId) return;
+    const sc = stage.scaleX() || 1;
+    const stagePos = stage.getPointerPosition();
+    if (!stagePos) return;
+    const startWorld = { x: (stagePos.x - stage.x()) / sc, y: (stagePos.y - stage.y()) / sc };
+    // Snapshot drag targets when:
+    //   • the hit layer is part of the current selection, OR
+    //   • the cursor is geometrically inside ANY selected layer's bbox
+    //     (drag-through-overlapping-layer — the user grabs over a non-
+    //     selected layer that happens to cover their selected one).
+    // Otherwise `starts` stays empty: the gesture is alive only for
+    // click-vs-drag classification on mouseup.
+    const inSelectedBbox = getSelection().has(hitLayerId) || cursorInsideAnySelected(startWorld);
+    const starts = inSelectedBbox ? snapshotSelectionPositions() : new Map();
+    pendingGesture = {
+      startWorld,
+      hitLayerId,
+      modShift: e.evt.shiftKey,
+      modMeta: e.evt.metaKey || e.evt.ctrlKey,
+      dragging: false,
+      starts,
+    };
+    e.evt.preventDefault();
   });
   stage.on('mousemove touchmove', (e) => {
     shapeDrawer.move(e);
     penTool.move(e);
     pencilTool.move(e);
     if (marquee.isActive()) marquee.move(e);
+    // Track which layer is under the cursor → drives grab/default cursor
+    // affordance via syncCursor(). Skip while panning / mid-drag (those
+    // already own the cursor state). Also recompute whether the cursor
+    // sits inside any selected layer's bbox so the grab affordance
+    // shows even through overlapping unselected layers.
+    if (getTool() === 'select' && !panning && !spaceDown) {
+      const next = e.target === stage ? null : findLayerIdUnder(e.target);
+      const sc = stage.scaleX() || 1;
+      const sp = stage.getPointerPosition();
+      const world = sp ? { x: (sp.x - stage.x()) / sc, y: (sp.y - stage.y()) / sc } : null;
+      const overSel = world ? cursorInsideAnySelected(world) : false;
+      if (next !== hoverLayerId || overSel !== hoverOverSelected) {
+        hoverLayerId = next;
+        hoverOverSelected = overSel;
+        syncCursor();
+      }
+    }
+    // Manual drag of the current selection. Only moves Konva nodes if
+    // the gesture's `starts` map is non-empty — i.e. the user
+    // mousedowned on a layer that's part of the selection. Otherwise
+    // we still flip `dragging` past threshold (so mouseup classifies
+    // it as a non-click) but no nodes move.
+    if (pendingGesture) {
+      const sc = stage.scaleX() || 1;
+      const stagePos = stage.getPointerPosition();
+      if (!stagePos) return;
+      const cur = { x: (stagePos.x - stage.x()) / sc, y: (stagePos.y - stage.y()) / sc };
+      const dx = cur.x - pendingGesture.startWorld.x;
+      const dy = cur.y - pendingGesture.startWorld.y;
+      if (!pendingGesture.dragging) {
+        if (Math.hypot(dx * sc, dy * sc) < DRAG_THRESHOLD) return;
+        pendingGesture.dragging = true;
+        // Drag just started — flip cursor to grabbing.
+        syncCursor();
+      }
+      if (pendingGesture.starts.size === 0) return;
+      // Apply the same delta to every captured layer's Konva.Group.
+      for (const [, info] of pendingGesture.starts) {
+        info.node.position({ x: info.x + dx, y: info.y + dy });
+      }
+      const r = window.__slammer?.renderer;
+      r?.redrawSelectionOutlines?.();
+      r?.scheduleLiveFxRecompute?.();
+    }
   });
   stage.on('mouseup touchend', () => {
     shapeDrawer.end();
     penTool.up();
     pencilTool.end();
     if (marquee.isActive()) marquee.end();
+    if (pendingGesture) {
+      if (pendingGesture.dragging) {
+        // Commit each moved layer's transform. Vector layers also need
+        // their path d-coords baked by the drag delta — same convention
+        // as the existing single-layer drag handler.
+        for (const [id, info] of pendingGesture.starts) {
+          const layer = document.findLayer(id);
+          if (!layer) continue;
+          const node = info.node;
+          if (layer.type === 'vector') {
+            const dx = node.x() - layer.transform.x;
+            const dy = node.y() - layer.transform.y;
+            if (dx !== 0 || dy !== 0) {
+              const newPaths = layer.vector.paths.map((rec) => ({
+                ...rec,
+                d: translatePathD(rec.d, dx, dy),
+              }));
+              document.setLayerTransform(id, {
+                x: node.x(), y: node.y(),
+                scaleX: node.scaleX(), scaleY: node.scaleY(), rotation: node.rotation(),
+              });
+              document.setVectorPaths(id, newPaths);
+              continue;
+            }
+          }
+          document.setLayerTransform(id, {
+            x: node.x(), y: node.y(),
+            scaleX: node.scaleX(), scaleY: node.scaleY(), rotation: node.rotation(),
+          });
+        }
+      } else {
+        // Clean click — change selection based on modifiers + the layer
+        // under the cursor at mousedown time.
+        const leafId = pendingGesture.hitLayerId;
+        if (pendingGesture.modMeta) {
+          toggleInSelection(leafId);
+          clickDrill = null;
+        } else if (pendingGesture.modShift) {
+          addToSelection(leafId);
+          clickDrill = null;
+        } else {
+          // Plain click → group drill. 1st click on a leaf inside a
+          // group selects the OUTERMOST ancestor; consecutive clicks
+          // on the same leaf step one level deeper each time.
+          const chain = ancestorChain(leafId);
+          let depth = 0;
+          if (clickDrill && clickDrill.leafId === leafId) {
+            depth = Math.min(clickDrill.depth + 1, chain.length - 1);
+          }
+          clickDrill = { leafId, depth };
+          const targetId = chain[depth] || leafId;
+          selectOnly(targetId);
+          if (document.activeLayerId !== targetId) document.setActiveLayer(targetId);
+        }
+      }
+      pendingGesture = null;
+      // Restore the cursor (grab / tool default) now that the gesture
+      // has ended.
+      syncCursor();
+    }
   });
   // Pointer leaves the container while pencil is mid-stroke → auto-commit
   // the stroke (avoids dangling state if the user's mouse exits the canvas).
   container.addEventListener('pointerleave', () => {
     if (pencilTool.isDrawing()) pencilTool.end();
+    // Drop the grab cursor as soon as the pointer leaves the canvas.
+    if (hoverLayerId || hoverOverSelected) {
+      hoverLayerId = null;
+      hoverOverSelected = false;
+      syncCursor();
+    }
   });
   // Esc cancels in-progress shape draw.
   window.addEventListener('keydown', (e) => {
@@ -624,6 +838,45 @@ export function initCanvasView({ container, document, onImageDropped }) {
     panning = false;
     lastPan = null;
     syncCursor();
+    // If a drag of the selection ends outside the stage, the stage's
+    // own mouseup listener won't fire — commit the gesture here as a
+    // fallback. Without this, the user releases the mouse off-canvas
+    // and selected layers are stuck mid-drag.
+    if (pendingGesture && pendingGesture.dragging) {
+      for (const [id, info] of pendingGesture.starts) {
+        const layer = document.findLayer(id);
+        if (!layer) continue;
+        const node = info.node;
+        if (layer.type === 'vector') {
+          const dx = node.x() - layer.transform.x;
+          const dy = node.y() - layer.transform.y;
+          if (dx !== 0 || dy !== 0) {
+            const newPaths = layer.vector.paths.map((rec) => ({
+              ...rec,
+              d: translatePathD(rec.d, dx, dy),
+            }));
+            document.setLayerTransform(id, {
+              x: node.x(), y: node.y(),
+              scaleX: node.scaleX(), scaleY: node.scaleY(), rotation: node.rotation(),
+            });
+            document.setVectorPaths(id, newPaths);
+            continue;
+          }
+        }
+        document.setLayerTransform(id, {
+          x: node.x(), y: node.y(),
+          scaleX: node.scaleX(), scaleY: node.scaleY(), rotation: node.rotation(),
+        });
+      }
+      pendingGesture = null;
+    } else if (pendingGesture) {
+      // Mouseup outside stage with no drag → discard the gesture so a
+      // stray click on a non-stage element doesn't change selection.
+      pendingGesture = null;
+      // Restore the cursor (grab / tool default) now that the gesture
+      // has ended.
+      syncCursor();
+    }
   });
 
   // ---------- Double-click text → edit inline on canvas ----------
@@ -782,7 +1035,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
         || (e.dataTransfer?.getData('text/plain') || '').trim();
       if (uri && /^https?:\/\//i.test(uri)) {
         try {
-          const res = await fetch(uri);
+          const res = await fetch(uri, { referrerPolicy: 'no-referrer' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const blob = await res.blob();
           if (!blob.type.startsWith('image/')) throw new Error(`Not an image (${blob.type || 'unknown'})`);

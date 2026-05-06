@@ -117,6 +117,8 @@ Follow the existing conventions:
 
 There is **no automated test suite** currently. Verification is manual: launch the dev server, exercise the feature in browser, and regression-check previous phases (see `roadmap.md`). If you add a test framework, wire it through `package.json` scripts and document it here.
 
+> **Agent note**: Do not run `npm run build` after every change unless the user explicitly asks for it. Vite's dev server (`npm run dev`) handles incremental compilation, and the build step is only needed for production deploys or CI. Skip unnecessary build checks to save time.
+
 ## Security Considerations
 
 - **All client-side** — there is no server, auth, or secrets file. API keys for future integrations (e.g. Replicate) will live in the Settings popup and be stored in localStorage.

@@ -30,6 +30,7 @@
 // (pathBounds.x, pathBounds.y).
 
 import { paper, ensurePaper } from './paper-context.js';
+import { getPlugin } from '../plugins/registry.js';
 
 // Padding around the path bbox so blur / displacement / glow don't clip.
 // Exported via the rasterise return so the consumer (renderer.js) can
@@ -323,12 +324,72 @@ function tracePathToCtx(ctx, paperPath, dx, dy, beginNew = true) {
   }
 }
 
+// Walk a vector-only group's descendants, collect each leaf's effected
+// path data, and rasterise the union via the standard vector pipeline.
+// `findLayer` resolves child layer IDs to layer objects (the doc's
+// findLayer). Returns the same shape as rasterizeVectorLayer.
+//
+// Each child's own `vectorEffects` runs first (so per-child distortion
+// composes before group effects). Then the GROUP's `vectorEffects`
+// runs over the flattened union — this is where Metaball + Boolean
+// finally see the multi-layer geometry the user wants.
+export function rasterizeVectorGroup(group, findLayer) {
+  ensureProject();
+  const flat = [];
+  const visit = (layer) => {
+    if (!layer) return;
+    if (layer.visible === false) return;
+    if (layer.type === 'vector') {
+      const effected = applyVectorEffects(layer.vector?.paths || [], layer);
+      for (const rec of effected) flat.push(rec);
+      return;
+    }
+    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
+      for (const cid of layer.childIds) visit(findLayer(cid));
+    }
+  };
+  for (const cid of (group.childIds || [])) visit(findLayer(cid));
+  // Synthetic layer-like object so rasterizeVectorLayer can run its
+  // existing pipeline (apply group.vectorEffects + canvas pass).
+  const synth = {
+    type: 'vector',
+    vector: { paths: flat },
+    vectorEffects: group.vectorEffects || [],
+  };
+  return rasterizeVectorLayer(synth);
+}
+
+// Apply the layer's vector-effect chain to a paths list. Each enabled
+// vector-filter plugin's processPaths() runs in order, taking the previous
+// step's paths and returning a new array. Errors from a plugin skip that
+// step (with a console warning) so a misbehaving plugin doesn't break
+// the rest of the stack.
+export function applyVectorEffects(paths, layer) {
+  const stack = (layer && layer.vectorEffects) || [];
+  if (!stack.length) return paths;
+  ensurePaper();
+  let cur = paths;
+  for (const eff of stack) {
+    if (eff.enabled === false) continue;
+    const plugin = getPlugin(eff.pluginId);
+    if (!plugin || plugin.type !== 'vector-filter' || typeof plugin.processPaths !== 'function') continue;
+    try {
+      const next = plugin.processPaths(cur, eff.params || plugin.defaultParams(), { paper, layer });
+      if (Array.isArray(next)) cur = next;
+    } catch (e) {
+      console.warn(`[vector-effect ${eff.pluginId}] processPaths threw — skipping`, e);
+    }
+  }
+  return cur;
+}
+
 // Main entry: rasterise an entire vector layer to ImageData.
 //   layer.vector.paths → series of SVG d-strings + fill/stroke specs
-//   Returns { imageData, naturalSize }
+//   Returns { imageData, naturalSize, pathBounds, pad }
 export function rasterizeVectorLayer(layer) {
   ensureProject();
-  const recs = (layer.vector && layer.vector.paths) || [];
+  const sourcePaths = (layer.vector && layer.vector.paths) || [];
+  const recs = applyVectorEffects(sourcePaths, layer);
   // Empty placeholder used by the early-out branches. Always include
   // pathBounds + pad so the renderer can call image.position(...) without
   // `undefined` crashes — the symptom of the bug we used to ship: TypeError

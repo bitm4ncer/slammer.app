@@ -21,14 +21,24 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-export function createImageLayer({ id, name, source, naturalSize, transform, accentColor } = {}) {
+// `parentGroupId` is the inverse of `Group.childIds` — a non-null value
+// means this layer is a member of a Group layer with that id. Renderer
+// uses it to skip standalone rendering (the group renders the composite)
+// and to nest Konva.Groups so parent transforms cascade automatically.
+const COMMON_LAYER = (opts = {}) => ({
+  visible: true,
+  opacity: 1,
+  blendMode: 'source-over',
+  locked: false,
+  parentGroupId: opts.parentGroupId || null,
+});
+
+export function createImageLayer({ id, name, source, naturalSize, transform, accentColor, parentGroupId } = {}) {
   return {
     id,
     type: 'image',
     name: name || 'Image Layer',
-    visible: true,
-    opacity: 1,
-    blendMode: 'source-over',
+    ...COMMON_LAYER({ parentGroupId }),
     accentColor: accentColor || randomPastelHex(),
     transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
     effects: [],
@@ -37,14 +47,12 @@ export function createImageLayer({ id, name, source, naturalSize, transform, acc
   };
 }
 
-export function createTextLayer({ id, name, text, transform, accentColor } = {}) {
+export function createTextLayer({ id, name, text, transform, accentColor, parentGroupId } = {}) {
   return {
     id,
     type: 'text',
     name: name || 'Text Layer',
-    visible: true,
-    opacity: 1,
-    blendMode: 'source-over',
+    ...COMMON_LAYER({ parentGroupId }),
     accentColor: accentColor || randomPastelHex(),
     transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
     effects: [],
@@ -89,14 +97,12 @@ export function createTextLayer({ id, name, text, transform, accentColor } = {})
 // stroke also carries: width, align ('center'|'inside'|'outside'),
 //                      cap ('butt'|'round'|'square'), join ('miter'|'round'|'bevel'),
 //                      dash [], alongPath (boolean — gradient follows direction)
-export function createVectorLayer({ id, name, transform, accentColor, vector } = {}) {
+export function createVectorLayer({ id, name, transform, accentColor, vector, parentGroupId } = {}) {
   return {
     id,
     type: 'vector',
     name: name || 'Vector Layer',
-    visible: true,
-    opacity: 1,
-    blendMode: 'source-over',
+    ...COMMON_LAYER({ parentGroupId }),
     accentColor: accentColor || randomPastelHex(),
     transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
     effects: [],
@@ -105,6 +111,11 @@ export function createVectorLayer({ id, name, transform, accentColor, vector } =
       paths: [],              // array of { d, closed, fill, stroke }
       ...(vector || {}),
     },
+    // Vector-only effect stack — run on the path geometry BEFORE rasterise.
+    // Distinct from the pixel-level `effects` array (which still runs on
+    // the rasterised ImageData). Plugins of type 'vector-filter' land
+    // here. Each entry: { id, pluginId, enabled, expanded, params }.
+    vectorEffects: [],
   };
 }
 
@@ -119,18 +130,52 @@ export const DEFAULT_VECTOR_STROKE = () => ({
 // FX (Adjustment) layer — has no own pixels. Its "source" is the composite of
 // all layers BELOW it. Its effect stack is then applied to that composite.
 // Affinity Live-filter style: non-destructive, affects everything beneath.
-export function createFxLayer({ id, name, transform, accentColor } = {}) {
+export function createFxLayer({ id, name, transform, accentColor, parentGroupId } = {}) {
   return {
     id,
     type: 'fx',
     name: name || 'FX Layer',
-    visible: true,
-    opacity: 1,
-    blendMode: 'source-over',
+    ...COMMON_LAYER({ parentGroupId }),
     accentColor: accentColor || randomPastelHex(),
     transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
     effects: [],
   };
+}
+
+// Group — wraps N children of any type. Has its own transform (cascades
+// to children via Konva nesting), pixel `effects[]` (applied to the
+// composite), and `vectorEffects[]` (only meaningful when every
+// descendant is a vector layer; the panel hides the section otherwise).
+export function createGroupLayer({ id, name, accentColor, transform, childIds, expanded, parentGroupId } = {}) {
+  return {
+    id,
+    type: 'group',
+    name: name || 'Group',
+    ...COMMON_LAYER({ parentGroupId }),
+    accentColor: accentColor || randomPastelHex(),
+    transform: { ...DEFAULT_TRANSFORM(), ...(transform || {}) },
+    effects: [],
+    vectorEffects: [],
+    childIds: Array.isArray(childIds) ? childIds.slice() : [],
+    expanded: expanded !== false,
+  };
+}
+
+// Returns true when `group` is a Group layer AND every recursive
+// descendant resolves to a vector layer. Lookups go through `findLayer`
+// (passed in) so this stays usable from both the doc + renderer.
+export function isVectorOnlyGroup(group, findLayer) {
+  if (!group || group.type !== 'group') return false;
+  const ids = group.childIds || [];
+  if (!ids.length) return false;
+  for (const id of ids) {
+    const child = findLayer(id);
+    if (!child) continue;
+    if (child.type === 'vector') continue;
+    if (child.type === 'group' && isVectorOnlyGroup(child, findLayer)) continue;
+    return false;
+  }
+  return true;
 }
 
 export const BLEND_MODES = [

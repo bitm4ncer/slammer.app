@@ -5,10 +5,48 @@ import { getSettings, onSettingsChange } from './settings-popup.js';
 import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
 import { BLEND_MODES } from '../core/layer.js';
+import { setDraggingLayer } from './drag-state.js';
+import {
+  getSelection, getSelectionArray, setSelection, selectOnly, toggleInSelection, selectRange, onSelectionChange,
+} from './selection-state.js';
+import { openContextMenu } from './context-menu.js';
 
 export function initLayerPanel({ container, document, renderer }) {
-  let sortable = null;
+  const sortableInstances = [];
   let customLayerColors = getSettings().customLayerColors !== false;
+
+  // Combine button — visible when ≥2 top-level layers are selected.
+  const combineBtn = window.document.getElementById('btnCombineLayers');
+  if (combineBtn) {
+    combineBtn.addEventListener('click', () => {
+      const sel = getSelection();
+      if (sel.size < 2) return;
+      const childIds = [...sel].filter((id) => {
+        const l = document.findLayer(id);
+        // Don't accept FX layers as group children — they're pseudo-layers
+        // that compose-below; nesting them in a group breaks that semantic.
+        return l && l.type !== 'fx';
+      });
+      if (childIds.length < 2) return;
+      // Order children top→bottom in panel order so the group's childIds
+      // matches what the user sees.
+      const ordered = Array.from(container.querySelectorAll('.layer-item'))
+        .map((el) => el.dataset.layerId)
+        .filter((id) => childIds.includes(id));
+      const grp = document.addGroupLayer({ name: 'Group', childIds: ordered });
+      if (grp) {
+        // Selection collapses to the new group; setActiveLayer fires too.
+        selectOnly(grp.id);
+      }
+    });
+    onSelectionChange((sel) => {
+      const eligible = [...sel].filter((id) => {
+        const l = document.findLayer(id);
+        return l && l.type !== 'fx';
+      });
+      combineBtn.hidden = eligible.length < 2;
+    });
+  }
   onSettingsChange((s) => {
     const next = s.customLayerColors !== false;
     if (next !== customLayerColors) {
@@ -47,25 +85,72 @@ export function initLayerPanel({ container, document, renderer }) {
   function blendShort(mode) { return BLEND_SHORT[mode] || 'Normal'; }
   function blendFull(mode) { return BLEND_FULL[mode] || mode; }
 
-  function render() {
-    const layers = document.layers.slice().reverse();
-    if (!layers.length) {
-      container.innerHTML = '<div class="layer-empty">No layers yet</div>';
-      return;
-    }
-    container.innerHTML = layers.map((layer) => {
-      const accent = customLayerColors ? (layer.accentColor || '#8aff8c') : 'var(--primary)';
-      const swatchMarkup = customLayerColors ? `
-        <label class="layer-accent-swatch" title="Layer accent colour">
-          <input type="color" value="${layer.accentColor || '#8aff8c'}" class="layer-accent-input" />
-          <span class="layer-accent-dot" style="background:${layer.accentColor || '#8aff8c'}"></span>
-        </label>` : '';
+  // ---- Markup helpers (extracted from the old flat render) ----
 
-      // FX (adjustment) layers: no thumbnail, but KEEP blend mode + opacity
-      // controls so the user can dial the adjustment's strength + composite mode.
-      if (layer.type === 'fx') {
-        return `
-        <div class="layer-item layer-item--fx ${document.activeLayerId === layer.id ? 'active' : ''}"
+  function rowMarkup(layer) {
+    const accent = customLayerColors ? (layer.accentColor || '#8aff8c') : 'var(--primary)';
+    const sel = getSelection();
+    const multi = sel.has(layer.id) && sel.size > 1;
+    const classes = [
+      'layer-item',
+      layer.type === 'fx' ? 'layer-item--fx' : '',
+      layer.type === 'group' ? 'layer-item--group' : '',
+      document.activeLayerId === layer.id ? 'active' : '',
+      multi ? 'multi-selected' : '',
+      layer.locked ? 'locked' : '',
+      !layer.visible ? 'hidden' : '',
+    ].filter(Boolean).join(' ');
+    const swatchMarkup = customLayerColors ? `
+      <label class="layer-accent-swatch" title="Layer accent colour">
+        <input type="color" value="${layer.accentColor || '#8aff8c'}" class="layer-accent-input" />
+        <span class="layer-accent-dot" style="background:${layer.accentColor || '#8aff8c'}"></span>
+      </label>` : '';
+
+    const lockBtn = `
+      <button class="layer-icon-btn act-lock" title="${layer.locked ? 'Unlock layer' : 'Lock layer'}">
+        <i class="fas fa-${layer.locked ? 'lock' : 'lock-open'}"></i>
+      </button>`;
+    const visBtn = `
+      <button class="layer-icon-btn act-vis" title="Toggle visibility">
+        <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
+      </button>`;
+    const delBtn = `<button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>`;
+
+    if (layer.type === 'group') {
+      const chev = layer.expanded === false ? 'right' : 'down';
+      return `
+        <div class="${classes}"
+             data-layer-id="${layer.id}"
+             style="--layer-accent:${accent}">
+          <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
+          <button class="layer-chevron" title="${layer.expanded === false ? 'Expand' : 'Collapse'}">
+            <i class="fas fa-chevron-${chev}"></i>
+          </button>
+          ${swatchMarkup}
+          <i class="fas fa-folder${layer.expanded === false ? '' : '-open'} layer-type-icon layer-group-icon"></i>
+          <div class="layer-meta">
+            <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
+            <div class="layer-blend-opacity-row">
+              <div class="layer-blend-dropdown">
+                <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+              </div>
+              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+                <span class="layer-opacity-knob"></span>
+                <span class="layer-opacity-num"></span>
+              </div>
+            </div>
+          </div>
+          <div class="layer-actions">
+            ${lockBtn}
+            ${visBtn}
+            ${delBtn}
+          </div>
+        </div>`;
+    }
+
+    if (layer.type === 'fx') {
+      return `
+        <div class="${classes}"
              data-layer-id="${layer.id}"
              style="--layer-accent:${accent}">
           <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
@@ -84,16 +169,15 @@ export function initLayerPanel({ container, document, renderer }) {
             </div>
           </div>
           <div class="layer-actions">
-            <button class="layer-icon-btn act-vis" title="Toggle visibility">
-              <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
-            </button>
-            <button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>
+            ${lockBtn}
+            ${visBtn}
+            ${delBtn}
           </div>
         </div>`;
-      }
+    }
 
-      return `
-      <div class="layer-item ${document.activeLayerId === layer.id ? 'active' : ''}"
+    return `
+      <div class="${classes}"
            data-layer-id="${layer.id}"
            style="--layer-accent:${accent}">
         <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
@@ -114,26 +198,110 @@ export function initLayerPanel({ container, document, renderer }) {
           </div>
         </div>
         <div class="layer-actions">
-          <button class="layer-icon-btn act-vis" title="Toggle visibility">
-            <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
-          </button>
-          <button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>
+          ${lockBtn}
+          ${visBtn}
+          ${delBtn}
         </div>
       </div>`;
-    }).join('');
+  }
+
+  // Recursive: every layer becomes a `.layer-tree-node` wrapper, which
+  // is what SortableJS treats as the draggable item. The wrapper holds
+  // the visible row and (for groups) a child-container for nested
+  // descendants. Wrapping is what keeps a group + its expanded children
+  // moving together when the user drags the group's handle.
+  function nodeMarkup(layer) {
+    const own = rowMarkup(layer);
+    if (layer.type !== 'group') {
+      return `<div class="layer-tree-node" data-layer-id="${layer.id}">${own}</div>`;
+    }
+    const children = (layer.childIds || [])
+      .slice().reverse()
+      .map((cid) => document.findLayer(cid))
+      .filter(Boolean);
+    const hidden = layer.expanded === false ? 'hidden' : '';
+    return `
+      <div class="layer-tree-node" data-layer-id="${layer.id}">
+        ${own}
+        <div class="layer-children" data-group-id="${layer.id}" ${hidden}>
+          ${children.map(nodeMarkup).join('')}
+        </div>
+      </div>`;
+  }
+
+  function render() {
+    if (!document.layers.length) {
+      container.innerHTML = '<div class="layer-empty">No layers yet</div>';
+      return;
+    }
+    // Top-level layers only — children are emitted recursively via nodeMarkup.
+    const topLevel = document.layers.filter((l) => !l.parentGroupId).slice().reverse();
+    if (!topLevel.length) {
+      container.innerHTML = '<div class="layer-empty">No layers yet</div>';
+      return;
+    }
+    container.innerHTML = topLevel.map(nodeMarkup).join('');
 
     container.querySelectorAll('.layer-item').forEach((row) => {
       const id = row.dataset.layerId;
       const layer = document.findLayer(id);
       if (!layer) return;
 
+      // Native drag-out (Phase 16) — lets plugin drop zones receive a layer
+      // reference. Sortable's reorder uses the explicit grip handle, so this
+      // doesn't conflict.
+      row.draggable = true;
+      row.addEventListener('dragstart', (e) => {
+        if (e.target.closest('.layer-drag-handle')) {
+          // The grip handle owns the in-list reorder gesture; suppress native drag.
+          e.preventDefault();
+          return;
+        }
+        if (e.dataTransfer) {
+          e.dataTransfer.setData('application/x-slammer-layer', id);
+          e.dataTransfer.setData('text/plain', layer.name || 'layer');
+          e.dataTransfer.effectAllowed = 'copy';
+        }
+        // Fallback: store the id in module scope. SortableJS can call
+        // `dataTransfer.clearData()` between dragstart and drop, wiping our
+        // custom MIME. drop-zone reads this fallback when getData is empty.
+        // We don't clear on `dragend` — the id is overwritten on the next
+        // dragstart, and drop-zone gates on dataTransfer.types so a stale id
+        // can't get misinterpreted as a layer drop during a later file drop.
+        setDraggingLayer(id);
+      });
+
       row.addEventListener('click', (e) => {
         if (e.target.closest('.layer-actions') || e.target.closest('.layer-blend-dropdown')
             || e.target.closest('.layer-opacity-row') || e.target.closest('.layer-accent-swatch')
             || e.target.closest('.layer-name[contenteditable]')) return;
+        const meta = e.metaKey || e.ctrlKey;
+        const shift = e.shiftKey;
+        if (shift) {
+          // Range select using current panel order (top-of-list first).
+          const ordered = Array.from(container.querySelectorAll('.layer-item'))
+            .map((el) => el.dataset.layerId);
+          selectRange(id, ordered);
+        } else if (meta) {
+          toggleInSelection(id);
+        } else {
+          selectOnly(id);
+        }
+        // Active layer always follows the most recent click so panels
+        // (Vector/Effects/etc.) target the layer the user just touched.
         document.setActiveLayer(id);
       });
 
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        // If the right-clicked row isn't part of the selection, treat
+        // it as a single-target click first (same as Finder / Figma).
+        if (!getSelection().has(id)) selectOnly(id);
+        openContextMenu({
+          x: e.clientX, y: e.clientY,
+          items: panelContextMenuItems(layer),
+        });
+      });
       row.querySelector('.act-vis').addEventListener('click', (e) => {
         e.stopPropagation();
         document.setLayerProp(id, 'visible', !layer.visible);
@@ -195,17 +363,119 @@ export function initLayerPanel({ container, document, renderer }) {
         e.stopPropagation();
         beginRename(nameEl, id);
       });
+
+      // Double-click on the thumbnail toggles visibility — quick way to
+      // hide / unhide a layer without aiming for the small eye icon.
+      const thumbEl = row.querySelector('.layer-thumb');
+      if (thumbEl) {
+        thumbEl.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          document.setLayerProp(id, 'visible', !layer.visible);
+        });
+      }
     });
 
-    if (sortable) sortable.destroy();
-    sortable = Sortable.create(container, {
+    // Attach chevron + lock handlers (defined inside the per-row loop
+    // below would require duplication for child rows; do it here once
+    // for every .layer-item the recursive renderer just emitted).
+    container.querySelectorAll('.layer-chevron').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.layer-item');
+        const id = row?.dataset.layerId;
+        const layer = id && document.findLayer(id);
+        if (!layer || layer.type !== 'group') return;
+        document.setLayerProp(id, 'expanded', layer.expanded === false);
+        scheduleRender();
+      });
+    });
+    container.querySelectorAll('.act-lock').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.layer-item');
+        const id = row?.dataset.layerId;
+        const layer = id && document.findLayer(id);
+        if (!layer) return;
+        document.setLayerLocked(id, !layer.locked);
+      });
+    });
+
+    // Sortable wiring — top-level + a per-group instance for each
+    // expanded group's child container. All share `group: 'layers'` so
+    // dragging a node between them moves it into / out of a group.
+    // `draggable: '.layer-tree-node'` ensures only the wrappers are
+    // dragged (rows inside the wrappers ride along).
+    if (sortableInstances.length) {
+      sortableInstances.forEach((s) => { try { s.destroy(); } catch {} });
+      sortableInstances.length = 0;
+    }
+    sortableInstances.push(Sortable.create(container, {
       animation: 140,
       handle: '.layer-drag-handle',
-      onEnd: () => {
-        const ids = Array.from(container.querySelectorAll('.layer-item')).map((el) => el.dataset.layerId);
-        document.reorderLayers(ids.slice().reverse());
-      },
+      draggable: '.layer-tree-node',
+      group: { name: 'layers', pull: true, put: true },
+      onEnd: handleSortEnd,
+    }));
+    container.querySelectorAll('.layer-children').forEach((kidsEl) => {
+      sortableInstances.push(Sortable.create(kidsEl, {
+        animation: 140,
+        handle: '.layer-drag-handle',
+        draggable: '.layer-tree-node',
+        group: { name: 'layers', pull: true, put: true },
+        onEnd: handleSortEnd,
+      }));
     });
+  }
+
+  // After ANY drag ends, walk the panel DOM and rebuild parentage +
+  // global z-order from the new structure. Works whether the drag
+  // re-ordered within one list or moved a node between top-level and
+  // a group's children.
+  function handleSortEnd() {
+    // 1. Reset every parentGroupId — they'll be re-set by walking the
+    //    DOM below.
+    for (const l of document.layers) {
+      if (l.parentGroupId && l.type !== 'group') l.parentGroupId = null;
+    }
+    // 2. Walk every .layer-children container; assign children + parent
+    //    refs based on DOM order (panel top-of-list = bottom of childIds
+    //    storage, hence the reverse).
+    container.querySelectorAll('.layer-children').forEach((kidsEl) => {
+      const groupId = kidsEl.dataset.groupId;
+      const group = document.findLayer(groupId);
+      if (!group || group.type !== 'group') return;
+      const childWrappers = Array.from(kidsEl.children)
+        .filter((el) => el.classList?.contains('layer-tree-node'));
+      const ids = childWrappers.map((el) => el.dataset.layerId);
+      group.childIds = ids.slice().reverse();
+      for (const cid of ids) {
+        const child = document.findLayer(cid);
+        if (child) child.parentGroupId = groupId;
+      }
+    });
+    // 3. Rebuild the flat document.layers order. Top-level wrappers
+    //    appear in panel order; their group children get appended right
+    //    after them (so the flat list stays grouped logically).
+    const topWrappers = Array.from(container.children)
+      .filter((el) => el.classList?.contains('layer-tree-node'));
+    const allInOrder = [];
+    const visit = (id) => {
+      const layer = document.findLayer(id);
+      if (!layer) return;
+      allInOrder.push(id);
+      if (layer.type === 'group') {
+        for (const cid of (layer.childIds || []).slice().reverse()) {
+          if (!allInOrder.includes(cid)) visit(cid);
+        }
+      }
+    };
+    for (const wrapper of topWrappers) visit(wrapper.dataset.layerId);
+    // Defensive: append any layers we missed (e.g. orphans).
+    for (const l of document.layers) {
+      if (!allInOrder.includes(l.id)) allInOrder.push(l.id);
+    }
+    document.reorderLayers(allInOrder.slice().reverse());
+    // The panel re-renders on layer:reordered (subscriber).
   }
 
   function showBlendMenu(trigger, layer) {
@@ -237,6 +507,119 @@ export function initLayerPanel({ container, document, renderer }) {
     setTimeout(() => {
       window.addEventListener('click', closeAllBlendMenus, { once: true });
     });
+  }
+
+  // Build the right-click menu items for a layer-panel row. Visible
+  // items adapt to the layer type + current multi-selection size.
+  function panelContextMenuItems(layer) {
+    const sel = getSelectionArray();
+    const multi = sel.length > 1;
+    const isGroup = layer.type === 'group';
+    const inGroup = !!layer.parentGroupId;
+    const items = [];
+
+    items.push({
+      label: multi ? `Group ${sel.length} layers` : 'Group',
+      icon: 'object-group',
+      shortcut: 'Ctrl+G',
+      disabled: !multi,
+      onClick: () => {
+        const ordered = Array.from(container.querySelectorAll('.layer-item'))
+          .map((el) => el.dataset.layerId)
+          .filter((id) => sel.includes(id));
+        const grp = document.addGroupLayer({ name: 'Group', childIds: ordered });
+        if (grp) selectOnly(grp.id);
+      },
+    });
+
+    if (isGroup) {
+      items.push({
+        label: 'Ungroup',
+        icon: 'object-ungroup',
+        shortcut: 'Ctrl+Shift+G',
+        onClick: () => {
+          const childIds = (layer.childIds || []).slice();
+          document.dissolveGroup(layer.id);
+          if (childIds.length) setSelection(childIds, childIds[0]);
+        },
+      });
+    }
+    if (inGroup) {
+      items.push({
+        label: 'Remove from group',
+        icon: 'sign-out-alt',
+        onClick: () => document.removeFromGroup(layer.parentGroupId, layer.id),
+      });
+    }
+    items.push({ separator: true });
+    items.push({
+      label: layer.locked ? 'Unlock' : 'Lock',
+      icon: layer.locked ? 'lock-open' : 'lock',
+      shortcut: 'Ctrl+L',
+      onClick: () => document.setLayerLocked(layer.id, !layer.locked),
+    });
+    items.push({
+      label: layer.visible ? 'Hide' : 'Show',
+      icon: layer.visible ? 'eye-slash' : 'eye',
+      onClick: () => document.setLayerProp(layer.id, 'visible', !layer.visible),
+    });
+    items.push({ separator: true });
+    items.push({
+      label: 'Bring to front',
+      icon: 'angle-double-up',
+      onClick: () => moveLayerZ(layer.id, +Infinity),
+    });
+    items.push({
+      label: 'Send to back',
+      icon: 'angle-double-down',
+      onClick: () => moveLayerZ(layer.id, -Infinity),
+    });
+    items.push({
+      label: 'Bring forward',
+      icon: 'angle-up',
+      onClick: () => moveLayerZ(layer.id, +1),
+    });
+    items.push({
+      label: 'Send backward',
+      icon: 'angle-down',
+      onClick: () => moveLayerZ(layer.id, -1),
+    });
+    items.push({ separator: true });
+    items.push({
+      label: 'Rename',
+      icon: 'edit',
+      onClick: () => {
+        const row = container.querySelector(`.layer-item[data-layer-id="${layer.id}"] .layer-name`);
+        if (row) beginRename(row, layer.id);
+      },
+    });
+    items.push({
+      label: 'Delete',
+      icon: 'trash',
+      shortcut: 'Del',
+      danger: true,
+      onClick: () => {
+        for (const id of sel) document.removeLayer(id);
+      },
+    });
+    return items;
+  }
+
+  // Reorder a single layer in the doc.layers array by `delta` (or to the
+  // top/bottom when ±Infinity). Operates on the bottom-up flat list
+  // because that's what the doc model stores.
+  function moveLayerZ(id, delta) {
+    const cur = document.layers.findIndex((l) => l.id === id);
+    if (cur < 0) return;
+    let target = cur + delta;
+    if (delta === +Infinity) target = document.layers.length - 1;
+    if (delta === -Infinity) target = 0;
+    target = Math.max(0, Math.min(document.layers.length - 1, target));
+    if (target === cur) return;
+    const next = document.layers.slice();
+    const [item] = next.splice(cur, 1);
+    next.splice(target, 0, item);
+    document.reorderLayers(next.map((l) => l.id));
   }
 
   function escape(s) {
@@ -279,13 +662,76 @@ export function initLayerPanel({ container, document, renderer }) {
     });
   }
 
+  // Selection / active-layer changes only flip CSS classes on the
+  // already-rendered rows — full HTML rebuild + RAF wait would otherwise
+  // add a perceptible lag to every click. Targeted DOM update keeps the
+  // selection feedback synchronous with the click.
+  function syncSelectionClasses() {
+    const sel = getSelection();
+    const multi = sel.size > 1;
+    const activeId = document.activeLayerId;
+    // Build the "selection hierarchy" sets:
+    //   • inSelectedGroup: layers whose ancestor chain includes a
+    //     selected group → subtle "part of group selection" hint.
+    //   • ancestorOfSelected: groups whose descendant tree contains a
+    //     selected leaf → subtle "contains selection" hint.
+    const inSelectedGroup = new Set();
+    const ancestorOfSelected = new Set();
+    for (const id of sel) {
+      const l = document.findLayer(id);
+      if (!l) continue;
+      // Mark every descendant if a group is selected.
+      if (l.type === 'group') {
+        for (const desc of (document.descendantsOf?.(id) || [])) {
+          inSelectedGroup.add(desc.id);
+        }
+      }
+      // Walk up the parent chain marking ancestors.
+      let cur = l.parentGroupId ? document.findLayer(l.parentGroupId) : null;
+      while (cur) {
+        ancestorOfSelected.add(cur.id);
+        cur = cur.parentGroupId ? document.findLayer(cur.parentGroupId) : null;
+      }
+    }
+    container.querySelectorAll('.layer-item').forEach((row) => {
+      const id = row.dataset.layerId;
+      const isActive = id === activeId;
+      const isMulti = multi && sel.has(id);
+      row.classList.toggle('active', isActive);
+      row.classList.toggle('multi-selected', isMulti);
+      row.classList.toggle('in-selected-group', inSelectedGroup.has(id));
+      row.classList.toggle('ancestor-of-selected', ancestorOfSelected.has(id));
+    });
+  }
+  onSelectionChange(syncSelectionClasses);
+
   document.subscribe((e) => {
+    // Active-layer change is selection-class-only — no structural HTML
+    // rebuild needed. Same path as onSelectionChange.
+    if (e.type === 'layer:active') {
+      syncSelectionClasses();
+      return;
+    }
     const structural = [
       'layer:added', 'layer:removed', 'layer:reordered',
-      'layer:active', 'doc:loaded',
+      'doc:loaded',
+      'group:childrenChanged', 'group:dissolved',
     ].includes(e.type);
     if (structural) {
       scheduleRender();
+      // Layer creation is async (image decode + first paint happens
+      // AFTER layer:added fires). The initial render captures a thumb
+      // from a still-empty dstCanvas → blank tile. scheduleThumbRefresh
+      // has a built-in 220 ms delay which gives the paint time to land,
+      // then re-fetches the dstCanvas.toDataURL.
+      if (e.type === 'layer:added' && e.layer?.id) {
+        scheduleThumbRefresh(e.layer.id);
+      }
+      if (e.type === 'doc:loaded') {
+        // Refresh every layer's thumb after the load sequence finishes
+        // so reopened projects show actual previews instead of blanks.
+        for (const l of document.layers) scheduleThumbRefresh(l.id);
+      }
       return;
     }
     if (e.type === 'layer:propChanged') {
@@ -326,6 +772,14 @@ export function initLayerPanel({ container, document, renderer }) {
     if (!row) return;
     const visIcon = row.querySelector('.act-vis i');
     if (visIcon) visIcon.className = `fas fa-${layer.visible ? 'eye' : 'eye-slash'}`;
+    // Hidden + locked state classes drive the row's faded/locked
+    // styling — keep them in sync without re-rendering the whole panel.
+    row.classList.toggle('hidden', !layer.visible);
+    row.classList.toggle('locked', !!layer.locked);
+    const lockIcon = row.querySelector('.act-lock i');
+    if (lockIcon) lockIcon.className = `fas fa-${layer.locked ? 'lock' : 'lock-open'}`;
+    const lockBtn = row.querySelector('.act-lock');
+    if (lockBtn) lockBtn.title = layer.locked ? 'Unlock layer' : 'Lock layer';
     const opRow = row.querySelector('.layer-opacity-row');
     if (opRow) {
       const opKnob = opRow._knob;

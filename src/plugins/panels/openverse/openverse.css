@@ -1,0 +1,5 @@
+.openverse-panel { --plugin-accent: #ffe033; }
+.plugin-window--openverse .floating-header {
+  background: linear-gradient(to bottom, #2a280f 0%, var(--surface-2) 100%);
+  color: #ffe033;
+}

@@ -1,0 +1,5 @@
+.met-panel { --plugin-accent: #e30613; }
+.plugin-window--met .floating-header {
+  background: linear-gradient(to bottom, #2a0d10 0%, var(--surface-2) 100%);
+  color: #e30613;
+}

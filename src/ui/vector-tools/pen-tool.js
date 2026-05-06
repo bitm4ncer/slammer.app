@@ -121,11 +121,11 @@ export function attachPenTool({ stage, document: doc }) {
 
   function buildAnchorNodes(accent, isFirst) {
     const sub = new Konva.Group({ listening: false });
-    sub.add(new Konva.Line({ name: 'hi-line', points: [], stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, opacity: 0.55, listening: false }));
-    sub.add(new Konva.Line({ name: 'ho-line', points: [], stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, opacity: 0.55, listening: false }));
-    sub.add(new Konva.Circle({ name: 'hi-dot', x: 0, y: 0, radius: 3.5, fill: '#fff', stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, visible: false, listening: false }));
-    sub.add(new Konva.Circle({ name: 'ho-dot', x: 0, y: 0, radius: 3.5, fill: '#fff', stroke: accent, strokeWidth: 1, strokeScaleEnabled: false, visible: false, listening: false }));
-    const half = isFirst ? 4.5 : 3.5;
+    sub.add(new Konva.Line({ name: 'hi-line', points: [], stroke: accent, strokeWidth: 1.5, strokeScaleEnabled: false, opacity: 0.7, listening: false }));
+    sub.add(new Konva.Line({ name: 'ho-line', points: [], stroke: accent, strokeWidth: 1.5, strokeScaleEnabled: false, opacity: 0.7, listening: false }));
+    sub.add(new Konva.Circle({ name: 'hi-dot', x: 0, y: 0, radius: 7, fill: '#fff', stroke: accent, strokeWidth: 1.6, strokeScaleEnabled: false, visible: false, listening: false }));
+    sub.add(new Konva.Circle({ name: 'ho-dot', x: 0, y: 0, radius: 7, fill: '#fff', stroke: accent, strokeWidth: 1.6, strokeScaleEnabled: false, visible: false, listening: false }));
+    const half = isFirst ? 8 : 7;
     sub.add(new Konva.Rect({
       name: 'anchor', x: 0, y: 0, width: half * 2, height: half * 2,
       fill: isFirst ? accent : '#fff', stroke: '#0a0a0a',

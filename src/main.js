@@ -62,6 +62,8 @@ import metaballVPlugin from './plugins/vector/metaball/index.js';
 // Phase 16 — panel plugins.
 import unsplashPlugin from './plugins/panels/unsplash/index.js';
 import pexelsPlugin from './plugins/panels/pexels/index.js';
+import openversePlugin from './plugins/panels/openverse/index.js';
+import metPlugin from './plugins/panels/met/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
 import { exportVisibleAsPng } from './io/export-png.js';
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     halftoneVPlugin, spirographVPlugin, scribbleVPlugin, metaballVPlugin,
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
-    falaiPlugin, unsplashPlugin, pexelsPlugin,
+    falaiPlugin, unsplashPlugin, pexelsPlugin, openversePlugin, metPlugin,
   ].forEach(registerPlugin);
 
   const doc = createDocument();
@@ -171,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     importImage: async (sourceOrUrl, name = 'Imported image') => {
       try {
         if (typeof sourceOrUrl === 'string') {
-          const res = await fetch(sourceOrUrl);
+          const res = await fetch(sourceOrUrl, { referrerPolicy: 'no-referrer' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const blob = await res.blob();
           return doc.addImageLayer({ name, source: blob });

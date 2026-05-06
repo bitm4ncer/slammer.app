@@ -11,11 +11,14 @@
 const STRUCTURAL_EVENTS = new Set([
   'layer:added', 'layer:removed', 'layer:reordered',
   'effect:added', 'effect:removed', 'effect:reordered',
+  'vectorEffect:added', 'vectorEffect:removed', 'vectorEffect:reordered',
+  'group:childrenChanged', 'group:dissolved',
 ]);
 
 const PROP_EVENTS = new Set([
   'layer:propChanged', 'layer:transform', 'layer:textChanged', 'layer:vectorChanged',
-  'effect:propChanged', 'layer:sourceChanged', 'doc:exportFrame',
+  'effect:propChanged', 'vectorEffect:propChanged',
+  'layer:sourceChanged', 'doc:exportFrame',
 ]);
 
 export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {

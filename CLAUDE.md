@@ -2,6 +2,15 @@
 
 > Working notes for Claude. Complements `AGENTS.md` (which covers the general project shape). This file is the place to record gotchas, library quirks, and architectural conventions that have already cost time to figure out — so the next session doesn't relearn them.
 
+
+## AI Orchestration Rules
+- **Role:** Claude is the Lead Architect. Focus on high-level planning, file discovery, and logic validation.
+- **Delegation:** For all boilerplate, unit test generation, and multi-file refactoring, delegate to the `kimi-worker` MCP.
+- **Swarm Logic:** When a plan has >3 independent tasks, trigger a `swarm-execution`. 
+- **Constraint:** Claude must review the `kimi-worker` output before finalizing any git commit.
+
+
+
 ## House rules (per user MEMORY.md)
 
 - **Custom scrollbars only** — never ship the native OS scrollbar. Applies to in-page scroll containers AND custom dropdowns.

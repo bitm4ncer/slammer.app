@@ -276,3 +276,314 @@
 .vector-action-btn:active {
   transform: translateY(1px);
 }
+
+/* ---------- Vector Effects panel (vector-only effect stack) ---------- */
+.vector-fx-panel {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 8px;
+  font-family: 'Inter', sans-serif;
+}
+.vector-fx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.vector-fx-header h3 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vector-fx-header h3 i { font-size: 11px; }
+.vector-fx-add {
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  width: 22px; height: 22px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.vector-fx-add:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.vector-fx-empty {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  text-align: center;
+  padding: 14px 0;
+}
+.vector-fx-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vector-fx-card {
+  background: color-mix(in srgb, var(--surface) 92%, var(--text-secondary));
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  padding: 4px 6px 6px 6px;
+  transition: opacity 0.12s;
+}
+.vector-fx-card.is-disabled { opacity: 0.45; }
+.vector-fx-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vector-fx-card-name {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vector-fx-card-name i { font-size: 10px; opacity: 0.7; }
+.vector-fx-toggle, .vector-fx-collapse, .vector-fx-remove {
+  background: transparent;
+  border: 0;
+  width: 18px; height: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+}
+.vector-fx-toggle:hover, .vector-fx-collapse:hover { color: var(--primary); }
+.vector-fx-remove:hover { color: #ff6b6b; }
+.vector-fx-card-body {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed color-mix(in srgb, var(--vhs-shadow) 70%, transparent);
+}
+.vector-fx-picker {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--text-secondary));
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+}
+.vector-fx-picker-item {
+  flex: 1 0 calc(50% - 4px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.vector-fx-picker-item:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.vector-fx-picker-item i { width: 12px; text-align: center; opacity: 0.8; }
+.vector-fx-picker-empty {
+  color: var(--text-secondary);
+  font-size: 11px;
+  opacity: 0.7;
+  padding: 8px;
+}
+
+/* ---------- Multi-selection ring on layer rows (Phase A) ---------- */
+.layer-item.multi-selected {
+  outline: 2px solid var(--layer-accent, var(--primary));
+  outline-offset: -2px;
+}
+
+/* ---------- Layer-panel tree (Phase C) ---------- */
+
+/* Combine button — same size as the existing add button. */
+.layers-combine-btn {
+  margin-left: auto;
+  margin-right: 4px;
+  width: 22px; height: 22px;
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.layers-combine-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* Group rows + chevron */
+.layer-chevron {
+  width: 14px; height: 14px;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  margin-right: 2px;
+}
+.layer-chevron:hover { color: var(--primary); }
+.layer-group-icon { opacity: 0.85; }
+.layer-item--group .layer-meta { padding-left: 2px; }
+
+/* Children container — indents nested rows + draws a left bracket connector. */
+.layer-children {
+  position: relative;
+  padding-left: 16px;
+}
+.layer-children::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--vhs-shadow) 80%, transparent);
+}
+.layer-children > .layer-item {
+  position: relative;
+}
+.layer-children > .layer-item::before {
+  /* horizontal connector from the bracket line into the row. */
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: color-mix(in srgb, var(--vhs-shadow) 80%, transparent);
+}
+
+/* Lock icon styling */
+.act-lock i { transition: color 0.12s; }
+.layer-item.locked {
+  opacity: 0.78;
+}
+.layer-item.locked .act-lock i { color: var(--primary); }
+
+/* Hidden-layer styling — keeps the row legible but signals its state. */
+.layer-item.hidden:not(.locked) { opacity: 0.6; }
+
+/* ---------- Context menu (right-click) ---------- */
+.context-menu {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.context-menu-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.context-menu-item.is-disabled,
+.context-menu-item:disabled {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  cursor: default;
+}
+.context-menu-item.is-danger { color: #ff6b6b; }
+.context-menu-item i { width: 14px; opacity: 0.85; text-align: center; }
+.context-menu-item kbd {
+  margin-left: auto;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--vhs-shadow) 50%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.context-menu-separator {
+  height: 1px;
+  background: var(--vhs-shadow);
+  margin: 4px 2px;
+}
+
+/* ---------- Layer-card actions: vertical stack on the right (Phase C+) ---------- */
+.layer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-left: auto;
+  /* Dark border separating actions from the meta column. */
+  border-left: 1px solid color-mix(in srgb, var(--vhs-shadow) 90%, #000);
+  padding-left: 4px;
+}
+.layer-actions > .layer-icon-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  /* Soft divider between stacked buttons (skip the first to avoid a
+     leading line above the top button). */
+  border-bottom: 1px solid color-mix(in srgb, var(--vhs-shadow) 60%, transparent);
+}
+.layer-actions > .layer-icon-btn:last-child {
+  border-bottom: 0;
+}
+
+/* Fade the entire layer card when the layer is hidden — keeps the
+   handle + name legible but signals the "off" state. */
+.layer-item.hidden {
+  opacity: 0.45;
+}
+.layer-item.hidden .layer-thumb {
+  filter: grayscale(0.6);
+}
+
+/* Hidden-state visual on the eye icon stays as-is (already swaps
+   eye → eye-slash via the JS toggle). */
+
+/* ---------- Selection-hierarchy hints (panel) ---------- */
+/* A group is selected → subtle accent tint on every descendant row. */
+.layer-item.in-selected-group {
+  background: color-mix(in srgb, var(--layer-accent, var(--primary)) 8%, transparent);
+}
+/* A leaf inside a group is selected → subtle "contains selection" hint
+   on the ancestor group rows. */
+.layer-item.ancestor-of-selected:not(.active):not(.multi-selected) {
+  outline: 1px dashed color-mix(in srgb, var(--layer-accent, var(--primary)) 60%, transparent);
+  outline-offset: -2px;
+}

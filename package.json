@@ -1,6 +1,6 @@
 {
   "name": "slammer-app",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.1",
   "description": "slammer.app — multi-layer image editor with VST-like effect plugins",
   "type": "module",
   "scripts": {

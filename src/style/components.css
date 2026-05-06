@@ -1086,11 +1086,18 @@
   color: var(--text-primary);
   font-weight: 600;
 }
+.plugin-card-body {
+  min-width: 0;          /* allow text-overflow inside grid 1fr column */
+  overflow: hidden;
+}
 .plugin-card-desc {
   font-size: 11px;
   color: var(--text-secondary);
   margin-top: 2px;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .plugin-card-status {
   margin-top: 4px;
@@ -1284,10 +1291,45 @@
 /* ---------- Browsable (Unsplash, Pexels) ---------- */
 .browsable-tabs {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 0;
   border-bottom: 1px solid var(--vhs-shadow);
   padding: 0 8px;
   background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.browsable-tabs-left {
+  display: flex;
+  gap: 0;
+}
+.browsable-col-knob {
+  display: flex;
+  gap: 2px;
+}
+.browsable-col-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 9px;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: all 0.12s ease;
+}
+.browsable-col-btn:hover {
+  border-color: var(--vhs-shadow);
+  color: var(--text-primary);
+}
+.browsable-col-btn.active {
+  background: var(--surface-3);
+  border-color: var(--vhs-shadow);
+  color: var(--ctx-accent, var(--primary));
 }
 .browsable-tab {
   background: transparent;
@@ -1312,8 +1354,27 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;              /* fill remaining height so landing centres vertically */
 }
 .browsable-tab-panel[hidden] { display: none; }
+.browsable-tab-panel--search {
+  position: relative;
+  transition: opacity 400ms ease;
+}
+.browsable-landing-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--ctx-accent, var(--primary));
+  font-size: 24px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.browsable-landing-loader.visible {
+  opacity: 1;
+}
 
 /* ---------- Landing state (no search yet) ---------- */
 /* Big centered headline + oversized search bar, dropped to normal layout
@@ -1453,12 +1514,17 @@
 }
 .browsable-loading {
   text-align: center;
-  font-size: 10px;
-  color: var(--text-secondary);
+  font-size: 11px;
+  color: var(--ctx-accent, var(--primary));
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 8px;
+  padding: 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
+.browsable-loading[hidden] { display: none; }
 .browsable-empty {
   text-align: center;
   font-size: 11px;
@@ -1591,3 +1657,62 @@
 }
 
 /* Per-plugin window header tints come from plugin's own CSS file. */
+
+/* ---------- Landing tags (recommendation pills) ---------- */
+.browsable-landing-tags {
+  width: min(520px, 100%);
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+.browsable-tags-track {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+  animation: browsable-tags-scroll 25s linear infinite;
+}
+.browsable-tags-track:hover {
+  animation-play-state: paused;
+}
+@keyframes browsable-tags-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.browsable-tag-pill {
+  white-space: nowrap;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.browsable-tag-pill:hover {
+  border-color: var(--ctx-accent, var(--primary));
+  color: var(--ctx-accent, var(--primary));
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 10%, var(--surface-2));
+}
+
+/* Landing with curated feed: shift content to top */
+.browsable-landing.has-curated {
+  justify-content: flex-start;
+  padding-top: 24px;
+  min-height: auto;
+}
+.browsable-landing.has-curated .browsable-grid,
+.browsable-landing.has-curated .browsable-grid-sentinel {
+  display: flex;
+}
+.browsable-landing.has-curated .browsable-grid {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Hide tags once search is active */
+.browsable-tab-panel:not(.browsable-landing) .browsable-landing-tags {
+  display: none;
+}

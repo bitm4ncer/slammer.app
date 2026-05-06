@@ -6,6 +6,9 @@ import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
 import { importSvgFile } from './vector-tools/svg-import.js';
 import { getPencilSmoothness, setPencilSmoothness } from './vector-tools/pencil-tool.js';
+import {
+  getSelection, getSelectionArray, setSelection, selectOnly, clearSelection,
+} from './selection-state.js';
 
 // Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
 const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
@@ -17,6 +20,95 @@ const SHAPE_OPTIONS = [
   { id: 'line',    label: 'Line',      icon: 'fa-minus' },
 ];
 
+// Helper: return the given layer IDs ordered by their position in the
+// document's flat layer list (top-of-stack first). Used so a Ctrl+G
+// group's childIds matches the visual order the user just selected.
+function topLevelOrder(doc, ids) {
+  const set = new Set(ids);
+  const ordered = [];
+  // Iterate top-of-stack first (doc.layers stores bottom-first).
+  for (let i = doc.layers.length - 1; i >= 0; i--) {
+    const l = doc.layers[i];
+    if (set.has(l.id)) ordered.push(l.id);
+  }
+  return ordered;
+}
+
+// Duplicate every selected layer. For groups, the group + every
+// descendant is cloned with fresh IDs and parentGroupId rewiring. For
+// regular layers, a shallow JSON clone with a new id + " copy" suffix.
+// New layers are inserted directly above the originals; selection
+// collapses to the new copies.
+function duplicateSelection(doc, ids) {
+  if (!ids || !ids.length) return;
+  const newIds = [];
+  for (const srcId of ids) {
+    const src = doc.findLayer(srcId);
+    if (!src) continue;
+    if (src.type === 'fx') continue;  // Adjustment layers — skip dup.
+    if (src.parentGroupId) continue;  // Skip children — copied via parent group.
+    const cloned = cloneLayerSubtree(doc, src);
+    if (cloned && cloned.id) newIds.push(cloned.id);
+  }
+  return newIds;
+}
+
+// Deep-clone a layer (and, if it's a group, its descendants) with
+// fresh IDs. Source paths/effects survive the clone via JSON. Returns
+// the new top-level layer.
+function cloneLayerSubtree(doc, src) {
+  const idMap = new Map();
+  const generateId = () => crypto.randomUUID();
+  // First pass — assign new IDs to every node we'll clone.
+  const collectIds = (layer) => {
+    idMap.set(layer.id, generateId());
+    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
+      for (const cid of layer.childIds) {
+        const child = doc.findLayer(cid);
+        if (child) collectIds(child);
+      }
+    }
+  };
+  collectIds(src);
+  // Second pass — JSON-clone each layer, rewrite id + parentGroupId +
+  // childIds via idMap, drop source Blob refs (cloning Blobs needs a
+  // real ImageBitmap copy — out of scope for keyboard-shortcut speed).
+  const cloned = [];
+  const cloneOne = (layer) => {
+    const out = JSON.parse(JSON.stringify(layer, (k, v) => (v instanceof Blob ? null : v)));
+    out.id = idMap.get(layer.id);
+    out.parentGroupId = layer.parentGroupId ? idMap.get(layer.parentGroupId) || null : null;
+    if (Array.isArray(out.childIds)) {
+      out.childIds = out.childIds.map((cid) => idMap.get(cid)).filter(Boolean);
+    }
+    if (layer === src) out.name = (layer.name || 'Layer') + ' copy';
+    // Inherit the live Blob source (Blobs are immutable — sharing is
+    // safe and avoids a slow round-trip through createImageBitmap).
+    if (layer.type === 'image' && layer.source instanceof Blob) out.source = layer.source;
+    return out;
+  };
+  // Clone src + descendants.
+  const visit = (layer) => {
+    cloned.push(cloneOne(layer));
+    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
+      for (const cid of layer.childIds) {
+        const child = doc.findLayer(cid);
+        if (child) visit(child);
+      }
+    }
+  };
+  visit(src);
+  // Insert into doc in the same order — directly above the source's
+  // z-position. _addLayerRaw fires layer:added so the renderer +
+  // layer-panel pick the clones up immediately.
+  const srcIdx = doc.layers.indexOf(src);
+  let insertAt = srcIdx + 1;
+  for (const layer of cloned) {
+    doc._addLayerRaw(layer, insertAt++);
+  }
+  doc.setActiveLayer(cloned[0].id);
+  return cloned[0];
+}
 export function initToolbar({ document: doc, view, renderer, exportPng, projectStore, projectMenu, openTextLayer }) {
   const $ = (id) => window.document.getElementById(id);
 
@@ -276,6 +368,105 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
         $('btnOpen')?.click();
         return;
       }
+
+      // Selection / group shortcuts (Phase D).
+      if (key === 'g' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        const sel = getSelectionArray().filter((id) => {
+          const l = doc.findLayer(id);
+          return l && l.type !== 'fx';
+        });
+        if (sel.length < 2) return;
+        const ordered = topLevelOrder(doc, sel);
+        const grp = doc.addGroupLayer({ name: 'Group', childIds: ordered });
+        if (grp) selectOnly(grp.id);
+        return;
+      }
+      if (key === 'g' && e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        // Find a group to dissolve — prefer the active layer if it IS
+        // a group, otherwise its parent group.
+        const active = doc.activeLayer;
+        let target = null;
+        if (active && active.type === 'group') target = active;
+        else if (active && active.parentGroupId) target = doc.findLayer(active.parentGroupId);
+        if (target) {
+          const childIds = (target.childIds || []).slice();
+          doc.dissolveGroup(target.id);
+          // Re-select what used to be inside.
+          if (childIds.length) setSelection(childIds, childIds[0]);
+        }
+        return;
+      }
+      if (key === 'a' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        // Select all top-level layers (groups counted as one each).
+        const ids = doc.layers.filter((l) => !l.parentGroupId).map((l) => l.id);
+        setSelection(ids, ids[ids.length - 1] || null);
+        return;
+      }
+      if (key === 'd' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        const ids = getSelectionArray();
+        if (!ids.length && doc.activeLayerId) ids.push(doc.activeLayerId);
+        const newIds = duplicateSelection(doc, ids);
+        if (Array.isArray(newIds) && newIds.length) {
+          setSelection(newIds, newIds[0]);
+        }
+        return;
+      }
+      if (key === 'l' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        const sel = getSelectionArray();
+        if (!sel.length) return;
+        // Toggle based on the FIRST selected layer's current state.
+        const first = doc.findLayer(sel[0]);
+        if (!first) return;
+        const next = !first.locked;
+        for (const id of sel) doc.setLayerLocked(id, next);
+        return;
+      }
+    }
+
+    // Plain Esc → reduce multi-selection to active layer only.
+    if (key === 'escape' && !mod && !e.altKey && !e.shiftKey) {
+      if (inField) return;
+      const sel = getSelection();
+      if (sel.size > 1) {
+        const active = doc.activeLayerId;
+        if (active) selectOnly(active);
+        else clearSelection();
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // Arrow-key nudge for selected layers (Select tool only).
+    if ((key === 'arrowleft' || key === 'arrowright' || key === 'arrowup' || key === 'arrowdown')
+        && !mod && !e.altKey) {
+      if (inField) return;
+      if (getTool() !== 'select') return;
+      const ids = getSelectionArray();
+      if (!ids.length) return;
+      const step = e.shiftKey ? 10 : 1;
+      let dx = 0, dy = 0;
+      if (key === 'arrowleft')  dx = -step;
+      if (key === 'arrowright') dx =  step;
+      if (key === 'arrowup')    dy = -step;
+      if (key === 'arrowdown')  dy =  step;
+      e.preventDefault();
+      for (const id of ids) {
+        const layer = doc.findLayer(id);
+        if (!layer || layer.locked || layer.type === 'fx') continue;
+        const cur = layer.transform || { x: 0, y: 0 };
+        doc.setLayerTransform(id, { x: (cur.x || 0) + dx, y: (cur.y || 0) + dy });
+      }
+      return;
     }
 
     // Plain-letter tool hotkeys.

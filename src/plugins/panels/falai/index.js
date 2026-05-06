@@ -235,13 +235,13 @@ export default {
           <div>
             <div class="falai-detail-title">${escapeHtml(model.name)}</div>
             <div class="falai-detail-cat">
-              ${escapeHtml(model.category)} · <code>${escapeHtml(model.id)}</code>
+              ${escapeHtml(model.category)} · <code>${escapeHtml(model.endpoint || model.id)}</code>
               ${formatCost(model.cost) ? ` · <span class="falai-detail-cost">${escapeHtml(formatCost(model.cost))} / image</span>` : ''}
             </div>
           </div>
           <div class="falai-detail-actions">
             <button class="falai-icon-btn" data-act="fav" title="Toggle favorite"><i class="${favoriteIds.has(model.id) ? 'fas' : 'far'} fa-heart"></i></button>
-            <a class="falai-icon-btn" href="https://fal.ai/models/${encodeURI(model.id)}" target="_blank" rel="noopener" title="Open on fal.ai"><i class="fas fa-arrow-up-right-from-square"></i></a>
+            <a class="falai-icon-btn" href="https://fal.ai/models/${encodeURI(model.endpoint || model.id)}" target="_blank" rel="noopener" title="Open on fal.ai"><i class="fas fa-arrow-up-right-from-square"></i></a>
           </div>
         </div>
         <div class="falai-detail-desc">${escapeHtml(model.description || '')}</div>
@@ -311,9 +311,14 @@ export default {
           setStatus('Preparing input…');
           const input = await form.getValues();
           setStatus('Submitting…');
+          const finalInput = typeof model.prepareInput === 'function' ? model.prepareInput(input) : input;
+          // prepareInput may return __endpoint to override the model endpoint
+          // (e.g. switching from txt2img to img2img based on whether an image was provided).
+          const endpointOverride = finalInput.__endpoint;
+          if (endpointOverride) delete finalInput.__endpoint;
           const result = await runModel({
-            modelId: model.id,
-            input,
+            modelId: endpointOverride || model.endpoint || model.id,
+            input: finalInput,
             signal: currentAborter.signal,
             onQueueUpdate: (update) => {
               const s = update.status === 'IN_QUEUE' ? `queued (#${update.queue_position ?? '?'})`

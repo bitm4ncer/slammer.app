@@ -194,3 +194,47 @@ After every phase: launch dev server, exercise the phase's features in browser, 
 - **Phase 11**: full preset list of document sizes — confirm at phase start
 - **Phase 13**: vector library choice (paper.js vs raw Konva.Path vs custom) — discuss before starting
 - **Phase 16**: confirm exact Replicate model slugs at phase start
+
+---
+
+## Features
+
+Features are larger initiatives not bound to a phase number. Started when it makes sense — usually after current QoL/bug work clears the deck. Each Feature can grow over multiple weeks; sub-deliverables ship independently.
+
+### F1 — Open Slammer (SDK + Plugins + MCP + Docs)
+
+**Intent**: open slammer.app to outside developers and LLMs.
+**Status**: planned — start when QoL/bug queue clears.
+
+Sub-deliverables (each shippable on its own):
+- [ ] **Operations API** (`window.__slammer.ops`) — ~30 typed ops, foundation for everything below
+- [ ] **Markdown docs route** at `/docs` (Vite route, `src/docs/*.md`)
+- [ ] **3rd-party plugin loader** — `loadPluginFromUrl(url)`, plugin scaffold (`npm create slammer-plugin`), trust-on-install (no sandbox v1)
+- [ ] **MCP browser-extension companion** — Chrome/Firefox extension brokers between slammer ↔ MCP server process; Connect panel inside slammer; supports Claude Code, Kimi, any MCP-aware LLM
+- [ ] **In-app coding agent** — panel plugin, chat UI, tool-loop against the same Operations API; uses Anthropic / OpenAI key from Settings
+- [ ] **Plugin sandbox + featured registry** (later) — iframe / Worker isolation, permissions model
+
+**Architecture notes** (locked-in; don't re-debate):
+- Plugin distribution: **self-hosted URLs** — user pastes plugin `index.js` URL, no curated registry v1
+- MCP transport: **browser extension** for v1. Electron / Tauri shell is the *end goal* but explicitly later
+- Docs: markdown files in `src/docs/`, Vite route, same repo
+- Versioning: `window.__slammer.ops` is the only public consumer-facing API; needs an explicit semver story before external developers ship plugins
+
+**Prerequisite**: Operations API. Don't start any of the others (plugin loader, MCP, agent) before that's stable, otherwise three slightly-different APIs grow in parallel. The "snapshot-verify" loop (`ops.getCanvasSnapshot({ region, scale })`) is the killer feature for the MCP and the in-app agent — make sure that op is fast, deterministic, and low-token-cost.
+
+**Open decisions** (defer until start-of-work):
+- ESM module package format for plugins (single `index.js` or zipped bundle?)
+- MCP authentication (token-on-localhost vs. extension-managed handshake)
+- Snapshot resolution defaults for LLM verification (token cost vs. accuracy)
+
+### F2 — Noun Project Plugin (SVG Icon Search)
+
+**Intent**: search and import SVG icons from The Noun Project's 5M+ icon library directly inside slammer.
+**Status**: idea — revisit when plugin ecosystem matures.
+
+- [ ] Panel plugin using Noun Project API v2 (`GET /v2/icon?query=…`)
+- [ ] Auth: OAuth 1.0a (key + secret from user's NounProject developer account, stored in Settings → API Keys)
+- [ ] Import as vector layer (SVG → path data) or as rasterised image layer
+- [ ] Style/line-weight filters, similar-icon suggestions
+
+**Notes**: OAuth 1.0a is heavier than the simple Bearer/API-key auth used by other plugins — each request needs a signed header (nonce, timestamp, HMAC-SHA1). Browser-side signing is doable with a small lib. Most useful once SVG import → vector layer is solid.

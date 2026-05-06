@@ -133,6 +133,17 @@ export async function importSlmr(file, doc) {
     throw new Error(`Failed to parse manifest: ${err.message}`);
   }
 
+  // Validate manifest shape.
+  if (!manifest || typeof manifest !== 'object') {
+    throw new Error('Invalid manifest: not an object');
+  }
+  if (!manifest.document || typeof manifest.document !== 'object') {
+    throw new Error('Invalid manifest: missing document object');
+  }
+  if (!Array.isArray(manifest.document.layers)) {
+    throw new Error('Invalid manifest: document.layers is not an array');
+  }
+
   // Build asset blobs.
   const assetBlobs = {};
   for (const asset of manifest.assets || []) {
@@ -145,18 +156,13 @@ export async function importSlmr(file, doc) {
   }
 
   // Hydrate layer sources.
-  for (const layer of manifest.document.layers || []) {
+  for (const layer of manifest.document.layers) {
     if (layer.type === 'image' && layer.source && typeof layer.source === 'object' && layer.source.__asset) {
       const blob = assetBlobs[layer.source.__asset];
-      if (blob) {
-        layer.source = blob;
-      } else {
-        console.warn(`[slmr] missing asset for layer ${layer.id}: ${layer.source.__asset}`);
+      if (!blob) {
+        throw new Error(`Missing asset for layer "${layer.name || layer.id}": ${layer.source.__asset}`);
       }
-    }
-    // Convert any remaining data-URL sources to Blobs for uniform pipeline.
-    if (typeof layer.source === 'string' && layer.source.startsWith('data:')) {
-      layer.source = await (await fetch(layer.source)).blob();
+      layer.source = blob;
     }
   }
 
