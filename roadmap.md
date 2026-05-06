@@ -524,3 +524,56 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - Sandbox model decision (iframe vs Worker) is the central technical question; both have trade-offs (iframe = DOM access for renderUI but heavier; Worker = light but no direct DOM).
 - Commerce: Polar Connect (if available at the time) or a custom payout flow via Stripe Connect as fallback.
 - This is a 2027+ goal at current single-maintainer cadence.
+
+### F5 — Premium Sprint (Bitmancer launch catalog)
+
+**Intent**: build out the launch catalog of premium plugins, effects and asset packs that the Bitmancer Library will sell. Each item must individually pass the three "Pay what you need" tests in [STRATEGY.md](STRATEGY.md). Live in a private repo at `src/plugins/premium/` (gitignored), loaded in dev via `premium-loader.js`, served via R2 in prod (Phase 28).
+**Status**: in progress — first 5 plugins migrated to `premium/` folder structure, manifests tagged with `pro: true` + `pack` metadata.
+
+**Pack structure (`pack` field on the manifest):**
+
+| Pack | Items | Status |
+|---|---|---|
+| **Glitch Pack** | Datamosh · JPEG Compression | Migrated, pre-existing functionality |
+| **Raster Pack** | Dither · Halftone (raster) | Dither migrated; raster Halftone TBD |
+| **Dots Pack** | Stipple · Halftone (vector) | Migrated, pre-existing functionality |
+
+**Existing premium plugins (migrated from free folders, polish pending):**
+- [x] **Datamosh** — moved to `premium/datamosh/`, `pack: 'glitch-pack'`
+- [x] **JPEG Compression** — moved to `premium/jpeg-compression/`, `pack: 'glitch-pack'`
+- [x] **Dither** — moved to `premium/dithering/` (id stable), `pack: 'raster-pack'`
+- [x] **Stipple** (vector) — moved to `premium/stipple/`, `pack: 'dots-pack'`
+- [x] **Halftone** (vector) — moved to `premium/halftone/`, `pack: 'dots-pack'`
+
+**New premium plugins / effects / assets (build queue):**
+- [ ] **Halftone (raster)** — real screenprint dot pattern with DPI + angle + dot-shape (distinct from vector Halftone, distinct from Dither's halftone mode). Goes into Raster Pack alongside Dither.
+- [ ] **Instagram Importer** plugin — login-free public profile scraping or oEmbed-based, pulls user's own posts as image layers
+- [ ] **Background Removal** plugin (client-side) — runs on local model (e.g. ONNX U²-Net or BiRefNet via WebGPU/WASM). Available as both standalone plugin AND as a per-layer effect.
+- [ ] **AI Inpainting** plugin — fal.ai-backed (BYO key), masked region → AI fill
+- [ ] **Soft Face Filter** effect — lightweight skin-smoothing / colour-balancing for portraits
+- [ ] **Y2K Vector Pack** assets — curated SVG kit (logos, shapes, ornaments, stickers)
+- [ ] **Xerox Textures** asset pack — high-res scan textures of photocopied / faxed material
+- [ ] **Organic Gradients** effect (also on roadmap, see Phase 20) — flowing seedable gradients via `noisesc(v + udirsc(v)*t)`. Move from Phase 20 to F5 since it's a strong Pro candidate.
+- [ ] **CRT Look** effect — scan lines + RGB bleed + bloom + vignette + barrel distortion preset
+- [ ] **Mesh Warp** plugin — pin-mesh deformation (also on Phase 27 Deform tab; if shipped here, drop the Phase 27 Mesh Warp sub-task)
+
+**Architecture notes:**
+- All items live in private `bitmancer-plugins` repo, mounted at `src/plugins/premium/`. Gitignored in slammer.app.
+- Each item's manifest carries `pro: true`, `pack: '<pack-id>'`, eventually `price: <eur>` (added when commerce wires up in Phase 28).
+- Free improvements to non-premium plugins continue independently — moving items here does NOT mean polish stops on free counterparts.
+- Phase 19 polish items that touch premium plugins (e.g. Pixelsort scroll-wheel cycle, Dither algorithm browse, etc.) cross-cut into F5; track them in whichever phase the work happens, no double-listing.
+
+**Polish sprints (each premium item gets its own pass before launch):**
+- [ ] Datamosh polish — fat-knob UI, more algorithms, before/after preview, presets
+- [ ] JPEG Compression polish — quality presets ("Late-2000s Forum", "Compression Decay", "Recompressed Meme"), gen-loss visual feedback
+- [ ] Dither polish — algorithm preview thumbnails in picker, scroll-wheel cycle (Phase 19 todo), better palette UI
+- [ ] Stipple polish — preview overlay during edit, denser jitter modes, layout previews
+- [ ] Halftone (vector) polish — gradient direction handles on canvas
+
+**Open decisions** (defer until Phase 28 / launch nears):
+- Per-plugin price points (single plugin €5–10, but flat or tiered?)
+- Pack discount: 30 % off pack vs sum of singles is the working model
+- Lifetime bundle inclusion: every F5 item ships into Lifetime automatically (per STRATEGY.md)
+- Whether Background Removal local model is allowed in free fork too (no — too valuable to give away, keep premium even though tech is OSS)
+
+**Prerequisite**: Phase 28 Bitmancer Library Storefront must be live before any F5 item can be sold publicly. Until then, all F5 work is private development against the dev-loader.
