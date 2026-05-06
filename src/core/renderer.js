@@ -1465,10 +1465,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Read-only export of a single layer's processed pixels as a Blob. Used by
   // panel plugins that send a layer to an external service (Replicate, etc.).
   // Downscales when the layer's longest side exceeds maxSide.
+  // For group layers: flattens all visible descendants within their union bbox.
   async function rasterizeLayerToBlob(layerId, { mimeType = 'image/png', maxSide = 2048, quality = 0.92 } = {}) {
-    const st = layerState.get(layerId);
-    if (!st || !st.dstCanvas) return null;
-    const src = st.dstCanvas;
+    const layer = document.findLayer(layerId);
+    if (!layer) return null;
+
+    let src;
+    if (layer.type === 'group') {
+      src = rasterizeGroupCanvas(layerId);
+    } else {
+      const st = layerState.get(layerId);
+      if (!st || !st.dstCanvas) return null;
+      src = st.dstCanvas;
+    }
+    if (!src) return null;
     const sw = src.width;
     const sh = src.height;
     if (!sw || !sh) return null;
@@ -1482,6 +1492,46 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     const octx = out.getContext('2d');
     octx.drawImage(src, 0, 0, dw, dh);
     return await new Promise((resolve) => out.toBlob(resolve, mimeType, quality));
+  }
+
+  // Flatten a group's visible descendants into a single canvas, sized to their
+  // union bbox. Returns null if the group has no rendered children.
+  function rasterizeGroupCanvas(groupId) {
+    const descendants = document.descendantsOf(groupId).filter((l) => l.visible && l.type !== 'group');
+    if (!descendants.length) return null;
+    const stRefs = descendants
+      .map((l) => ({ layer: l, st: layerState.get(l.id) }))
+      .filter((x) => x.st && x.st.dstCanvas);
+    if (!stRefs.length) return null;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const { st } of stRefs) {
+      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.width);
+      maxY = Math.max(maxY, r.y + r.height);
+    }
+    if (!isFinite(minX)) return null;
+    const w = Math.ceil(maxX - minX);
+    const h = Math.ceil(maxY - minY);
+    if (w <= 0 || h <= 0) return null;
+
+    const out = makeCanvas(w, h);
+    const octx = out.getContext('2d');
+    octx.translate(-minX, -minY);
+    for (const { st, layer } of stRefs) {
+      const sx = layer.transform.scaleX, sy = layer.transform.scaleY;
+      octx.save();
+      octx.globalCompositeOperation = layer.blendMode || 'source-over';
+      octx.globalAlpha = layer.opacity ?? 1;
+      octx.translate(layer.transform.x, layer.transform.y);
+      octx.rotate(((layer.transform.rotation || 0) * Math.PI) / 180);
+      octx.scale(sx, sy);
+      octx.drawImage(st.dstCanvas, 0, 0);
+      octx.restore();
+    }
+    return out;
   }
 
   // ---------- Helpers exposed for export-png ----------

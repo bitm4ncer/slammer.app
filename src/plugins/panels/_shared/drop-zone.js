@@ -40,10 +40,16 @@ export function createDropZone({ ctx, onChange, label = 'Drop image or layer' })
 
   function refreshLayerOptions() {
     if (!ctx?.doc) return;
-    const layers = ctx.doc.layers.filter((l) => l.type === 'image' || l.type === 'text' || l.type === 'vector');
+    // Groups are accepted — they get flattened to a single canvas at submit time.
+    const layers = ctx.doc.layers.filter((l) =>
+      l.type === 'image' || l.type === 'text' || l.type === 'vector' || l.type === 'group'
+    );
     const currentVal = select.value;
     select.innerHTML = '<option value="">— pick a layer —</option>'
-      + layers.slice().reverse().map((l) => `<option value="${l.id}">${escapeHtml(l.name || l.type)}</option>`).join('');
+      + layers.slice().reverse().map((l) => {
+          const labelPrefix = l.type === 'group' ? '⌘ ' : '';
+          return `<option value="${l.id}">${labelPrefix}${escapeHtml(l.name || l.type)}</option>`;
+        }).join('');
     if (layers.find((l) => l.id === currentVal)) select.value = currentVal;
   }
 
@@ -68,11 +74,23 @@ export function createDropZone({ ctx, onChange, label = 'Drop image or layer' })
     empty.hidden = true;
     filled.hidden = false;
     nameEl.textContent = sel.name || (sel.kind === 'layer' ? 'Layer' : 'Image');
-    // Show a preview thumb. For layer source, draw the cached dst canvas.
+    // Show a preview thumb. Image/text/vector layers have a cached dstCanvas;
+    // group layers don't, so flatten them via rasterizeLayerToBlob and use the
+    // resulting Blob URL.
     if (sel.kind === 'layer' && ctx?.renderer) {
       const st = ctx.renderer.layerState.get(sel.layerId);
       if (st?.dstCanvas) {
         try { previewImg.src = st.dstCanvas.toDataURL('image/png'); } catch {}
+      } else if (sel.layerType === 'group') {
+        // Async preview for groups — rasterize at low res just for the thumb.
+        ctx.renderer.rasterizeLayerToBlob(sel.layerId, { maxSide: 256 })
+          .then((blob) => {
+            if (!blob || current !== sel) return;
+            if (previewURL) URL.revokeObjectURL(previewURL);
+            previewURL = URL.createObjectURL(blob);
+            previewImg.src = previewURL;
+          })
+          .catch(() => {});
       }
     } else if (sel.kind === 'file' && sel.file) {
       previewURL = URL.createObjectURL(sel.file);
@@ -148,6 +166,7 @@ export function createDropZone({ ctx, onChange, label = 'Drop image or layer' })
     setSelection({
       kind: 'layer',
       layerId,
+      layerType: layer.type,
       name: layer.name || layer.type,
       blobPromise: () => ctx.renderer.rasterizeLayerToBlob(layerId, { mimeType: 'image/png', maxSide: 2048 }),
     });
