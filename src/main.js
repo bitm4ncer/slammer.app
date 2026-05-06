@@ -62,7 +62,11 @@ import metaballVPlugin from './plugins/vector/metaball/index.js';
 // Phase 16 — panel plugins.
 import unsplashPlugin from './plugins/panels/unsplash/index.js';
 import pexelsPlugin from './plugins/panels/pexels/index.js';
-import openversePlugin from './plugins/panels/openverse/index.js';
+// Openverse anonymous tier returns 401 from third-party origins (works
+// from localhost, blocked from gh-pages). Their auth flow needs email
+// verification so we can't register-and-go from the browser. Plugin
+// kept on disk for future re-enable behind a proxy or pre-issued token.
+// import openversePlugin from './plugins/panels/openverse/index.js';
 import metPlugin from './plugins/panels/met/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
@@ -82,7 +86,7 @@ import { initSidebarPlugins } from './ui/sidebar-plugins.js';
 document.addEventListener('DOMContentLoaded', async () => {
   initSettingsPopup({
     button: document.getElementById('btnSettings'),
-    version: 'v1.0.0-alpha',
+    version: 'v1.0.1',
   });
   initSidePanelSplit();
 
@@ -99,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     halftoneVPlugin, spirographVPlugin, scribbleVPlugin, metaballVPlugin,
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
-    falaiPlugin, unsplashPlugin, pexelsPlugin, openversePlugin, metPlugin,
+    falaiPlugin, unsplashPlugin, pexelsPlugin, metPlugin,
   ].forEach(registerPlugin);
 
   const doc = createDocument();
