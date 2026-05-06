@@ -11,3 +11,7 @@ dist/
 notes/
 *.private.md
 *.strategy.md
+
+# Premium plugins under development (not part of public AGPL distribution)
+# Lives in its own private git repo. See src/plugins/premium-loader.js.
+src/plugins/premium/

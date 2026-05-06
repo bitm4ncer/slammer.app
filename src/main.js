@@ -25,6 +25,7 @@ import { bootUploadedFonts } from './ui/typography/uploaded-fonts.js';
 import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupported } from './ui/typography/local-system-fonts.js';
 import { showNotification } from './ui/notifications.js';
 import { registerPlugin } from './plugins/registry.js';
+import { registerPremiumPluginsForDev } from './plugins/premium-loader.js';
 
 // Plugins (Phase 4a foundation: Invert. Others registered as they land.)
 import invertPlugin from './plugins/filters/invert/index.js';
@@ -107,6 +108,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Plugin Manager list.
     falaiPlugin, unsplashPlugin, pexelsPlugin, metPlugin,
   ].forEach(registerPlugin);
+
+  // Local-only: discover premium plugins under src/plugins/premium/ if
+  // present. No-op in production; the folder is gitignored so a public
+  // clone never sees premium code. See plugins/premium-loader.js.
+  registerPremiumPluginsForDev();
 
   const doc = createDocument();
   const view = initCanvasView({
