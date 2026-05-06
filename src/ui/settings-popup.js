@@ -102,6 +102,8 @@ export function initSettingsPopup({ button, version }) {
         <div class="settings-tabbar">
           <button class="settings-tab" data-tab="general">General</button>
           <button class="settings-tab" data-tab="apikeys">API Keys</button>
+          <button class="settings-tab" data-tab="shortcuts">Shortcuts</button>
+          <button class="settings-tab" data-tab="info">Info</button>
         </div>
 
         <div class="settings-tab-panel" data-tab="general">
@@ -222,6 +224,91 @@ export function initSettingsPopup({ button, version }) {
             </div>
           </div>
         </div>
+
+        <div class="settings-tab-panel" data-tab="shortcuts" hidden>
+          <div class="settings-section">
+            <table class="settings-shortcuts">
+              <colgroup><col class="settings-shortcuts-keys"/><col/></colgroup>
+              <tbody>
+                <tr class="settings-shortcuts-head"><th colspan="2">File</th></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>New blank project</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Open project popup</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save project</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>E</kbd></td><td>Export PNG/JPEG/WebP popup</td></tr>
+                <tr><td><kbd>Shift</kbd>+click Export</td><td>Export <code>.slammerproj</code> directly</td></tr>
+
+                <tr class="settings-shortcuts-head"><th colspan="2">Edit</th></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>V</kbd> / <kbd>X</kbd></td><td>Copy / Paste / Cut active layer</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Duplicate active layer (+20 / +20 px)</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>Select all layers</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>Group selection</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd></td><td>Ungroup</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td><td>Lock / unlock active layer</td></tr>
+                <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Delete selection</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>Deselect / cancel current gesture</td></tr>
+
+                <tr class="settings-shortcuts-head"><th colspan="2">Move &amp; transform</th></tr>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Nudge selection 1 px</td></tr>
+                <tr><td><kbd>Shift</kbd>+arrow</td><td>Nudge selection 10 px</td></tr>
+                <tr><td>Drag rotate handle</td><td>Free rotate (live degree pill follows pointer)</td></tr>
+                <tr><td><kbd>Shift</kbd>+rotate</td><td>Snap rotation to nearest 5°</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+drag handle (text)</td><td>Resize text-box width (auto-wrap)</td></tr>
+
+                <tr class="settings-shortcuts-head"><th colspan="2">Tools</th></tr>
+                <tr><td><kbd>V</kbd></td><td>Select tool</td></tr>
+                <tr><td><kbd>A</kbd></td><td>Direct Select (anchor edit)</td></tr>
+                <tr><td><kbd>P</kbd></td><td>Pen tool</td></tr>
+                <tr><td><kbd>B</kbd></td><td>Pencil tool</td></tr>
+                <tr><td><kbd>R</kbd></td><td>Rectangle (cycle shape primitives)</td></tr>
+                <tr><td><kbd>T</kbd></td><td>Add text layer</td></tr>
+                <tr><td><kbd>I</kbd></td><td>Add image layer</td></tr>
+
+                <tr class="settings-shortcuts-head"><th colspan="2">Canvas</th></tr>
+                <tr><td>Mouse-wheel</td><td>Zoom in / out (around pointer)</td></tr>
+                <tr><td>Middle-mouse drag</td><td>Pan</td></tr>
+                <tr><td>Drag a layer card to canvas</td><td>Re-add layer (or to plugin: send for processing)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="settings-tab-panel" data-tab="info" hidden>
+          <div class="settings-section">
+            <div class="settings-row">
+              <span class="settings-label">App</span>
+              <span class="settings-readout">slammer.app · ${version}</span>
+            </div>
+            <div class="settings-help-block">
+              Browser-native multi-layer editor for slamming, glitching &amp; dithering.
+              No backend, no telemetry — everything runs locally in this tab.
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-row settings-row--column">
+              <span class="settings-label">Supported file types</span>
+              <ul class="settings-filetypes">
+                <li><strong>Project</strong> — <code>.slammerproj</code>, <code>.slmr</code> (legacy <code>.crushproj</code> auto-imported)</li>
+                <li><strong>Image</strong> — PNG, JPEG, WebP, AVIF, GIF (drag onto canvas or paste)</li>
+                <li><strong>Vector</strong> — SVG (drag onto canvas)</li>
+                <li><strong>Fonts</strong> — TTF, OTF, WOFF, WOFF2 (Typography → Upload)</li>
+                <li><strong>Export</strong> — PNG, JPEG, WebP (region: visible / frame, scale 1× / 2× / 4×)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="settings-section settings-meta">
+            <div class="settings-row">
+              <a class="settings-coffee-btn" href="https://buymeacoffee.com/slammer.app" target="_blank" rel="noopener" aria-label="Buy a coffee">
+                <i class="fas fa-mug-hot"></i>
+                <span>Buy a coffee</span>
+              </a>
+              <a class="settings-help" href="https://github.com/bitm4ncer/slammer.app" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </div>
+        </div>
       </div>
     `;
     document.body.appendChild(backdrop);
@@ -238,7 +325,8 @@ export function initSettingsPopup({ button, version }) {
       panels.forEach((p) => p.toggleAttribute('hidden', p.dataset.tab !== name));
     }
     tabs.forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.tab)));
-    selectTab(startTab === 'apikeys' ? 'apikeys' : 'general');
+    const validTabs = new Set(['general', 'apikeys', 'shortcuts', 'info']);
+    selectTab(validTabs.has(startTab) ? startTab : 'general');
 
     // ---------- General controls ----------
     const accentInput = backdrop.querySelector('#setAccent');

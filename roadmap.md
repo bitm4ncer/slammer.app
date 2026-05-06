@@ -237,8 +237,8 @@
 - [x] Auto-load fonts on opening another user's project — `preloadFontsForDoc()` now runs on every project-load path (autosave restore, project-menu open, `.slmr` import); `.slmr` manifest enriched with all-provider font metadata (uploaded carries raw bytes; google/fontshare/system carry catalog snapshots so the receiver can `loadFont(meta)` even with a stale catalog)
 
 ### Cluster D — Settings tabs
-- [ ] **Info** tab: supported file types, version, "Buy a coffee" button
-- [ ] **Shortcuts** tab: complete keymap reference
+- [x] **Info** tab: app + version, supported file types (project / image / vector / fonts / export), Buy-a-coffee button + GitHub link
+- [x] **Shortcuts** tab: 35-row keymap covering File, Edit, Move &amp; Transform, Tools, Canvas. Rendered as a `<table class="settings-shortcuts">` with `<kbd>` styling.
 
 ### Cluster E — Export popup
 - [ ] **WebP** format option

@@ -81,6 +81,7 @@ The main agent reviews every subagent's diff before committing. Subagents do not
   2. The change must round-trip: edit → reload page → edit is still there. Verify in `preview_eval` (READ-ONLY): mutate via UI, refresh, inspect `doc.layers`/`doc.state` — values match.
   3. Direct Konva node mutations (e.g. setting `node.rotation()` or `node.position()` outside a `transform`/`drag` event) are forbidden as the *only* mutation — they bypass history. Always reflect the change back into the document model so autosave + undo see it.
   Common trap: setting a Konva property in an event handler updates the *visual* state but if you don't also call `doc.setLayerTransform(id, { rotation })` (or equivalent), refresh wipes the change and undo skips it.
+- **When a bug threatens to slow the current task, park it in `BUGS.md`** instead of derailing. Ask the user "should I park this in BUGS.md?", then on yes append a short entry: `## <one-line title>` + 1–3 lines describing the symptom, the suspected cause, the file(s) involved, and what was tried. We review BUGS.md at phase boundaries. Don't disable a feature to dodge a bug — park, ship the rest, come back.
 
 ## Stack additions beyond AGENTS.md
 
