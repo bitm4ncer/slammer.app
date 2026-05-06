@@ -749,9 +749,19 @@
 }
 .export-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }
+/* Make the pill buttons fill available width symmetrically */
+.export-actions .settings-action-btn {
+  flex: 1;
+  justify-content: center;
+}
+.export-actions .settings-action-btn--primary {
+  flex: 1.5;
+}
+/* Hide the active-layer pill when it carries [hidden] */
+.export-active-layer-pill[hidden] { display: none; }
 
 /* ---------- Footer alignment strip ---------- */
 .alignment-strip {

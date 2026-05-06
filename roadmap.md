@@ -241,11 +241,11 @@
 - [x] **Shortcuts** tab: 35-row keymap covering File, Edit, Move &amp; Transform, Tools, Canvas. Rendered as a `<table class="settings-shortcuts">` with `<kbd>` styling.
 
 ### Cluster E — Export popup
-- [ ] **WebP** format option
-- [ ] Pill-shaped Cancel / Export buttons placed side by side
-- [ ] **RGBA / CMYK** toggle
-- [ ] **Layer Export** toggle in region settings (only when a layer is selected)
-- [ ] JPEG with transparency: auto-mask to original layer alpha shape
+- [x] **WebP** format option (third pill alongside PNG / JPEG; quality slider now also applies)
+- [x] Pill-shaped Cancel / Export buttons side by side (`.settings-action-btn` + `--primary` reused from Settings → Info)
+- [x] **RGBA / CMYK** toggle — CMYK runs an in-place soft-proof (RGB → CMYK → RGB round-trip) before encoding, since browsers can't write a CMYK container directly. ICC-accurate workflow stays Affinity-via-bridge.
+- [x] **Layer Export** region pill — visible only when an active layer is selected; defaults filename to the layer's name; pipes through `renderer.rasterizeLayerToBlob`.
+- [x] JPEG-with-transparency auto-mask — for `Layer Export + JPEG + Background: transparent`, the canvas is cropped to the layer's alpha bounding box (no more giant white rectangles).
 
 ### Cluster F — Persistence & undo
 - [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch
