@@ -189,3 +189,15 @@ Forked from the v0.5 single-image tool that lived at `CRUSH_app`.
 v1 is the layered Konva rewrite. Legacy `crush:*` localStorage keys
 and the old IndexedDB store are migrated automatically on first launch;
 `.crushproj` files still import transparently.
+
+
+## License
+
+slammer.app is free software licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0).
+
+You may use, study, modify and redistribute it freely. If you run a
+modified version on a public server, the AGPL requires you to publish
+your modifications. Premium plugins and asset packs distributed under
+the Bitmancer brand are sold separately and are not covered by this
+license.

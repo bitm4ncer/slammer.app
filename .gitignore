@@ -3,3 +3,11 @@ dist/
 .vite/
 *.log
 .claude/settings.local.json
+
+# Private strategy & notes (never commit)
+.claude/plans/
+.claude/private/
+.claude/notes/
+notes/
+*.private.md
+*.strategy.md
