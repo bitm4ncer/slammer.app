@@ -435,6 +435,9 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
           console.warn('[slammer.app] font preload skipped on open:', err);
         }
         doc.load(projDoc);
+        // Fit the viewport on explicit Open (Phase 19 Cluster C). Defer one
+        // tick so Konva groups mount before the bounding-rect math.
+        setTimeout(() => window.__slammer?.view?.fitTo?.(), 0);
         projectStore.setCurrent(id);
         showNotification(`Opened "${projDoc.name}"`);
         close();

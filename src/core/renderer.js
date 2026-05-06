@@ -42,15 +42,29 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // mode when the user drags a handle on a text layer with the modifier held.
   let ctrlShiftDown = false;
   // Track Shift-only state for rotation snapping (snap to 5° multiples).
+  // We DON'T override node.rotation() ourselves — that desyncs the transformer's
+  // pivot and the node drifts. Instead we toggle Konva's native rotationSnap
+  // tolerance on/off, which handles the pivot maths correctly.
   let shiftDown = false;
   function refreshMods(e) {
     ctrlShiftDown = !!(e && (e.ctrlKey || e.metaKey) && e.shiftKey);
-    shiftDown = !!(e && e.shiftKey);
+    const newShift = !!(e && e.shiftKey);
+    if (newShift !== shiftDown) {
+      shiftDown = newShift;
+      if (transformer) {
+        // 2.5° tolerance with 5° step ⇒ every angle snaps to nearest multiple
+        // of 5. Tolerance 0 ⇒ snaps disabled (free rotate).
+        transformer.rotationSnapTolerance(shiftDown ? 2.5 : 0);
+      }
+    }
   }
   window.addEventListener('keydown', refreshMods);
   window.addEventListener('keyup', refreshMods);
   window.addEventListener('mousedown', refreshMods);
   window.addEventListener('mousemove', refreshMods);
+
+  // Pre-built snap array — every multiple of 5° in [0, 360).
+  const ROTATION_SNAPS_5DEG = Array.from({ length: 72 }, (_, i) => i * 5);
 
   // Rotation readout — a fixed DOM pill shown near the rotater anchor during drag.
   const rotationReadout = window.document.createElement('div');
@@ -90,6 +104,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       borderDash: [4, 4],
       keepRatio: false,
       flipEnabled: false,
+      // Konva-native rotation snap. Tolerance 0 ⇒ no snap. We bump it to 2.5
+      // when Shift is held (see refreshMods) so every angle rounds to the
+      // nearest 5° while Konva handles the pivot maths.
+      rotationSnaps: ROTATION_SNAPS_5DEG,
+      rotationSnapTolerance: 0,
       boundBoxFunc: (oldBox, newBox) => {
         // Auto-detect a Ctrl+Shift-held resize on a text layer. Capture the
         // starting boxWidth + a fixed reference width on the first tick so
@@ -133,27 +152,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         return oldBox;
       },
     });
-    // Continuous transform listener — drives live rotation readout and Shift-snap.
+    // Continuous transform listener — drives live rotation readout. Snap is
+    // handled by Konva itself via rotationSnaps + rotationSnapTolerance, so
+    // we only READ the post-snap rotation here, never override it.
     transformer.on('transform', (e) => {
       const activeAnchor = transformer.getActiveAnchor?.();
       if (activeAnchor === 'rotater') {
         const nodes = transformer.nodes();
         if (nodes.length) {
-          let deg = nodes[0].rotation();
-          // Shift held → snap to nearest 5°.
-          if (shiftDown) {
-            deg = Math.round(deg / 5) * 5;
-            nodes[0].rotation(deg);
-          }
-          // Show the readout pill near the current pointer position.
+          const deg = nodes[0].rotation();
           const evt = e.evt;
-          if (evt) {
-            positionReadoutNearPointer(evt.clientX, evt.clientY);
-          }
+          if (evt) positionReadoutNearPointer(evt.clientX, evt.clientY);
           showRotationReadout(((deg % 360) + 360) % 360);
         }
       } else {
-        // Not rotating — hide any stale readout.
         hideRotationReadout();
       }
     });
