@@ -268,7 +268,7 @@ function renderHeader({ withBack = false }) {
   return `
     <header class="shop-header">
       <div class="shop-header-line">
-        <span class="h-mark">bitmancer shop</span>
+        <span class="h-mark">shop</span>
         <span class="h-issue">v0.1 · pre-launch</span>
       </div>
       <div class="shop-header-actions">
@@ -283,7 +283,7 @@ function renderHeader({ withBack = false }) {
 function renderLede() {
   return `
     <div class="shop-lede">
-      <h1 class="shop-lede-title">five plugins.<br>one <em>editor</em>.</h1>
+      <h1 class="shop-lede-title">ADD ONs</h1>
       <div class="shop-lede-meta">
         <span>by bitmancer</span>
         runs in slammer.app<br>
