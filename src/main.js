@@ -10,6 +10,8 @@ import './style/vector.css';
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';
 import { createHistory } from './core/history.js';
+import { translatePathD } from './core/vector-renderer.js';
+import { getSelectionArray, selectOnly } from './ui/selection-state.js';
 import { initCanvasView } from './ui/canvas-view.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
@@ -249,6 +251,82 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if ((k === 'z' && e.shiftKey) || k === 'y') {
       e.preventDefault();
       history.redo();
+    }
+  });
+
+  // ---------- Layer clipboard (Ctrl+C / Ctrl+V / Ctrl+X) ----------
+  // Ctrl+D (duplicate) and arrow-nudge already live in toolbar.js — those
+  // are global keymap concerns. C/V/X are net-new and live here.
+  // Clipboard is a single-layer in-memory snapshot; Blob sources are
+  // preserved by reference (Blobs are immutable).
+  let layerClipboard = null;
+
+  function snapshotLayer(layer) {
+    const { source, naturalSize, ...rest } = layer;
+    const snap = JSON.parse(JSON.stringify(rest));
+    if (source !== undefined) snap.source = source;
+    if (naturalSize !== undefined) snap.naturalSize = JSON.parse(JSON.stringify(naturalSize));
+    return snap;
+  }
+
+  function pasteFromClipboard() {
+    if (!layerClipboard) return;
+    // Build a fresh top-level layer with new ids. Group descendants are
+    // dropped for v1 (paste-as-group is a follow-up — full subtree clone
+    // already exists in toolbar's duplicate path).
+    const fresh = JSON.parse(JSON.stringify(layerClipboard));
+    fresh.id = crypto.randomUUID();
+    fresh.parentGroupId = null;
+    // Re-attach Blob source.
+    if (layerClipboard.source instanceof Blob) fresh.source = layerClipboard.source;
+    if (Array.isArray(fresh.effects)) fresh.effects.forEach((e) => { e.id = crypto.randomUUID(); });
+    if (Array.isArray(fresh.vectorEffects)) fresh.vectorEffects.forEach((e) => { e.id = crypto.randomUUID(); });
+    if (fresh.type === 'group') fresh.childIds = [];
+    // Offset +20,+20 so the paste is visible.
+    if (fresh.transform && fresh.type !== 'fx') {
+      fresh.transform.x = (fresh.transform.x || 0) + 20;
+      fresh.transform.y = (fresh.transform.y || 0) + 20;
+    }
+    const layer = doc._addLayerRaw(fresh);
+    if (!layer) return;
+    doc.setActiveLayer(layer.id);
+    selectOnly(layer.id);
+    if (layer.type === 'vector' && layer.vector?.paths?.length) {
+      const newPaths = layer.vector.paths.map((p) => ({ ...p, d: translatePathD(p.d, 20, 20) }));
+      doc.setVectorPaths(layer.id, newPaths);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const isMod = e.ctrlKey || e.metaKey;
+    if (!isMod || e.shiftKey || e.altKey) return;
+    const ae = document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (inField) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'c' && k !== 'v' && k !== 'x') return;
+
+    const sel = getSelectionArray();
+    const activeId = doc.activeLayerId;
+
+    if (k === 'c') {
+      const layer = activeId && doc.findLayer(activeId);
+      if (!layer) return;
+      e.preventDefault();
+      layerClipboard = snapshotLayer(layer);
+    } else if (k === 'v') {
+      if (!layerClipboard) return;
+      e.preventDefault();
+      pasteFromClipboard();
+    } else if (k === 'x') {
+      const targets = sel.length ? sel : (activeId ? [activeId] : []);
+      if (!targets.length) return;
+      e.preventDefault();
+      // Snapshot the most-recent target so Ctrl+V after Ctrl+X behaves
+      // like a true cut.
+      const lastLayer = doc.findLayer(targets[targets.length - 1]);
+      if (lastLayer) layerClipboard = snapshotLayer(lastLayer);
+      for (const id of targets) doc.removeLayer(id);
     }
   });
 

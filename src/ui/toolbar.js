@@ -6,6 +6,7 @@ import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
 import { importSvgFile } from './vector-tools/svg-import.js';
 import { getPencilSmoothness, setPencilSmoothness } from './vector-tools/pencil-tool.js';
+import { translatePathD } from '../core/vector-renderer.js';
 import {
   getSelection, getSelectionArray, setSelection, selectOnly, clearSelection,
 } from './selection-state.js';
@@ -34,80 +35,35 @@ function topLevelOrder(doc, ids) {
   return ordered;
 }
 
-// Duplicate every selected layer. For groups, the group + every
-// descendant is cloned with fresh IDs and parentGroupId rewiring. For
-// regular layers, a shallow JSON clone with a new id + " copy" suffix.
-// New layers are inserted directly above the originals; selection
-// collapses to the new copies.
+// Duplicate every selected layer. Delegates to `doc.duplicateLayer`
+// which handles the JSON clone + group-descendant recursion + parent
+// group re-attach in the model layer. Visual offset is +20,+20 — for
+// vector layers that means the rotation anchor moves but the path
+// d-coords stay (path d-coords are world-space; see vector-renderer
+// COORDINATE CONVENTION). We translate the top-level vector clone's
+// paths here to keep the visual offset consistent.
 function duplicateSelection(doc, ids) {
-  if (!ids || !ids.length) return;
+  if (!ids || !ids.length) return [];
   const newIds = [];
+  const dx = 20, dy = 20;
   for (const srcId of ids) {
     const src = doc.findLayer(srcId);
     if (!src) continue;
-    if (src.type === 'fx') continue;  // Adjustment layers — skip dup.
-    if (src.parentGroupId) continue;  // Skip children — copied via parent group.
-    const cloned = cloneLayerSubtree(doc, src);
-    if (cloned && cloned.id) newIds.push(cloned.id);
+    if (src.type === 'fx') continue;       // Adjustment layers — skip dup.
+    if (src.parentGroupId) continue;       // Skip children — copied via parent group.
+    const clone = doc.duplicateLayer(srcId, { offsetXY: { x: dx, y: dy } });
+    if (!clone) continue;
+    // Vector top-level: translate path coords to match the anchor bump.
+    // Vector children inside groups don't need this — the parent
+    // group's transform cascades through Konva and the renderer's
+    // image.position formula compensates correctly per child.
+    if (clone.type === 'vector' && clone.vector?.paths?.length) {
+      const newPaths = clone.vector.paths.map((p) => ({ ...p, d: translatePathD(p.d, dx, dy) }));
+      doc.setVectorPaths(clone.id, newPaths);
+    }
+    newIds.push(clone.id);
   }
   return newIds;
-}
-
-// Deep-clone a layer (and, if it's a group, its descendants) with
-// fresh IDs. Source paths/effects survive the clone via JSON. Returns
-// the new top-level layer.
-function cloneLayerSubtree(doc, src) {
-  const idMap = new Map();
-  const generateId = () => crypto.randomUUID();
-  // First pass — assign new IDs to every node we'll clone.
-  const collectIds = (layer) => {
-    idMap.set(layer.id, generateId());
-    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
-      for (const cid of layer.childIds) {
-        const child = doc.findLayer(cid);
-        if (child) collectIds(child);
-      }
-    }
-  };
-  collectIds(src);
-  // Second pass — JSON-clone each layer, rewrite id + parentGroupId +
-  // childIds via idMap, drop source Blob refs (cloning Blobs needs a
-  // real ImageBitmap copy — out of scope for keyboard-shortcut speed).
-  const cloned = [];
-  const cloneOne = (layer) => {
-    const out = JSON.parse(JSON.stringify(layer, (k, v) => (v instanceof Blob ? null : v)));
-    out.id = idMap.get(layer.id);
-    out.parentGroupId = layer.parentGroupId ? idMap.get(layer.parentGroupId) || null : null;
-    if (Array.isArray(out.childIds)) {
-      out.childIds = out.childIds.map((cid) => idMap.get(cid)).filter(Boolean);
-    }
-    if (layer === src) out.name = (layer.name || 'Layer') + ' copy';
-    // Inherit the live Blob source (Blobs are immutable — sharing is
-    // safe and avoids a slow round-trip through createImageBitmap).
-    if (layer.type === 'image' && layer.source instanceof Blob) out.source = layer.source;
-    return out;
-  };
-  // Clone src + descendants.
-  const visit = (layer) => {
-    cloned.push(cloneOne(layer));
-    if (layer.type === 'group' && Array.isArray(layer.childIds)) {
-      for (const cid of layer.childIds) {
-        const child = doc.findLayer(cid);
-        if (child) visit(child);
-      }
-    }
-  };
-  visit(src);
-  // Insert into doc in the same order — directly above the source's
-  // z-position. _addLayerRaw fires layer:added so the renderer +
-  // layer-panel pick the clones up immediately.
-  const srcIdx = doc.layers.indexOf(src);
-  let insertAt = srcIdx + 1;
-  for (const layer of cloned) {
-    doc._addLayerRaw(layer, insertAt++);
-  }
-  doc.setActiveLayer(cloned[0].id);
-  return cloned[0];
 }
 export function initToolbar({ document: doc, view, renderer, exportPng, projectStore, projectMenu, openTextLayer }) {
   const $ = (id) => window.document.getElementById(id);
@@ -452,7 +408,20 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       if (inField) return;
       if (getTool() !== 'select') return;
       const ids = getSelectionArray();
-      if (!ids.length) return;
+      // Empty selection but an active layer? Nudge that.
+      const targets = ids.length ? ids : (doc.activeLayerId ? [doc.activeLayerId] : []);
+      if (!targets.length) return;
+      // Drop nested-under-selected-group children so they don't move
+      // twice (the group transform cascades to children via Konva).
+      const set = new Set(targets);
+      const top = targets.filter((id) => {
+        let cur = doc.findLayer(id)?.parentGroupId;
+        while (cur) {
+          if (set.has(cur)) return false;
+          cur = doc.findLayer(cur)?.parentGroupId || null;
+        }
+        return true;
+      });
       const step = e.shiftKey ? 10 : 1;
       let dx = 0, dy = 0;
       if (key === 'arrowleft')  dx = -step;
@@ -460,11 +429,21 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       if (key === 'arrowup')    dy = -step;
       if (key === 'arrowdown')  dy =  step;
       e.preventDefault();
-      for (const id of ids) {
+      for (const id of top) {
         const layer = doc.findLayer(id);
         if (!layer || layer.locked || layer.type === 'fx') continue;
         const cur = layer.transform || { x: 0, y: 0 };
         doc.setLayerTransform(id, { x: (cur.x || 0) + dx, y: (cur.y || 0) + dy });
+        // Vector layers: path d-coords are world-space (see
+        // vector-renderer). Translating only the transform anchor
+        // leaves the visual unchanged — translate the paths too.
+        if (layer.type === 'vector' && layer.vector?.paths?.length) {
+          const newPaths = layer.vector.paths.map((rec) => ({
+            ...rec,
+            d: translatePathD(rec.d, dx, dy),
+          }));
+          doc.setVectorPaths(id, newPaths);
+        }
       }
       return;
     }

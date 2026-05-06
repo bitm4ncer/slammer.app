@@ -5,6 +5,7 @@ import { getSettings, onSettingsChange } from './settings-popup.js';
 import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
 import { BLEND_MODES } from '../core/layer.js';
+import { translatePathD } from '../core/vector-renderer.js';
 import { setDraggingLayer } from './drag-state.js';
 import {
   getSelection, getSelectionArray, setSelection, selectOnly, toggleInSelection, selectRange, onSelectionChange,
@@ -62,6 +63,21 @@ export function initLayerPanel({ container, document, renderer }) {
     if (!e.target.closest('.layer-blend-dropdown')) closeAllBlendMenus();
   });
 
+  // Document.duplicateLayer offsets transform.x/y by +20,+20. For
+  // vector layers that's only the rotation anchor — path d-coords live
+  // in WORLD space so they need a matching translation to produce a
+  // visible offset (see vector-renderer COORDINATE CONVENTION).
+  function duplicateLayerWithVisualOffset(srcId) {
+    const clone = document.duplicateLayer(srcId, { offsetXY: { x: 20, y: 20 } });
+    if (!clone) return null;
+    if (clone.type === 'vector' && clone.vector?.paths?.length) {
+      const newPaths = clone.vector.paths.map((p) => ({ ...p, d: translatePathD(p.d, 20, 20) }));
+      document.setVectorPaths(clone.id, newPaths);
+    }
+    selectOnly(clone.id);
+    return clone;
+  }
+
   function thumbForLayer(layer) {
     const st = renderer.layerState.get(layer.id);
     if (!st || !st.dstCanvas) return '';
@@ -114,6 +130,7 @@ export function initLayerPanel({ container, document, renderer }) {
       <button class="layer-icon-btn act-vis" title="Toggle visibility">
         <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
       </button>`;
+    const dupBtn = `<button class="layer-icon-btn act-dup" title="Duplicate layer (Ctrl+D)"><i class="fas fa-clone"></i></button>`;
     const delBtn = `<button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>`;
 
     if (layer.type === 'group') {
@@ -143,6 +160,7 @@ export function initLayerPanel({ container, document, renderer }) {
           <div class="layer-actions">
             ${lockBtn}
             ${visBtn}
+            ${dupBtn}
             ${delBtn}
           </div>
         </div>`;
@@ -171,6 +189,7 @@ export function initLayerPanel({ container, document, renderer }) {
           <div class="layer-actions">
             ${lockBtn}
             ${visBtn}
+            ${dupBtn}
             ${delBtn}
           </div>
         </div>`;
@@ -200,6 +219,7 @@ export function initLayerPanel({ container, document, renderer }) {
         <div class="layer-actions">
           ${lockBtn}
           ${visBtn}
+          ${dupBtn}
           ${delBtn}
         </div>
       </div>`;
@@ -309,6 +329,10 @@ export function initLayerPanel({ container, document, renderer }) {
       row.querySelector('.act-del').addEventListener('click', (e) => {
         e.stopPropagation();
         document.removeLayer(id);
+      });
+      row.querySelector('.act-dup').addEventListener('click', (e) => {
+        e.stopPropagation();
+        duplicateLayerWithVisualOffset(id);
       });
 
       // Blend mode trigger
@@ -693,6 +717,7 @@ export function initLayerPanel({ container, document, renderer }) {
         cur = cur.parentGroupId ? document.findLayer(cur.parentGroupId) : null;
       }
     }
+    let activeRow = null;
     container.querySelectorAll('.layer-item').forEach((row) => {
       const id = row.dataset.layerId;
       const isActive = id === activeId;
@@ -701,7 +726,14 @@ export function initLayerPanel({ container, document, renderer }) {
       row.classList.toggle('multi-selected', isMulti);
       row.classList.toggle('in-selected-group', inSelectedGroup.has(id));
       row.classList.toggle('ancestor-of-selected', ancestorOfSelected.has(id));
+      if (isActive) activeRow = row;
     });
+    // Reveal the active row when it sits outside the visible scroll
+    // region. `nearest` keeps in-viewport rows still — only off-screen
+    // selections cause a scroll, no thrashing during normal panel use.
+    if (activeRow) {
+      try { activeRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch {}
+    }
   }
   onSelectionChange(syncSelectionClasses);
 

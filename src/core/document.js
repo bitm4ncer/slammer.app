@@ -21,6 +21,44 @@ export function createDocument() {
   const findIndex = (id) => state.layers.findIndex((l) => l.id === id);
   const findLayer = (id) => state.layers.find((l) => l.id === id) || null;
 
+  // Deep-clone a layer's POJO state for duplicate / paste. Blob-typed
+  // fields (image source) bypass JSON and are reattached by reference —
+  // Blobs are immutable so sharing the underlying bytes is safe.
+  function cloneLayerJSON(layer) {
+    const { source, naturalSize, ...rest } = layer;
+    const out = JSON.parse(JSON.stringify(rest));
+    out.id = uid();
+    if (source !== undefined) out.source = source;
+    if (naturalSize !== undefined) out.naturalSize = JSON.parse(JSON.stringify(naturalSize));
+    return out;
+  }
+
+  // Recursively clone every descendant of a group, splice each clone
+  // into state.layers right after its parent's clone (so the flat order
+  // mirrors the source group's), and return the new childIds list. Used
+  // by duplicateLayer when the source layer is a group.
+  function cloneGroupChildren(srcChildIds, newGroupId, baseInsertAt) {
+    const newChildIds = [];
+    let cursor = baseInsertAt;
+    for (const cid of srcChildIds) {
+      const child = findLayer(cid);
+      if (!child) continue;
+      const childClone = cloneLayerJSON(child);
+      childClone.parentGroupId = newGroupId;
+      state.layers.splice(cursor, 0, childClone);
+      newChildIds.push(childClone.id);
+      cursor += 1;
+      if (childClone.type === 'group' && Array.isArray(childClone.childIds)) {
+        // Recurse into nested groups; their freshly-spliced children
+        // continue at the cursor.
+        const nested = cloneGroupChildren(child.childIds || [], childClone.id, cursor);
+        childClone.childIds = nested;
+        cursor += nested.length;
+      }
+    }
+    return newChildIds;
+  }
+
   return {
     get state() { return state; },
     get layers() { return state.layers; },
@@ -230,6 +268,51 @@ export function createDocument() {
       state.layers.splice(idx, 0, layer);
       emit({ type: 'layer:added', layer });
       return layer;
+    },
+
+    // Deep-clone a layer (preserving Blob refs for image sources), drop
+    // it back into the document just above the original, and return the
+    // clone. Group children are recursively cloned with fresh ids.
+    //
+    // Vector layers store path d-coords in WORLD space (see
+    // vector-renderer COORDINATE CONVENTION). The transform.x/y bumps
+    // here move the rotation anchor — for image/text/group/fx that ALSO
+    // moves the visible content; for vector layers the path coords need
+    // a matching translatePathD pass at the call site to produce a
+    // visible offset. The UI handler does that.
+    duplicateLayer(id, { offsetXY = { x: 20, y: 20 } } = {}) {
+      const src = findLayer(id);
+      if (!src) return null;
+      const clone = cloneLayerJSON(src);
+      clone.parentGroupId = src.parentGroupId || null;
+      if (clone.transform && clone.type !== 'fx') {
+        clone.transform.x = (clone.transform.x || 0) + (offsetXY.x || 0);
+        clone.transform.y = (clone.transform.y || 0) + (offsetXY.y || 0);
+      }
+      const insertAt = findIndex(id) + 1;
+      state.layers.splice(insertAt, 0, clone);
+
+      // Recursively clone group descendants. Each level remaps childIds
+      // to the freshly-created child clone ids.
+      if (clone.type === 'group' && Array.isArray(clone.childIds)) {
+        clone.childIds = cloneGroupChildren(src.childIds || [], clone.id, insertAt + 1);
+      }
+
+      // Sibling-of-original membership: drop into the same parent group
+      // right after the original.
+      if (clone.parentGroupId) {
+        const parent = findLayer(clone.parentGroupId);
+        if (parent && Array.isArray(parent.childIds)) {
+          const ci = parent.childIds.indexOf(id);
+          parent.childIds.splice(ci >= 0 ? ci + 1 : parent.childIds.length, 0, clone.id);
+          emit({ type: 'group:childrenChanged', layerId: parent.id });
+        }
+      }
+
+      state.activeLayerId = clone.id;
+      emit({ type: 'layer:added', layer: clone });
+      emit({ type: 'layer:active', id: clone.id });
+      return clone;
     },
 
     setLayerLocked(id, locked) {
