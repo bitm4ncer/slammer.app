@@ -33,3 +33,22 @@
 **What was tried**: replaced `setTimeout(0)` polling with the `onceLayersMounted` deterministic hook. Helped timing but the bbox is still computed off pre-paint dims.
 
 **Possible fixes**: (a) emit a separate `doc:rendered` event after the FIRST paint finishes for every layer (i.e., when every layerState has had `paintLayerSync` complete once), and have project-menu / project-file listen for that instead; (b) inside `fitTo`, fall back to `layer.naturalSize` from the doc model when `getClientRect` returns 1×1; (c) re-run `view.fitTo()` once more after a short delay as a belt-and-braces.
+
+---
+
+## Undo flicker — every history step tears down all Konva nodes
+
+**Symptom**: Pressing Ctrl+Z / Ctrl+Y briefly blanks the canvas. The flash is short but visible, especially on projects with many layers.
+
+**Suspected cause**: `src/core/history.js#undo` calls `doc.load(prev)`, which fires `doc:loaded`. The renderer's `doc:loaded` handler in `src/core/renderer.js` (~line 1311) tears down every layer's Konva nodes (`destroyLayerNodes(id)`) and rebuilds them via `await createLayerNodes(layer)`. The teardown leaves the Konva stage empty for several frames while bitmaps re-decode.
+
+**Files involved**: `src/core/renderer.js` (createLayerNodes / destroyLayerNodes / `case 'doc:loaded'`), `src/core/history.js`, `src/core/document.js#load`.
+
+**What was tried**: nothing — flagged in Phase 19 Cluster F audit, parked because the fix is a renderer rewrite, not a small patch.
+
+**Sketch of the fix**: instead of nuking + rebuilding, diff `state.layers` against the live `layerState` Map:
+- For layers in BOTH old + new: patch in-place (transform, params, visible, opacity, source).
+- For layers ONLY in new: create.
+- For layers ONLY in old: destroy.
+- Walk `effect.params` per cached effect step and only invalidate caches whose params changed.
+This needs a fresh design pass + careful handling of source Blob refs and FX layers (which composite from layers below). Best done as its own dedicated cluster, not folded into a polish pass.

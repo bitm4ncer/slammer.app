@@ -248,9 +248,9 @@
 - [x] JPEG-with-transparency auto-mask — for `Layer Export + JPEG + Background: transparent`, the canvas is cropped to the layer's alpha bounding box (no more giant white rectangles).
 
 ### Cluster F — Persistence & undo
-- [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch
-- [ ] Audit: scaling effects don't survive reload — find non-persisted plugin params
-- [ ] Audit: anything not in undo/redo history that should be (effect-stack reorders, frame edits)
+- [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch — **parked in BUGS.md** (renderer rewrite scope; needs its own cluster)
+- [x] Audit: plugin params persistence — every plugin stores state in `effect.params` (snapshotted per `JSON.stringify`); only `displacement` keeps a module-level `_textureCache` Map that's a non-persisted in-memory perf cache (correct). No gaps found.
+- [x] Audit: events missing from undo coverage — `doc:propChanged` (project rename) was the only gap. Added to history's PROP_EVENTS so renaming a project commits to history; `statesLookEqual` extended to compare `state.name` + `state.exportFrame` so renames + frame edits aren't dropped as duplicate snapshots.
 
 ### Cluster G — Typography polish
 - [ ] Text layer auto-renames to its text content (live, debounced)

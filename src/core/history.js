@@ -19,6 +19,9 @@ const PROP_EVENTS = new Set([
   'layer:propChanged', 'layer:transform', 'layer:textChanged', 'layer:vectorChanged',
   'effect:propChanged', 'vectorEffect:propChanged',
   'layer:sourceChanged', 'doc:exportFrame',
+  // Document-level prop changes (project rename, …) — debounced like layer
+  // props so a typing-rename becomes one history entry.
+  'doc:propChanged',
 ]);
 
 export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {
@@ -70,6 +73,8 @@ export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {
   }
 
   function statesLookEqual(a, b) {
+    if (a.name !== b.name) return false;
+    if (JSON.stringify(a.exportFrame) !== JSON.stringify(b.exportFrame)) return false;
     if (a.layers.length !== b.layers.length) return false;
     for (let i = 0; i < a.layers.length; i++) {
       const la = a.layers[i], lb = b.layers[i];
