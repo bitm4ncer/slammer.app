@@ -1,6 +1,12 @@
 // Openverse panel plugin — CC-licensed image search across Wikimedia,
-// Flickr, museums, etc. Requires a one-time auto-registration to obtain
-// API credentials (cached in localStorage). Token refresh is transparent.
+// Flickr, museums, etc.
+//
+// Anonymous mode: Openverse's /v1/auth_tokens/register/ now requires
+// email verification before credentials can request tokens, so we can't
+// register-and-use in one shot from the browser. The search endpoint is
+// public (rate-limited to 20 req/hour per IP, ~5 req/min — fine for
+// casual browsing). If we ever need higher limits we can ship a
+// pre-verified key via env var.
 
 import { createBrowsable } from '../_shared/browsable.js';
 import './openverse.css';
@@ -8,63 +14,6 @@ import './openverse.css';
 const PLUGIN_ID = 'openverse';
 const BASE = 'https://api.openverse.org/v1';
 const ENDPOINT = `${BASE}/images/`;
-const REGISTER_URL = `${BASE}/auth_tokens/register/`;
-const TOKEN_URL = `${BASE}/auth_tokens/token/`;
-const CREDS_KEY = 'slammer:openverse-creds';
-
-// In-memory token cache (survives page but not reload — that's fine, we
-// re-fetch a fresh token on each cold start from the cached credentials).
-let _token = null;
-let _tokenExpiry = 0;
-
-// ---------- Auth helpers ----------
-
-/** Return cached credentials or register a new client. */
-async function ensureCredentials() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(CREDS_KEY));
-    if (stored?.client_id && stored?.client_secret) return stored;
-  } catch { /* corrupt — re-register */ }
-
-  const res = await fetch(REGISTER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: 'slammer.app',
-      description: 'slammer.app image editor — Openverse plugin',
-      email: 'kontakt@jannesbecherer.de',
-    }),
-  });
-  if (!res.ok) throw new Error(`Openverse register ${res.status}`);
-  const data = await res.json();
-  const creds = { client_id: data.client_id, client_secret: data.client_secret };
-  localStorage.setItem(CREDS_KEY, JSON.stringify(creds));
-  return creds;
-}
-
-/** Return a valid Bearer token, refreshing if expired. */
-async function getToken() {
-  if (_token && Date.now() < _tokenExpiry) return _token;
-
-  const { client_id, client_secret } = await ensureCredentials();
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `client_id=${encodeURIComponent(client_id)}&client_secret=${encodeURIComponent(client_secret)}&grant_type=client_credentials`,
-  });
-  if (!res.ok) throw new Error(`Openverse token ${res.status}`);
-  const data = await res.json();
-  _token = data.access_token;
-  // Expire 60 s early to avoid edge-case failures.
-  _tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
-  return _token;
-}
-
-/** Invalidate the in-memory token so the next call refreshes. */
-function clearToken() {
-  _token = null;
-  _tokenExpiry = 0;
-}
 
 // ---------- Wikimedia thumbnail helper ----------
 // Wikimedia only allows specific widths (20,40,60,120,250,330,500,960,1280…).
@@ -110,23 +59,9 @@ export default {
       searchFn: async (query, page = 1) => {
         // Fetch extra to compensate for filtered-out wikimedia results.
         const url = `${ENDPOINT}?q=${encodeURIComponent(query)}&page=${page}&page_size=50`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
 
-        // First attempt with current (or freshly obtained) token.
-        let token = await getToken();
-        let res = await fetch(url, {
-          headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-        });
-
-        // If 401 (expired/invalid token), refresh once and retry.
-        if (res.status === 401) {
-          clearToken();
-          token = await getToken();
-          res = await fetch(url, {
-            headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-          });
-        }
-
-        if (res.status === 429) throw new Error('Rate limited — try again in a minute');
+        if (res.status === 429) throw new Error('Openverse rate limit hit — try again in a minute (anonymous tier is ~20/hour).');
         if (!res.ok) throw new Error(`Openverse ${res.status}`);
         const data = await res.json();
         // Exclude wikimedia — their thumbnail CDN aggressively rate-limits

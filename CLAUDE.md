@@ -3,7 +3,67 @@
 > Working notes for Claude. Complements `AGENTS.md` (which covers the general project shape). This file is the place to record gotchas, library quirks, and architectural conventions that have already cost time to figure out — so the next session doesn't relearn them.
 
 
+## Multi-Model Orchestration
+
+The main agent is **Opus 4.7**. Delegate aggressively to subagents to keep main-context lean and the conversation responsive. Default delegation target is **Sonnet 4.6**; escalate to **Opus 4.6** only when reasoning depth actually matters.
+
+### Tier map
+
+| Tier | Model | Use for | Don't use for |
+|---|---|---|---|
+| **Main** | Opus 4.7 | Conversation with the user, planning, reviewing subagent output, cross-cutting decisions, anything iterative | Bulk file edits, repetitive refactors, isolated feature work |
+| **Deep** | Opus 4.6 subagent | Coordinate-system / vector-math bugs, plugin-host architecture, render-pipeline issues, ambiguous specs, post-incident root-cause analysis | Well-specified single-file edits, boilerplate, copy changes |
+| **Fast** | Sonnet 4.6 subagent | New tool wiring, panel UI, settings rows, copy edits, well-scoped feature work in a worktree, test scaffolding | Anything touching `vector-renderer.js`, `paper-context.js`, `layer.js` core math, or rasteriser pad logic |
+| **Explore** | Explore agent | Locating files, finding usages, "where is X defined" | Open-ended audits or design reviews |
+
+### Routing decision tree
+
+1. Is the task < ~50 lines and well-specified, with explicit file paths? → **Sonnet 4.6 subagent**.
+2. Does it touch vector coordinate math, `layer.js`, the rasteriser pad heuristic, or HMR-sensitive singletons (active-tool, paper.js project)? → **Opus 4.6 subagent**, OR keep in main if the user is iterating.
+3. Is the user actively giving feedback / iterating on the same artefact? → **stay in main (4.7)**, do not delegate.
+4. Two or more independent feature slices (e.g. two new plugins, two new tools)? → **multiple Sonnet 4.6 subagents in parallel worktrees** (`superpowers:using-git-worktrees`, `superpowers:dispatching-parallel-agents`).
+5. Just need to find a file / symbol? → **Explore agent**, never load the main agent with the search.
+
+### Token economy
+
+- Subagent briefs ≤ ~2k tokens. Pass file **paths**, not file contents — the subagent has Read.
+- Never paste conversation history into a subagent prompt. Restate the goal in your own words.
+- Main agent: when a tool result comes back large, summarise to <200 words before continuing — don't carry raw output forward into the next turn.
+- Use worktree isolation for any change spanning >3 files or any parallel slice of work.
+- Prefer 3 focused subagents over 1 sprawling context window.
+
+### Escalation triggers (drop back to main 4.7, full context)
+
+- User reports symptoms that match a known coordinate-system regression: "vectors shifting", "anchors snapping back", "handle drifts after rotation". This is the historical signature of Phase 13 transform-bookkeeping bugs — needs the architecture context, do not delegate.
+- A subagent returns `DONE_WITH_CONCERNS` twice on the same task.
+- Plugin window geometry, HMR singleton state, or the active-tool registry misbehaves.
+- More than 2 user iterations on the same fix.
+- Any change to: `src/core/layer.js`, `src/ui/vector-tools/vector-renderer.js`, `paper-context.js`, the text rasteriser pad math.
+- A bug the previous subagent didn't catch.
+
+### Subagent brief template
+
+Every subagent invocation MUST include, in this order:
+
+1. **Goal** — one sentence. What "done" looks like.
+2. **Files in scope** — explicit paths. No wildcards. No "explore the area".
+3. **House rules** (verbatim, every time, no exceptions):
+   - Custom scrollbars only — never the native OS scrollbar.
+   - Never mutate the live document via `preview_eval` — verification probes are READ-ONLY.
+   - No left colour-accent borders on cards / list items / sidebar rows. Use a dot, icon tint, or hover glow.
+4. **Phase context** — copy the matching row from the Phase status table at the bottom of this file (e.g. "Phase 13b shipped — pen/pencil/anchor/text-to-path"). Stops subagents reintroducing reverted decisions like centre-origin transforms.
+5. **Verification requirement** — "Before claiming DONE, start preview, exercise the feature, capture a screenshot or console log as evidence. No success claims without fresh evidence." (`superpowers:verification-before-completion`)
+6. **Status code** expected back: `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`.
+
+### Commit-time review
+
+The main agent reviews every subagent's diff before committing. Subagents do not commit. Conventional-commits style with the `Co-Authored-By: Claude Opus 4.7` trailer (see Commit style section below).
+
+
 ## AI Orchestration Rules
+
+> **Deprecated — superseded by Multi-Model Orchestration above.** The `kimi-worker` MCP remains available for opt-in bulk boilerplate, but is no longer the default delegation path. Default is tiered Claude routing (Sonnet 4.6 / Opus 4.6 subagents under an Opus 4.7 main).
+
 - **Role:** Claude is the Lead Architect. Focus on high-level planning, file discovery, and logic validation.
 - **Delegation:** For all boilerplate, unit test generation, and multi-file refactoring, delegate to the `kimi-worker` MCP.
 - **Swarm Logic:** When a plan has >3 independent tasks, trigger a `swarm-execution`. 
