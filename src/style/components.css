@@ -1008,56 +1008,51 @@
 .tool-btn--add:hover { opacity: 1; }
 
 /* ====================================================================== */
-/* Bitmancer Shop — Specimen Catalogue                                    */
+/* Bitmancer Shop — Y2K friendly tech                                     */
 /* ====================================================================== */
-/* Type-foundry-meets-glitch-zine. Editorial, intentional, character-led.  */
-/* No gradients. No border-left. Each plugin is its own specimen with its  */
-/* own flag colour. Plugin cards punch out as solid colour fields; vector  */
-/* tools breathe on cream paper. Mono UI chrome (JetBrains Mono) with a    */
-/* characterful editorial italic display (Newsreader) for plugin names.   */
+/* Apple Music meets glitch cassette. Inter only. Soft-black frame, big   */
+/* rounded corners, solid bright plugin colours. No gradients, no border- */
+/* left. Plugins fill the card with their flag colour as full bleed;      */
+/* vector tools breathe on cream so they read as "printed". Tone is       */
+/* friendly-bold — chunky Inter-800 display, friendly Inter-500 chrome.   */
 
-/* ---------- Sidebar SHOP button (specimen stamp) ---------- */
+/* ---------- Sidebar SHOP button (round chip) ---------- */
 .tool-section--bottom { margin-top: auto; padding-top: 8px; }
 .tool-btn--shop {
   background: transparent;
   border: 1px solid var(--vhs-shadow);
   color: var(--text-secondary);
-  position: relative;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: 14px;
   transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
 }
-.tool-btn--shop i { font-size: 13px; }
 .tool-btn--shop:hover {
-  color: #f5f0e8;
-  border-color: #f5f0e8;
-  background: transparent;
+  color: var(--text);
+  border-color: var(--text);
 }
 .tool-btn--shop:active {
-  background: #f5f0e8;
-  color: #0e0e10;
+  background: var(--text);
+  color: var(--surface);
 }
 
 /* =========================================================================
-   Shop palette + custom properties
+   Shop palette
    ========================================================================= */
 :root {
-  --shop-paper:    #f5f0e8;   /* warm cream, newsprint */
-  --shop-ink:      #0e0e10;   /* off-black */
-  --shop-surface:  #16161a;   /* one stop above black for surfaces */
-  --shop-line:     #2a2a2c;   /* hairlines */
-  --shop-mute:     #6e6e72;   /* muted body text */
-  --shop-rule:     #44443f;   /* slightly warmer mute on cream backgrounds */
+  --shop-bg:       #0a0a0c;   /* soft black, friendlier than industrial */
+  --shop-surface:  #141418;   /* lifted surface for cards / chrome */
+  --shop-line:     #27272b;   /* hairlines, slightly warm */
+  --shop-text:     #f0f0f0;   /* primary text on dark */
+  --shop-mute:     #7a7a80;   /* muted body text */
 }
 
 /* =========================================================================
-   Backdrop & modal
+   Backdrop & modal — full bleed, soft black
    ========================================================================= */
 .shop-backdrop {
   position: fixed; inset: 0;
-  background: var(--shop-ink);
+  background: var(--shop-bg);
   z-index: 1500;
   display: flex; align-items: stretch; justify-content: stretch;
   animation: shop-fade-in 200ms ease-out;
@@ -1067,129 +1062,133 @@
 .shop-modal {
   flex: 1;
   display: flex; flex-direction: column;
-  background: var(--shop-ink);
-  color: #ebebe5;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--shop-bg);
+  color: var(--shop-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'cv11' 1, 'ss01' 1, 'ss03' 1;
   overflow: hidden;
 }
 
 /* =========================================================================
-   Header — terminal manifest, no chrome decorations
+   Header — chunky logo + round close
    ========================================================================= */
 .shop-header {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 18px 28px 14px;
-  border-bottom: 1px solid var(--shop-line);
+  padding: 22px 32px 18px;
 }
 .shop-header-line {
-  display: flex; align-items: baseline; gap: 14px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: flex; align-items: center; gap: 14px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--shop-mute);
-  white-space: nowrap;
-  overflow: hidden;
 }
 .shop-header-line .h-mark {
-  color: #ebebe5;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--shop-text);
+  background: var(--shop-surface);
+  padding: 8px 14px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
 }
-.shop-header-line .h-rule {
-  flex: 1;
-  height: 1px;
-  background: var(--shop-line);
-  align-self: center;
+.shop-header-line .h-mark::before {
+  content: '';
+  width: 8px; height: 8px;
+  background: #FF2E63;
+  border-radius: 999px;
+  animation: shop-pulse 2.4s ease-in-out infinite;
+}
+@keyframes shop-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
 }
 .shop-header-line .h-issue {
-  color: var(--shop-mute);
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
+.shop-header-line .h-rule { display: none; }
+
 .shop-header-actions {
-  display: flex; gap: 0;
-  border: 1px solid var(--shop-line);
+  display: flex; gap: 8px;
 }
 .shop-back, .shop-close {
-  width: 36px; height: 36px;
-  background: transparent;
+  background: var(--shop-surface);
   border: none;
-  color: var(--shop-mute);
-  font-size: 12px;
-  cursor: pointer;
+  color: var(--shop-text);
   font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: background 120ms, color 120ms;
+  transition: background 140ms, color 140ms, transform 140ms;
 }
-.shop-back { border-right: 1px solid var(--shop-line); padding: 0 14px; width: auto; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-.shop-back:hover, .shop-close:hover { background: #ebebe5; color: var(--shop-ink); }
+.shop-close {
+  width: 40px; height: 40px;
+  border-radius: 999px;
+  font-size: 18px;
+}
+.shop-back {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  gap: 6px;
+}
+.shop-back:hover, .shop-close:hover {
+  background: var(--shop-text);
+  color: var(--shop-bg);
+}
+.shop-back:active, .shop-close:active { transform: scale(0.96); }
 
 /* =========================================================================
-   Sub-header — issue lede + filter toggles
+   Sub-header — chunky lede + meta chip
    ========================================================================= */
 .shop-lede {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: end;
-  gap: 24px;
-  padding: 28px 28px 22px;
-  border-bottom: 1px solid var(--shop-line);
+  gap: 32px;
+  padding: 28px 32px 36px;
 }
 .shop-lede-title {
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 300;
-  font-size: clamp(28px, 4vw, 44px);
-  line-height: 1.05;
-  letter-spacing: -0.01em;
-  color: #ebebe5;
   margin: 0;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--shop-text);
 }
 .shop-lede-title em {
-  font-style: italic;
-  color: #ebebe5;
+  font-style: normal;
+  display: inline-block;
+  background: var(--shop-text);
+  color: var(--shop-bg);
+  padding: 0 0.18em 0.04em;
+  border-radius: 14px;
+  margin: 0 -0.08em;
 }
 .shop-lede-meta {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--shop-surface);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--shop-mute);
   text-align: right;
   line-height: 1.5;
+  white-space: nowrap;
 }
-.shop-lede-meta span { color: #ebebe5; }
-
-.shop-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  border-bottom: 1px solid var(--shop-line);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.shop-filter {
-  background: transparent;
-  border: 1px solid var(--shop-line);
-  color: var(--shop-mute);
-  padding: 6px 12px;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-  transition: border-color 120ms, color 120ms, background 120ms;
-}
-.shop-filter::before { content: '['; margin-right: 4px; opacity: 0.4; }
-.shop-filter::after  { content: ']'; margin-left: 4px;  opacity: 0.4; }
-.shop-filter:hover { border-color: #ebebe5; color: #ebebe5; }
-.shop-filter[aria-pressed="true"] {
-  background: #ebebe5;
-  color: var(--shop-ink);
-  border-color: #ebebe5;
-}
-.shop-filter[aria-pressed="true"]::before,
-.shop-filter[aria-pressed="true"]::after { opacity: 0.55; }
+.shop-lede-meta span { color: var(--shop-text); font-weight: 600; }
 
 /* =========================================================================
    Content scroll area
@@ -1197,58 +1196,60 @@
 .shop-content {
   flex: 1; min-height: 0;
   overflow-y: auto;
-  padding: 28px 28px 80px;
+  padding: 0 32px 80px;
 }
 
 /* =========================================================================
-   Pack section — chapter title bar
+   Pack section — chunky chip header, no rule lines
    ========================================================================= */
 .shop-pack {
   margin-bottom: 56px;
 }
 .shop-pack-head {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  gap: 16px;
-  padding: 6px 0 14px;
-  margin-bottom: 18px;
-  border-bottom: 1px solid var(--shop-line);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
 }
 .shop-pack-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--shop-surface);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--shop-mute);
   font-variant-numeric: tabular-nums;
 }
 .shop-pack-title {
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 300;
-  font-size: 24px;
-  letter-spacing: -0.01em;
-  color: #ebebe5;
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: -0.025em;
+  color: var(--shop-text);
 }
 .shop-pack-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--shop-mute);
+  background: var(--shop-surface);
+  padding: 6px 12px;
+  border-radius: 999px;
 }
 .shop-pack-blurb {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--shop-mute);
   max-width: 64ch;
 }
 
 /* =========================================================================
-   Bento grid — each pack composes its own internal rhythm
+   Bento grid
    ========================================================================= */
 .shop-grid {
   display: grid;
@@ -1273,43 +1274,48 @@
 }
 
 /* =========================================================================
-   Card base — two flavours, one skeleton
+   Card — Y2K chunky-rounded, full-bleed colour, two flavours
    ========================================================================= */
 .shop-card {
-  --c: var(--plugin-c, #ebebe5);
+  --c: var(--plugin-c, var(--shop-text));
   --c-ink: var(--plugin-ink, #0e0e10);
   position: relative;
   display: grid;
   grid-template-rows: 1fr auto;
   background: transparent;
-  border: 1px solid var(--shop-line);
-  border-radius: 0;
+  border: none;
+  border-radius: 22px;
   padding: 0;
   font-family: inherit;
   text-align: left;
   color: inherit;
   cursor: pointer;
   overflow: hidden;
-  transition: transform 200ms cubic-bezier(.2,.8,.2,1), border-color 200ms;
+  transition: transform 220ms cubic-bezier(.2,.8,.2,1);
   min-height: 280px;
 }
-.shop-card:focus-visible { outline: 2px solid var(--c); outline-offset: -3px; }
-.shop-card--hero { min-height: 580px; }
+.shop-card:focus-visible {
+  outline: 3px solid var(--c);
+  outline-offset: 4px;
+  border-radius: 22px;
+}
+.shop-card--hero { min-height: 580px; border-radius: 28px; }
 .shop-card--wide { min-height: 320px; }
-.shop-card:hover { transform: translate(-2px, -2px); border-color: var(--c); }
-.shop-card:hover .shop-card-stamp { transform: translate(2px, 2px); }
+.shop-card--half { border-radius: 20px; }
+.shop-card:hover { transform: translateY(-4px); }
+.shop-card:hover .shop-card-stamp { transform: rotate(-6deg) scale(1.04); }
+.shop-card:active { transform: translateY(-2px) scale(0.995); }
 
-/* ---------- card-thumb: where each plugin shows its character ---------- */
+/* card-thumb: where each plugin shows its character */
 .shop-card-thumb {
   position: relative;
   overflow: hidden;
   background: var(--c);
 }
 .shop-card--vector .shop-card-thumb {
-  background: var(--shop-paper);
+  background: #f4efe7;
 }
 .shop-card-thumb::before {
-  /* per-plugin character pattern, set via --plugin-pattern on the card */
   content: '';
   position: absolute; inset: 0;
   background-image: var(--plugin-pattern, none);
@@ -1317,10 +1323,6 @@
   pointer-events: none;
   opacity: var(--plugin-pattern-opacity, 1);
   mix-blend-mode: var(--plugin-pattern-blend, normal);
-}
-.shop-card--vector .shop-card-thumb::before {
-  /* on cream cards the pattern is drawn in the plugin colour as ink */
-  filter: none;
 }
 
 /* slot for the eventual user-provided preview image */
@@ -1331,120 +1333,112 @@
   display: block;
 }
 
-/* preview placeholder mark — only shown when no image is present */
+/* preview placeholder mark — tiny id in lower-right of thumb */
 .shop-card-mark {
   position: absolute;
-  inset: auto 14px 14px auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  inset: auto 16px 16px auto;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--c-ink);
-  opacity: 0.45;
+  opacity: 0.4;
   pointer-events: none;
+  letter-spacing: -0.01em;
 }
-.shop-card--vector .shop-card-mark { color: var(--c); opacity: 0.6; }
+.shop-card--vector .shop-card-mark { color: var(--c); opacity: 0.7; }
 
-/* ---------- card-foot: specimen label ---------- */
+/* card-foot: chunky info row */
 .shop-card-foot {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto auto;
+  grid-template-columns: 1fr auto;
   gap: 4px 12px;
-  padding: 14px 18px 16px;
-  background: var(--shop-ink);
-  border-top: 1px solid var(--shop-line);
+  padding: 16px 20px 18px;
+  background: var(--shop-surface);
 }
 .shop-card-num {
-  grid-row: 1 / span 2;
-  align-self: start;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  grid-column: 1 / -1;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--c);
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
-  padding-top: 6px;
 }
 .shop-card-name {
-  grid-column: 2;
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
+  font-weight: 800;
   font-size: 22px;
+  letter-spacing: -0.025em;
   line-height: 1.05;
-  letter-spacing: -0.01em;
-  color: #ebebe5;
+  color: var(--shop-text);
 }
 .shop-card--hero .shop-card-name { font-size: 36px; }
 .shop-card-price {
-  grid-column: 3;
-  align-self: start;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
   color: var(--c);
   font-variant-numeric: tabular-nums;
-  padding-top: 10px;
   white-space: nowrap;
+  align-self: end;
 }
 .shop-card-tag {
-  grid-column: 2;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--shop-mute);
+  letter-spacing: 0.02em;
+  margin-top: 6px;
 }
 .shop-card-tag .dot {
   display: inline-block;
-  width: 7px; height: 7px;
+  width: 8px; height: 8px;
   background: var(--c);
   border-radius: 999px;
   margin-right: 8px;
-  transform: translateY(-1px);
 }
 
-/* the stamp — small specimen identifier in upper-left of preview */
+/* the stamp — pill chip top-left of preview */
 .shop-card-stamp {
   position: absolute;
-  inset: 14px auto auto 14px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  inset: 16px auto auto 16px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--c-ink);
-  background: rgba(255,255,255,0.65);
-  padding: 4px 7px;
-  transition: transform 200ms cubic-bezier(.2,.8,.2,1);
+  background: rgba(255,255,255,0.85);
+  padding: 6px 12px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+  transition: transform 220ms cubic-bezier(.2,.8,.2,1);
   z-index: 1;
 }
 .shop-card--vector .shop-card-stamp {
   background: var(--c);
-  color: var(--shop-paper);
+  color: #f4efe7;
 }
 
 /* =========================================================================
-   Detail page — editorial spread
+   Detail page — Y2K spread
    ========================================================================= */
 .shop-detail {
-  --c: var(--plugin-c, #ebebe5);
+  --c: var(--plugin-c, var(--shop-text));
   --c-ink: var(--plugin-ink, #0e0e10);
 }
 .shop-detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 28px;
-  padding: 0 28px 36px;
-  border-bottom: 1px solid var(--shop-line);
+  gap: 32px;
+  padding: 0 0 36px;
 }
 .shop-detail-thumb {
   position: relative;
   aspect-ratio: 1.1 / 1;
   background: var(--c);
+  border-radius: 28px;
   overflow: hidden;
 }
-.shop-detail--vector .shop-detail-thumb { background: var(--shop-paper); }
+.shop-detail--vector .shop-detail-thumb { background: #f4efe7; }
 .shop-detail-thumb::before {
   content: '';
   position: absolute; inset: 0;
@@ -1461,99 +1455,105 @@
 }
 .shop-detail-mark {
   position: absolute;
-  inset: auto 16px 16px auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  inset: auto 20px 20px auto;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--c-ink);
-  opacity: 0.5;
+  opacity: 0.45;
+  letter-spacing: -0.01em;
 }
 .shop-detail--vector .shop-detail-mark { color: var(--c); opacity: 0.65; }
 
 .shop-detail-meta {
   display: flex; flex-direction: column;
   gap: 18px;
-  padding: 12px 0 0;
+  padding: 14px 0 0;
 }
 .shop-detail-spec {
-  display: flex; align-items: center; gap: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  background: var(--shop-surface);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--shop-mute);
 }
 .shop-detail-spec .dot {
   display: inline-block;
-  width: 8px; height: 8px;
+  width: 9px; height: 9px;
   background: var(--c);
   border-radius: 999px;
 }
-.shop-detail-spec .num { font-variant-numeric: tabular-nums; color: var(--c); }
+.shop-detail-spec .num {
+  font-variant-numeric: tabular-nums;
+  color: var(--c);
+  font-weight: 700;
+}
 .shop-detail-name {
   margin: 0;
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 300;
-  font-size: clamp(40px, 5.5vw, 76px);
-  line-height: 0.98;
-  letter-spacing: -0.02em;
-  color: #ebebe5;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: var(--shop-text);
 }
 .shop-detail-tagline {
   margin: 0;
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
   font-size: 18px;
-  line-height: 1.45;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--shop-mute);
   max-width: 36ch;
+  letter-spacing: -0.01em;
 }
 .shop-detail-cta {
-  margin-top: 10px;
-  display: flex; align-items: center; gap: 18px;
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 14px;
   flex-wrap: wrap;
-  font-family: 'JetBrains Mono', monospace;
 }
 .shop-detail-price {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--c);
   font-variant-numeric: tabular-nums;
 }
 .shop-buy-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  padding: 12px 18px;
-  background: transparent;
-  color: #ebebe5;
-  border: 1px solid var(--c);
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 140ms, color 140ms;
-}
-.shop-buy-btn:hover:not(:disabled) {
+  padding: 14px 22px;
   background: var(--c);
   color: var(--c-ink);
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 140ms, filter 140ms;
 }
+.shop-buy-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+.shop-buy-btn:active:not(:disabled) { transform: translateY(0); }
 .shop-buy-btn:disabled {
-  border-color: var(--shop-line);
+  background: var(--shop-surface);
   color: var(--shop-mute);
   cursor: not-allowed;
 }
 .shop-buy-btn .arrow {
   display: inline-block;
-  transform: translateY(-1px);
+  font-weight: 700;
 }
 
 /* sections */
 .shop-detail-body {
-  padding: 32px 28px 60px;
+  padding: 36px 0 60px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   column-gap: 60px;
@@ -1564,107 +1564,117 @@
   .shop-detail-body { grid-template-columns: 1fr; }
 }
 .shop-detail-section h2 {
-  margin: 0 0 14px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--shop-mute);
-  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 .shop-detail-section p {
   margin: 0;
-  font-family: 'Newsreader', Georgia, serif;
   font-size: 17px;
-  line-height: 1.55;
-  color: #ebebe5;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--shop-text);
+  letter-spacing: -0.01em;
 }
 .shop-detail-section + .shop-detail-section { margin-top: 0; }
 
 .shop-faq {
-  display: flex; flex-direction: column; gap: 18px;
+  display: flex; flex-direction: column; gap: 14px;
   margin: 0;
 }
 .shop-faq dt {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  color: #ebebe5;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shop-text);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .shop-faq dt::before {
   content: '?';
-  display: inline-block;
-  width: 18px;
-  color: var(--c);
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  background: var(--c);
+  color: var(--c-ink);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 .shop-faq dd {
-  margin: 6px 0 0 18px;
-  font-family: 'Newsreader', Georgia, serif;
-  font-size: 14px;
+  margin: 6px 0 0 34px;
+  font-size: 15px;
+  font-weight: 400;
   line-height: 1.55;
   color: var(--shop-mute);
+  letter-spacing: -0.01em;
 }
 
 .shop-screenshots {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
+  gap: 12px;
 }
 .shop-screenshots img {
   width: 100%;
-  border: 1px solid var(--shop-line);
+  border-radius: 16px;
 }
 
 .shop-detail-howitworks {
   grid-column: 1 / -1;
-  padding-top: 28px;
-  border-top: 1px solid var(--shop-line);
+  padding-top: 32px;
 }
 
 /* =========================================================================
-   Coming-soon footer
+   Coming-soon footer — round chunky chip card
    ========================================================================= */
 .shop-future {
   margin-top: 32px;
   padding: 24px 28px;
-  border: 1px solid var(--shop-line);
+  background: var(--shop-surface);
+  border-radius: 22px;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 20px;
-  align-items: start;
+  align-items: center;
 }
 .shop-future-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--shop-mute);
   white-space: nowrap;
-  padding-top: 4px;
+  background: var(--shop-bg);
+  padding: 8px 14px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
 }
 .shop-future-list {
-  font-family: 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-size: 17px;
-  line-height: 1.45;
-  color: #ebebe5;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--shop-text);
   margin: 0;
+  letter-spacing: -0.01em;
 }
+.shop-future-list i { font-style: normal; color: var(--shop-mute); }
 .shop-future-list a {
-  color: #ebebe5;
+  color: var(--shop-text);
   text-decoration: none;
-  border-bottom: 1px solid var(--shop-mute);
+  border-bottom: 2px solid var(--shop-mute);
+  font-weight: 700;
 }
-.shop-future-list a:hover { border-bottom-color: #ebebe5; }
+.shop-future-list a:hover { border-bottom-color: var(--shop-text); }
 
 .shop-empty {
   padding: 60px;
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--shop-mute);
 }
 

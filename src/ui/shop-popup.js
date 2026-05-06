@@ -268,11 +268,8 @@ function renderHeader({ withBack = false }) {
   return `
     <header class="shop-header">
       <div class="shop-header-line">
-        <span class="h-mark">bitmancer</span>
-        <span>—</span>
-        <span>catalogue 01</span>
-        <span class="h-rule"></span>
-        <span class="h-issue">2026.05</span>
+        <span class="h-mark">bitmancer shop</span>
+        <span class="h-issue">v0.1 · pre-launch</span>
       </div>
       <div class="shop-header-actions">
         ${withBack ? `<button class="shop-back" data-act="back" aria-label="Back">← back</button>` : ''}
@@ -282,15 +279,15 @@ function renderHeader({ withBack = false }) {
   `;
 }
 
-/* ----- Lede + filters ----- */
+/* ----- Lede ----- */
 function renderLede() {
   return `
     <div class="shop-lede">
-      <h1 class="shop-lede-title">Five plugins. <em>Five worlds.</em><br>One editor.</h1>
+      <h1 class="shop-lede-title">five plugins.<br>one <em>editor</em>.</h1>
       <div class="shop-lede-meta">
-        <span>edition 01</span><br>
-        pre-launch preview<br>
-        polar.sh / bitmancer
+        <span>by bitmancer</span>
+        runs in slammer.app<br>
+        sold via polar.sh
       </div>
     </div>
   `;
@@ -322,9 +319,9 @@ function renderPackSection(packId, items, idx) {
   return `
     <section class="shop-pack">
       <div class="shop-pack-head">
-        <div class="shop-pack-num">// ${num}</div>
+        <div class="shop-pack-num">${num}</div>
         <div class="shop-pack-title">${info.label}</div>
-        <div class="shop-pack-meta">${items.length} ${items.length === 1 ? 'specimen' : 'specimens'}</div>
+        <div class="shop-pack-meta">${items.length} ${items.length === 1 ? 'item' : 'items'}</div>
         <p class="shop-pack-blurb">${info.rule}</p>
       </div>
       <div class="shop-grid">
@@ -335,11 +332,11 @@ function renderPackSection(packId, items, idx) {
 }
 
 function renderCard(entry, variant) {
-  const { id, name, palette, price, tagline, isVector, pack } = entry;
-  const tag = pack ? PACK_INFO[pack]?.label?.replace(' Pack', '').toUpperCase() : '';
+  const { id, name, palette, price, isVector, pack } = entry;
+  const tag = pack ? PACK_INFO[pack]?.label?.replace(' Pack', '') : '';
   const num = pluginNumber(id);
-  const priceStr = price != null ? `€${price}.00` : 'TBD';
-  const variantClass = variant ? variant : '';
+  const priceStr = price != null ? `€${price}` : 'tbd';
+  const variantClass = variant || '';
   const flavour = isVector ? 'shop-card--vector' : 'shop-card--plugin';
   const style = paletteStyle(palette);
   const stamp = palette.mark || '';
@@ -348,13 +345,13 @@ function renderCard(entry, variant) {
     <button class="shop-card ${flavour} ${variantClass}" data-act="open" data-id="${id}" style="${style}">
       <div class="shop-card-thumb">
         ${stamp ? `<span class="shop-card-stamp">${stamp}</span>` : ''}
-        <span class="shop-card-mark">${id}</span>
+        <span class="shop-card-mark">no.${num}</span>
       </div>
       <div class="shop-card-foot">
-        <span class="shop-card-num">${num}</span>
+        <span class="shop-card-num">No. ${num}</span>
         <span class="shop-card-name">${name}</span>
         <span class="shop-card-price">${priceStr}</span>
-        <span class="shop-card-tag"><span class="dot"></span>${tag}${isVector ? ' · VECTOR' : ''}</span>
+        <span class="shop-card-tag"><span class="dot"></span>${tag}${isVector ? ' · vector' : ''}</span>
       </div>
     </button>
   `;
@@ -368,9 +365,9 @@ function renderDetail(id) {
 
   const { name, palette, price, tagline, description, faq, screenshot, screenshots, isVector, pack } = entry;
   const num = pluginNumber(id);
-  const priceStr = price != null ? `€${price}.00` : 'tbd';
+  const priceStr = price != null ? `€${price}` : 'tbd';
   const flavour = isVector ? 'shop-detail--vector' : 'shop-detail--plugin';
-  const tag = pack ? PACK_INFO[pack]?.label?.toUpperCase() : '';
+  const tag = pack ? PACK_INFO[pack]?.label : '';
   const style = paletteStyle(palette);
   const stamp = palette.mark || '';
 
@@ -385,15 +382,15 @@ function renderDetail(id) {
         <div class="shop-detail-meta">
           <div class="shop-detail-spec">
             <span class="dot"></span>
-            <span class="num">${num}</span>
-            <span>${tag}${isVector ? ' · VECTOR' : ''}</span>
+            <span class="num">No. ${num}</span>
+            <span>· ${tag}${isVector ? ' · vector' : ''}</span>
           </div>
           <h1 class="shop-detail-name">${name}</h1>
           ${tagline ? `<p class="shop-detail-tagline">${tagline}</p>` : ''}
           <div class="shop-detail-cta">
             <span class="shop-detail-price">${priceStr}</span>
             <button class="shop-buy-btn" data-act="buy" data-id="${id}" disabled>
-              <span class="arrow">→</span> Buy via Polar — soon
+              <span class="arrow">→</span> Buy via Polar
             </button>
           </div>
         </div>
@@ -402,14 +399,14 @@ function renderDetail(id) {
       <div class="shop-detail-body">
         ${description ? `
           <section class="shop-detail-section">
-            <h2>// about</h2>
+            <h2>about</h2>
             <p>${description}</p>
           </section>
         ` : ''}
 
         ${faq.length ? `
           <section class="shop-detail-section">
-            <h2>// frequently asked</h2>
+            <h2>questions</h2>
             <dl class="shop-faq">
               ${faq.map((it) => `<dt>${it.q}</dt><dd>${it.a}</dd>`).join('')}
             </dl>
@@ -418,7 +415,7 @@ function renderDetail(id) {
 
         ${screenshots.length ? `
           <section class="shop-detail-section shop-detail-howitworks" style="grid-column: 1 / -1;">
-            <h2>// in use</h2>
+            <h2>in use</h2>
             <div class="shop-screenshots">
               ${screenshots.map((s) => `<img src="${s}" alt="">`).join('')}
             </div>
@@ -432,7 +429,7 @@ function renderDetail(id) {
 function renderFuture() {
   return `
     <aside class="shop-future">
-      <div class="shop-future-label">// in production</div>
+      <div class="shop-future-label">in production</div>
       <p class="shop-future-list">
         Halftone <i>(raster)</i>, Background Removal, AI Inpainting, Soft Face Filter, Y2K Vector Pack, Xerox Textures, CRT Look, Mesh Warp, Organic Gradients. <a href="roadmap.md" target="_blank" rel="noreferrer">roadmap → F5</a>
       </p>
