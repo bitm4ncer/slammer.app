@@ -334,6 +334,60 @@
   - [ ] **Mesh Warp** — N×M grid handles
   - [ ] **Pin Points** — drop pins onto triangulated mesh, drag pins to deform
 
+## PHASE 28 — Bitmancer Library Storefront & Premium Infrastructure 🆕
+
+> Technical scaffolding for the **à-la-carte shop**. App stays AGPL; premium plugins, effects and asset packs live in a private Bitmancer repo, sold via [Polar.sh](https://polar.sh) (Apache 2.0, MoR), delivered via Cloudflare R2. See [STRATEGY.md](STRATEGY.md) for the business model and the three "Pay what you need" tests, and [F3](#f3--slammer-pro--bitmancer) for the strategic deliverables.
+
+### Foundations
+- [x] AGPL-3.0 license + [LICENSE](LICENSE) file
+- [x] `.gitignore` privacy hardening (`.claude/plans/`, `*.private.md`, `*.strategy.md`, `notes/`)
+- [x] Public [STRATEGY.md](STRATEGY.md)
+- [ ] Register `slammer.app` domain (Cloudflare Registrar — Hetzner doesn't sell `.app` reliably)
+- [ ] Migrate deploy from GitHub Pages → **Cloudflare Pages** (faster edge, better custom-domain UX, free)
+- [ ] Marketing landing page (`/about` or root): single page, ASCII-block aesthetic matching README, "what's free / what's premium" explainer, Bitmancer Library teaser, Polar.sh CTA
+- [ ] **Plausible** analytics — anonymous page views only, no fingerprinting
+
+### Polar.sh setup (commerce backend)
+- [ ] Create Polar organization for Bitmancer; verify identity for MoR
+- [ ] One Polar **product per saleable item** — every plugin / asset pack / themed bundle / lifetime tier is its own SKU
+- [ ] Enable native **License Keys** benefit on each product (Polar generates keys at checkout)
+- [ ] Webhook endpoint registered: `polar.checkout.completed` → notifies Cloudflare Worker so the user's owned-item list refreshes immediately
+
+### License + delivery infrastructure
+- [ ] **Cloudflare Worker** (`api.slammer.app/license`):
+  - `POST /verify` — accepts Polar license key, validates against Polar API, returns signed JWT containing `owned: string[]` (item IDs) + `exp` (24h)
+  - `POST /webhook` — receives Polar `checkout.completed`, caches user's purchase set in KV for fast subsequent verifications
+  - `GET /download/:itemId` — accepts JWT, returns short-lived signed URL for the matching R2 object
+- [ ] **Cloudflare R2** bucket (`bitmancer-library`): premium plugin bundles + asset-pack ZIPs; access only via Worker-signed URLs (no public bucket)
+- [ ] **Cloudflare KV** (`bitmancer-licenses`): user → owned-item-IDs cache, ~5 min TTL, refreshed by webhook
+- [ ] License-key entry UI in Settings → **Library** tab (new): paste key, status indicator, "Refresh ownership" button
+- [ ] JWT cache in IndexedDB; auto-renew on near-expiry; offline-tolerant (last good token cached, Library still shows owned items if validation server is briefly unreachable)
+
+### Plugin system extensions
+- [ ] Plugin manifest schema bump: each premium plugin has stable `id` (e.g. `datamosh-studio`); free plugins continue without change
+- [ ] Plugin registry: ownership-aware loader — premium plugins skip-load until JWT lists their `id` in `owned[]`
+- [ ] **Price-tag UI in Effects add-menu**: premium plugins show a small price label (e.g. "€7") instead of a lock icon. Click → opens in-app preview modal (description, screenshot, "Buy on Polar" CTA, dismiss)
+- [ ] Same price-tag treatment in the Layer Stack `+` flyout (Phase 9) for premium FX layers and in any future Vector Tools shop entry points
+- [ ] Owned-bundle install: register premium plugins in `slammer:library:owned` IndexedDB store; load on app boot before plugin registry locks
+
+### Bitmancer Library plugin (free, AGPL, panel type) — full storefront UX
+- [ ] New panel plugin: `src/plugins/panels/bitmancer-library/`
+- [ ] **Browse tab** — full catalog. Categories: Effects · Vector Tools · Asset Packs · Themed Bundles · Lifetime. Each card: thumbnail, name, price tag, short blurb, "Buy" / "Owned" / "Install" action
+- [ ] **Owned tab** — items the current license key has unlocked, with install / update buttons
+- [ ] **Cart-less checkout** — click Buy → opens Polar checkout in new tab → returns to slammer with key auto-detected via `?polar_key=` URL param OR manual paste
+- [ ] One-click install — fetches signed download URL from Worker, stores bundle in IndexedDB (`slammer:library:bundles`), registers in plugin system
+- [ ] Drag asset-pack item from Library onto canvas → adds image / SVG / texture layer (depends on item type)
+- [ ] Background update check on app boot: silently fetch latest version metadata, prompt user only when a meaningful update is available
+- [ ] Search + tag filtering across the catalog (catalog metadata served by Worker, cached client-side)
+
+### Asset-pack format
+- [ ] Spec: `.zip` containing `manifest.json` (id / name / version / type / contents) + asset files
+- [ ] Types: `texture` (PNG/JPEG batch), `gradient` (JSON list of stops), `font` (TTF/OTF/WOFF2 with metadata), `vector-kit` (SVG batch), `template` (`.slammerproj` files)
+- [ ] Importer in Bitmancer Library handles each type → routes to appropriate registry (texture cache / gradient store / font upload pipeline / project store)
+
+### Pre-launch validation
+- [ ] Three-test gate: every premium item in the launch catalog must individually pass the **Tutorial / 2-Hour / Eigengeld** tests in [STRATEGY.md](STRATEGY.md). Maintainer signs off in writing per item before it's listed in Polar.
+
 ---
 
 ### Deferred / parked
@@ -398,3 +452,70 @@ Sub-deliverables (each shippable on its own):
 - [ ] Style/line-weight filters, similar-icon suggestions
 
 **Notes**: OAuth 1.0a is heavier than the simple Bearer/API-key auth used by other plugins — each request needs a signed header (nonce, timestamp, HMAC-SHA1). Browser-side signing is doable with a small lib. Most useful once SVG import → vector layer is solid.
+
+### F3 — Slammer Pro & Bitmancer Library
+
+**Intent**: keep slammer.app free and AGPL while making the project sustainable through an **à-la-carte** in-app shop — single plugins, themed bundles, asset packs, and an optional lifetime tier — all under the Bitmancer brand. Public model and the three "Pay what you need" tests live in [STRATEGY.md](STRATEGY.md).
+**Status**: in progress — strategy public, infrastructure scoped as Phase 28.
+
+**Pricing tiers (all one-time, no subscription):**
+
+| Tier | Price | Notes |
+|---|---|---|
+| Single plugin / effect / vector tool | €5–10 | Each must pass the three tests in STRATEGY.md |
+| Asset pack | €5–15 | Texture / gradient / font / vector kit / template |
+| Themed bundle | €15–25 | 3–4 workflow-coherent items, ~30 % bundle discount |
+| Slammer Pro Lifetime | €99–129 | All current + future Bitmancer plugins for v1.x |
+
+Sub-deliverables (each shippable on its own):
+- [x] Public [STRATEGY.md](STRATEGY.md) — positioning, à-la-carte pricing, three premium-decision tests, license, content-honesty
+- [x] AGPL-3.0 license applied
+- [ ] [Phase 28](#phase-28--bitmancer-library-storefront--premium-infrastructure-) — technical infrastructure (prerequisite for everything below)
+- [ ] **Polar.sh organization** set up; identity verified for Merchant of Record
+- [ ] **Launch catalog** (private repo, separate works) — 3–5 launch plugins (lean over full), each individually passing the three tests, plus 1 themed bundle and the Lifetime tier
+- [ ] **Bitmancer asset-pack format conversion** — port existing texture packs at [bitmancer.gumroad.com](https://bitmancer.gumroad.com) into the asset-pack `.zip` format and re-list on Polar (legacy Gumroad customers stay on Gumroad and are not migrated)
+- [ ] **2–3 new asset packs** drafted before public launch (gradient pack, font bundle, project templates) — same three-test gate even for content
+- [ ] **Public launch announcement video** on [@bitmancer](https://www.youtube.com/@Bitmancer) — first dedicated Slammer video, positioned as natural extension of the existing Affinity content
+- [ ] **Tutorial backlog** — 2–3 polished AI-voice tutorials drafted *before* launch, one per launch plugin (buffer against post-launch silence)
+- [ ] **Continued Affinity content** at reduced cadence — soft cross-pollination, not hard pivot
+- [ ] **Devlog format** (raw, edited, creator's voice) — bonus track when interesting things happen, never on a schedule
+
+**Architecture notes** (locked-in; don't re-debate):
+- Premium plugins, effects, vector tools and asset packs are **separate works** distributed via Polar.sh commerce + Cloudflare R2 delivery. They live in a **private Bitmancer repo**, never in slammer.app.
+- **À-la-carte** is the default model — every saleable thing has its own SKU and price tag. Bundles are an additive convenience for buyers, not the primary unit.
+- **Free Tier scope locks at public launch.** What is in the public repo on launch day stays free under AGPL forever. Improvements to free items keep shipping after launch.
+- **No DRM**, no online activation requirement. Honor-system license check.
+- **One-time payment only**, no subscription. v2.x in the future is a paid upgrade in Affinity cadence.
+- **Three-test gate** (see STRATEGY.md): every premium item must pass Tutorial / 2-Hour / Eigengeld tests. Failed items go free, get folded into existing plugins, or don't ship.
+- **Bring-your-own-key for AI**. Bitmancer never sees user prompts or outputs.
+- **No third-party plugin marketplace** v1 — third parties self-distribute, slammer just loads. Community marketplace deferred to [F4](#f4--community-plugin-marketplace).
+
+**Prerequisite**: Phase 28 ships before any premium item can be sold. Domain + Cloudflare deploy + Polar.sh integration + Cloudflare Worker + Bitmancer Library plugin must be live before any item is listed on Polar.
+
+**Open decisions** (defer until Phase 28 start):
+- Exact launch-catalog plugins (pick 3–5; bias toward video-genic capabilities — Datamosh Studio, Halftone Studio, Generative Brush Engine are the current frontrunners)
+- Lifetime tier price: €99 / €119 / €129 — recommend **€99 launch / €129 once catalog is fat**
+- Single-plugin price spread: flat €7 for all, or tiered €5/€7/€10 based on complexity? (lean tiered)
+- License JWT claim shape — `owned: string[]` of item IDs is the working model
+- Whether to dual-list legacy Bitmancer texture packs on Polar (yes, after asset-pack-format conversion) or leave them Gumroad-only forever (simpler)
+
+### F4 — Community Plugin Marketplace
+
+**Intent**: open the Bitmancer Library to third-party plugin developers. Sellers list their own plugins; Bitmancer takes a small commission; users browse community plugins next to first-party ones in the same Library UI.
+**Status**: deferred — long-term goal, not v1. Listed here so it informs v1 architecture decisions.
+
+Sub-deliverables (sketch only — to be detailed when work starts):
+- [ ] **Plugin sandbox** — iframe / Web Worker isolation, capability-based permissions (canvas-read, canvas-write, network, storage). Hard prerequisite — without sandboxing, third-party plugins can't be trusted in the user's app.
+- [ ] **Submission + review pipeline** — manual review at first; automated checks for manifest validity, bundle size, allowed APIs
+- [ ] **Seller onboarding via Polar Connect** (or equivalent payout mechanism) — third parties get paid directly by Polar minus Bitmancer commission
+- [ ] **Commission**: ~20 % standard (vs Apple's 30 % / Steam's 30 %), lower for revenue under a threshold to encourage indie devs
+- [ ] **Library UI extensions** — third-party badge, seller profile, ratings, reports
+- [ ] **Featured / curated** vs free-listing tiers — quality signal vs ecosystem openness
+
+**Prerequisite**: F3 launched, F1 (Open Slammer SDK) at least partially shipped — the public Operations API + plugin loader are necessary foundations before strangers can ship plugins. Sandboxing is the long pole; everything else is straightforward once that's solved.
+
+**Architecture notes**:
+- F4 is the natural extension of F1's "self-hosted plugin URLs" — instead of users pasting random URLs, the Bitmancer Library curates and hosts community plugins.
+- Sandbox model decision (iframe vs Worker) is the central technical question; both have trade-offs (iframe = DOM access for renderUI but heavier; Worker = light but no direct DOM).
+- Commerce: Polar Connect (if available at the time) or a custom payout flow via Stripe Connect as fallback.
+- This is a 2027+ goal at current single-maintainer cadence.
