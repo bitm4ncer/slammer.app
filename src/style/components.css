@@ -1019,58 +1019,53 @@
 /* GlyphWorld Mountain is declared in variables.css alongside Chicago and  */
 /* GothicPixels, all self-hosted from /data/. We just reference it here.   */
 
-/* ---------- Sidebar SHOP button — dark iris shimmer ---------- */
-/* Dark base, subtle pink/mint/lavender iridescence over it. Shimmer     */
-/* breathes via animated coloured outer glows. Stays dark — it's a       */
-/* shop chip with oil-on-water character, not a bright primary button.   */
+/* ---------- Sidebar SHOP button — dark perlmutt ---------- */
+/* Dark base. Perlmutt = nacre = mother-of-pearl: very faint colour      */
+/* shifts under a glossy surface, never loud. Whisper-low opacities,     */
+/* one slow breath, no big outer glow.                                   */
 .tool-section--bottom { margin-top: auto; padding-top: 8px; }
 .tool-btn--shop {
   position: relative;
   background:
     linear-gradient(135deg,
-      rgba(255, 46, 99, 0.18),
-      rgba(138, 255, 140, 0.14) 50%,
-      rgba(182, 164, 255, 0.18)),
+      rgba(255, 46, 99, 0.07),
+      rgba(138, 255, 140, 0.05) 50%,
+      rgba(182, 164, 255, 0.07)),
     var(--surface-3);
   color: var(--text-primary);
-  border: 1px solid rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 8px;
   font-size: 14px;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(0,0,0,0.28),
-    0 0 14px rgba(255, 46, 99, 0.22),
-    0 0 22px rgba(138, 255, 140, 0.16),
-    0 2px 4px rgba(0,0,0,0.45);
-  animation: shop-iris 4s ease-in-out infinite;
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.26),
+    0 2px 4px rgba(0,0,0,0.4);
+  animation: shop-pearl 7s ease-in-out infinite;
   transition: transform 160ms ease, border-color 160ms ease;
 }
-@keyframes shop-iris {
+@keyframes shop-pearl {
   0%, 100% { box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(0,0,0,0.28),
-    0 0 14px rgba(255, 46, 99, 0.22),
-    0 0 22px rgba(138, 255, 140, 0.16),
-    0 2px 4px rgba(0,0,0,0.45); }
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.26),
+    0 0 8px rgba(255, 46, 99, 0.08),
+    0 2px 4px rgba(0,0,0,0.4); }
   50% { box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    inset 0 -1px 0 rgba(0,0,0,0.28),
-    0 0 20px rgba(182, 164, 255, 0.32),
-    0 0 30px rgba(138, 255, 140, 0.28),
-    0 2px 4px rgba(0,0,0,0.45); }
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 -1px 0 rgba(0,0,0,0.26),
+    0 0 10px rgba(138, 255, 140, 0.10),
+    0 2px 4px rgba(0,0,0,0.4); }
 }
 .tool-btn--shop i { font-size: 13px; }
 .tool-btn--shop:hover {
   transform: translateY(-1px);
-  border-color: rgba(255,255,255,0.28);
+  border-color: rgba(255,255,255,0.20);
   animation-play-state: paused;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.22),
-    inset 0 -1px 0 rgba(0,0,0,0.3),
-    0 0 22px rgba(255, 46, 99, 0.4),
-    0 0 34px rgba(138, 255, 140, 0.32),
-    0 0 40px rgba(182, 164, 255, 0.22),
-    0 4px 10px rgba(0,0,0,0.5);
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    inset 0 -1px 0 rgba(0,0,0,0.28),
+    0 0 14px rgba(255, 46, 99, 0.16),
+    0 0 20px rgba(138, 255, 140, 0.12),
+    0 4px 8px rgba(0,0,0,0.45);
 }
 .tool-btn--shop:active { transform: translateY(0); }
 
