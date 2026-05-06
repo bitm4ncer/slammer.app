@@ -85,7 +85,7 @@ let _dbPromise = null;
 function openDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -95,6 +95,16 @@ function openDB() {
       // side doesn't block on a versionchange race.
       if (!db.objectStoreNames.contains('datamosh-cache')) {
         db.createObjectStore('datamosh-cache');
+      }
+      // v3 — Phase 16 plugin favorites + folders.
+      if (!db.objectStoreNames.contains('plugin-favorites')) {
+        const fav = db.createObjectStore('plugin-favorites', { keyPath: 'id' });
+        fav.createIndex('byPlugin', 'pluginId');
+        fav.createIndex('byFolder', 'folderId');
+      }
+      if (!db.objectStoreNames.contains('plugin-folders')) {
+        const fol = db.createObjectStore('plugin-folders', { keyPath: 'id' });
+        fol.createIndex('byPlugin', 'pluginId');
       }
     };
     req.onsuccess = () => {

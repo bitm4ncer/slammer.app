@@ -94,6 +94,31 @@ Vector layers can hold multiple paths (`layer.vector.paths[]`). The vector panel
 - **Phase 13b — Pen/Pencil/anchor edits/Text→Path**: ✅ shipped.
 - **Phase 13c — Boolean ops, path actions, Outline Stroke**: ✅ shipped. Stack: Paper.js `PathItem.unite/subtract/intersect/exclude/divide` for booleans (operate on the active sub-path vs the next, wrapping); `paperjs-offset` for Outline Stroke (Paper v0.12 has no native `expand()`); single-path actions (Simplify, Smooth, Reverse, Open/Close, Join, Outline) live in `src/ui/vector-tools/path-actions.js`.
 - **Phase 13d — Multi-layer select + simplify slider**: ⏳ pending. Marquee select, shift-click anchors, slider-driven simplify with live preview.
+- **Phase 16 — Plugins**: ✅ shipped (Callshop deferred to 16b). Panel plugins live in floating VST-style windows. Unsplash + Pexels (search/favorites/folders), fal.ai (curated 15-model browser with schema-driven forms — replaces the earlier Replicate/Cloudflare Worker approach). API keys in Settings → API Keys tab.
+
+## Plugin system (Phase 16)
+
+The plugin framework is intentionally small. Four moving parts:
+
+- **Registry** (`src/plugins/registry.js`) accepts a fourth manifest type, `panel`. Panel plugins skip `process()` and use `renderUI(container, ctx)` only.
+- **Floating-window factory** (`src/ui/floating-window.js`) — extracted from the export popup. Drag, resize, ESC-close-when-topmost, click-to-focus, geometry persistence under `slammer:window:<id>`. Reused by both the export popup and every plugin window.
+- **Plugin host** (`src/ui/plugin-host.js`) — `openPluginWindow(id)` is idempotent: re-opening focuses the existing window. Multiple plugin windows can be open simultaneously.
+- **App context façade** — `window.__slammer = { doc, renderer, getSettings, setSettings, onSettingsChange, notify, importImage }`, set once in `main.js`. Plugins MUST use this and never reach into module closures directly.
+
+Other key pieces:
+
+- **Sidebar `PLUGINS` section** — pinned plugins persist in `slammer:pinnedPlugins` (localStorage). The `+` button opens the **Plugin Manager popup** (centred modal, reuses `.settings-modal` chrome).
+- **Settings tabs** — General + API Keys. Keys stored in `slammer:settings`: `unsplashAccessKey`, `pexelsApiKey`, `falaiApiKey`. Plugins show a "Configure in Settings" CTA when keys are missing.
+- **fal.ai integration** — `@fal-ai/client` works directly in the browser; no proxy or Cloudflare Worker needed. The fal.ai plugin (`src/plugins/panels/falai/`) is a model browser: curated catalog (`catalog.js`) drives the left list, schema-driven form-renderer (`form-renderer.js`) builds the right pane. Each user pastes their own fal.ai key; we never see it. The earlier Replicate/Worker approach was removed in favour of this — Replicate has no CORS-friendly path for browsers.
+- **Layer rasterisation for AI input** — `renderer.rasterizeLayerToBlob(layerId, { maxSide })` returns a PNG Blob of the layer's processed pixels. Used by the shared `_shared/drop-zone.js` when a layer card is dragged onto a generator plugin.
+- **Layer card drag-out** — layer-panel cards set `draggable=true` + a `dragstart` handler with mime `application/x-slammer-layer`. The grip handle still owns the in-list reorder; native drag is suppressed there.
+- **IndexedDB v3** — `slammer` DB bumped from v2 to v3. New stores: `plugin-favorites` (keyPath `id`, indexed by `pluginId` + `folderId`) and `plugin-folders`. Helper module: `src/io/plugin-store.js`.
+
+### Pitfalls / hard-won
+
+- **`[hidden]` vs `display: flex`**: when a class is both targeted by an attribute selector (`[hidden]`) and given `display: flex`, the explicit display wins — the element stays visible. Add an explicit `.foo[hidden] { display: none; }` next to every `.foo { display: flex; ... }`. This bit `.browsable-tab-panel`, `.plugin-dropzone-filled/empty`, and `.settings-row` (a latent bug the export popup already had).
+- **Replicate model identifiers**: NanoBanana = `google/nano-banana`, 90sbadtrip = `markredito/90sbadtrip`. Both passed as `model` (not pinned `version`) so the worker resolves to the latest public version — keeps us from baking a stale hash.
+- **Vite chunk warning** about `settings-popup.js` being both static-imported (panels) and dynamic-imported (text-tool) is benign — Vite keeps both paths in the same chunk; behaviour is correct.
 
 ## Default text font
 

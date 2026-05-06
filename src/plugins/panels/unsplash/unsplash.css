@@ -1,0 +1,8 @@
+/* Unsplash plugin (cosmetic only — main browsable styles are in components.css). */
+
+.unsplash-panel {
+  --plugin-accent: #FFFFFF;
+}
+.plugin-window--unsplash .floating-header {
+  background: linear-gradient(to bottom, #2a2a2a 0%, var(--surface-2) 100%);
+}

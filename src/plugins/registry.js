@@ -7,8 +7,12 @@ function validateManifest(p) {
   if (!p || typeof p !== 'object') errors.push('plugin must be an object');
   if (!p.id) errors.push('missing id');
   if (!p.name) errors.push('missing name');
-  if (!['tool', 'filter', 'generator'].includes(p.type)) errors.push(`invalid type "${p.type}"`);
-  if (typeof p.process !== 'function' && p.type !== 'generator') errors.push('missing process()');
+  if (!['tool', 'filter', 'generator', 'panel', 'vector-filter'].includes(p.type)) errors.push(`invalid type "${p.type}"`);
+  if (p.type === 'vector-filter') {
+    if (typeof p.processPaths !== 'function') errors.push('vector-filter missing processPaths()');
+  } else if (typeof p.process !== 'function' && p.type !== 'generator' && p.type !== 'panel') {
+    errors.push('missing process()');
+  }
   if (typeof p.renderUI !== 'function') errors.push('missing renderUI()');
   if (typeof p.defaultParams !== 'function') errors.push('missing defaultParams()');
   return errors;

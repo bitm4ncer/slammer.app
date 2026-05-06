@@ -1,0 +1,5 @@
+.pexels-panel { --plugin-accent: #05A081; }
+.plugin-window--pexels .floating-header {
+  background: linear-gradient(to bottom, #1c2a26 0%, var(--surface-2) 100%);
+  color: #6ee0b6;
+}

@@ -1,0 +1,332 @@
+.falai-panel { --plugin-accent: #ec0648; }
+.plugin-window--falai .floating-header {
+  background: linear-gradient(to bottom, #2a0d16 0%, var(--surface-2) 100%);
+  color: #ec0648;
+}
+.plugin-window--falai .falai-mark { vertical-align: middle; margin-right: 2px; }
+
+/* ---------- Topbar ---------- */
+.falai-topbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: var(--surface);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.falai-search {
+  flex: 1 1 180px;
+  min-width: 120px;
+  background: var(--background);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.falai-search:focus { outline: none; border-color: var(--ctx-accent, var(--primary)); }
+
+.falai-filters { gap: 2px; }
+
+.falai-fav-toggle {
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  padding: 5px 9px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.falai-fav-toggle:hover { color: var(--ctx-accent, var(--primary)); border-color: var(--ctx-accent, var(--primary)); }
+.falai-fav-toggle.active {
+  color: var(--ctx-accent, var(--primary));
+  border-color: var(--ctx-accent, var(--primary));
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 10%, transparent);
+}
+
+/* ---------- Balance chip ---------- */
+/* Rendered immediately with a placeholder so the topbar doesn't reflow
+ * once the async fetch resolves. Color shifts to accent when loaded. */
+.falai-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--background);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  padding: 5px 9px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.falai-balance i { font-size: 10px; opacity: 0.7; }
+.falai-balance:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+.falai-balance--ok { color: var(--ctx-accent, var(--primary)); }
+.falai-balance--ok:hover { border-color: var(--ctx-accent, var(--primary)); color: var(--ctx-accent, var(--primary)); }
+.falai-balance-value::before { content: '$'; opacity: 0.6; margin-right: 1px; }
+
+/* ---------- Body: master / detail layout ---------- */
+.falai-body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 32%) 1fr;
+  min-height: 0;
+}
+
+/* ---------- List (left) ---------- */
+.falai-list {
+  border-right: 1px solid var(--vhs-shadow);
+  overflow-y: auto;
+  background: var(--surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--vhs-shadow) transparent;
+}
+.falai-list::-webkit-scrollbar { width: 8px; }
+.falai-list::-webkit-scrollbar-track { background: transparent; }
+.falai-list::-webkit-scrollbar-thumb { background: var(--vhs-shadow); border-radius: 4px; }
+.falai-list::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+.falai-list-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.falai-list-row:hover {
+  background: var(--surface-3);
+  color: var(--ctx-accent, var(--primary));
+}
+.falai-list-row.active {
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 12%, var(--surface));
+  color: var(--ctx-accent, var(--primary));
+}
+.falai-list-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.falai-list-row-name {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+  word-break: break-all;
+}
+.falai-list-row-meta {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.falai-list-row.active .falai-list-row-meta { color: var(--ctx-accent, var(--primary)); }
+.falai-list-row-spacer { flex: 1; }
+.falai-list-row-cost {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.85;
+}
+.falai-list-row-fav {
+  color: var(--ctx-accent, var(--primary));
+  font-size: 10px;
+  margin-left: 4px;
+}
+.falai-detail-cost {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ctx-accent, var(--primary));
+}
+.falai-list-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* ---------- Detail (right) ---------- */
+.falai-detail {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vhs-shadow) transparent;
+  display: flex;
+  flex-direction: column;
+}
+.falai-detail::-webkit-scrollbar { width: 8px; }
+.falai-detail::-webkit-scrollbar-track { background: transparent; }
+.falai-detail::-webkit-scrollbar-thumb { background: var(--vhs-shadow); border-radius: 4px; }
+.falai-detail::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+.falai-detail-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.falai-detail-titlerow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.falai-detail-title {
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ctx-accent, var(--primary));
+  word-break: break-all;
+}
+.falai-detail-cat {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.falai-detail-cat code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+.falai-detail-actions {
+  display: flex;
+  gap: 4px;
+}
+.falai-icon-btn {
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-secondary);
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 11px;
+}
+.falai-icon-btn:hover { color: var(--ctx-accent, var(--primary)); border-color: var(--ctx-accent, var(--primary)); }
+.falai-detail-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ---------- Form ---------- */
+.falai-form {
+  display: flex;
+  flex-direction: column;
+}
+.falai-field {
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+
+/* ---------- Empty state (no model selected) ---------- */
+.falai-empty {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.falai-empty-title {
+  font-family: 'GlyphWorld-Mountain', 'Chicago', monospace;
+  font-size: 22px;
+  letter-spacing: 0.16em;
+  color: var(--ctx-accent, var(--primary));
+}
+.falai-empty-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.falai-featured {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.falai-featured-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.falai-featured-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+}
+.falai-featured-card {
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.falai-featured-card:hover { border-color: var(--ctx-accent, var(--primary)); color: var(--ctx-accent, var(--primary)); }
+.falai-featured-name {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.falai-featured-cat {
+  font-size: 9px;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- Recent strip ---------- */
+.falai-recent {
+  border-bottom: none;
+}
+.falai-recent-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.falai-recent-thumb {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--background);
+  cursor: pointer;
+  padding: 0;
+}
+.falai-recent-thumb:hover { border-color: var(--ctx-accent, var(--primary)); }
+.falai-recent-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------- Narrow window: stack list above detail ---------- */
+@media (max-width: 600px) {
+  .falai-body { grid-template-columns: 1fr; grid-template-rows: 200px 1fr; }
+  .falai-list { border-right: none; border-bottom: 1px solid var(--vhs-shadow); }
+}

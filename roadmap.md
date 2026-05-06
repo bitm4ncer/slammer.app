@@ -158,12 +158,15 @@
 
 ## PHASE 16 — Plugins system
 
-- [ ] Plugin layer architecture
-- [ ] **Pexels** plugin (image search → image layer)
-- [ ] **Unsplash** plugin
-- [ ] **Image generation** plugin (Replicate API: NanoBanana, Flux — image-to-image, prompts, LORA support incl. `markredito/90sbadtrip`, variant count)
-- [ ] **Callshop Frame Generator** integration ([repo](https://github.com/bitm4ncer/Callshop_FrameGenerator))
-- [ ] API keys live in Settings popup → API Keys tab
+- [x] Plugin layer architecture (panel plugin type, registry, host, draggable VST-style windows)
+- [x] **Unsplash** plugin (search + favorites + folders → image layer)
+- [x] **Pexels** plugin (search + favorites + folders → image layer)
+- [x] **fal.ai** plugin — curated 15-model browser with schema-driven forms (nano-banana, flux-pro/kontext, seedream, qwen-edit, recraft, photomaker, clarity-upscaler, birefnet, etc.). Direct browser auth, no proxy needed.
+- [x] PLUGINS sidebar category with `+` Plugin Manager popup
+- [x] API keys live in Settings popup → API Keys tab
+- [ ] **Callshop Frame Generator** integration ([repo](https://github.com/bitm4ncer/Callshop_FrameGenerator)) — deferred to Phase 16b
+- [ ] 90sbadtrip equivalent on fal.ai (find Flux VHS/trip LoRA or upload custom) — deferred to Phase 16b
+- [ ] Live fal.ai catalog (replace curated JSON with on-demand fetch) — deferred to Phase 16b
 
 ## PHASE 17 — Graphics Library
 

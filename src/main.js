@@ -16,6 +16,7 @@ import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
 import { initTextTool } from './ui/text-tool.js';
 import { initVectorTool } from './ui/vector-tool.js';
+import { initVectorEffectsPanel } from './ui/vector-effects-panel.js';
 import { initAnchorOverlay } from './ui/vector-tools/anchor-overlay.js';
 import { preloadFontsForDoc } from './ui/typography/font-loader.js';
 import { bootUploadedFonts } from './ui/typography/uploaded-fonts.js';
@@ -40,16 +41,40 @@ import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
 import jpegPlugin from './plugins/tools/jpeg-compression/index.js';
 import datamoshPlugin from './plugins/tools/datamosh/index.js';
 
+// Vector-only plugins (run inside vector-renderer pre-rasterise).
+import zigzagVPlugin from './plugins/vector/zigzag/index.js';
+import turbulenceVPlugin from './plugins/vector/turbulence/index.js';
+import roughenVPlugin from './plugins/vector/roughen/index.js';
+import puckerVPlugin from './plugins/vector/pucker-bloat/index.js';
+import twistVPlugin from './plugins/vector/twist/index.js';
+import offsetVPlugin from './plugins/vector/offset-path/index.js';
+import booleanVPlugin from './plugins/vector/boolean/index.js';
+import repeaterVPlugin from './plugins/vector/repeater/index.js';
+import waveDistortVPlugin from './plugins/vector/wave-distort/index.js';
+import calligraphyVPlugin from './plugins/vector/calligraphy/index.js';
+import hatchingVPlugin from './plugins/vector/hatching/index.js';
+import stippleVPlugin from './plugins/vector/stipple/index.js';
+import halftoneVPlugin from './plugins/vector/halftone/index.js';
+import spirographVPlugin from './plugins/vector/spirograph/index.js';
+import scribbleVPlugin from './plugins/vector/scribble/index.js';
+import metaballVPlugin from './plugins/vector/metaball/index.js';
+
+// Phase 16 — panel plugins.
+import unsplashPlugin from './plugins/panels/unsplash/index.js';
+import pexelsPlugin from './plugins/panels/pexels/index.js';
+import falaiPlugin from './plugins/panels/falai/index.js';
+
 import { exportVisibleAsPng } from './io/export-png.js';
 import { initProjectStore } from './io/project-store.js';
 import { initProjectMenu } from './ui/project-menu.js';
 import { initAffinityBridge } from './integrations/affinity/index.js';
-import { initSettingsPopup, getSettings, onSettingsChange } from './ui/settings-popup.js';
+import { initSettingsPopup, getSettings, setSettings, onSettingsChange } from './ui/settings-popup.js';
 import { initSidePanelSplit } from './ui/side-panel-split.js';
 import { initLayerStackAdd } from './ui/layer-stack-add.js';
 import { initDocumentSizePopup } from './ui/document-size-popup.js';
 import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
+import { initSidebarPlugins } from './ui/sidebar-plugins.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -65,6 +90,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     huePlugin, colorOverlayPlugin, gradientMapPlugin, curvesPlugin,
     grainPlugin, displacementPlugin,
     ditheringPlugin, pixelsortPlugin, jpegPlugin, datamoshPlugin,
+    // Vector-only plugins.
+    zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
+    twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,
+    waveDistortVPlugin, calligraphyVPlugin, hatchingVPlugin, stippleVPlugin,
+    halftoneVPlugin, spirographVPlugin, scribbleVPlugin, metaballVPlugin,
+    // Panel plugins (Phase 16). fal.ai pinned first so it leads the
+    // Plugin Manager list.
+    falaiPlugin, unsplashPlugin, pexelsPlugin,
   ].forEach(registerPlugin);
 
   const doc = createDocument();
@@ -94,6 +127,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const textTool = initTextTool({ document: doc });
   initVectorTool({ document: doc });
+  // Mount the vector-effects card next to the regular Effects card
+  // (same parent so the visual order matches the Vector / Effects pair).
+  const fxGroupEl = document.getElementById('effectsGroup');
+  initVectorEffectsPanel({
+    document: doc,
+    host: fxGroupEl?.parentNode || document.querySelector('.side-panel-bottom') || document.querySelector('.side-panel'),
+  });
   initAnchorOverlay({
     stage: view.stage,
     contentLayer: view.contentLayer,
@@ -117,6 +157,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     document: doc,
     openTextLayer: (layer) => textTool.focus(layer),
   });
+
+  // ---------- Phase 16 — plugin runtime ----------
+  // Single global app context for panel plugins. We expose only what plugins
+  // actually need, behind a small façade (no direct closures from this scope).
+  window.__slammer = {
+    doc,
+    renderer,
+    getSettings,
+    setSettings,
+    onSettingsChange,
+    notify: (msg, _kind = 'info') => showNotification(msg),
+    importImage: async (sourceOrUrl, name = 'Imported image') => {
+      try {
+        if (typeof sourceOrUrl === 'string') {
+          const res = await fetch(sourceOrUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          return doc.addImageLayer({ name, source: blob });
+        }
+        return doc.addImageLayer({ name, source: sourceOrUrl });
+      } catch (err) {
+        showNotification(`Import failed: ${err.message}`);
+        throw err;
+      }
+    },
+  };
+  initSidebarPlugins();
 
   initDocumentSizePopup({
     document: doc,

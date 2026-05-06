@@ -6,6 +6,8 @@ import { getTool, setTool, onToolChange, TOOL_CURSORS } from './vector-tools/act
 import { attachShapeDrawer } from './vector-tools/shape-drawer.js';
 import { attachPenTool } from './vector-tools/pen-tool.js';
 import { attachPencilTool } from './vector-tools/pencil-tool.js';
+import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection } from './selection-state.js';
+import { attachMarquee } from './marquee.js';
 
 // Restrict Konva drag-start to the left mouse button so middle-mouse pan
 // never accidentally drags overlay handles.
@@ -489,7 +491,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
     if (e.code === 'Space' && !isEditingText()) {
       spaceDown = true;
       stage.find('.slammer-layer').forEach((g) => g.draggable(false));
+      // Space takes over for pan — kill any in-progress marquee.
+      if (marquee.isActive()) marquee.cancel();
       syncCursor();
+      e.preventDefault();
+    }
+    if (e.key === 'Escape' && marquee.isActive()) {
+      marquee.cancel();
       e.preventDefault();
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -524,6 +532,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
   });
   const penTool = attachPenTool({ stage, document });
   const pencilTool = attachPencilTool({ stage, document });
+  const marquee = attachMarquee({ stage, document });
 
   stage.on('mousedown touchstart', (e) => {
     if (spaceDown || e.evt.button === 1) {
@@ -545,11 +554,36 @@ export function initCanvasView({ container, document, onImageDropped }) {
     // Activate layer immediately on mousedown so selection handles appear
     // even when the user mouse-downs and drags in one motion (no clean click).
     const target = e.target;
-    if (target === stage) return;
+    if (target === stage) {
+      // Mousedown on empty stage in Select mode → start a marquee.
+      // Modifier-less drag clears existing multi-selection on commit
+      // (handled by the marquee module).
+      if (tool === 'select') {
+        if (marquee.start(e)) {
+          if (!e.evt.shiftKey && !e.evt.metaKey && !e.evt.ctrlKey) {
+            if (getSelection().size > 1) clearSelection();
+          }
+          e.evt.preventDefault();
+          return;
+        }
+      }
+      return;
+    }
     let node = target;
     while (node && node !== stage) {
       const id = node.id?.();
       if (id && document.findLayer(id)) {
+        const meta = e.evt.metaKey || e.evt.ctrlKey;
+        const shift = e.evt.shiftKey;
+        if (meta || shift) {
+          // Modifier-click extends multi-selection without changing the
+          // active layer's panel scope. Plain shift-click adds; cmd-click toggles.
+          if (meta) toggleInSelection(id);
+          else      addToSelection(id);
+        } else {
+          // Plain click → reduce selection to just this layer.
+          selectOnly(id);
+        }
         if (document.activeLayerId !== id) document.setActiveLayer(id);
         return;
       }
@@ -560,11 +594,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
     shapeDrawer.move(e);
     penTool.move(e);
     pencilTool.move(e);
+    if (marquee.isActive()) marquee.move(e);
   });
   stage.on('mouseup touchend', () => {
     shapeDrawer.end();
     penTool.up();
     pencilTool.end();
+    if (marquee.isActive()) marquee.end();
   });
   // Pointer leaves the container while pencil is mid-stroke → auto-commit
   // the stroke (avoids dangling state if the user's mouse exits the canvas).
@@ -599,6 +635,14 @@ export function initCanvasView({ container, document, onImageDropped }) {
       const layer = id && document.findLayer(id);
       if (layer && layer.type === 'text') {
         openInlineTextEditor(layer);
+        return;
+      }
+      if (layer && layer.type === 'vector') {
+        // Activate the layer and switch to Direct Selection — anchors,
+        // handles + dashed outline appear so the user can edit the path
+        // without hunting for the toolbar button.
+        if (document.activeLayerId !== layer.id) document.setActiveLayer(layer.id);
+        setTool('directSelect');
         return;
       }
       node = node.getParent && node.getParent();
@@ -728,6 +772,28 @@ export function initCanvasView({ container, document, onImageDropped }) {
     e.preventDefault();
     container.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer?.files || []);
+    if (!files.length) {
+      // No file — try a URL drop (e.g. a Pexels / Unsplash card dragged from
+      // a plugin window onto the canvas). text/uri-list is the standard
+      // mime; text/plain is a common fallback. Fetch → Blob → reuse the
+      // existing onImageDropped pipeline.
+      const uri = (e.dataTransfer?.getData('text/uri-list') || '')
+        .split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#'))
+        || (e.dataTransfer?.getData('text/plain') || '').trim();
+      if (uri && /^https?:\/\//i.test(uri)) {
+        try {
+          const res = await fetch(uri);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          if (!blob.type.startsWith('image/')) throw new Error(`Not an image (${blob.type || 'unknown'})`);
+          const filename = uri.split('/').pop()?.split('?')[0] || 'image';
+          onImageDropped?.(new File([blob], filename, { type: blob.type }));
+        } catch (err) {
+          console.warn('[canvas-view] URL drop failed', err);
+        }
+      }
+      return;
+    }
     for (const f of files) {
       // SVG → vector layer (Phase 13a). image/svg+xml MIME OR .svg extension.
       if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) {
