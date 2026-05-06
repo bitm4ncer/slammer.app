@@ -2,6 +2,8 @@
   "name": "slammer-app",
   "version": "1.0.2",
   "description": "slammer.app — multi-layer image editor with VST-like effect plugins",
+  "license": "AGPL-3.0-or-later",
+  "author": "bitmancer",
   "type": "module",
   "scripts": {
     "dev": "vite",
