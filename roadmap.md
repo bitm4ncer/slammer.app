@@ -129,27 +129,46 @@
 
 ## PHASE 12 — Fonts (Fontshare + variable + upload)
 
-- [ ] Fontshare integration ([fontshare.com](https://www.fontshare.com))
-- [ ] Variable font controls (weight / width / slant / optical size — auto-detected axes)
-- [ ] Font upload functionality
+- [x] Fontshare integration ([fontshare.com](https://www.fontshare.com))
+- [x] Variable font controls (weight / width / slant / optical size — auto-detected axes)
+- [x] Font upload functionality (TTF/OTF/WOFF/WOFF2 → IndexedDB)
+- [x] Local Font Access API (system fonts, Chromium only)
 
 ## PHASE 13 — Vector tools
 
-- [ ] Shape tool in left sidebar with slide-out (circle, rect, star, torus + more)
-- [ ] Vector pen
-- [ ] Bezier editing view (double-click vector layer)
-- [ ] Typo → Path button
-- [ ] Path interpolation
-- [ ] Pathfinder / Boolean operations
-- [ ] Metaball tool
+### 13a — Vector foundation
+- [x] Vector layer type, shape primitives (circle, rect, star, torus, polygon)
+- [x] Fill / stroke / gradient / gradient-along-stroke
+- [x] SVG drag-drop import with multi-path layers
+- [x] Anchor overlay + bezier handles
 
-## PHASE 14 — Brush tool
+### 13b — Pen / Pencil / Anchor edits / Text→Path
+- [x] Pen tool (P) with click-to-add + drag-for-curves
+- [x] Pencil tool (B) with smoothness slider in footer
+- [x] Direct selection (A): alt-click smooth/corner, double-click insert anchor
+- [x] Text → Path conversion via opentype.js (Google + Fontshare CDN)
+
+### 13c — Boolean ops, path actions, Outline Stroke
+- [x] Booleans: unite / subtract / intersect / exclude / divide (Paper.js)
+- [x] Single-path actions: Simplify, Smooth, Reverse, Open/Close, Join
+- [x] Outline Stroke (paperjs-offset)
+
+### 13d — Multi-layer select + simplify slider ⏳
+- [ ] Marquee select (drag-rectangle on canvas to select multiple layers)
+- [ ] Shift-click multi-select in Layer Stack panel + on canvas
+- [ ] Multi-layer transform: scaling / moving N layers together; group scaling cascades to children, preserves relative position + order
+- [ ] Fix: cannot delete multiple selected layers
+- [ ] Fix: grouping must preserve layer order + position
+- [ ] Slider-driven path Simplify with live preview
+
+## PHASE 14 — Brush tool ⏳
 
 - [ ] Brush tool in left sidebar; drawing creates a brush layer
 - [ ] Generative brush filters: rainbow, gradient stroke, displaced stroke, noise width, speed-to-width
 - [ ] Non-destructive controls on brush layer
+- [ ] **Eraser brush** — non-destructive: paints onto a per-layer mask buffer (preview of Phase 15 mask infra)
 
-## PHASE 15 — Masks (Affinity-style nested)
+## PHASE 15 — Masks (Affinity-style nested) ⏳
 
 - [ ] Drag any layer onto another → becomes a nested mask
 - [ ] Black hides / white shows
@@ -182,6 +201,147 @@
 - [ ] Duplicate, reorder pages
 - [ ] Per-page settings icon (change document)
 - [ ]  change version number to v1.0.1
+
+---
+
+## PHASE 19 — Bug Bash & Polish 🆕
+
+> Parallel swarm — each cluster ≤ 3 files where possible, dispatched to a Sonnet 4.6 subagent in its own worktree. Main agent reviews diffs.
+
+### Cluster A — Layer panel & multi-select shortcuts
+- [ ] Ctrl+C / Ctrl+V / Ctrl+D / Ctrl+X on active layer (copy / paste / duplicate / delete)
+- [ ] Visible **Duplicate** button on layer card (next to trash)
+- [ ] Arrow keys nudge selected layer 1 px; Shift+Arrow = 10 px
+- [ ] Auto-scroll layer panel to selected layer
+- [ ] Selection-on-click (not on mousedown) — fixes "drag accidentally re-selects overlapping layer"
+
+### Cluster B — Effect panel & existing-effect tweaks
+- [ ] Bug: **Pixelsort above Dither** doesn't apply (cache invalidation? plugin order?)
+- [ ] Pixelsort: replace Direction text with arrow-icon toggle button
+- [ ] Rename "Dithering" → **"Dither"**
+- [ ] Halftone Dither: option for two gradients instead of light/dark colours
+- [ ] Realtime preview when browsing dither algorithms; scroll-wheel cycles algorithm
+- [ ] Better effect icons + replace "image" category with **"Adjustments"**, add "Distort" / "Stylize"
+- [ ] Loading spinner on effect cards while heavy effects compute
+- [ ] Effect-panel `+` dropdown opens above when near viewport bottom; clamp every dropdown into viewport
+- [ ] **Grain**: add Contrast slider; align Monochrome toggle to the **left**; min size → 0.1
+- [ ] **Grain**: add Blend Modes (Multiply / Screen / Overlay / etc.)
+- [ ] **Levels**: rebuild GUI as one slider with 3 handles (blacks / gamma / whites)
+- [ ] **Blur**: max radius 100
+
+### Cluster C — Footer & canvas chrome
+- [ ] Frame button: subtle highlight when frame active + tiny `×` close affordance
+- [ ] Rotation: live degree readout next to handle; Shift+rotate-drag snaps to 5°
+- [ ] Different cursor on hover/drag of rotate handle
+- [ ] Project loads in **Fit view**
+- [ ] Auto-load fonts on opening another user's project (font manifest in `.slammerproj`)
+
+### Cluster D — Settings tabs
+- [ ] **Info** tab: supported file types, version, "Buy a coffee" button
+- [ ] **Shortcuts** tab: complete keymap reference
+
+### Cluster E — Export popup
+- [ ] **WebP** format option
+- [ ] Pill-shaped Cancel / Export buttons placed side by side
+- [ ] **RGBA / CMYK** toggle
+- [ ] **Layer Export** toggle in region settings (only when a layer is selected)
+- [ ] JPEG with transparency: auto-mask to original layer alpha shape
+
+### Cluster F — Persistence & undo
+- [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch
+- [ ] Audit: scaling effects don't survive reload — find non-persisted plugin params
+- [ ] Audit: anything not in undo/redo history that should be (effect-stack reorders, frame edits)
+
+### Cluster G — Typography polish
+- [ ] Text layer auto-renames to its text content (live, debounced)
+- [ ] Font preview: tiny "import selected layer's text" icon next to Lorem Ipsum input
+- [ ] **Live font preview**: while browsing fonts with a text layer selected, canvas updates realtime. Settings toggle.
+
+### Cluster H — Vector
+- [ ] **Split** button on multi-path vector layer → splits into N independent vector layers, preserves fills/strokes
+
+### Cluster I — Plugin polish
+- [ ] Image plugins (Unsplash / Pexels / Openverse): sticky search/header bar
+- [ ] fal.ai: visible progress indicator while a job runs
+- [ ] fal.ai: accept group-layer drops (renders the group → image, then uploads)
+
+## PHASE 20 — New Effects Library 🆕
+
+> Each effect = own file under `src/plugins/filters/`. Parallel swarm: 1 worker per effect.
+
+- [ ] **Posterize**
+- [ ] **Twirl** — radial-distort with falloff
+- [ ] **Ripple** — concentric-wave displacement
+- [ ] **RGB Shift** — per-channel offset
+- [ ] **Bulge** — concave/convex pinch
+- [ ] **Halftone Raster** — real screenprint dot pattern, **DPI** + angle + dot-shape settings (distinct from Halftone Dither)
+- [ ] **Drop Shadow** — alpha-shape-aware: dilates the layer's alpha into a blurred offset shape, not a rect bbox
+- [ ] **Organic Gradient** — `noisesc(v + udirsc(v)*t)` flowing gradient overlay; seedable; speed param
+- [ ] Re-categorise the Effects add menu after these land (Distort / Stylize / Adjustments / Render)
+
+## PHASE 21 — Canvas Tools & Inspectors 🆕
+
+- [ ] **Snap toggle** in right footer: layer-to-layer edge + center alignment, dashed accent indicator lines
+- [ ] **Ruler toggle** in center footer: rulers on top + left edges; drag from ruler creates a guideline; snap also engages on guidelines
+- [ ] **Frame Tool** in left sidebar: drag on canvas to create a new export frame (foundation for Phase 24 multi-frame)
+- [ ] **Crop tool** for layers (non-destructive — stored as crop rect in layer metadata, applied at render time)
+- [ ] **Transform inspector** in footer: X% / Y% scale numerics, lock-aspect button (inverts Shift+drag = no-constrain), reset button; same for rotation
+- [ ] **Quick adjustments bar** below selected image: every effect/typo knob currently on the layer in one bar. Settings toggle.
+- [ ] **Ctrl+Space** opens center-screen radial effect picker
+
+## PHASE 22 — Selection Tools 🆕
+
+- [ ] **Magic Wand** tool: pick pixel, select connected pixels within colour-threshold (tolerance / contiguous / anti-alias). Outputs a mask layer (Phase 15 infra) or transient selection. Object-detection variant deferred.
+- [ ] Eraser brush integration with Phase 15 mask infra (replaces per-layer mask buffer from Phase 14)
+
+## PHASE 23 — Color System (full pro) 🆕
+
+- [ ] **Center-footer color circle** — current active colour, click to expand
+- [ ] **Popover**: HSL triangle + hue ring, hex / RGB / HSL inputs, eyedropper
+- [ ] **Swatches palette** — favourites grid
+- [ ] **Named color variables**: user creates `--accent`, `--bg`, etc. Assignable to text colour, vector fill / stroke, gradient stops, Color Overlay tint. Editing the variable propagates to every consumer **live**.
+- [ ] Storage: `slammer:colors:variables` + `slammer:colors:swatches` (localStorage) + project-scoped overrides serialised into `.slammerproj`
+- [ ] API on `window.__slammer.colors` so plugins can read/subscribe
+
+## PHASE 24 — Multi-Frame Export & Versioning 🆕
+
+- [ ] **N frames per project** (free-layer model). Frames live in `doc.frames[]`.
+- [ ] Frame management UI: list of frames, rename, duplicate, delete; click to centre-view
+- [ ] Export popup: **frame picker** — multi-select for batch export → ZIP via fflate
+- [ ] Affinity bridge: same frame picker for Send / Pull
+- [ ] **Save as new version** option in Save flyout — manual versioned snapshot
+- [ ] Autosave continues but writes "Autosave version" snapshots **chained behind** the last manual save. Project popup grows a versions list per project.
+
+## PHASE 25 — Unified Media Library 🆕 (replaces Phase 17)
+
+- [ ] Central IndexedDB store: `slammer:library` with folders + items
+- [ ] Item types: image, SVG, saved frame (rasterized PNG **+** linked editable `.slammerproj` snapshot)
+- [ ] Folders sidebar in a Library popup; drag into canvas = add as image layer (or open project for saved-frame items)
+- [ ] Migrate `plugin-favorites` + `plugin-folders` into the central store; plugins write with a `pluginId` tag
+- [ ] Save current frame to library (rasterize PNG + project snapshot sidecar)
+- [ ] Hover Add Image button → slide-out (Upload / From Library / From Plugin)
+- [ ] Footer Library icon button
+
+## PHASE 26 — Plugin Polish 🆕
+
+- [ ] **Openverse** rate-limit fix: client-side per-source quota (wiki > flickr > others), exponential backoff with cached results LRU; user can paste own Openverse API key in Settings → API Keys
+
+## PHASE 27 — Advanced Effects 🆕
+
+- [ ] **Blur** rebuild with mode picker: Normal · Directional (angle + length) · Depth of Field (radius map + focal point) · Radial · Noise (custom mask defines blur strength)
+- [ ] **Deform** (single effect, three sub-modes via tab):
+  - [ ] **Perspective** — 4 corner handles
+  - [ ] **Mesh Warp** — N×M grid handles
+  - [ ] **Pin Points** — drop pins onto triangulated mesh, drag pins to deform
+
+---
+
+### Deferred / parked
+- Midjourney Discord Bot plugin — needs server-side relay, conflicts with no-backend v1. Revisit after F1 SDK / browser-extension MCP.
+- Magic Wand object-detection variant — research-grade ML; revisit when SAM-style web models stabilise.
+- Callshop Frame Generator (Phase 16b)
+- 90sbadtrip equivalent on fal.ai (Phase 16b)
+- Live fal.ai catalog (Phase 16b)
 
 ---
 
