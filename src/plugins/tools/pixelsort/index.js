@@ -20,13 +20,24 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const dir = params.direction || 'horizontal';
     const crit = params.criteria || 'brightness';
     const threshold = (params.threshold ?? 80) / 100; // 0..1
     const amount = Math.max(0, Math.min(1, params.amount ?? 1));
     const d = imageData.data;
     const w = imageData.width, h = imageData.height;
+
+    // Score-from-source: when an upstream effect (e.g. Dither) has quantised the
+    // pipeline buffer to binary or low-variance output, scoring on `d` finds no
+    // sortable variation. Fall back to the layer's pre-stack source pixels for
+    // the score, while still writing sort permutations into `d`. Dimensions
+    // must match (the renderer guarantees this for the source).
+    const src = (ctx && ctx.sourceImageData
+      && ctx.sourceImageData.width === w
+      && ctx.sourceImageData.height === h)
+      ? ctx.sourceImageData.data
+      : d;
 
     function score(r, g, b) {
       if (crit === 'brightness') return (r * 0.299 + g * 0.587 + b * 0.114) / 255;
@@ -76,7 +87,7 @@ export default {
         const line = new Array(w);
         for (let x = 0; x < w; x++) {
           const idx = (y * w + x) * 4;
-          line[x] = { i: idx, s: score(d[idx], d[idx + 1], d[idx + 2]) };
+          line[x] = { i: idx, s: score(src[idx], src[idx + 1], src[idx + 2]) };
         }
         sortLine(line);
       }
@@ -85,7 +96,7 @@ export default {
         const line = new Array(h);
         for (let y = 0; y < h; y++) {
           const idx = (y * w + x) * 4;
-          line[y] = { i: idx, s: score(d[idx], d[idx + 1], d[idx + 2]) };
+          line[y] = { i: idx, s: score(src[idx], src[idx + 1], src[idx + 2]) };
         }
         sortLine(line);
       }
@@ -97,9 +108,10 @@ export default {
     const root = makeToolRoot();
     root.appendChild(pillGroup({
       label: 'Direction',
+      variant: 'icon',
       options: [
-        { value: 'horizontal', label: 'Horizontal' },
-        { value: 'vertical', label: 'Vertical' },
+        { value: 'horizontal', label: 'Horizontal', iconClass: 'arrows-left-right' },
+        { value: 'vertical',   label: 'Vertical',   iconClass: 'arrows-up-down' },
       ],
       value: params.direction,
       onChange: (v) => onChange({ direction: v }),

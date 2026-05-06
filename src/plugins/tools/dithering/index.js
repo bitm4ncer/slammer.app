@@ -1,7 +1,7 @@
 // Dithering — Tool. Phase 4 rework: size slider, Halftone default, fixed RGB/CMYK,
 // palette Multi mode, transparent-light toggle, grouped algorithm picker.
 
-import { sliderRow, makeToolRoot, colorRow } from '../../shared/ui-helpers.js';
+import { sliderRow, makeToolRoot, colorRow, toggleRow, groupedSelectRow, pillGroup, gradientStopsRow } from '../../shared/ui-helpers.js';
 import { dither } from './algorithms/index.js';
 
 export const ALGORITHM_GROUPS = [
@@ -46,7 +46,7 @@ export const COLOR_MODES = [
 
 export default {
   id: 'dithering',
-  name: 'Dithering',
+  name: 'Dither',
   version: '2.0.0',
   type: 'tool',
   icon: 'chess-board',
@@ -59,10 +59,14 @@ export default {
       size: 100,                 // resolution scale 1-100 %
       threshold: 128,
       strength: 1,
-      // Halftone (was "custom") two-colour swatches
+      // Halftone (was "custom") two-colour swatches / gradient mode
+      halftoneMode: 'colors',    // 'colors' | 'gradients'
       darkColor: '#000000',
       lightColor: '#FFFFFF',
-      transparentLight: false,   // when true, light areas become transparent
+      transparentLight: false,   // when true, light areas become transparent (colors mode only)
+      // Gradient stop arrays for halftoneMode === 'gradients'
+      darkGradient:  [{ at: 0, color: '#000000' }, { at: 1, color: '#1a1a8c' }],
+      lightGradient: [{ at: 0, color: '#c8a0ff' }, { at: 1, color: '#FFFFFF' }],
       // Multi-colour palette
       palette: ['#000000', '#8aff8c', '#FF6B5B', '#F7E45A', '#FFFFFF'],
       // Algorithm-specific
@@ -99,14 +103,14 @@ export default {
       root.innerHTML = '';
 
       // Color mode pills (4 options, fits one row)
-      root.appendChild(pillRow({
+      root.appendChild(pillGroup({
         label: 'Color Mode',
         options: COLOR_MODES,
         value: local.colorMode,
         onChange: (v) => { local.colorMode = v; onChange({ colorMode: v }); rebuild(); },
       }));
 
-      // Grouped algorithm select
+      // Grouped algorithm select (scroll-wheel cycling built into groupedSelectRow)
       root.appendChild(groupedSelectRow({
         label: 'Algorithm',
         groups: ALGORITHM_GROUPS,
@@ -131,21 +135,46 @@ export default {
       }));
 
       if (local.colorMode === 'halftone') {
-        root.appendChild(colorRow({
-          label: 'Dark', value: local.darkColor,
-          onChange: (v) => { local.darkColor = v; onChange({ darkColor: v }); },
+        // Sub-mode toggle: colors vs gradients
+        root.appendChild(pillGroup({
+          label: 'Color Mapping',
+          options: [
+            { value: 'colors',    label: 'Colors' },
+            { value: 'gradients', label: 'Gradients' },
+          ],
+          value: local.halftoneMode || 'colors',
+          onChange: (v) => { local.halftoneMode = v; onChange({ halftoneMode: v }); rebuild(); },
         }));
-        if (!local.transparentLight) {
+
+        if ((local.halftoneMode || 'colors') === 'colors') {
           root.appendChild(colorRow({
-            label: 'Light', value: local.lightColor,
-            onChange: (v) => { local.lightColor = v; onChange({ lightColor: v }); },
+            label: 'Dark', value: local.darkColor,
+            onChange: (v) => { local.darkColor = v; onChange({ darkColor: v }); },
+          }));
+          if (!local.transparentLight) {
+            root.appendChild(colorRow({
+              label: 'Light', value: local.lightColor,
+              onChange: (v) => { local.lightColor = v; onChange({ lightColor: v }); },
+            }));
+          }
+          root.appendChild(toggleRow({
+            label: 'Transparent Light',
+            value: local.transparentLight,
+            onChange: (v) => { local.transparentLight = v; onChange({ transparentLight: v }); rebuild(); },
+          }));
+        } else {
+          // Gradients mode — two gradient stop editors
+          root.appendChild(gradientStopsRow({
+            label: 'Dark Gradient',
+            stops: local.darkGradient || [{ at: 0, color: '#000000' }, { at: 1, color: '#1a1a8c' }],
+            onChange: (newStops) => { local.darkGradient = newStops; onChange({ darkGradient: newStops }); },
+          }));
+          root.appendChild(gradientStopsRow({
+            label: 'Light Gradient',
+            stops: local.lightGradient || [{ at: 0, color: '#c8a0ff' }, { at: 1, color: '#FFFFFF' }],
+            onChange: (newStops) => { local.lightGradient = newStops; onChange({ lightGradient: newStops }); },
           }));
         }
-        root.appendChild(toggleRow({
-          label: 'Transparent Light',
-          value: local.transparentLight,
-          onChange: (v) => { local.transparentLight = v; onChange({ transparentLight: v }); rebuild(); },
-        }));
       }
 
       if (local.colorMode === 'multi') {
@@ -214,26 +243,52 @@ function cloneImageData(imageData) {
 }
 
 function runHalftone(imageData, params) {
-  // Save original alpha so transparent areas stay transparent.
+  const halftoneMode = params.halftoneMode || 'colors';
+
+  // Save original luminance (for gradient LUT indexing) and alpha.
   const srcAlpha = new Uint8ClampedArray(imageData.data.length / 4);
-  for (let i = 0, p = 0; i < imageData.data.length; i += 4, p++) srcAlpha[p] = imageData.data[i + 3];
+  const srcLum   = new Uint8ClampedArray(imageData.data.length / 4);
+  const srcData  = imageData.data;
+  for (let i = 0, p = 0; i < srcData.length; i += 4, p++) {
+    srcAlpha[p] = srcData[i + 3];
+    srcLum[p]   = (srcData[i] * 0.299 + srcData[i + 1] * 0.587 + srcData[i + 2] * 0.114) | 0;
+  }
+
   // Run dither — produces RGB-equal binary mask.
   const out = dither(imageData, params);
   const d = out.data;
-  const dark = hexToRgb(params.darkColor || '#000000');
-  const light = hexToRgb(params.lightColor || '#FFFFFF');
-  const transparentLight = !!params.transparentLight;
-  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-    const on = d[i] >= 128;
-    if (on) {
-      if (transparentLight) {
-        // Light area becomes transparent; preserve original alpha as zero where dithered "light".
-        d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 0;
+
+  if (halftoneMode === 'gradients') {
+    const darkStops  = params.darkGradient  || [{ at: 0, color: '#000000' }, { at: 1, color: '#1a1a8c' }];
+    const lightStops = params.lightGradient || [{ at: 0, color: '#c8a0ff' }, { at: 1, color: '#FFFFFF' }];
+    const darkLut  = buildLut256(darkStops);
+    const lightLut = buildLut256(lightStops);
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      const on = d[i] >= 128;         // dither decided: "light" pixel
+      const lum = srcLum[p];           // original source luminance 0-255
+      const lut = on ? lightLut : darkLut;
+      const off = lum * 3;
+      d[i]     = lut[off];
+      d[i + 1] = lut[off + 1];
+      d[i + 2] = lut[off + 2];
+      d[i + 3] = srcAlpha[p];
+    }
+  } else {
+    // Classic colors mode.
+    const dark = hexToRgb(params.darkColor || '#000000');
+    const light = hexToRgb(params.lightColor || '#FFFFFF');
+    const transparentLight = !!params.transparentLight;
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      const on = d[i] >= 128;
+      if (on) {
+        if (transparentLight) {
+          d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 0;
+        } else {
+          d[i] = light.r; d[i + 1] = light.g; d[i + 2] = light.b; d[i + 3] = srcAlpha[p];
+        }
       } else {
-        d[i] = light.r; d[i + 1] = light.g; d[i + 2] = light.b; d[i + 3] = srcAlpha[p];
+        d[i] = dark.r; d[i + 1] = dark.g; d[i + 2] = dark.b; d[i + 3] = srcAlpha[p];
       }
-    } else {
-      d[i] = dark.r; d[i + 1] = dark.g; d[i + 2] = dark.b; d[i + 3] = srcAlpha[p];
     }
   }
   return out;
@@ -411,6 +466,33 @@ function hexToRgb(hex) {
   return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
 }
 
+// Build a 256-entry RGB LUT (Uint8ClampedArray of length 256*3) from a stop array.
+function buildLut256(stops) {
+  const sorted = (stops || []).slice().sort((a, b) => a.at - b.at);
+  if (sorted.length < 2) {
+    // Fallback: fill with the single stop's colour.
+    const c = hexToRgb((sorted[0] || {}).color || '#000000') || { r: 0, g: 0, b: 0 };
+    const lut = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) { lut[i * 3] = c.r; lut[i * 3 + 1] = c.g; lut[i * 3 + 2] = c.b; }
+    return lut;
+  }
+  const lut = new Uint8ClampedArray(256 * 3);
+  let s = 0;
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    while (s < sorted.length - 2 && sorted[s + 1].at < t) s++;
+    const a = sorted[s], b = sorted[s + 1] || sorted[s];
+    const span = (b.at - a.at) || 1;
+    const k = Math.max(0, Math.min(1, (t - a.at) / span));
+    const ca = hexToRgb(a.color) || { r: 0, g: 0, b: 0 };
+    const cb = hexToRgb(b.color) || { r: 0, g: 0, b: 0 };
+    lut[i * 3]     = (ca.r + (cb.r - ca.r) * k) | 0;
+    lut[i * 3 + 1] = (ca.g + (cb.g - ca.g) * k) | 0;
+    lut[i * 3 + 2] = (ca.b + (cb.b - ca.b) * k) | 0;
+  }
+  return lut;
+}
+
 function lerp(a, b, t) { return a + (b - a) * t; }
 
 function setRgbA(data, i, gray, alpha) {
@@ -528,151 +610,3 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-// ---------- UI bits not in shared/ui-helpers ----------
-
-function pillRow({ label, options, value, onChange }) {
-  const wrap = document.createElement('div');
-  wrap.className = 'effect-tool-row';
-  const lbl = document.createElement('div');
-  lbl.className = 'effect-label';
-  lbl.textContent = label;
-  wrap.appendChild(lbl);
-  const grp = document.createElement('div');
-  grp.className = 'effect-pill-group';
-  for (const opt of options) {
-    const pill = document.createElement('button');
-    pill.className = `effect-pill ${opt.value === value ? 'active' : ''}`;
-    pill.textContent = opt.label;
-    pill.addEventListener('click', () => onChange(opt.value));
-    grp.appendChild(pill);
-  }
-  wrap.appendChild(grp);
-  return wrap;
-}
-
-function groupedSelectRow({ label, groups, value, onChange }) {
-  // Custom dropdown — native <select> popups are OS-owned and can't carry our scrollbar styling.
-  const wrap = document.createElement('div');
-  wrap.className = 'effect-tool-row';
-  const lbl = document.createElement('div');
-  lbl.className = 'effect-label';
-  lbl.textContent = label;
-  wrap.appendChild(lbl);
-
-  const dd = document.createElement('div');
-  dd.className = 'custom-dropdown';
-  dd.tabIndex = 0;
-
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.className = 'custom-dropdown-trigger';
-  const triggerLabel = document.createElement('span');
-  triggerLabel.className = 'custom-dropdown-label';
-  trigger.appendChild(triggerLabel);
-  const caret = document.createElement('span');
-  caret.className = 'custom-dropdown-caret';
-  trigger.appendChild(caret);
-  dd.appendChild(trigger);
-
-  // Menu lives on document.body so it can escape the effect-card's overflow:hidden.
-  const menu = document.createElement('div');
-  menu.className = 'custom-dropdown-menu custom-dropdown-menu--portaled';
-  for (const grp of groups) {
-    const head = document.createElement('div');
-    head.className = 'custom-dropdown-group';
-    head.textContent = grp.label;
-    menu.appendChild(head);
-    for (const it of grp.items) {
-      const opt = document.createElement('div');
-      opt.className = 'custom-dropdown-item';
-      opt.dataset.value = it.value;
-      opt.textContent = it.label;
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        select(it.value, it.label);
-        close();
-      });
-      menu.appendChild(opt);
-    }
-  }
-
-  function flatItem(v) {
-    for (const grp of groups) for (const it of grp.items) if (it.value === v) return it;
-    return null;
-  }
-  function select(v, lab) {
-    triggerLabel.textContent = lab ?? flatItem(v)?.label ?? v;
-    menu.querySelectorAll('.custom-dropdown-item').forEach((el) => {
-      el.classList.toggle('active', el.dataset.value === v);
-    });
-    onChange(v);
-  }
-  function positionMenu() {
-    const r = trigger.getBoundingClientRect();
-    const vh = window.innerHeight;
-    const spaceBelow = vh - r.bottom;
-    // Cap menu height to viewport space minus a margin; flip up if not enough below.
-    const maxH = Math.min(280, Math.max(140, (spaceBelow > 200 ? spaceBelow - 16 : r.top - 16)));
-    menu.style.maxHeight = `${maxH}px`;
-    menu.style.width = `${r.width}px`;
-    menu.style.left = `${r.left}px`;
-    if (spaceBelow > 200 || spaceBelow > r.top) {
-      menu.style.top = `${r.bottom + 4}px`;
-      menu.style.bottom = '';
-    } else {
-      menu.style.top = '';
-      menu.style.bottom = `${vh - r.top + 4}px`;
-    }
-  }
-  function open() {
-    dd.classList.add('open');
-    document.body.appendChild(menu);
-    positionMenu();
-    const active = menu.querySelector('.custom-dropdown-item.active');
-    if (active) active.scrollIntoView({ block: 'nearest' });
-    document.addEventListener('mousedown', onOutside, { capture: true });
-    window.addEventListener('scroll', positionMenu, { capture: true, passive: true });
-    window.addEventListener('resize', positionMenu);
-  }
-  function close() {
-    dd.classList.remove('open');
-    if (menu.parentNode) menu.parentNode.removeChild(menu);
-    document.removeEventListener('mousedown', onOutside, { capture: true });
-    window.removeEventListener('scroll', positionMenu, { capture: true });
-    window.removeEventListener('resize', positionMenu);
-  }
-  function onOutside(e) {
-    if (!dd.contains(e.target) && !menu.contains(e.target)) close();
-  }
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (dd.classList.contains('open')) close();
-    else open();
-  });
-  dd.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') close();
-  });
-
-  // Init label + active marker
-  const initial = flatItem(value);
-  triggerLabel.textContent = initial?.label ?? value;
-  menu.querySelectorAll('.custom-dropdown-item').forEach((el) => {
-    el.classList.toggle('active', el.dataset.value === value);
-  });
-
-  wrap.appendChild(dd);
-  return wrap;
-}
-
-function toggleRow({ label, value, onChange }) {
-  const wrap = document.createElement('label');
-  wrap.className = 'effect-toggle-row';
-  wrap.innerHTML = `
-    <span class="effect-label">${label}</span>
-    <input type="checkbox" ${value ? 'checked' : ''} />
-    <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
-  `;
-  const input = wrap.querySelector('input');
-  input.addEventListener('change', (e) => onChange(e.target.checked));
-  return wrap;
-}

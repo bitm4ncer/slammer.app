@@ -260,6 +260,18 @@
   background: var(--surface-3);
 }
 
+/* Icon variant — square buttons with a centred FontAwesome glyph instead of text. */
+.effect-pill-group--icon .effect-pill {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.effect-pill-group--icon .effect-pill i { line-height: 1; }
+
 .effect-select {
   background: var(--surface);
   color: var(--text-primary);
@@ -655,6 +667,17 @@
   letter-spacing: 0.02em;
 }
 
+/* ---------- Gradient stops row (shared helper wrapper) ---------- */
+.gradient-stops-row { margin-bottom: 4px; }
+.gradient-stops-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  display: block;
+}
+
 /* ---------- Toggle (on/off switch) ---------- */
 .effect-toggle-row {
   display: flex;
@@ -701,6 +724,102 @@
 .effect-toggle-row input[type="checkbox"]:checked ~ .effect-toggle-switch .effect-toggle-thumb {
   transform: translateX(14px);
   background: var(--ctx-accent);
+}
+
+/* ---------- Toggle: left-align variant ---------- */
+/* Label hugs the left edge; switch is pushed to the right. */
+.effect-toggle-row--align-left > .effect-label {
+  flex: none;
+  margin-right: auto;
+}
+
+/* ---------- Effect card spinner ---------- */
+@keyframes effect-spin {
+  to { transform: rotate(360deg); }
+}
+.effect-spinner {
+  display: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--ctx-accent) 30%, transparent);
+  border-top-color: var(--ctx-accent);
+  animation: effect-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.effect-item.is-processing .effect-spinner {
+  display: inline-block;
+}
+
+/* ---------- Add-effect menu: flip above trigger ---------- */
+/* Applied by clampToViewport when near the bottom of the viewport. */
+.add-effect-menu--up {
+  /* No extra style required — position is set inline by clampToViewport. */
+  /* Class hook available for CSS transitions if needed in the future. */
+}
+.add-effect-section-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 8px 10px 4px;
+  opacity: 0.7;
+}
+
+/* ---------- Triple Slider (Levels) ---------- */
+.triple-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.triple-slider-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.triple-slider-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #000, #888, #fff);
+  border: 1px solid var(--vhs-shadow);
+  margin: 10px 0 8px;
+  cursor: default;
+}
+.triple-slider-handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 20px;
+  margin-left: -6px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  cursor: ew-resize;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+.triple-slider-handle:hover {
+  border-color: var(--ctx-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 40%, transparent);
+}
+.triple-handle-lo  { background: #1a1a1a; }
+.triple-handle-hi  { background: #e8e8e8; }
+.triple-handle-mid {
+  background: var(--surface-2);
+  border-color: var(--ctx-accent);
+  width: 10px;
+  height: 16px;
+  margin-left: -5px;
+  border-radius: 2px;
+}
+.triple-slider-readout {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+  user-select: none;
 }
 
 /* ---------- Advanced Project Browser ---------- */

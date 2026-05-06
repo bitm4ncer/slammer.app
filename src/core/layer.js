@@ -183,3 +183,20 @@ export const BLEND_MODES = [
   'darken', 'lighten', 'color-dodge', 'color-burn',
   'hard-light', 'soft-light', 'difference', 'exclusion',
 ];
+
+// Human-readable labels for blend modes. Used by plugins (e.g. Grain) that
+// expose a Blend Mode picker via selectRow / groupedSelectRow.
+export const BLEND_LABELS = {
+  'source-over': 'Normal',
+  'multiply':    'Multiply',
+  'screen':      'Screen',
+  'overlay':     'Overlay',
+  'darken':      'Darken',
+  'lighten':     'Lighten',
+  'color-dodge': 'Color Dodge',
+  'color-burn':  'Color Burn',
+  'hard-light':  'Hard Light',
+  'soft-light':  'Soft Light',
+  'difference':  'Difference',
+  'exclusion':   'Exclusion',
+};

@@ -78,6 +78,12 @@ export function createDocument() {
       emit({ type: 'layer:textBoxLive', id, value });
     },
 
+    // Renderer fires this around each plugin.process() call so the effect
+    // panel can show a per-card loading spinner.
+    _emitEffectProcessing(layerId, effectId, state) {
+      emit({ type: 'effect:processing', layerId, effectId, state });
+    },
+
     // The anchor overlay fires this when the user clicks an anchor in
     // Direct Selection mode — the Vector panel listens and switches its
     // active sub-path so the Fill / Stroke / Shape rows edit that path.

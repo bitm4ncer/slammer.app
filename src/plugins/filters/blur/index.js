@@ -13,7 +13,7 @@ export default {
   defaultParams() { return { radius: 4 }; },
 
   process(imageData, params) {
-    const r = Math.max(0, Math.min(60, Math.floor(params.radius ?? 0)));
+    const r = Math.max(0, Math.min(100, Math.floor(params.radius ?? 0)));
     if (r <= 0) return imageData;
     const w = imageData.width;
     const h = imageData.height;
@@ -30,7 +30,7 @@ export default {
   renderUI(params, onChange) {
     const root = makeRoot();
     root.appendChild(sliderRow({
-      label: 'Radius', min: 0, max: 40, step: 1, value: params.radius ?? 4, defaultValue: 4,
+      label: 'Radius', min: 0, max: 100, step: 1, value: params.radius ?? 4, defaultValue: 4,
       onChange: (v) => onChange({ radius: v }),
     }));
     return root;

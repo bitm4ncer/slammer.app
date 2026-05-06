@@ -1,7 +1,8 @@
 // Grain — four flavours of noise. All deterministic via seeded mulberry32 so
 // the result is identical across reloads.
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, pillGroup, makeRoot, toggleRow, selectRow } from '../../shared/ui-helpers.js';
+import { BLEND_MODES, BLEND_LABELS } from '../../../core/layer.js';
 
 export default {
   id: 'grain',
@@ -12,19 +13,24 @@ export default {
   category: 'glitch',
 
   defaultParams() {
-    return { type: 'film', amount: 30, size: 2, monochrome: true, seed: 1 };
+    return { type: 'film', amount: 30, size: 2, monochrome: true, seed: 1, contrast: 0, blendMode: 'source-over' };
   },
 
   process(imageData, params) {
     const type = params.type || 'film';
     const amount = clamp(params.amount ?? 30, 0, 100);
     if (amount === 0) return imageData;
-    const size = Math.max(1, params.size || 2);
+    const size = Math.max(0.1, params.size || 2);
     const mono = params.monochrome !== false;
     const seed = Math.max(1, Math.floor(params.seed || 1));
+    const contrast = clamp(params.contrast ?? 0, -100, 100);
+    const blendMode = params.blendMode || 'source-over';
     const W = imageData.width, H = imageData.height;
     const d = imageData.data;
     const strength = (amount / 100);
+
+    // Clone input before noise is applied so we can composite in a different blend mode.
+    const beforeData = blendMode !== 'source-over' ? cloneImageData(imageData) : null;
 
     if (type === 'random') {
       applyRandom(d, W, H, strength, mono, seed);
@@ -35,6 +41,35 @@ export default {
     } else {
       applyPerlin(d, W, H, strength, size, mono, seed);
     }
+
+    // Apply contrast post-noise: v_out = (v_in - 128) * (1 + c/100) + 128, clipped.
+    if (contrast !== 0) {
+      const factor = 1 + contrast / 100;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i]     = clip255((d[i]     - 128) * factor + 128);
+        d[i + 1] = clip255((d[i + 1] - 128) * factor + 128);
+        d[i + 2] = clip255((d[i + 2] - 128) * factor + 128);
+      }
+    }
+
+    // Blend mode compositing: composite noised layer onto original using blendMode.
+    if (blendMode !== 'source-over' && beforeData) {
+      const work = document.createElement('canvas');
+      work.width = W; work.height = H;
+      const wctx = work.getContext('2d');
+      wctx.putImageData(imageData, 0, 0);
+
+      const base = document.createElement('canvas');
+      base.width = W; base.height = H;
+      const bctx = base.getContext('2d');
+      bctx.putImageData(beforeData, 0, 0);
+      bctx.globalCompositeOperation = blendMode;
+      bctx.drawImage(work, 0, 0);
+
+      const composited = bctx.getImageData(0, 0, W, H);
+      imageData.data.set(composited.data);
+    }
+
     return imageData;
   },
 
@@ -56,36 +91,39 @@ export default {
       onChange: (v) => onChange({ amount: v }),
     }));
     root.appendChild(sliderRow({
-      label: 'Size', min: 1, max: 20, step: 1, value: params.size ?? 2, defaultValue: 2,
+      label: 'Size', min: 0.1, max: 20, step: 0.1, value: params.size ?? 2, defaultValue: 2,
       onChange: (v) => onChange({ size: v }),
+    }));
+    root.appendChild(sliderRow({
+      label: 'Contrast', min: -100, max: 100, step: 1, value: params.contrast ?? 0, defaultValue: 0,
+      onChange: (v) => onChange({ contrast: v }),
     }));
     root.appendChild(toggleRow({
       label: 'Monochrome',
       value: params.monochrome !== false,
       onChange: (v) => onChange({ monochrome: v }),
+      align: 'left',
     }));
     root.appendChild(sliderRow({
       label: 'Seed', min: 1, max: 99, step: 1, value: params.seed ?? 1, defaultValue: 1,
       onChange: (v) => onChange({ seed: v }),
     }));
+    root.appendChild(selectRow({
+      label: 'Blend',
+      options: BLEND_MODES.map((m) => ({ value: m, label: BLEND_LABELS[m] || m })),
+      value: params.blendMode || 'source-over',
+      onChange: (v) => onChange({ blendMode: v }),
+    }));
     return root;
   },
 };
 
-// ---- Toggle row (effect-toggle styling defined in effects.css) ----
-function toggleRow({ label, value, onChange }) {
-  const wrap = document.createElement('label');
-  wrap.className = 'effect-toggle-row';
-  wrap.innerHTML = `
-    <span class="effect-label">${label}</span>
-    <input type="checkbox" ${value ? 'checked' : ''} />
-    <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
-  `;
-  wrap.querySelector('input').addEventListener('change', (e) => onChange(e.target.checked));
-  return wrap;
-}
-
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function cloneImageData(src) {
+  const out = new ImageData(src.width, src.height);
+  out.data.set(src.data);
+  return out;
+}
 
 function mulberry32(seed) {
   let t = seed >>> 0;

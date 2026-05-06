@@ -1,6 +1,6 @@
 // Levels — Black / Mid (gamma) / White Point on luminance with per-channel application.
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { makeRoot, tripleSlider } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'levels',
@@ -38,17 +38,12 @@ export default {
 
   renderUI(params, onChange) {
     const root = makeRoot();
-    root.appendChild(sliderRow({
-      label: 'Black', min: 0, max: 254, step: 1, value: params.black ?? 0, defaultValue: 0,
-      onChange: (v) => onChange({ black: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'Mid (γ)', min: 0.1, max: 4, step: 0.01, value: params.mid ?? 1, defaultValue: 1,
-      onChange: (v) => onChange({ mid: v }),
-    }));
-    root.appendChild(sliderRow({
-      label: 'White', min: 1, max: 255, step: 1, value: params.white ?? 255, defaultValue: 255,
-      onChange: (v) => onChange({ white: v }),
+    root.appendChild(tripleSlider({
+      label: 'Levels',
+      lo: params.black ?? 0,
+      mid: params.mid ?? 1,
+      hi: params.white ?? 255,
+      onChange: ({ lo, mid, hi }) => onChange({ black: lo, mid, white: hi }),
     }));
     return root;
   },

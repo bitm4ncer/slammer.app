@@ -23,7 +23,15 @@ export default {
   // Pure pixel transform. May mutate or replace the input ImageData.
   // The renderer feeds it the previous step's ImageData and stores the
   // returned value as this step's cache. Identical for tool + filter.
-  process(imageData, params) {
+  //
+  // The optional third argument `ctx` carries pipeline-level extras a plugin
+  // may need beyond its immediate input:
+  //   ctx.sourceImageData — the layer's pre-effect-stack source pixels
+  //                         (same dims as `imageData`). Used by Pixel Sort to
+  //                         score against the original tones even when
+  //                         upstream effects have quantised the buffer.
+  // Two-arg plugins keep working — JS ignores the extra argument.
+  process(imageData, params, ctx) {
     return imageData;
   },
 

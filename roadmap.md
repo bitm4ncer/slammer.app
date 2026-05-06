@@ -216,18 +216,18 @@
 - [ ] Selection-on-click (not on mousedown) — fixes "drag accidentally re-selects overlapping layer"
 
 ### Cluster B — Effect panel & existing-effect tweaks
-- [ ] Bug: **Pixelsort above Dither** doesn't apply (cache invalidation? plugin order?)
-- [ ] Pixelsort: replace Direction text with arrow-icon toggle button
-- [ ] Rename "Dithering" → **"Dither"**
-- [ ] Halftone Dither: option for two gradients instead of light/dark colours
-- [ ] Realtime preview when browsing dither algorithms; scroll-wheel cycles algorithm
-- [ ] Better effect icons + replace "image" category with **"Adjustments"**, add "Distort" / "Stylize"
-- [ ] Loading spinner on effect cards while heavy effects compute
-- [ ] Effect-panel `+` dropdown opens above when near viewport bottom; clamp every dropdown into viewport
-- [ ] **Grain**: add Contrast slider; align Monochrome toggle to the **left**; min size → 0.1
-- [ ] **Grain**: add Blend Modes (Multiply / Screen / Overlay / etc.)
-- [ ] **Levels**: rebuild GUI as one slider with 3 handles (blacks / gamma / whites)
-- [ ] **Blur**: max radius 100
+- [x] Bug: **Pixelsort above Dither** — root cause was uniform-score input after dither (binary B/W) made every qualifying span have identical scores → sort no-op. Fix: renderer now threads `ctx.sourceImageData` (pre-effect-stack pixels) into `process()`; pixelsort scores from the original tones but writes permutations into the current pipeline buffer.
+- [x] Pixelsort: Direction control is an arrow-icon toggle (`pillGroup` gained `variant: 'icon'` + `iconClass`)
+- [x] Rename "Dithering" → **"Dither"** (id stays `'dithering'` for save-file back-compat)
+- [x] Halftone Dither: two-gradient mode (`halftoneMode: 'colors' | 'gradients'`; per-pixel dark LUT + light LUT sampled by source luminance)
+- [x] Realtime preview when browsing dither algorithms; scroll-wheel cycles algorithm (full-res; wheel cycles the flat list across groups, wraps at ends)
+- [x] "image" category renamed to **"Adjustments"**; "Distort" + "Stylize" buckets added (empty until Phase 20 effects land — better-icons pass deferred to that phase too)
+- [x] Loading spinner on effect cards while heavy effects compute (`effect:processing` events from renderer; `.is-processing` class)
+- [x] Effect-panel `+` dropdown opens above when near viewport bottom; new shared `clampToViewport` helper for future dropdowns
+- [x] **Grain**: Contrast slider added (−100..+100); Monochrome toggle left-aligned (`toggleRow` gained `align: 'left'`); min size → 0.1 (step 0.1)
+- [x] **Grain**: Blend Modes — uses canonical `BLEND_MODES` + new `BLEND_LABELS` from `core/layer.js`; composite via OffscreenCanvas + `globalCompositeOperation`
+- [x] **Levels**: rebuilt as a single 3-handle slider (`tripleSlider` helper) — blacks / gamma / whites on one track; numeric LUT identical to old behaviour
+- [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
 
 ### Cluster C — Footer & canvas chrome
 - [ ] Frame button: subtle highlight when frame active + tiny `×` close affordance

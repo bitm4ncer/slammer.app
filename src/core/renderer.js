@@ -657,13 +657,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       }
       const input = cloneImageData(prev);
       let out = prev;
+      document._emitEffectProcessing(layer.id, eff.id, 'start');
       try {
-        const r = await plugin.process(input, eff.params || {});
+        // ctx exposes the layer's pre-effect-stack source so plugins like
+        // pixelsort can sample the original tones even when the immediate
+        // input has been quantised (e.g. dithered above them in the stack).
+        // Two-arg plugins keep working — JS ignores extra args.
+        const ctx = { sourceImageData: st.sourceImageData };
+        const r = await plugin.process(input, eff.params || {}, ctx);
         out = r || input;
       } catch (err) {
         console.error('[plugin]', eff.pluginId, err);
         out = prev;
       }
+      document._emitEffectProcessing(layer.id, eff.id, 'end');
       st.steps[i] = out;
       prev = out;
     }

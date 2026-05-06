@@ -5,6 +5,7 @@
 import Sortable from 'sortablejs';
 import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
 import { getSettings, onSettingsChange } from './settings-popup.js';
+import { clampToViewport } from '../plugins/shared/ui-helpers.js';
 
 export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   let sortable = null;
@@ -74,6 +75,7 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
       <span class="eff-drag-handle" title="Reorder"><i class="fas fa-grip-vertical"></i></span>
       <i class="effect-icon fas fa-${plugin?.icon || 'puzzle-piece'}"></i>
       <span class="effect-name">${plugin?.name || eff.pluginId}</span>
+      <span class="effect-spinner"></span>
       ${showCaret ? `<i class="effect-caret fas fa-chevron-${expanded ? 'up' : 'down'}"></i>` : ''}
       <button class="effect-icon-btn act-toggle" title="${eff.enabled ? 'Disable' : 'Enable'}">
         <i class="fas fa-${eff.enabled ? 'circle-check' : 'circle'}"></i>
@@ -138,8 +140,8 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   // Category order + display labels. Categories not listed here fall through to
   // "Other" at the end. Empty categories are skipped — so "color" stays hidden
   // until a Gradient Map / Color Overlay plugin lands.
-  const CATEGORY_ORDER = ['image', 'glitch', 'color'];
-  const CATEGORY_LABELS = { image: 'Image', glitch: 'Glitch', color: 'Color', other: 'Other' };
+  const CATEGORY_ORDER = ['image', 'glitch', 'distort', 'stylize', 'color'];
+  const CATEGORY_LABELS = { image: 'Adjustments', glitch: 'Glitch', distort: 'Distort', stylize: 'Stylize', color: 'Color', other: 'Other' };
 
   function showAddMenu(button) {
     closeAnyMenu();
@@ -172,12 +174,11 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     `).join('');
     window.document.body.appendChild(menu);
 
-    // Position below the button, right-aligned to its right edge.
+    // Position menu using clampToViewport — flips above when near the bottom edge.
     const r = button.getBoundingClientRect();
     menu.style.position = 'fixed';
-    menu.style.top = `${r.bottom + 6}px`;
-    menu.style.left = `${Math.max(8, r.right - 200)}px`;
     menu.style.zIndex = 200;
+    clampToViewport(menu, r);
 
     menu.querySelectorAll('.add-effect-item').forEach((el) => {
       el.addEventListener('click', () => {
@@ -224,6 +225,12 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     // CRITICAL: do NOT rebuild on prop=params — that would destroy the user's slider mid-drag.
     const visualToggle = e.type === 'effect:propChanged' && (e.prop === 'enabled' || e.prop === 'expanded');
     if (structural || visualToggle) render();
+
+    // Per-effect processing spinner — no re-render, just toggle the class.
+    if (e.type === 'effect:processing') {
+      const card = stackEl.querySelector(`.effect-item[data-effect-id="${e.effectId}"]`);
+      if (card) card.classList.toggle('is-processing', e.state === 'start');
+    }
   });
 
   // Re-render whenever the user flips the "Keep effects open" setting.
