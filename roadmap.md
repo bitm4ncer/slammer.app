@@ -325,6 +325,11 @@
 ## PHASE 26 — Plugin Polish 🆕
 
 - [ ] **Openverse** rate-limit fix: client-side per-source quota (wiki > flickr > others), exponential backoff with cached results LRU; user can paste own Openverse API key in Settings → API Keys
+- [ ] **Additional museum plugins** (one panel plugin each, share `_shared/browsable.js` UX + the Met plugin's throttle/proxy/cache scaffold):
+  - [ ] **Smithsonian Open Access** (`api.si.edu/openaccess/api/v1.0/search`) — 5M+ items, free key from edan.si.edu
+  - [ ] **Rijksmuseum** (`www.rijksmuseum.nl/api/en/collection`) — needs free API key from `data.rijksmuseum.nl`
+  - [ ] **MoMA** — no public REST API; ship as a static-JSON browser using their open-data CSV from `github.com/MuseumofModernArt/collection`
+  - [ ] **Victoria & Albert** (`api.vam.ac.uk/v2/objects/search`) — no key, CORS-friendly
 
 ## PHASE 27 — Advanced Effects 🆕
 

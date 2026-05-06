@@ -69,10 +69,7 @@ import pexelsPlugin from './plugins/panels/pexels/index.js';
 // verification so we can't register-and-go from the browser. Plugin
 // kept on disk for future re-enable behind a proxy or pre-issued token.
 // import openversePlugin from './plugins/panels/openverse/index.js';
-// Met Museum API used to be CORS-friendly but now blocks browser origins
-// (no Access-Control-Allow-Origin on collectionapi.metmuseum.org). Like
-// Openverse: kept on disk, register again behind a proxy or pre-issued token.
-// import metPlugin from './plugins/panels/met/index.js';
+import metPlugin from './plugins/panels/met/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
 import { exportVisibleAsPng } from './io/export-png.js';
@@ -108,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     halftoneVPlugin, spirographVPlugin, scribbleVPlugin, metaballVPlugin,
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
-    falaiPlugin, unsplashPlugin, pexelsPlugin,
+    falaiPlugin, unsplashPlugin, pexelsPlugin, metPlugin,
   ].forEach(registerPlugin);
 
   const doc = createDocument();

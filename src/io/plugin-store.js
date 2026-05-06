@@ -5,12 +5,13 @@
 const DB_NAME = 'slammer';
 const FAV_STORE = 'plugin-favorites';
 const FOL_STORE = 'plugin-folders';
+const CACHE_STORE = 'plugin-cache';
 
 let _dbPromise = null;
 function openDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = () => {
       // The actual schema is created in project-store.js. Mirror the same
       // create-if-missing logic here so a direct first-load through plugin-store
@@ -30,6 +31,10 @@ function openDB() {
       if (!db.objectStoreNames.contains(FOL_STORE)) {
         const fol = db.createObjectStore(FOL_STORE, { keyPath: 'id' });
         fol.createIndex('byPlugin', 'pluginId');
+      }
+      if (!db.objectStoreNames.contains(CACHE_STORE)) {
+        const cache = db.createObjectStore(CACHE_STORE, { keyPath: 'key' });
+        cache.createIndex('byPlugin', 'pluginId');
       }
     };
     req.onsuccess = () => {
@@ -126,4 +131,52 @@ export async function deleteFolder(id) {
   }
   const folStore = await tx(FOL_STORE, 'readwrite');
   await reqAsPromise(folStore.delete(id));
+}
+
+// ---------- Generic per-plugin response cache ----------
+// Used by panel plugins (Met first) to avoid re-fetching expensive endpoints
+// across sessions. Keyed by `${pluginId}:${id}`. TTL is checked on read; stale
+// entries are returned as `null` and lazily overwritten by the next put.
+
+function cacheKey(pluginId, id) { return `${pluginId}:${id}`; }
+
+export async function cacheGet(pluginId, id, { maxAgeMs = Infinity } = {}) {
+  try {
+    const store = await tx(CACHE_STORE);
+    const rec = await reqAsPromise(store.get(cacheKey(pluginId, id)));
+    if (!rec) return null;
+    if (Number.isFinite(maxAgeMs) && (Date.now() - rec.fetchedAt) > maxAgeMs) return null;
+    return rec.payload;
+  } catch (err) {
+    // IndexedDB hiccups shouldn't poison plugin behaviour — fall back to network.
+    console.warn('[plugin-cache] get failed:', err);
+    return null;
+  }
+}
+
+export async function cachePut(pluginId, id, payload) {
+  try {
+    const store = await tx(CACHE_STORE, 'readwrite');
+    await reqAsPromise(store.put({ key: cacheKey(pluginId, id), pluginId, payload, fetchedAt: Date.now() }));
+  } catch (err) {
+    console.warn('[plugin-cache] put failed:', err);
+  }
+}
+
+// Bulk get used by Met to look up many object IDs in one transaction.
+export async function cacheGetMany(pluginId, ids, { maxAgeMs = Infinity } = {}) {
+  if (!Array.isArray(ids) || !ids.length) return new Map();
+  const out = new Map();
+  try {
+    const store = await tx(CACHE_STORE);
+    for (const id of ids) {
+      const rec = await reqAsPromise(store.get(cacheKey(pluginId, id)));
+      if (!rec) continue;
+      if (Number.isFinite(maxAgeMs) && (Date.now() - rec.fetchedAt) > maxAgeMs) continue;
+      out.set(id, rec.payload);
+    }
+  } catch (err) {
+    console.warn('[plugin-cache] getMany failed:', err);
+  }
+  return out;
 }

@@ -85,7 +85,7 @@ let _dbPromise = null;
 function openDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -105,6 +105,13 @@ function openDB() {
       if (!db.objectStoreNames.contains('plugin-folders')) {
         const fol = db.createObjectStore('plugin-folders', { keyPath: 'id' });
         fol.createIndex('byPlugin', 'pluginId');
+      }
+      // v4 — generic per-plugin response cache (e.g. Met Museum object detail
+      // records). Key shape: `${pluginId}:${id}`. Value: { pluginId, key,
+      // payload, fetchedAt }.
+      if (!db.objectStoreNames.contains('plugin-cache')) {
+        const cache = db.createObjectStore('plugin-cache', { keyPath: 'key' });
+        cache.createIndex('byPlugin', 'pluginId');
       }
     };
     req.onsuccess = () => {

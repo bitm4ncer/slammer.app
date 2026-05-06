@@ -1,41 +1,106 @@
 // The Metropolitan Museum of Art — public collection API.
-// No auth, CORS-friendly. Search returns object IDs only; we fetch details
-// in parallel to render thumbnails (N+1 pattern). Met allows 80 req/sec so
-// 24 parallel fetches per page is well within limits.
+// No auth. Met API is rate-limited (~80 req/sec); when we exceed it, the API
+// can return rejections WITHOUT CORS headers, which the browser surfaces as a
+// generic CORS error. Three resilience layers:
+//   A. Self-throttle: a small concurrency limiter caps in-flight Met requests
+//      so we never spike past the rate limit (default 6 parallel).
+//   B. Retry-once + CORS-proxy fallback: a failed direct request is retried
+//      with a short backoff; if it still fails, we transparently route it
+//      through corsproxy.io so the user always gets a result.
+//   C. IndexedDB cache: object detail responses (the dominant N+1 pattern,
+//      24 fetches per page) are cached forever. Re-visiting an image is free.
 //
-// Two endpoints used:
+// Endpoints:
 //   GET  /public/collection/v1/search?q=<q>&hasImages=true  → { total, objectIDs }
-//   GET  /public/collection/v1/objects/<id>                  → { primaryImage, primaryImageSmall, title, artistDisplayName, ... }
+//   GET  /public/collection/v1/objects/<id>                 → { primaryImage, primaryImageSmall, title, artistDisplayName, ... }
 
 import { createBrowsable } from '../_shared/browsable.js';
+import { cacheGetMany, cachePut } from '../../../io/plugin-store.js';
 import './met.css';
 
 const PLUGIN_ID = 'met';
 const SEARCH = 'https://collectionapi.metmuseum.org/public/collection/v1/search';
 const OBJECT = 'https://collectionapi.metmuseum.org/public/collection/v1/objects';
 const PAGE_SIZE = 24;
+const MAX_PARALLEL = 6;
+const RETRY_BACKOFF_MS = 220;
+const CORS_PROXY = 'https://corsproxy.io/?url=';
 
 // Per-search cache so pagination doesn't re-search every time. Keyed by the
 // (lowercased) query string. Reset whenever the user starts a fresh query.
 let _cachedQuery = null;
 let _cachedIds = [];
 
+// ---------- A. Concurrency limiter ----------
+// Tiny semaphore so at most MAX_PARALLEL fetches sit in-flight against Met.
+let _inFlight = 0;
+const _waitQueue = [];
+async function acquire() {
+  if (_inFlight < MAX_PARALLEL) { _inFlight++; return; }
+  await new Promise((res) => _waitQueue.push(res));
+  _inFlight++;
+}
+function release() {
+  _inFlight--;
+  const next = _waitQueue.shift();
+  if (next) next();
+}
+
+// ---------- B. Resilient fetch ----------
+// Try direct → wait + retry direct once → fall back to corsproxy.io.
+// We treat ANY thrown TypeError (browser CORS / network rejection) and any
+// non-2xx response as a soft failure that triggers the next stage.
+async function resilientFetchJson(url) {
+  await acquire();
+  try {
+    const direct = await tryFetchJson(url);
+    if (direct.ok) return direct.body;
+    if (direct.transient) {
+      await sleep(RETRY_BACKOFF_MS);
+      const retry = await tryFetchJson(url);
+      if (retry.ok) return retry.body;
+    }
+    // Final fallback: CORS proxy. Slower + third-party but keeps the plugin
+    // alive when Met is rate-limiting us hard.
+    const proxied = await tryFetchJson(CORS_PROXY + encodeURIComponent(url));
+    if (proxied.ok) return proxied.body;
+    throw new Error(proxied.errorText || 'Met fetch failed (direct + proxy)');
+  } finally {
+    release();
+  }
+}
+
+async function tryFetchJson(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      // 429 / 5xx are transient — worth retrying. 4xx (other) is permanent.
+      const transient = res.status === 429 || res.status >= 500;
+      return { ok: false, transient, errorText: `HTTP ${res.status}` };
+    }
+    const body = await res.json();
+    return { ok: true, body };
+  } catch (err) {
+    // TypeError typically means CORS rejection or network failure — both transient.
+    return { ok: false, transient: true, errorText: err?.message || 'fetch failed' };
+  }
+}
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// ---------- Met-specific ----------
 async function fetchIds(query) {
   const key = query.toLowerCase();
   if (_cachedQuery === key && _cachedIds.length) return _cachedIds;
   const url = `${SEARCH}?hasImages=true&q=${encodeURIComponent(query)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Met search ${res.status}`);
-  const data = await res.json();
+  const data = await resilientFetchJson(url);
   _cachedQuery = key;
   _cachedIds = Array.isArray(data.objectIDs) ? data.objectIDs : [];
   return _cachedIds;
 }
 
 async function fetchObject(id) {
-  const res = await fetch(`${OBJECT}/${id}`);
-  if (!res.ok) throw new Error(`Met object ${id} → ${res.status}`);
-  return await res.json();
+  return await resilientFetchJson(`${OBJECT}/${id}`);
 }
 
 export default {
@@ -66,12 +131,23 @@ export default {
         const start = (page - 1) * PAGE_SIZE;
         const slice = ids.slice(start, start + PAGE_SIZE);
         if (!slice.length) return { results: [], hasMore: false };
-        // Fetch object details in parallel; tolerate individual failures so
-        // one broken record doesn't kill the whole page.
-        const settled = await Promise.allSettled(slice.map((id) => fetchObject(id)));
-        const results = settled
-          .filter((s) => s.status === 'fulfilled')
-          .map((s) => s.value)
+        // C. IndexedDB cache: pull every record we already have, fetch the
+        // rest. Met data is effectively immutable, so no TTL.
+        const cached = await cacheGetMany(PLUGIN_ID, slice);
+        const missing = slice.filter((id) => !cached.has(id));
+        if (missing.length) {
+          const settled = await Promise.allSettled(missing.map((id) => fetchObject(id)));
+          for (let i = 0; i < missing.length; i++) {
+            const s = settled[i];
+            if (s.status !== 'fulfilled' || !s.value) continue;
+            cached.set(missing[i], s.value);
+            // Persist for future sessions; fire-and-forget.
+            cachePut(PLUGIN_ID, missing[i], s.value).catch(() => {});
+          }
+        }
+        // Preserve original order; drop entries with no usable image.
+        const results = slice
+          .map((id) => cached.get(id))
           .filter((obj) => obj && (obj.primaryImage || obj.primaryImageSmall));
         const hasMore = (start + PAGE_SIZE) < ids.length;
         return { results, hasMore };
