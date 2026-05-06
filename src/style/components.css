@@ -374,7 +374,9 @@
 .affinity-slideout {
   position: absolute;
   bottom: calc(100% + 8px);
-  right: 0;
+  /* Trigger sits in the bottom-LEFT footer — anchor the popup to the LEFT
+     edge so it expands rightward into the canvas, not leftward off-screen. */
+  left: 0;
   width: 280px;
   background: var(--surface-2);
   border: 1px solid var(--vhs-shadow);
