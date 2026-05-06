@@ -995,6 +995,344 @@
 }
 .tool-btn--add:hover { opacity: 1; }
 
+/* ---------- Sidebar SHOP button (sticks to bottom of left sidebar) ---------- */
+.tool-section--bottom { margin-top: auto; padding-top: 8px; }
+.tool-btn--shop {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255,58,115,0.18), rgba(58,160,255,0.18) 50%, rgba(160,224,36,0.18));
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+}
+.tool-btn--shop::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,58,115,0.5), rgba(58,160,255,0.5) 50%, rgba(160,224,36,0.5));
+  opacity: 0;
+  transition: opacity 140ms ease;
+  z-index: -1;
+  filter: blur(10px);
+}
+.tool-btn--shop:hover { border-color: rgba(255,255,255,0.28); color: #fff; }
+.tool-btn--shop:hover::before { opacity: 0.55; }
+.tool-btn--shop i { font-size: 14px; }
+
+/* ====================================================================== */
+/* Bitmancer Shop — full-screen overlay (Phase 28-prep, v1 no commerce)   */
+/* ====================================================================== */
+.shop-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(8,10,14,0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1500;
+  display: flex; align-items: center; justify-content: center;
+  animation: shop-fade-in 140ms ease-out;
+}
+@keyframes shop-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.shop-modal {
+  width: min(1240px, calc(100vw - 40px));
+  height: min(900px, calc(100vh - 40px));
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 10px;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,0.55),
+    inset 0 1px 0 var(--vhs-highlight);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.shop-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.shop-header-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.shop-header-title i { color: var(--text-secondary); font-size: 13px; }
+.shop-header-right { display: flex; align-items: center; gap: 12px; }
+.shop-header-tag {
+  font-size: 9px; letter-spacing: 0.18em;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.shop-close, .shop-back {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.shop-close:hover, .shop-back:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border-color: var(--vhs-shadow);
+}
+
+.shop-content {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 22px 26px 40px;
+}
+.shop-intro {
+  margin: 4px 0 22px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.shop-intro a { color: var(--primary); text-decoration: none; border-bottom: 1px dashed currentColor; }
+
+/* ---------- Pack sections ---------- */
+.shop-pack {
+  margin-bottom: 32px;
+}
+.shop-pack-head {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pack-a) 22%, transparent), color-mix(in srgb, var(--pack-b) 22%, transparent));
+  border-left: 3px solid var(--pack-a);
+}
+.shop-pack-title {
+  font-size: 16px; font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.shop-pack-blurb {
+  font-size: 12px; color: var(--text-secondary); line-height: 1.55;
+}
+
+/* ---------- Cards ---------- */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 14px;
+}
+.shop-card {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.shop-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--pack-a);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+}
+.shop-card-thumb {
+  aspect-ratio: 16/10;
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--pack-a) 60%, transparent) 0%, transparent 60%),
+    radial-gradient(140% 100% at 100% 100%, color-mix(in srgb, var(--pack-b) 50%, transparent) 0%, transparent 60%),
+    linear-gradient(135deg, #11141a, #1a1f29);
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 1px solid var(--vhs-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.shop-card-thumb::after {
+  /* subtle scanline texture */
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+.shop-card-thumb i {
+  font-size: 48px;
+  color: rgba(255,255,255,0.85);
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+.shop-card-body {
+  padding: 12px 14px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.shop-card-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+}
+.shop-card-name {
+  font-size: 14px; font-weight: 600; color: var(--text);
+}
+.shop-card-price {
+  font-size: 13px; font-weight: 600;
+  color: var(--pack-a);
+  font-variant-numeric: tabular-nums;
+}
+.shop-card-tagline {
+  font-size: 11px; color: var(--text-secondary); line-height: 1.45;
+}
+.shop-card-pack {
+  margin-top: 4px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--pack-a);
+  text-transform: uppercase;
+}
+
+/* ---------- Detail page ---------- */
+.shop-detail-hero {
+  display: grid; grid-template-columns: 320px 1fr;
+  gap: 28px;
+  margin-bottom: 32px;
+}
+.shop-detail-thumb {
+  aspect-ratio: 1/1;
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--pack-a) 70%, transparent) 0%, transparent 65%),
+    radial-gradient(140% 100% at 100% 100%, color-mix(in srgb, var(--pack-b) 55%, transparent) 0%, transparent 65%),
+    linear-gradient(135deg, #11141a, #1a1f29);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+}
+.shop-detail-thumb::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+.shop-detail-thumb i {
+  font-size: 100px;
+  color: rgba(255,255,255,0.9);
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+}
+.shop-detail-meta { display: flex; flex-direction: column; gap: 12px; }
+.shop-detail-pack {
+  font-size: 10px; letter-spacing: 0.2em;
+  color: var(--pack-a);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.shop-detail-name {
+  margin: 0;
+  font-size: 32px; font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.shop-detail-tagline {
+  margin: 0;
+  font-size: 15px; color: var(--text-secondary); line-height: 1.5;
+}
+.shop-detail-cta {
+  display: flex; align-items: center; gap: 16px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.shop-detail-price {
+  font-size: 26px; font-weight: 700;
+  color: var(--pack-a);
+  font-variant-numeric: tabular-nums;
+}
+.shop-buy-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--pack-a), var(--pack-b));
+  color: #0a0c10;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: filter 120ms, transform 120ms;
+}
+.shop-buy-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.shop-buy-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.shop-detail-section { margin: 22px 0; }
+.shop-detail-section h2 {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.shop-detail-section p {
+  font-size: 13px; line-height: 1.6;
+  color: var(--text);
+  margin: 0;
+}
+
+.shop-faq {
+  display: flex; flex-direction: column; gap: 14px;
+  margin: 0;
+}
+.shop-faq dt {
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+}
+.shop-faq dd {
+  margin: 4px 0 0;
+  font-size: 12px; color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.shop-screenshots {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.shop-screenshots img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--vhs-shadow);
+}
+
+.shop-future {
+  margin-top: 28px;
+  padding: 18px 20px;
+  border: 1px dashed var(--vhs-shadow);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.015);
+}
+.shop-future h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.shop-future p {
+  margin: 0;
+  font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+}
+.shop-future a { color: var(--text); border-bottom: 1px dashed currentColor; text-decoration: none; }
+
+.shop-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Narrow viewport — collapse hero columns */
+@media (max-width: 720px) {
+  .shop-detail-hero { grid-template-columns: 1fr; gap: 18px; }
+  .shop-detail-thumb { max-width: 280px; }
+}
+
 /* ---------- Settings tabbar ---------- */
 .settings-modal--tabbed { width: min(560px, calc(100vw - 40px)); max-height: 85vh; }
 .settings-tabbar {
