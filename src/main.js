@@ -82,6 +82,7 @@ import { initDocumentSizePopup } from './ui/document-size-popup.js';
 import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
+import { openShop } from './ui/shop-popup.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -197,6 +198,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
   };
   initSidebarPlugins();
+
+  // ---------- Bitmancer Shop button ----------
+  const btnShop = document.getElementById('btnShop');
+  if (btnShop) btnShop.addEventListener('click', () => openShop());
 
   initDocumentSizePopup({
     document: doc,
