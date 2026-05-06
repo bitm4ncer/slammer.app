@@ -1008,187 +1008,198 @@
 .tool-btn--add:hover { opacity: 1; }
 
 /* ====================================================================== */
-/* Bitmancer Shop — Y2K friendly tech                                     */
+/* Bitmancer Shop — extra vagant on-brand panel                           */
 /* ====================================================================== */
-/* Apple Music meets glitch cassette. Inter only. Soft-black frame, big   */
-/* rounded corners, solid bright plugin colours. No gradients, no border- */
-/* left. Plugins fill the card with their flag colour as full bleed;      */
-/* vector tools breathe on cream so they read as "printed". Tone is       */
-/* friendly-bold — chunky Inter-800 display, friendly Inter-500 chrome.   */
+/* Visually a sibling to the Settings modal and the fal.ai panel — same   */
+/* surfaces, same primary mint accent, same VHS-style inset highlight.    */
+/* Extravagant lift comes from one display font (GlyphWorld Mountain) on  */
+/* the lede + pack titles, plus full-bleed plugin colours on cards.       */
+/* No border-left. No multicolour gradients.                              */
 
-/* ---------- Sidebar SHOP button (round chip) ---------- */
+/* GlyphWorld Mountain is declared in variables.css alongside Chicago and  */
+/* GothicPixels, all self-hosted from /data/. We just reference it here.   */
+
+/* ---------- Sidebar SHOP button — shiny primary chip ---------- */
+/* Follows the user's theme accent (--primary / --primary-rgb) so the    */
+/* shine matches whatever colour they picked in Settings.                 */
 .tool-section--bottom { margin-top: auto; padding-top: 8px; }
 .tool-btn--shop {
-  background: transparent;
-  border: 1px solid var(--vhs-shadow);
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 13px;
-  border-radius: 14px;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-.tool-btn--shop:hover {
-  color: var(--text);
-  border-color: var(--text);
-}
-.tool-btn--shop:active {
-  background: var(--text);
+  position: relative;
+  background: var(--primary);
   color: var(--surface);
+  border: 1px solid rgba(0,0,0,0.4);
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -1px 0 rgba(0,0,0,0.22),
+    0 0 14px rgba(var(--primary-rgb), 0.4),
+    0 2px 4px rgba(0,0,0,0.4);
+  animation: shop-btn-pulse 2.6s ease-in-out infinite;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
+@keyframes shop-btn-pulse {
+  0%, 100% { box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -1px 0 rgba(0,0,0,0.22),
+    0 0 12px rgba(var(--primary-rgb), 0.36),
+    0 2px 4px rgba(0,0,0,0.4); }
+  50% { box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -1px 0 rgba(0,0,0,0.22),
+    0 0 22px rgba(var(--primary-rgb), 0.6),
+    0 2px 4px rgba(0,0,0,0.4); }
+}
+.tool-btn--shop i { font-size: 13px; }
+.tool-btn--shop:hover {
+  transform: translateY(-1px) scale(1.04);
+  background: var(--primary-hover);
+  color: var(--surface);
+  animation-play-state: paused;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -1px 0 rgba(0,0,0,0.25),
+    0 0 24px rgba(var(--primary-rgb), 0.7),
+    0 4px 10px rgba(0,0,0,0.45);
+}
+.tool-btn--shop:active { transform: translateY(0) scale(0.98); }
 
 /* =========================================================================
-   Shop palette
-   ========================================================================= */
-:root {
-  --shop-bg:       #0a0a0c;   /* soft black, friendlier than industrial */
-  --shop-surface:  #141418;   /* lifted surface for cards / chrome */
-  --shop-line:     #27272b;   /* hairlines, slightly warm */
-  --shop-text:     #f0f0f0;   /* primary text on dark */
-  --shop-mute:     #7a7a80;   /* muted body text */
-}
-
-/* =========================================================================
-   Backdrop & modal — full bleed, soft black
+   Backdrop & centered modal — sibling of .settings-backdrop / .settings-modal
    ========================================================================= */
 .shop-backdrop {
   position: fixed; inset: 0;
-  background: var(--shop-bg);
+  background: rgba(0, 0, 0, 0.62);
   z-index: 1500;
-  display: flex; align-items: stretch; justify-content: stretch;
-  animation: shop-fade-in 200ms ease-out;
+  display: flex; align-items: center; justify-content: center;
+  padding: 28px;
+  animation: shop-fade-in 180ms ease-out;
 }
 @keyframes shop-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .shop-modal {
-  flex: 1;
+  width: min(1180px, calc(100vw - 56px));
+  height: min(800px, calc(100vh - 56px));
   display: flex; flex-direction: column;
-  background: var(--shop-bg);
-  color: var(--shop-text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
-  font-feature-settings: 'cv11' 1, 'ss01' 1, 'ss03' 1;
+  box-shadow:
+    0 24px 60px rgba(0,0,0,0.6),
+    inset 0 1px 0 var(--vhs-highlight);
   overflow: hidden;
+  animation: shop-rise 200ms cubic-bezier(.2,.7,.2,1);
+}
+@keyframes shop-rise {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
 
 /* =========================================================================
-   Header — chunky logo + round close
+   Header — settings-header sibling, GlyphWorld wordmark
    ========================================================================= */
 .shop-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
-  padding: 22px 32px 18px;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: var(--surface);
+  box-shadow: inset 0 1px 0 var(--vhs-highlight);
 }
 .shop-header-line {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 12px;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--shop-mute);
+  letter-spacing: 0.04em;
+  color: var(--primary);
 }
 .shop-header-line .h-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--shop-text);
-  background: var(--shop-surface);
-  padding: 8px 14px;
-  border-radius: 999px;
-  letter-spacing: -0.01em;
-}
-.shop-header-line .h-mark::before {
-  content: '';
-  width: 8px; height: 8px;
-  background: #FF2E63;
-  border-radius: 999px;
-  animation: shop-pulse 2.4s ease-in-out infinite;
-}
-@keyframes shop-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.85); }
+  font-family: 'GlyphWorld-Mountain', 'Newsreader', Georgia, serif;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  color: var(--primary);
+  line-height: 1;
 }
 .shop-header-line .h-issue {
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  padding-left: 12px;
+  border-left: 0;
+  position: relative;
+}
+.shop-header-line .h-issue::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  width: 1px; height: 12px;
+  background: var(--vhs-shadow);
+  transform: translateY(-50%);
 }
 .shop-header-line .h-rule { display: none; }
 
-.shop-header-actions {
-  display: flex; gap: 8px;
-}
+.shop-header-actions { display: flex; gap: 6px; }
 .shop-back, .shop-close {
-  background: var(--shop-surface);
-  border: none;
-  color: var(--shop-text);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
   font-family: inherit;
-  font-weight: 600;
+  font-size: 12px;
   cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: background 140ms, color 140ms, transform 140ms;
+  height: 28px;
+  border-radius: 4px;
+  transition: background 120ms, color 120ms, border-color 120ms;
 }
-.shop-close {
-  width: 40px; height: 40px;
-  border-radius: 999px;
-  font-size: 18px;
-}
-.shop-back {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  gap: 6px;
-}
+.shop-close { width: 28px; padding: 0; font-size: 16px; }
+.shop-back { padding: 0 10px; gap: 6px; }
 .shop-back:hover, .shop-close:hover {
-  background: var(--shop-text);
-  color: var(--shop-bg);
+  background: var(--button-hover-bg, rgba(255,255,255,0.06));
+  color: var(--text-primary);
 }
-.shop-back:active, .shop-close:active { transform: scale(0.96); }
 
 /* =========================================================================
-   Sub-header — chunky lede + meta chip
+   Sub-header — GlyphWorld lede + small meta line
    ========================================================================= */
 .shop-lede {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: end;
-  gap: 32px;
-  padding: 28px 32px 36px;
+  gap: 24px;
+  padding: 28px 28px 24px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
 }
 .shop-lede-title {
   margin: 0;
-  font-family: inherit;
-  font-weight: 800;
-  font-size: clamp(40px, 6vw, 72px);
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-  color: var(--shop-text);
+  font-family: 'GlyphWorld-Mountain', 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(48px, 7vw, 88px);
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+  color: var(--text-primary);
 }
 .shop-lede-title em {
   font-style: normal;
-  display: inline-block;
-  background: var(--shop-text);
-  color: var(--shop-bg);
-  padding: 0 0.18em 0.04em;
-  border-radius: 14px;
-  margin: 0 -0.08em;
+  color: var(--primary);
 }
 .shop-lede-meta {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
-  padding: 12px 16px;
-  background: var(--shop-surface);
-  border-radius: 16px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 10px;
   font-weight: 500;
-  color: var(--shop-mute);
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
   text-align: right;
-  line-height: 1.5;
+  line-height: 1.6;
+  text-transform: uppercase;
   white-space: nowrap;
 }
-.shop-lede-meta span { color: var(--shop-text); font-weight: 600; }
+.shop-lede-meta span { color: var(--primary); letter-spacing: 0.02em; text-transform: none; }
 
 /* =========================================================================
    Content scroll area
@@ -1196,55 +1207,53 @@
 .shop-content {
   flex: 1; min-height: 0;
   overflow-y: auto;
-  padding: 0 32px 80px;
+  padding: 24px 28px 36px;
+  background: var(--surface-2);
 }
 
 /* =========================================================================
-   Pack section — chunky chip header, no rule lines
+   Pack section — small mono label, GlyphWorld pack title
    ========================================================================= */
-.shop-pack {
-  margin-bottom: 56px;
-}
+.shop-pack { margin-bottom: 36px; }
+.shop-pack:last-child { margin-bottom: 0; }
 .shop-pack-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: baseline;
+  column-gap: 12px;
+  padding: 0 0 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--vhs-shadow);
 }
 .shop-pack-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px; height: 36px;
-  background: var(--shop-surface);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--shop-mute);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 .shop-pack-title {
-  font-weight: 800;
+  font-family: 'GlyphWorld-Mountain', 'Newsreader', Georgia, serif;
+  font-weight: 400;
   font-size: 28px;
-  letter-spacing: -0.025em;
-  color: var(--shop-text);
+  letter-spacing: 0.005em;
+  line-height: 1;
+  color: var(--text-primary);
 }
 .shop-pack-meta {
-  margin-left: auto;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
-  color: var(--shop-mute);
-  background: var(--shop-surface);
-  padding: 6px 12px;
-  border-radius: 999px;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 .shop-pack-blurb {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--shop-mute);
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
   max-width: 64ch;
 }
 
@@ -1254,7 +1263,7 @@
 .shop-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 .shop-grid > .shop-card { grid-column: span 4; }
 .shop-grid > .shop-card--hero { grid-column: span 8; grid-row: span 2; }
@@ -1274,37 +1283,45 @@
 }
 
 /* =========================================================================
-   Card — Y2K chunky-rounded, full-bleed colour, two flavours
+   Card — VHS-style on-brand panel, full-bleed plugin colour, two flavours
    ========================================================================= */
 .shop-card {
-  --c: var(--plugin-c, var(--shop-text));
+  --c: var(--plugin-c, var(--text-primary));
   --c-ink: var(--plugin-ink, #0e0e10);
   position: relative;
   display: grid;
   grid-template-rows: 1fr auto;
-  background: transparent;
-  border: none;
-  border-radius: 22px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 0;
   font-family: inherit;
   text-align: left;
   color: inherit;
   cursor: pointer;
   overflow: hidden;
-  transition: transform 220ms cubic-bezier(.2,.8,.2,1);
-  min-height: 280px;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.32),
+    inset 0 1px 0 var(--vhs-highlight);
+  transition: transform 200ms cubic-bezier(.2,.8,.2,1), border-color 200ms, box-shadow 200ms;
+  min-height: 240px;
 }
 .shop-card:focus-visible {
-  outline: 3px solid var(--c);
-  outline-offset: 4px;
-  border-radius: 22px;
+  outline: 2px solid var(--c);
+  outline-offset: 2px;
 }
-.shop-card--hero { min-height: 580px; border-radius: 28px; }
-.shop-card--wide { min-height: 320px; }
-.shop-card--half { border-radius: 20px; }
-.shop-card:hover { transform: translateY(-4px); }
-.shop-card:hover .shop-card-stamp { transform: rotate(-6deg) scale(1.04); }
-.shop-card:active { transform: translateY(-2px) scale(0.995); }
+.shop-card--hero { min-height: 520px; }
+.shop-card--wide { min-height: 280px; }
+.shop-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--c);
+  box-shadow:
+    0 6px 18px rgba(0,0,0,0.45),
+    0 0 0 1px var(--c),
+    inset 0 1px 0 var(--vhs-highlight);
+}
+.shop-card:hover .shop-card-stamp { transform: rotate(-4deg); }
+.shop-card:active { transform: translateY(0); }
 
 /* card-thumb: where each plugin shows its character */
 .shop-card-thumb {
@@ -1336,82 +1353,94 @@
 /* preview placeholder mark — tiny id in lower-right of thumb */
 .shop-card-mark {
   position: absolute;
-  inset: auto 16px 16px auto;
-  font-size: 11px;
-  font-weight: 600;
+  inset: auto 12px 10px auto;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
   color: var(--c-ink);
-  opacity: 0.4;
+  opacity: 0.45;
   pointer-events: none;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.04em;
 }
 .shop-card--vector .shop-card-mark { color: var(--c); opacity: 0.7; }
 
-/* card-foot: chunky info row */
+/* card-foot: app-style label band */
 .shop-card-foot {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 4px 12px;
-  padding: 16px 20px 18px;
-  background: var(--shop-surface);
+  gap: 3px 12px;
+  padding: 12px 14px 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--vhs-shadow);
+  box-shadow: inset 0 1px 0 var(--vhs-highlight);
 }
 .shop-card-num {
   grid-column: 1 / -1;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
   color: var(--c);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
 .shop-card-name {
-  font-weight: 800;
+  font-family: 'GlyphWorld-Mountain', 'Newsreader', Georgia, serif;
+  font-weight: 400;
   font-size: 22px;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.005em;
   line-height: 1.05;
-  color: var(--shop-text);
+  color: var(--text-primary);
+  margin-top: 2px;
 }
-.shop-card--hero .shop-card-name { font-size: 36px; }
+.shop-card--hero .shop-card-name { font-size: 34px; }
 .shop-card-price {
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: -0.01em;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
   color: var(--c);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   align-self: end;
+  padding-bottom: 2px;
 }
 .shop-card-tag {
   grid-column: 1 / -1;
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--shop-mute);
-  letter-spacing: 0.02em;
-  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 4px;
 }
 .shop-card-tag .dot {
   display: inline-block;
-  width: 8px; height: 8px;
+  width: 6px; height: 6px;
   background: var(--c);
   border-radius: 999px;
   margin-right: 8px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
 }
 
-/* the stamp — pill chip top-left of preview */
+/* the stamp — small label top-left of preview */
 .shop-card-stamp {
   position: absolute;
-  inset: 16px auto auto 16px;
+  inset: 12px auto auto 12px;
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
-  font-weight: 700;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 9px;
+  font-weight: 600;
   color: var(--c-ink);
   background: rgba(255,255,255,0.85);
-  padding: 6px 12px;
-  border-radius: 999px;
-  letter-spacing: -0.01em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
   transition: transform 220ms cubic-bezier(.2,.8,.2,1);
   z-index: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 .shop-card--vector .shop-card-stamp {
   background: var(--c);
@@ -1419,24 +1448,30 @@
 }
 
 /* =========================================================================
-   Detail page — Y2K spread
+   Detail page — same chrome, GlyphWorld name
    ========================================================================= */
 .shop-detail {
-  --c: var(--plugin-c, var(--shop-text));
+  --c: var(--plugin-c, var(--text-primary));
   --c-ink: var(--plugin-ink, #0e0e10);
+  background: var(--surface-2);
 }
 .shop-detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 32px;
-  padding: 0 0 36px;
+  gap: 28px;
+  padding: 24px 0 28px;
+  border-bottom: 1px solid var(--vhs-shadow);
 }
 .shop-detail-thumb {
   position: relative;
   aspect-ratio: 1.1 / 1;
   background: var(--c);
-  border-radius: 28px;
+  border-radius: 8px;
   overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow:
+    0 6px 16px rgba(0,0,0,0.4),
+    inset 0 1px 0 var(--vhs-highlight);
 }
 .shop-detail--vector .shop-detail-thumb { background: #f4efe7; }
 .shop-detail-thumb::before {
@@ -1455,128 +1490,130 @@
 }
 .shop-detail-mark {
   position: absolute;
-  inset: auto 20px 20px auto;
-  font-size: 13px;
-  font-weight: 600;
+  inset: auto 16px 14px auto;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--c-ink);
-  opacity: 0.45;
-  letter-spacing: -0.01em;
+  opacity: 0.5;
+  letter-spacing: 0.06em;
 }
-.shop-detail--vector .shop-detail-mark { color: var(--c); opacity: 0.65; }
+.shop-detail--vector .shop-detail-mark { color: var(--c); opacity: 0.7; }
 
 .shop-detail-meta {
   display: flex; flex-direction: column;
-  gap: 18px;
-  padding: 14px 0 0;
+  gap: 14px;
+  padding: 8px 0 0;
 }
 .shop-detail-spec {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   align-self: flex-start;
-  background: var(--shop-surface);
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--shop-mute);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 .shop-detail-spec .dot {
   display: inline-block;
-  width: 9px; height: 9px;
+  width: 8px; height: 8px;
   background: var(--c);
   border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
 }
 .shop-detail-spec .num {
   font-variant-numeric: tabular-nums;
   color: var(--c);
-  font-weight: 700;
+  font-weight: 600;
 }
 .shop-detail-name {
   margin: 0;
-  font-family: inherit;
-  font-weight: 800;
-  font-size: clamp(48px, 7vw, 96px);
-  line-height: 0.92;
-  letter-spacing: -0.04em;
-  color: var(--shop-text);
+  font-family: 'GlyphWorld-Mountain', 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(56px, 8vw, 104px);
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  color: var(--text-primary);
 }
 .shop-detail-tagline {
   margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--shop-mute);
-  max-width: 36ch;
-  letter-spacing: -0.01em;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 38ch;
 }
 .shop-detail-cta {
-  margin-top: 14px;
+  margin-top: 8px;
   display: flex; align-items: center; gap: 14px;
   flex-wrap: wrap;
 }
 .shop-detail-price {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--c);
   font-variant-numeric: tabular-nums;
 }
 .shop-buy-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  padding: 14px 22px;
+  padding: 10px 18px;
   background: var(--c);
   color: var(--c-ink);
-  border: none;
-  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.32);
+  border-radius: 6px;
   font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: transform 140ms, filter 140ms;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.35),
+    inset 0 -1px 0 rgba(0,0,0,0.18),
+    0 2px 5px rgba(0,0,0,0.35);
+  transition: transform 120ms, filter 120ms;
 }
-.shop-buy-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-}
+.shop-buy-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
 .shop-buy-btn:active:not(:disabled) { transform: translateY(0); }
 .shop-buy-btn:disabled {
-  background: var(--shop-surface);
-  color: var(--shop-mute);
+  background: var(--surface-3);
+  color: var(--text-secondary);
   cursor: not-allowed;
+  box-shadow: inset 0 1px 0 var(--vhs-highlight);
+  border-color: var(--border);
 }
-.shop-buy-btn .arrow {
-  display: inline-block;
-  font-weight: 700;
-}
+.shop-buy-btn .arrow { display: inline-block; font-weight: 700; }
 
 /* sections */
 .shop-detail-body {
-  padding: 36px 0 60px;
+  padding: 28px 0 32px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  column-gap: 60px;
-  row-gap: 36px;
+  column-gap: 48px;
+  row-gap: 28px;
 }
 @media (max-width: 900px) {
   .shop-detail-hero { grid-template-columns: 1fr; }
   .shop-detail-body { grid-template-columns: 1fr; }
 }
 .shop-detail-section h2 {
-  margin: 0 0 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--shop-mute);
-  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 .shop-detail-section p {
   margin: 0;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.6;
-  color: var(--shop-text);
-  letter-spacing: -0.01em;
+  line-height: 1.7;
+  color: var(--text-primary);
 }
 .shop-detail-section + .shop-detail-section { margin-top: 0; }
 
@@ -1585,10 +1622,9 @@
   margin: 0;
 }
 .shop-faq dt {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--shop-text);
-  letter-spacing: -0.01em;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1598,84 +1634,84 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px; height: 24px;
+  width: 20px; height: 20px;
   background: var(--c);
   color: var(--c-ink);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 800;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
 }
 .shop-faq dd {
-  margin: 6px 0 0 34px;
-  font-size: 15px;
+  margin: 4px 0 0 30px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.55;
-  color: var(--shop-mute);
-  letter-spacing: -0.01em;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
 .shop-screenshots {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
 }
 .shop-screenshots img {
   width: 100%;
-  border-radius: 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
 }
 
 .shop-detail-howitworks {
   grid-column: 1 / -1;
-  padding-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--vhs-shadow);
 }
 
 /* =========================================================================
-   Coming-soon footer — round chunky chip card
+   Coming-soon footer — flat panel matching settings-section idiom
    ========================================================================= */
 .shop-future {
-  margin-top: 32px;
-  padding: 24px 28px;
-  background: var(--shop-surface);
-  border-radius: 22px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
+  box-shadow: inset 0 1px 0 var(--vhs-highlight);
 }
 .shop-future-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--shop-mute);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
   white-space: nowrap;
-  background: var(--shop-bg);
-  padding: 8px 14px;
-  border-radius: 999px;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 .shop-future-list {
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--shop-text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--text-primary);
   margin: 0;
-  letter-spacing: -0.01em;
 }
-.shop-future-list i { font-style: normal; color: var(--shop-mute); }
+.shop-future-list i { font-style: normal; color: var(--text-secondary); }
 .shop-future-list a {
-  color: var(--shop-text);
+  color: var(--primary);
   text-decoration: none;
-  border-bottom: 2px solid var(--shop-mute);
-  font-weight: 700;
+  border-bottom: 1px dashed currentColor;
 }
-.shop-future-list a:hover { border-bottom-color: var(--shop-text); }
+.shop-future-list a:hover { border-bottom-style: solid; }
 
 .shop-empty {
   padding: 60px;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--shop-mute);
+  color: var(--text-secondary);
 }
 
 /* ---------- Settings tabbar ---------- */
