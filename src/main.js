@@ -39,10 +39,9 @@ import gradientMapPlugin from './plugins/filters/gradient-map/index.js';
 import curvesPlugin from './plugins/filters/curves/index.js';
 import grainPlugin from './plugins/filters/grain/index.js';
 import displacementPlugin from './plugins/filters/displacement/index.js';
-import ditheringPlugin from './plugins/tools/dithering/index.js';
 import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
-import jpegPlugin from './plugins/tools/jpeg-compression/index.js';
-import datamoshPlugin from './plugins/tools/datamosh/index.js';
+// datamosh, jpeg-compression, dithering moved to src/plugins/premium/ — loaded
+// in dev via premium-loader.js, served via Bitmancer Library shop in prod.
 
 // Vector-only plugins (run inside vector-renderer pre-rasterise).
 import zigzagVPlugin from './plugins/vector/zigzag/index.js';
@@ -56,8 +55,7 @@ import repeaterVPlugin from './plugins/vector/repeater/index.js';
 import waveDistortVPlugin from './plugins/vector/wave-distort/index.js';
 import calligraphyVPlugin from './plugins/vector/calligraphy/index.js';
 import hatchingVPlugin from './plugins/vector/hatching/index.js';
-import stippleVPlugin from './plugins/vector/stipple/index.js';
-import halftoneVPlugin from './plugins/vector/halftone/index.js';
+// stipple + halftone moved to src/plugins/premium/ — loaded via premium-loader.
 import spirographVPlugin from './plugins/vector/spirograph/index.js';
 import scribbleVPlugin from './plugins/vector/scribble/index.js';
 import metaballVPlugin from './plugins/vector/metaball/index.js';
@@ -98,12 +96,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     invertPlugin, brightnessPlugin, contrastPlugin, levelsPlugin, blurPlugin,
     huePlugin, colorOverlayPlugin, gradientMapPlugin, curvesPlugin,
     grainPlugin, displacementPlugin,
-    ditheringPlugin, pixelsortPlugin, jpegPlugin, datamoshPlugin,
+    pixelsortPlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
     twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,
-    waveDistortVPlugin, calligraphyVPlugin, hatchingVPlugin, stippleVPlugin,
-    halftoneVPlugin, spirographVPlugin, scribbleVPlugin, metaballVPlugin,
+    waveDistortVPlugin, calligraphyVPlugin, hatchingVPlugin,
+    spirographVPlugin, scribbleVPlugin, metaballVPlugin,
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
     falaiPlugin, unsplashPlugin, pexelsPlugin, metPlugin,
