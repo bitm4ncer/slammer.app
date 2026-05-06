@@ -1122,52 +1122,49 @@
   color: var(--text-primary);
 }
 
-/* ---------- Cluster D: Info tab ---------- */
-.settings-row--column {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+/* ---------- Cluster D: Info tab actions ---------- */
+.settings-info-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
-.settings-filetypes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.7;
-}
-.settings-filetypes strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.settings-filetypes code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: var(--background);
-  padding: 0 4px;
-  border-radius: 2px;
-  color: var(--text-primary);
-  font-size: 10px;
-}
-.settings-coffee-btn {
+.settings-action-btn,
+.settings-action-btn:link,
+.settings-action-btn:visited {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  background: var(--primary);
-  color: var(--background);
+  padding: 7px 14px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--vhs-shadow);
   border-radius: 999px;
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-decoration: none;
-  font-weight: 600;
-  transition: filter 0.12s ease, transform 0.12s ease;
+  font-weight: 500;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
-.settings-coffee-btn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+.settings-action-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
-.settings-coffee-btn i { font-size: 12px; }
+.settings-action-btn--primary,
+.settings-action-btn--primary:link,
+.settings-action-btn--primary:visited {
+  background: var(--primary);
+  color: #1a1a1a;
+  border-color: var(--primary);
+}
+.settings-action-btn--primary:hover {
+  filter: brightness(1.08);
+  color: #1a1a1a;
+}
+.settings-action-btn i { font-size: 12px; line-height: 1; }
 .settings-help-block code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--background);

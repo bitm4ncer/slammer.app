@@ -286,27 +286,13 @@ export function initSettingsPopup({ button, version }) {
             </div>
           </div>
 
-          <div class="settings-section">
-            <div class="settings-row settings-row--column">
-              <span class="settings-label">Supported file types</span>
-              <ul class="settings-filetypes">
-                <li><strong>Project</strong> — <code>.slammerproj</code>, <code>.slmr</code> (legacy <code>.crushproj</code> auto-imported)</li>
-                <li><strong>Image</strong> — PNG, JPEG, WebP, AVIF, GIF (drag onto canvas or paste)</li>
-                <li><strong>Vector</strong> — SVG (drag onto canvas)</li>
-                <li><strong>Fonts</strong> — TTF, OTF, WOFF, WOFF2 (Typography → Upload)</li>
-                <li><strong>Export</strong> — PNG, JPEG, WebP (region: visible / frame, scale 1× / 2× / 4×)</li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="settings-section settings-meta">
-            <div class="settings-row">
-              <a class="settings-coffee-btn" href="https://buymeacoffee.com/slammer.app" target="_blank" rel="noopener" aria-label="Buy a coffee">
-                <i class="fas fa-mug-hot"></i>
-                <span>Buy a coffee</span>
-              </a>
-              <a class="settings-help" href="https://github.com/bitm4ncer/slammer.app" target="_blank" rel="noopener">GitHub</a>
-            </div>
+          <div class="settings-section settings-meta settings-info-actions">
+            <a class="settings-action-btn settings-action-btn--primary" href="https://buymeacoffee.com/slammer.app" target="_blank" rel="noopener" aria-label="Buy a coffee">
+              <i class="fas fa-mug-hot"></i><span>Buy a coffee</span>
+            </a>
+            <a class="settings-action-btn" href="https://github.com/bitm4ncer/slammer.app" target="_blank" rel="noopener" aria-label="GitHub">
+              <i class="fab fa-github"></i><span>GitHub</span>
+            </a>
           </div>
         </div>
       </div>
