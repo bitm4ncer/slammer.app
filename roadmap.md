@@ -230,11 +230,11 @@
 - [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
 
 ### Cluster C — Footer & canvas chrome
-- [ ] Frame button: subtle highlight when frame active + tiny `×` close affordance
-- [ ] Rotation: live degree readout next to handle; Shift+rotate-drag snaps to 5°
-- [ ] Different cursor on hover/drag of rotate handle
-- [ ] Project loads in **Fit view**
-- [ ] Auto-load fonts on opening another user's project (font manifest in `.slammerproj`)
+- [x] Frame button: accent-tinted highlight when frame active + inline `×` close affordance (clears `doc.exportFrame`)
+- [x] Rotation: live degree readout pill near pointer during drag; **Shift+rotate snaps to nearest 5°**
+- [x] Rotater anchor cursor: `grab` on hover, `grabbing` while rotating
+- [x] Project loads in **Fit view** (`view.fitTo()` on every `doc:loaded` event, deferred one tick so Konva groups mount first)
+- [x] Auto-load fonts on opening another user's project — `preloadFontsForDoc()` now runs on every project-load path (autosave restore, project-menu open, `.slmr` import); `.slmr` manifest enriched with all-provider font metadata (uploaded carries raw bytes; google/fontshare/system carry catalog snapshots so the receiver can `loadFont(meta)` even with a stale catalog)
 
 ### Cluster D — Settings tabs
 - [ ] **Info** tab: supported file types, version, "Buy a coffee" button

@@ -224,6 +224,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   doc.subscribe((e) => {
     if (e.type === 'layer:active' || e.type === 'doc:loaded') syncCtxAccent();
     if (e.type === 'layer:propChanged' && e.prop === 'accentColor' && doc.activeLayerId === e.id) syncCtxAccent();
+    // Fit the viewport whenever a project is loaded so content is always visible.
+    if (e.type === 'doc:loaded') {
+      // Use setTimeout(0) so Konva groups have a chance to mount before fitTo
+      // calculates bounding rects.
+      setTimeout(() => view.fitTo(), 0);
+    }
   });
   onSettingsChange(syncCtxAccent);
   syncCtxAccent();

@@ -2,6 +2,7 @@
 
 import { showNotification } from './notifications.js';
 import { exportSlmr, importSlmr } from '../io/project-file.js';
+import { preloadFontsForDoc } from './typography/font-loader.js';
 
 export function initProjectMenu({ document: doc, projectStore, view }) {
   let backdrop = null;
@@ -422,6 +423,16 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
           if (typeof l.source === 'string' && l.source.startsWith('data:')) {
             l.source = await dataURLtoBlob(l.source);
           }
+        }
+        // Auto-load fonts referenced by text layers (Phase 19 Cluster C).
+        // Race with 2 s timeout so a slow CDN doesn't block the open.
+        try {
+          await Promise.race([
+            preloadFontsForDoc(projDoc),
+            new Promise((resolve) => setTimeout(resolve, 2000)),
+          ]);
+        } catch (err) {
+          console.warn('[slammer.app] font preload skipped on open:', err);
         }
         doc.load(projDoc);
         projectStore.setCurrent(id);

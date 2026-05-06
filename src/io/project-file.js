@@ -4,6 +4,8 @@
 import { zip, unzip, strToU8, strFromU8 } from 'fflate';
 import { registerEmbeddedFont, getUploadedBlob } from '../ui/typography/uploaded-fonts.js';
 import { setSettings } from '../ui/settings-popup.js';
+import { preloadFontsForDoc } from '../ui/typography/font-loader.js';
+import { findFont } from '../ui/typography/font-sources.js';
 
 // Capture the global DOM document before any function parameter shadows it.
 const DOM = document;
@@ -51,28 +53,50 @@ export async function exportSlmr({ document, name }) {
     // else: keep string URLs as-is
   }
 
-  // Collect uploaded fonts used by text layers.
-  const fontFamilies = new Set();
-  for (const layer of liveLayers) {
-    if (layer?.type === 'text' && layer.text?.provider === 'uploaded' && layer.text.font) {
-      fontFamilies.add(layer.text.font);
-    }
+  // Collect every font referenced by a text layer, regardless of provider, so
+  // the receiving system can auto-load Google / Fontshare / System / Uploaded
+  // fonts without depending on its own catalogue being up-to-date. Uploaded
+  // fonts also get their raw bytes embedded as ZIP assets.
+  const fontKeys = new Set(); // dedupe by `family@source`
+  const allFontRefs = []; // [{family, source}]
+  function collectFromLayer(layer) {
+    if (layer?.type !== 'text' || !layer.text?.font) return;
+    const family = layer.text.font;
+    const source = layer.text.provider || '';
+    const k = `${family}@${source}`;
+    if (fontKeys.has(k)) return;
+    fontKeys.add(k);
+    allFontRefs.push({ family, source });
   }
-  // Also check snapshot layers in case liveLayers is empty or different.
-  for (const layer of docState.layers) {
-    if (layer?.type === 'text' && layer.text?.provider === 'uploaded' && layer.text.font) {
-      fontFamilies.add(layer.text.font);
-    }
-  }
+  for (const layer of liveLayers) collectFromLayer(layer);
+  for (const layer of docState.layers) collectFromLayer(layer);
 
   const fonts = [];
-  for (const family of fontFamilies) {
-    const blob = await getUploadedBlob(family);
-    if (!blob) continue;
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    const ext = mimeToExt(blob.type) || 'ttf';
-    const id = addAsset(`font_${sanitizeFilename(family)}.${ext}`, bytes, blob.type || 'font/ttf');
-    fonts.push({ family, assetId: id, format: blob.type || 'font/ttf' });
+  for (const ref of allFontRefs) {
+    if (ref.source === 'uploaded') {
+      // Embed the actual font bytes so the receiver doesn't need a copy.
+      const blob = await getUploadedBlob(ref.family);
+      if (!blob) continue;
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const ext = mimeToExt(blob.type) || 'ttf';
+      const id = addAsset(`font_${sanitizeFilename(ref.family)}.${ext}`, bytes, blob.type || 'font/ttf');
+      fonts.push({ family: ref.family, source: 'uploaded', assetId: id, format: blob.type || 'font/ttf' });
+    } else {
+      // Reference-only entry: family + source + meta-snapshot from the local
+      // catalogue. The receiver uses it directly via loadFont(meta) if its own
+      // catalogue is stale and findFont() comes back empty.
+      const meta = findFont(ref.family, ref.source) || { family: ref.family, source: ref.source };
+      fonts.push({
+        family: meta.family,
+        source: meta.source || ref.source || 'system',
+        slug: meta.slug,
+        weights: meta.weights,
+        italic: !!meta.italic,
+        variable: !!meta.variable,
+        axes: meta.axes,
+        cssFamily: meta.cssFamily,
+      });
+    }
   }
 
   // Settings.
@@ -166,8 +190,9 @@ export async function importSlmr(file, doc) {
     }
   }
 
-  // Register embedded fonts.
+  // Register embedded uploaded fonts (ones with raw bytes in the ZIP).
   for (const font of manifest.fonts || []) {
+    if (!font.assetId) continue; // reference-only entries handled below via preloadFontsForDoc
     const blob = assetBlobs[font.assetId];
     if (!blob) {
       console.warn(`[slmr] missing font asset: ${font.assetId}`);
@@ -196,6 +221,19 @@ export async function importSlmr(file, doc) {
     } catch (err) {
       console.warn('[slmr] failed to restore settings:', err);
     }
+  }
+
+  // Auto-load Google / Fontshare / System fonts referenced by text layers
+  // (Phase 19 Cluster C). preloadFontsForDoc walks the doc and resolves each
+  // (family, source) via the local font catalogue. Race with a 2 s timeout so
+  // a slow CDN doesn't block document load.
+  try {
+    await Promise.race([
+      preloadFontsForDoc(manifest.document),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+  } catch (err) {
+    console.warn('[slmr] font preload skipped:', err);
   }
 
   // Load document.

@@ -45,6 +45,31 @@ export function initDocumentSizePopup({ document: doc, view, button }) {
   if (!button) return;
   let backdrop = null;
 
+  // ── Active-state highlight ──────────────────────────────────────────────
+  const xSpan = button.querySelector('.btn-doc-size-x');
+
+  function syncActiveState() {
+    const active = !!doc.state.exportFrame;
+    button.classList.toggle('btn-doc-size--active', active);
+    // xSpan visibility is handled by CSS (.btn-doc-size--active .btn-doc-size-x)
+    // but we also toggle [hidden] so the CSS gotcha defence fires correctly.
+    if (xSpan) xSpan.hidden = !active;
+  }
+
+  if (xSpan) {
+    xSpan.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent popup from opening
+      doc.setExportFrame(null);
+    });
+  }
+
+  doc.subscribe((e) => {
+    if (e.type === 'doc:exportFrame' || e.type === 'doc:loaded') syncActiveState();
+  });
+
+  // Sync immediately in case a frame is already set (e.g. after project restore).
+  syncActiveState();
+
   function open() {
     if (backdrop) return;
     const cur = doc.state.exportFrame;

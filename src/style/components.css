@@ -1,3 +1,26 @@
+/* ---------- Rotation readout pill ---------- */
+/* Shown near the rotater anchor during a rotate drag. Fixed positioning
+   keeps it out of the Konva stacking context and above all canvas layers. */
+.rotation-readout {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(20, 20, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: 'SF Mono', 'Fira Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ctx-accent, var(--primary));
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  backdrop-filter: blur(4px);
+}
+
+.rotation-readout[hidden] { display: none; }
+
 /* ---------- Buttons ---------- */
 .tb-btn, .zoom-btn {
   background: linear-gradient(to bottom, var(--surface) 0%, var(--vhs-groove) 100%);
@@ -538,6 +561,27 @@
   justify-content: space-between;
   align-items: center;
 }
+
+/* ---------- Doc-size button active state ---------- */
+.btn-doc-size--active {
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 12%, transparent) !important;
+  color: var(--ctx-accent, var(--primary)) !important;
+  border-color: color-mix(in srgb, var(--ctx-accent, var(--primary)) 40%, transparent) !important;
+}
+.btn-doc-size--active i {
+  color: var(--ctx-accent, var(--primary));
+}
+.btn-doc-size-x {
+  font-size: 13px;
+  line-height: 1;
+  margin-left: 2px;
+  opacity: 0.7;
+  pointer-events: auto;
+  transition: opacity 0.1s;
+}
+.btn-doc-size-x[hidden] { display: none; }
+.btn-doc-size--active .btn-doc-size-x { display: inline; }
+.btn-doc-size-x:hover { opacity: 1; }
 
 /* ---------- Document Size popup ---------- */
 .docsize-modal { width: min(560px, calc(100vw - 40px)); }

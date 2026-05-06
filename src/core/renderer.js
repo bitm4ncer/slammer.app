@@ -41,13 +41,37 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Track Ctrl+Shift state so the transformer can switch into "text-box resize"
   // mode when the user drags a handle on a text layer with the modifier held.
   let ctrlShiftDown = false;
+  // Track Shift-only state for rotation snapping (snap to 5° multiples).
+  let shiftDown = false;
   function refreshMods(e) {
     ctrlShiftDown = !!(e && (e.ctrlKey || e.metaKey) && e.shiftKey);
+    shiftDown = !!(e && e.shiftKey);
   }
   window.addEventListener('keydown', refreshMods);
   window.addEventListener('keyup', refreshMods);
   window.addEventListener('mousedown', refreshMods);
   window.addEventListener('mousemove', refreshMods);
+
+  // Rotation readout — a fixed DOM pill shown near the rotater anchor during drag.
+  const rotationReadout = window.document.createElement('div');
+  rotationReadout.className = 'rotation-readout';
+  rotationReadout.hidden = true;
+  window.document.body.appendChild(rotationReadout);
+
+  function showRotationReadout(deg) {
+    rotationReadout.textContent = `${deg.toFixed(1)}°`;
+    rotationReadout.hidden = false;
+  }
+
+  function positionReadoutNearPointer(x, y) {
+    // Offset slightly up-left so the pill doesn't cover the cursor.
+    rotationReadout.style.left = `${x + 16}px`;
+    rotationReadout.style.top  = `${y - 32}px`;
+  }
+
+  function hideRotationReadout() {
+    rotationReadout.hidden = true;
+  }
 
   // Active text-box resize gesture state. Captured on transformstart so we can
   // compute width as ABSOLUTE from start instead of accumulating per-tick deltas
@@ -109,11 +133,45 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         return oldBox;
       },
     });
+    // Continuous transform listener — drives live rotation readout and Shift-snap.
+    transformer.on('transform', (e) => {
+      const activeAnchor = transformer.getActiveAnchor?.();
+      if (activeAnchor === 'rotater') {
+        const nodes = transformer.nodes();
+        if (nodes.length) {
+          let deg = nodes[0].rotation();
+          // Shift held → snap to nearest 5°.
+          if (shiftDown) {
+            deg = Math.round(deg / 5) * 5;
+            nodes[0].rotation(deg);
+          }
+          // Show the readout pill near the current pointer position.
+          const evt = e.evt;
+          if (evt) {
+            positionReadoutNearPointer(evt.clientX, evt.clientY);
+          }
+          showRotationReadout(((deg % 360) + 360) % 360);
+        }
+      } else {
+        // Not rotating — hide any stale readout.
+        hideRotationReadout();
+      }
+    });
+
     transformer.on('transformend', () => {
       // No special cleanup needed — boxWidth was committed live during the
       // drag and we never let Konva apply a scale. Just clear the flag.
       textBoxResize = null;
+      hideRotationReadout();
     });
+
+    // Wire grab/grabbing cursor to the rotater anchor node.
+    // We defer until after Konva has rendered the transformer so the rotater
+    // node actually exists in the tree.
+    requestAnimationFrame(() => {
+      _wireRotaterCursor();
+    });
+
     contentLayer.add(transformer);
     return transformer;
   }
@@ -122,6 +180,33 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // re-anchoring the transformer mid-drag would re-trigger boundBoxFunc with a
   // shifted reference, producing the runaway-growth glitch.
   function isResizingTextBox() { return textBoxResize != null; }
+
+  // Wire hover/drag cursors to the rotater anchor of the transformer.
+  // Safe to call multiple times — skips if the anchor isn't in the tree yet.
+  let _rotaterCursorWired = false;
+  function _wireRotaterCursor() {
+    if (!transformer || _rotaterCursorWired) return;
+    const rotater = transformer.findOne('.rotater');
+    if (!rotater) return; // not yet rendered — caller should retry via rAF
+    _rotaterCursorWired = true;
+    const stageEl = stage.container();
+    let prevCursor = '';
+    rotater.on('mouseenter', () => {
+      prevCursor = stageEl.style.cursor;
+      stageEl.style.cursor = 'grab';
+    });
+    rotater.on('mouseleave', () => {
+      stageEl.style.cursor = prevCursor;
+    });
+    transformer.on('transformstart', () => {
+      if (transformer.getActiveAnchor?.() === 'rotater') {
+        stageEl.style.cursor = 'grabbing';
+      }
+    });
+    transformer.on('transformend', () => {
+      stageEl.style.cursor = prevCursor;
+    });
+  }
 
   function attachTransformer(node) {
     ensureTransformer();
