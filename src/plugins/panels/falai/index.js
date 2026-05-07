@@ -333,8 +333,10 @@ export default {
           // (e.g. switching from txt2img to img2img based on whether an image was provided).
           const endpointOverride = finalInput.__endpoint;
           if (endpointOverride) delete finalInput.__endpoint;
+          const usedModelId = endpointOverride || model.endpoint || model.id;
+          console.info('[fal.ai] →', usedModelId, finalInput);
           const result = await runModel({
-            modelId: endpointOverride || model.endpoint || model.id,
+            modelId: usedModelId,
             input: finalInput,
             signal: currentAborter.signal,
             onQueueUpdate: (update) => {
@@ -347,8 +349,17 @@ export default {
             },
           });
 
+          // Always log the raw response so a silent shape change surfaces
+          // immediately in the console — fal occasionally changes endpoint
+          // schemas without notice.
+          console.info('[fal.ai] ← result for', usedModelId, result);
+
           const urls = extractImageUrls(result, model.outputPath || 'images[].url');
-          if (!urls.length) throw new Error('No images returned');
+          if (!urls.length) {
+            const data = result?.data ?? result;
+            const shape = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
+            throw new Error(`No images in response (got: { ${shape} }). See console for full payload.`);
+          }
 
           const promptSnippet = (input.prompt || '').slice(0, 28);
           for (let i = 0; i < urls.length; i++) {
