@@ -140,8 +140,8 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   // Category order + display labels. Categories not listed here fall through to
   // "Other" at the end. Empty categories are skipped — so "color" stays hidden
   // until a Gradient Map / Color Overlay plugin lands.
-  const CATEGORY_ORDER = ['image', 'glitch', 'distort', 'stylize', 'color'];
-  const CATEGORY_LABELS = { image: 'Adjustments', glitch: 'Glitch', distort: 'Distort', stylize: 'Stylize', color: 'Color', other: 'Other' };
+  const CATEGORY_ORDER = ['image', 'glitch', 'distort', 'stylize', 'color', 'render'];
+  const CATEGORY_LABELS = { image: 'Adjustments', glitch: 'Glitch', distort: 'Distort', stylize: 'Stylize', color: 'Color', render: 'Render', other: 'Other' };
 
   function showAddMenu(button) {
     closeAnyMenu();

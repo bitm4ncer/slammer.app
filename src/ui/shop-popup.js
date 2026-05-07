@@ -81,6 +81,63 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'SCREEN.85LPI',
   },
+  // Phase 20 — premium effects.
+  'halftone-raster': {
+    c: '#00B5E2',                                                              // process cyan, the iconic CMY screen colour
+    ink: '#0e0e10',
+    pattern: `radial-gradient(circle at 50% 50%, rgba(14,14,16,0.85) 1.6px, transparent 2.2px),
+              radial-gradient(circle at 50% 50%, rgba(255,255,255,0.4) 0.6px, transparent 1.2px)`,
+    size: '6px 6px, 6px 6px',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'CMYK.15.75.0.45',
+  },
+  'organic-gradient': {
+    c: '#fc476c',                                                              // sunset red — first stop of the default gradient
+    ink: '#0e0e10',
+    pattern: `radial-gradient(ellipse 60% 80% at 30% 30%, rgba(255,255,255,0.45), transparent 60%),
+              radial-gradient(ellipse 70% 60% at 70% 70%, rgba(14,14,16,0.5), transparent 65%),
+              radial-gradient(ellipse 90% 90% at 50% 50%, rgba(255,209,102,0.35), transparent 70%)`,
+    size: 'auto, auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'NOISE.WARP.X4',
+  },
+  'mesh-gradient': {
+    c: '#c39bff',
+    ink: '#0e0e10',
+    // 3×3 grid of soft circular blobs — evokes the control points of a real mesh.
+    pattern: `radial-gradient(circle at 16% 16%, rgba(255,255,255,0.35) 6px, transparent 18px),
+              radial-gradient(circle at 50% 16%, rgba(14,14,16,0.4) 6px, transparent 18px),
+              radial-gradient(circle at 84% 16%, rgba(255,255,255,0.35) 6px, transparent 18px),
+              radial-gradient(circle at 16% 50%, rgba(14,14,16,0.4) 6px, transparent 18px),
+              radial-gradient(circle at 50% 50%, rgba(255,255,255,0.5) 7px, transparent 22px),
+              radial-gradient(circle at 84% 50%, rgba(14,14,16,0.4) 6px, transparent 18px),
+              radial-gradient(circle at 16% 84%, rgba(255,255,255,0.35) 6px, transparent 18px),
+              radial-gradient(circle at 50% 84%, rgba(14,14,16,0.4) 6px, transparent 18px),
+              radial-gradient(circle at 84% 84%, rgba(255,255,255,0.35) 6px, transparent 18px)`,
+    size: 'auto, auto, auto, auto, auto, auto, auto, auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'BICUBIC.3x3',
+  },
+  'gradient-library': {
+    c: '#7DE0B5',
+    ink: '#0e0e10',
+    // Vertical bands echo a row of gradient swatches from the library.
+    pattern: `repeating-linear-gradient(90deg,
+              #FF7FB3 0 14%,
+              #FFB070 14% 28%,
+              #F5D000 28% 42%,
+              #7FFFEA 42% 56%,
+              #7FB3FF 56% 70%,
+              #C39BFF 70% 84%,
+              #FF5B5B 84% 100%)`,
+    size: 'auto',
+    blend: 'normal',
+    opacity: 0.85,
+    mark: 'PRESETS.80',
+  },
 };
 
 /* =========================================================================
@@ -93,11 +150,15 @@ const PACK_INFO = {
   },
   'raster-pack': {
     label: 'Raster Pack',
-    rule: 'Print-shop dot patterns and bitmap aesthetics. Dither today, halftone soon.',
+    rule: 'Print-shop dot patterns and bitmap aesthetics. Dither, halftone screens, JPEG corruption — pixels with a press behind them.',
   },
   'dots-pack': {
     label: 'Dots Pack',
     rule: 'Vector dot fields. Stipple and halftone applied directly to paths — scales infinitely.',
+  },
+  'infinity-gradients': {
+    label: 'Infinity Gradients',
+    rule: 'Generative fields and palettes. Domain-warped noise, bicubic mesh control, and a curated library to feed both.',
   },
 };
 

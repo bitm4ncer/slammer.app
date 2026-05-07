@@ -295,6 +295,14 @@ export function groupedSelectRow({ label, groups, value, onChange }) {
 // Inline gradient editor: a coloured bar with draggable stop handles.
 // { label, stops, onChange } — stops: Array<{ at: 0..1, color: '#hex' }>
 // Returns a DOM element. Caller is responsible for inserting it.
+//
+// Extensions (Phase 20 — Gradient Library):
+//   - Drop target: accepts `application/x-slammer-gradient` mime payloads.
+//   - Browse button: dispatches `slammer:open-gradient-library` with an
+//     applyGradient callback so the library panel can push stops back.
+//   - Focus tracking: clicking/focusing the row registers itself as
+//     `window.__slammer._lastFocusedGradient` so library tile clicks know
+//     where to send stops.
 export function gradientStopsRow({ label, stops: initialStops, onChange }) {
   // Work on a local mutable copy.
   const local = { stops: (initialStops || [{ at: 0, color: '#000000' }, { at: 1, color: '#FFFFFF' }]).slice() };
@@ -305,9 +313,80 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
   if (label) {
     const lbl = document.createElement('div');
     lbl.className = 'effect-label gradient-stops-label';
-    lbl.textContent = label;
+
+    // Row that holds label text + browse button side by side
+    const labelRow = document.createElement('div');
+    labelRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;';
+
+    const labelText = document.createElement('span');
+    labelText.textContent = label;
+    labelRow.appendChild(labelText);
+
+    // "Browse presets…" icon button
+    const browseBtn = document.createElement('button');
+    browseBtn.type = 'button';
+    browseBtn.title = 'Browse gradient presets…';
+    browseBtn.style.cssText = 'background:transparent;border:none;cursor:pointer;color:var(--text-secondary);padding:0 0 0 6px;font-size:11px;display:inline-flex;align-items:center;gap:3px;';
+    browseBtn.innerHTML = '<i class="fas fa-grip"></i>';
+    browseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _registerFocusedGradient(local, applyExternalStops);
+      document.dispatchEvent(new CustomEvent('slammer:open-gradient-library', {
+        detail: {
+          applyGradient: applyExternalStops,
+          getStops: () => local.stops.slice(),
+        },
+      }));
+    });
+    browseBtn.addEventListener('mouseenter', () => { browseBtn.style.color = 'var(--primary, #6fcfff)'; });
+    browseBtn.addEventListener('mouseleave', () => { browseBtn.style.color = 'var(--text-secondary)'; });
+    labelRow.appendChild(browseBtn);
+
+    lbl.appendChild(labelRow);
     container.appendChild(lbl);
   }
+
+  // Shared function: apply stops arriving from outside (drop or library click)
+  function applyExternalStops(stops) {
+    if (!Array.isArray(stops) || stops.length < 2) return;
+    local.stops = stops.slice();
+    rebuildHandles();
+    onChange(local.stops.slice());
+  }
+
+  // Focus tracking — register this row as the active gradient target
+  function _registerFocusedGradient(localRef, applyFn) {
+    if (window.__slammer) {
+      window.__slammer._lastFocusedGradient = {
+        applyGradient: applyFn,
+        getStops: () => localRef.stops.slice(),
+      };
+    }
+  }
+
+  // Register on click/focus anywhere in the container
+  container.addEventListener('mousedown', () => _registerFocusedGradient(local, applyExternalStops), { capture: true });
+
+  // ── Drop target wiring ──────────────────────────────────────────────────
+  container.addEventListener('dragover', (e) => {
+    if (e.dataTransfer.types.includes('application/x-slammer-gradient')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      container.style.outline = '2px solid var(--primary, #6fcfff)';
+    }
+  });
+  container.addEventListener('dragleave', () => { container.style.outline = ''; });
+  container.addEventListener('drop', (e) => {
+    container.style.outline = '';
+    if (!e.dataTransfer.types.includes('application/x-slammer-gradient')) return;
+    e.preventDefault();
+    try {
+      const raw = JSON.parse(e.dataTransfer.getData('application/x-slammer-gradient'));
+      applyExternalStops(raw);
+    } catch (err) {
+      console.warn('[gradientStopsRow] drop parse error:', err);
+    }
+  });
 
   const wrap = document.createElement('div');
   wrap.className = 'gradient-editor';

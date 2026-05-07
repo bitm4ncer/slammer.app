@@ -265,19 +265,22 @@
 - [x] fal.ai: progress indicator — a `setRunning(bool)` helper swaps the Run button to a spinner + "Generating…" label, shows a 3 px indeterminate animated progress bar below the actions row, and surfaces queue position when known ("Queued · N ahead…"). Hidden on success / error / cancel.
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
 
-## PHASE 20 — New Effects Library 🆕
+## PHASE 20 — New Effects Library ✅
 
-> Each effect = own file under `src/plugins/filters/`. Parallel swarm: 1 worker per effect.
+> Each effect = own file under `src/plugins/filters/` (free) or `src/plugins/premium/` (paid). Shipped via parallel swarm.
 
-- [ ] **Posterize**
-- [ ] **Twirl** — radial-distort with falloff
-- [ ] **Ripple** — concentric-wave displacement
-- [ ] **RGB Shift** — per-channel offset
-- [ ] **Bulge** — concave/convex pinch
-- [ ] **Halftone Raster** — real screenprint dot pattern, **DPI** + angle + dot-shape settings (distinct from Halftone Dither)
-- [ ] **Drop Shadow** — alpha-shape-aware: dilates the layer's alpha into a blurred offset shape, not a rect bbox
-- [ ] **Organic Gradient** — `noisesc(v + udirsc(v)*t)` flowing gradient overlay; seedable; speed param
-- [ ] Re-categorise the Effects add menu after these land (Distort / Stylize / Adjustments / Render)
+- [x] **Posterize** — Adjustments. Levels 2–32, RGB / Luminance / Palette modes, Linear / Perceptual / Equalised distribution, edge softness, bias, mix.
+- [x] **Twirl** — Distort. Inverse-warp rotation with smooth/linear/hard/bell falloff + Inverse mode.
+- [x] **Ripple** — Distort. 4 wave shapes (sine/triangle/square/sawtooth) × 4 polarisations (radial/horizontal/vertical/diagonal), phase + decay.
+- [x] **RGB Shift** — Glitch. Flat per-channel XY OR Radial chromatic-aberration mode with bias.
+- [x] **Bulge** — Distort. True spherical projection + Smooth / Cone / Pinch-bell falloffs; Free aspect for oval bulges.
+- [x] **Drop Shadow** — Stylize. Polar (Angle + Distance) OR Cartesian input, blur, spread (alpha dilate), 4 blend modes, Inner Shadow + Knockout toggles.
+- [x] **Halftone Raster** 🟦 PREMIUM (Raster Pack) — true print-shop screening. Monochrome / RGB / CMYK-separated modes with industry-standard angles (C=15° M=75° Y=0° K=45°), per-channel pitch + ink overrides, UCR K-plate, Euclidean dot transition, dot gain, sub-pixel anti-aliasing, vignette.
+- [x] **Organic Gradient** 🟪 PREMIUM (Infinity Gradients) — domain-warped simplex noise (1–4 iterations) → multi-stop gradient (Linear / Spherical / Conic sampling), animation toggle with rAF tick, time-offset freezes, vignette + grain + 5 blend modes.
+- [x] **Mesh Gradient** 🟪 PREMIUM (Infinity Gradients) — bicubic Catmull-Rom interpolation across 2×2 / 3×3 / 4×4 / 5×5 grid; smoothness slider blends nearest → bilinear → bicubic; on-canvas overlay (`src/ui/mesh-gradient-overlay.js`) with draggable colour handles + colour pickers; HSL tint modifiers preserve user's mesh design.
+- [x] **Gradient Library** 🟪 PREMIUM (Infinity Gradients) — panel plugin browsing 80 curated gradients across 9 categories. Click to apply, drag onto any gradient picker (`gradientStopsRow` extended with `application/x-slammer-gradient` drop-target + "Browse presets…" button + focus tracking).
+- [x] Effect picker now lists **Adjustments / Glitch / Distort / Stylize / Color / Render** (the empty Distort & Stylize buckets from Cluster B fill up; Render is new for Phase 20).
+- [x] Shop: 4 new entries in `PLUGIN_PALETTE` (each with its own flag colour + character pattern + mark code); new **Infinity Gradients** pack added to `PACK_INFO`.
 
 ## PHASE 21 — Canvas Tools & Inspectors 🆕
 
