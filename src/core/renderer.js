@@ -126,7 +126,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         // the dragged edge to nearby layer / frame / guideline candidates
         // BEFORE Konva commits the new transform. Skips during the
         // Ctrl+Shift text-box gesture (handled below).
-        if (!ctrlShiftDown && getSettings().snapEnabled !== false) {
+        // Skip snap when:
+        //   - Ctrl+Shift held (text-box gesture, handled below)
+        //   - Shift alone held (keep-aspect-ratio mode — our per-axis snap
+        //     breaks the ratio because it nudges only the dragged edge.
+        //     Shift gets a free-glide; user can Alt-bypass any other gesture.)
+        //   - Snap setting disabled
+        if (!ctrlShiftDown && !shiftDown && getSettings().snapEnabled !== false) {
           const activeAnchor = transformer.getActiveAnchor?.();
           if (activeAnchor && activeAnchor !== 'rotater') {
             const targets = transformer.nodes();
