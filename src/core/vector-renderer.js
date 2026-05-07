@@ -36,7 +36,7 @@ import { getPlugin } from '../plugins/registry.js';
 // Exported via the rasterise return so the consumer (renderer.js) can
 // position the Konva.Image to compensate for path-bounds shifts.
 const PAD_MIN = 16;
-const PAD_MAX = 256;
+const PAD_MAX = 512;
 
 // Inspect the layer's pixel-effect stack and budget extra canvas padding
 // for any effect that visually expands beyond the path silhouette.
@@ -62,7 +62,10 @@ export function computePadForEffects(effects) {
           // as a coarse proxy here.
           reach = (p.radial === 'spin' ? (p.spin ?? 0) * 1.5 : (p.strength ?? 0));
         } else {
-          reach = p.radius ?? 0;
+          // Normal kernel — Gaussian / 3-pass box blur extends ~3× the radius
+          // before fading to zero. Underbudgeting cuts off the halo at the
+          // bbox edge.
+          reach = (p.radius ?? 0) * 3;
         }
         extra = Math.max(extra, reach);
         break;
