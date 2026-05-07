@@ -272,6 +272,44 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   $('zoomOut').addEventListener('click', () => view.zoomBy(0.8));
   $('zoomFit').addEventListener('click', () => view.fitTo());
 
+  // ---------- Zoom % readout ----------
+  // Updates whenever the stage scale changes (wheel zoom, +/-, fit, programmatic).
+  // Click → reset to 100% around viewport centre. Double-click → fit-to-view.
+  const zoomReadout = $('zoomReadout');
+  if (zoomReadout) {
+    function syncZoomReadout() {
+      const sc = view.stage.scaleX() || 1;
+      const pct = Math.round(sc * 100);
+      zoomReadout.textContent = `${pct}%`;
+    }
+    // The stage emits 'scaleXChange' / 'scaleYChange' on every transform.
+    view.stage.on('scaleXChange.zoomReadout scaleYChange.zoomReadout', syncZoomReadout);
+    syncZoomReadout();
+
+    zoomReadout.addEventListener('click', (e) => {
+      // Pure 100% reset around the viewport centre — keep panning x/y so
+      // the centre of the viewport stays fixed.
+      const stage = view.stage;
+      const oldScale = stage.scaleX() || 1;
+      const w = stage.width();
+      const h = stage.height();
+      const cx = w / 2;
+      const cy = h / 2;
+      // World point currently under the centre.
+      const worldX = (cx - stage.x()) / oldScale;
+      const worldY = (cy - stage.y()) / oldScale;
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: cx - worldX, y: cy - worldY });
+      stage.batchDraw();
+      syncZoomReadout();
+    });
+    zoomReadout.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      view.fitTo();
+      syncZoomReadout();
+    });
+  }
+
   // Fullscreen toggle — uses the Fullscreen API; falls back to a no-op
   // on browsers that block it.
   const fsBtn = $('btnFullscreen');

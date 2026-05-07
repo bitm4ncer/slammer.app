@@ -66,6 +66,17 @@
   padding: 0;
   border-radius: 999px;
 }
+/* Numeric readout sibling — same pill chrome but auto-width so 4-digit
+   percentages like "1000%" still fit cleanly. Tabular numerics so the
+   width doesn't jitter while the user is wheel-zooming. */
+.zoom-btn--readout {
+  width: auto;
+  min-width: 44px;
+  padding: 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
 
 .tb-btn--icon {
   width: 37px;
