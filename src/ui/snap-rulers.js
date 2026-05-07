@@ -15,15 +15,18 @@ function getGuidelines(doc) {
 
 /**
  * Gather all candidate snap positions for a given axis from visible layers,
- * guidelines, and the export frame.
+ * guidelines, the export frame, and (when canvasGridSnap is enabled) the
+ * minor grid pitch.
  *
  * @param {'x'|'y'} axis
  * @param {object}  stage  — Konva stage
  * @param {object}  doc    — slammer document
  * @param {string|null} excludeLayerId
+ * @param {object|null} contentLayer
+ * @param {object|null} getSettingsFn — optional; pass to enable grid snapping
  * @returns {Array<{pos:number, src:string}>}
  */
-function gatherCandidates(axis, stage, doc, excludeLayerId, contentLayer) {
+function gatherCandidates(axis, stage, doc, excludeLayerId, contentLayer, getSettingsFn) {
   const candidates = [];
   if (!contentLayer) contentLayer = stage.getLayers()[1];
 
@@ -67,6 +70,35 @@ function gatherCandidates(axis, stage, doc, excludeLayerId, contentLayer) {
     }
   }
 
+  // Canvas grid snap — emit minor-pitch candidates in the visible viewport.
+  // Performance: only generate lines within the visible world range so cost
+  // stays O(viewport / pitch), never O(infinity).
+  if (getSettingsFn) {
+    const s = getSettingsFn();
+    if (s.canvasGridShow && s.canvasGridSnap && s.snapEnabled !== false) {
+      const minor = Math.max(1, s.canvasGridMinor || 10);
+      const sc = stage.scaleX() || 1;
+      const sp = stage.position();
+      const sw = stage.width();
+      const sh = stage.height();
+      // Convert visible screen range to world coords.
+      const worldMin = axis === 'x'
+        ? (-sp.x) / sc
+        : (-sp.y) / sc;
+      const worldMax = axis === 'x'
+        ? (sw - sp.x) / sc
+        : (sh - sp.y) / sc;
+      const firstLine = Math.floor(worldMin / minor) * minor;
+      const lastLine  = Math.ceil(worldMax / minor) * minor;
+      // Cap at 200 candidates to avoid pathological slow cases at tiny pitch + extreme zoom-out.
+      const count = Math.min(200, Math.ceil((lastLine - firstLine) / minor) + 1);
+      for (let i = 0; i < count; i++) {
+        const pos = firstLine + i * minor;
+        candidates.push({ pos, src: 'grid' });
+      }
+    }
+  }
+
   return candidates;
 }
 
@@ -99,15 +131,15 @@ function bestSnap(refs, candidates, tolWorld) {
  * rect is in CONTENT-LAYER (world) space: { x, y, width, height }
  * Returns { dx, dy, snaps: [{axis, snapPos, refPos, src}] }
  */
-export function computeSnapForRect(rect, excludeLayerId, stage, doc, contentLayer) {
+export function computeSnapForRect(rect, excludeLayerId, stage, doc, contentLayer, getSettingsFn) {
   const sc = stage.scaleX() || 1;
   const tolWorld = SNAP_TOLERANCE_PX / sc;
 
   const xRefs = [rect.x, rect.x + rect.width / 2, rect.x + rect.width];
   const yRefs = [rect.y, rect.y + rect.height / 2, rect.y + rect.height];
 
-  const xCandidates = gatherCandidates('x', stage, doc, excludeLayerId, contentLayer);
-  const yCandidates = gatherCandidates('y', stage, doc, excludeLayerId, contentLayer);
+  const xCandidates = gatherCandidates('x', stage, doc, excludeLayerId, contentLayer, getSettingsFn);
+  const yCandidates = gatherCandidates('y', stage, doc, excludeLayerId, contentLayer, getSettingsFn);
 
   const xSnap = bestSnap(xRefs, xCandidates, tolWorld);
   const ySnap = bestSnap(yRefs, yCandidates, tolWorld);
@@ -161,7 +193,7 @@ export function snapGuidelinePos(axis, pos, doc, stage, contentLayer, ignoreId =
  *
  * The fixed (non-dragged) edge stays put — only the dragged edge snaps.
  */
-export function computeBoxScaleSnap(anchor, oldBox, newBox, doc, stage, contentLayer, excludeLayerId = null) {
+export function computeBoxScaleSnap(anchor, oldBox, newBox, doc, stage, contentLayer, excludeLayerId = null, getSettingsFn = null) {
   if (!anchor || anchor === 'rotater') return newBox;
   const out = { ...newBox };
   const sc = stage.scaleX() || 1;
@@ -179,7 +211,7 @@ export function computeBoxScaleSnap(anchor, oldBox, newBox, doc, stage, contentL
   }
 
   if (movingX) {
-    const xCands = gatherCandidates('x', stage, doc, excludeLayerId, contentLayer);
+    const xCands = gatherCandidates('x', stage, doc, excludeLayerId, contentLayer, getSettingsFn);
     if (movingX === 'left') {
       const fixedRight = out.x + out.width;
       const snap = pickClosest(xCands, out.x);
@@ -197,7 +229,7 @@ export function computeBoxScaleSnap(anchor, oldBox, newBox, doc, stage, contentL
   }
 
   if (movingY) {
-    const yCands = gatherCandidates('y', stage, doc, excludeLayerId, contentLayer);
+    const yCands = gatherCandidates('y', stage, doc, excludeLayerId, contentLayer, getSettingsFn);
     if (movingY === 'top') {
       const fixedBottom = out.y + out.height;
       const snap = pickClosest(yCands, out.y);
@@ -651,7 +683,7 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
     },
 
     computeSnapForRect(rect, excludeLayerId) {
-      return computeSnapForRect(rect, excludeLayerId, stage, doc, _cl);
+      return computeSnapForRect(rect, excludeLayerId, stage, doc, _cl, getSettings);
     },
 
     showIndicators,

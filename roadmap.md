@@ -294,7 +294,7 @@
 - [ ] **Transform inspector** in footer: X% / Y% scale numerics, lock-aspect button (inverts Shift+drag = no-constrain), reset button; same for rotation
 - [ ] **Quick adjustments bar** below selected image: every effect/typo knob currently on the layer in one bar. Settings toggle.
 - [ ] **Ctrl+Space** opens center-screen radial effect picker
-- [ ] **Canvas Grid** — subtle 10 px / 100 px grid rendered below all layers. Moves with the canvas (not fixed like the transparency checkerboard). Settings popup controls: on/off toggle, opacity, colour, snap-to-grid. Grid snapping integrates with the Snap toggle above.
+- [x] **Canvas Grid** — subtle two-tier grid (default 10 px minor / 100 px major) rendered between bgLayer and contentLayer, moves with the canvas via stage transform. Footer button (right footer next to Snap + Ruler, keyboard `Ctrl+;`) toggles visibility. Settings → Workflow → Canvas Grid: Show grid + Snap to grid toggles, Minor pitch slider (5..100), Major pitch slider (50..500, auto-clamped to multiple of minor), Opacity (0..100), Colour. Grid lines drawn via single `Konva.Shape` `sceneFunc` (raw canvas) with integer-pixel snap for crispness; major lines render at 2× alpha + 1.5 px. `snap-rulers.gatherCandidates` extends with grid-line candidates when `snapEnabled && canvasGridShow && canvasGridSnap` — capped at 200 per axis across the visible viewport. New `src/ui/canvas-grid.js` module.
 
 ## PHASE 22 — Selection Tools 🆕
 

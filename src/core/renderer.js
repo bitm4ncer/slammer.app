@@ -158,7 +158,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
             };
             const snappedWorld = computeBoxScaleSnap(
               activeAnchor, worldOld, worldNew,
-              document, stage, contentLayer, excludeId,
+              document, stage, contentLayer, excludeId, getSettings,
             );
             // Map back to absolute coords for Konva.
             newBox = {

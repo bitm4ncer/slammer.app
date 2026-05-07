@@ -474,6 +474,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
     if (!dragInProgress) syncExportFrame();
     else repositionInfo();
     window.__slammer?.snapRulers?.onStageTransform?.();
+    window.__slammer?.canvasGrid?.onTransform?.();
   });
 
   // ---------- Spacebar + drag pan ----------
@@ -873,6 +874,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
     stage.batchDraw();
     repositionInfo();
     window.__slammer?.snapRulers?.onStageTransform?.();
+    window.__slammer?.canvasGrid?.onTransform?.();
   });
   window.addEventListener('mouseup', () => {
     panning = false;

@@ -27,6 +27,13 @@ const DEFAULTS = {
   // Phase 21 — alignment aids.
   snapEnabled: true,
   rulersEnabled: false,
+  // Phase 21 — Canvas Grid.
+  canvasGridShow: false,
+  canvasGridSnap: false,
+  canvasGridMinor: 10,
+  canvasGridMajor: 100,
+  canvasGridOpacity: 25,
+  canvasGridColor: '#ffffff',
 };
 
 // Curated accent palette — clicking a swatch sets accent without opening the
@@ -300,6 +307,54 @@ function renderWorkflow() {
         ${toggleRowHTML('setLiveFontPreview', 'Live font preview', s.liveFontPreview,
           'When ON, hovering a font card in the picker temporarily previews it on the active text layer. Click commits permanently.')}
       </div>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Canvas Grid</div>
+        ${toggleRowHTML('setCanvasGridShow', 'Show grid', s.canvasGridShow,
+          'Draws a subtle two-tier grid below all layers. Moves with the canvas when you pan or zoom.')}
+        ${toggleRowHTML('setCanvasGridSnap', 'Snap to grid', s.canvasGridSnap,
+          'When Snap is also ON, dragged layers align to the minor grid pitch.')}
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setCanvasGridMinor">Minor pitch</label>
+            <span class="settings-rowhint">Spacing between minor (thin) grid lines in world pixels.</span>
+          </div>
+          <div class="settings-control settings-control--full">
+            <input type="range" id="setCanvasGridMinor" min="5" max="100" step="1" value="${s.canvasGridMinor}" />
+            <code class="settings-readout settings-readout--inline" id="setCanvasGridMinorReadout">${s.canvasGridMinor}px</code>
+          </div>
+        </div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setCanvasGridMajor">Major pitch</label>
+            <span class="settings-rowhint">Spacing between major (thicker) grid lines. Clamped to a multiple of minor pitch.</span>
+          </div>
+          <div class="settings-control settings-control--full">
+            <input type="range" id="setCanvasGridMajor" min="50" max="500" step="1" value="${s.canvasGridMajor}" />
+            <code class="settings-readout settings-readout--inline" id="setCanvasGridMajorReadout">${s.canvasGridMajor}px</code>
+          </div>
+        </div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setCanvasGridOpacity">Opacity</label>
+            <span class="settings-rowhint">Brightness of the grid lines (0 = invisible, 100 = fully opaque).</span>
+          </div>
+          <div class="settings-control settings-control--full">
+            <input type="range" id="setCanvasGridOpacity" min="0" max="100" step="1" value="${s.canvasGridOpacity}" />
+            <code class="settings-readout settings-readout--inline" id="setCanvasGridOpacityReadout">${s.canvasGridOpacity}%</code>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setCanvasGridColor">Colour</label>
+            <span class="settings-rowhint">Line colour. White works well on dark canvases; swap to a dark tone for light backgrounds.</span>
+          </div>
+          <div class="settings-control settings-control--accent">
+            <input type="color" id="setCanvasGridColor" value="${s.canvasGridColor}" />
+            <code class="settings-readout" id="setCanvasGridColorReadout">${s.canvasGridColor.toUpperCase()}</code>
+          </div>
+        </div>
+      </div>
     </section>
   `;
 }
@@ -320,6 +375,53 @@ function wireWorkflow(root) {
       });
     });
   }
+  // Canvas Grid controls
+  bindToggle(root, 'setCanvasGridShow', 'canvasGridShow');
+  bindToggle(root, 'setCanvasGridSnap', 'canvasGridSnap');
+
+  const minorInput    = root.querySelector('#setCanvasGridMinor');
+  const minorReadout  = root.querySelector('#setCanvasGridMinorReadout');
+  const majorInput    = root.querySelector('#setCanvasGridMajor');
+  const majorReadout  = root.querySelector('#setCanvasGridMajorReadout');
+  const opacityInput  = root.querySelector('#setCanvasGridOpacity');
+  const opacityReadout = root.querySelector('#setCanvasGridOpacityReadout');
+  const colorInput    = root.querySelector('#setCanvasGridColor');
+  const colorReadout  = root.querySelector('#setCanvasGridColorReadout');
+
+  function clampMajorToMultiple(minor, major) {
+    if (minor <= 0) return major;
+    return Math.max(minor, Math.round(major / minor) * minor);
+  }
+
+  minorInput?.addEventListener('input', (e) => {
+    const minor = parseInt(e.target.value, 10);
+    minorReadout.textContent = `${minor}px`;
+    // Clamp major to a multiple of the new minor
+    const major = clampMajorToMultiple(minor, parseInt(majorInput.value, 10));
+    majorInput.value = major;
+    majorReadout.textContent = `${major}px`;
+    setSettings({ canvasGridMinor: minor, canvasGridMajor: major });
+  });
+
+  majorInput?.addEventListener('input', (e) => {
+    const minor = parseInt(minorInput.value, 10);
+    const rawMajor = parseInt(e.target.value, 10);
+    const major = clampMajorToMultiple(minor, rawMajor);
+    majorReadout.textContent = `${major}px`;
+    setSettings({ canvasGridMajor: major });
+  });
+
+  opacityInput?.addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10);
+    opacityReadout.textContent = `${v}%`;
+    setSettings({ canvasGridOpacity: v });
+  });
+
+  colorInput?.addEventListener('input', (e) => {
+    const hex = e.target.value;
+    colorReadout.textContent = hex.toUpperCase();
+    setSettings({ canvasGridColor: hex });
+  });
 }
 
 function renderCanvas() {

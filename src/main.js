@@ -89,6 +89,7 @@ import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
 import { openShop } from './ui/shop-popup.js';
 import { initSnapRulers } from './ui/snap-rulers.js';
+import { initCanvasGrid } from './ui/canvas-grid.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -127,6 +128,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document: doc,
     onImageDropped: (file) => addImageFile(file, doc),
   });
+
+  // Phase 21 — Canvas Grid (mounts its Konva.Layer between bgLayer and contentLayer).
+  const canvasGrid = initCanvasGrid({
+    stage: view.stage,
+    getSettings,
+    onSettingsChange,
+  });
+
   const renderer = createRenderer({
     stage: view.stage,
     contentLayer: view.contentLayer,
@@ -189,6 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     getSettings,
     setSettings,
     onSettingsChange,
+    canvasGrid,
     notify: (msg, _kind = 'info') => showNotification(msg),
     importImage: async (sourceOrUrl, name = 'Imported image') => {
       try {
@@ -239,6 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Footer toggle buttons.
   const btnSnap = document.getElementById('btnSnap');
   const btnRulers = document.getElementById('btnRulers');
+  const btnGrid = document.getElementById('btnGrid');
 
   function syncSnapBtn() {
     const on = getSettings().snapEnabled !== false;
@@ -249,6 +260,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnRulers?.classList.toggle('btn-rulers--active', on);
     snapRulers.updateRulers();
   }
+  function syncGridBtn() {
+    const on = !!getSettings().canvasGridShow;
+    btnGrid?.classList.toggle('btn-grid--active', on);
+  }
 
   btnSnap?.addEventListener('click', () => {
     const cur = getSettings().snapEnabled !== false;
@@ -258,10 +273,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cur = !!getSettings().rulersEnabled;
     setSettings({ rulersEnabled: !cur });
   });
+  btnGrid?.addEventListener('click', () => {
+    const cur = !!getSettings().canvasGridShow;
+    setSettings({ canvasGridShow: !cur });
+  });
 
   // Keyboard shortcuts:
-  //   S       → toggle snap (no modifier — bare S in a non-input context)
-  //   Ctrl+R  → toggle rulers (preventDefault stops the browser-reload default)
+  //   S        → toggle snap (no modifier — bare S in a non-input context)
+  //   Ctrl+R   → toggle rulers (preventDefault stops the browser-reload default)
+  //   Ctrl+;   → toggle canvas grid (matches Photoshop)
   window.addEventListener('keydown', (e) => {
     const ae = document.activeElement;
     const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
@@ -276,11 +296,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const cur = !!getSettings().rulersEnabled;
       setSettings({ rulersEnabled: !cur });
     }
+    if (isMod && !e.shiftKey && !e.altKey && e.key === ';') {
+      e.preventDefault();
+      const cur = !!getSettings().canvasGridShow;
+      setSettings({ canvasGridShow: !cur });
+    }
   });
 
-  onSettingsChange(() => { syncSnapBtn(); syncRulersBtn(); });
+  onSettingsChange(() => { syncSnapBtn(); syncRulersBtn(); syncGridBtn(); });
   syncSnapBtn();
   syncRulersBtn();
+  syncGridBtn();
 
   // Ruler repaint on pan/zoom is handled via window.__slammer.snapRulers.onStageTransform()
   // called from within canvas-view's wheel and mousemove handlers.
