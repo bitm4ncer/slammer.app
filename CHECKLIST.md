@@ -342,6 +342,17 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 29. Whole-stage redraw on container resize
+
+**Commit:** `44da7b0`
+**File:** `src/ui/canvas-view.js`
+**Why:** The resize handler only called `contentLayer.batchDraw()`. Konva auto-resizes each layer's canvas but does NOT auto-redraw it. So a side-panel resize or fullscreen toggle left stale pixels in the bg fill, overlay (dim + frame stroke), and frame-UI layers until the next interaction. Now uses `stage.batchDraw()` which handles all children.
+
+- [ ] Set an export frame (any size). Drag the side-panel handle to resize the canvas area. The frame stroke + dim overlay redraw cleanly with no leftover ghost lines.
+- [ ] Toggle F11 fullscreen — same: no stale pixels in the corners that just expanded.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -362,6 +373,7 @@ The remaining ones still need dedicated runs, not autonomous polish.
 ## Commit graph for this session
 
 ```
+44da7b0 fix(canvas-view): redraw the whole stage on container resize
 4abaa6f feat(zoom): footer zoom-level readout with click-to-100% / dblclick-to-fit
 9abb10c feat(phase21): footer transform inspector — read-only X / Y / W / H / rotation
 620d528 chore(a11y): aria-modal="true" on every modal dialog
