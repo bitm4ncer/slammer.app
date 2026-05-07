@@ -370,38 +370,66 @@ function shiftAlpha(src, W, H, dx, dy) {
 
 /**
  * Separable max-filter dilation (approximates morphological dilation).
- * Two passes: horizontal then vertical, each using a sliding window of size r.
+ * Two passes: horizontal then vertical, each using a sliding-max over a
+ * (2r+1)-wide window via a monotonic deque (van Herk-Gil-Werman style).
+ *
+ * Complexity: O(W·H) total — independent of r. The previous implementation
+ * was O(W·H·r) and at r=100 spent most of the drop-shadow paint inside a
+ * 100-element inner scan per pixel.
  */
 function dilateAlpha(src, W, H, r) {
+  if (r <= 0) { const o = new Float32Array(W * H); o.set(src); return o; }
   const tmp = new Float32Array(W * H);
-  // Horizontal pass
+  // Reusable deque buffer (Int32Array indices, ring not needed — we never
+  // overflow because we always pop expired entries first).
+  const deqMax = Math.max(W, H);
+  const deq = new Int32Array(deqMax);
+
+  // Horizontal pass — for each row, sliding max over [x-r, x+r] clamped.
   for (let y = 0; y < H; y++) {
-    let windowMax = 0;
-    // Prime a deque-less sliding max with a simple O(W*r) approach for small r.
-    // For r up to 100 and typical image sizes this is acceptable.
+    const rowOff = y * W;
+    let head = 0, tail = 0;
+    // Pre-fill with indices [0, min(W, r)-1] — those fall into the window
+    // when x = 0 (right side of the centred window).
+    const preLimit = r < W ? r : W;
+    for (let i = 0; i < preLimit; i++) {
+      const v = src[rowOff + i];
+      while (head < tail && src[rowOff + deq[tail - 1]] <= v) tail--;
+      deq[tail++] = i;
+    }
     for (let x = 0; x < W; x++) {
-      let m = 0;
-      const x0 = Math.max(0, x - r);
-      const x1 = Math.min(W - 1, x + r);
-      for (let xx = x0; xx <= x1; xx++) {
-        const v = src[y * W + xx];
-        if (v > m) m = v;
+      const xr = x + r;
+      if (xr < W) {
+        const v = src[rowOff + xr];
+        while (head < tail && src[rowOff + deq[tail - 1]] <= v) tail--;
+        deq[tail++] = xr;
       }
-      tmp[y * W + x] = m;
+      const xl = x - r;
+      while (head < tail && deq[head] < xl) head++;
+      tmp[rowOff + x] = src[rowOff + deq[head]];
     }
   }
-  // Vertical pass
+
+  // Vertical pass — same structure but striding by W.
   const out = new Float32Array(W * H);
   for (let x = 0; x < W; x++) {
+    let head = 0, tail = 0;
+    const preLimit = r < H ? r : H;
+    for (let i = 0; i < preLimit; i++) {
+      const v = tmp[i * W + x];
+      while (head < tail && tmp[deq[tail - 1] * W + x] <= v) tail--;
+      deq[tail++] = i;
+    }
     for (let y = 0; y < H; y++) {
-      let m = 0;
-      const y0 = Math.max(0, y - r);
-      const y1 = Math.min(H - 1, y + r);
-      for (let yy = y0; yy <= y1; yy++) {
-        const v = tmp[yy * W + x];
-        if (v > m) m = v;
+      const yr = y + r;
+      if (yr < H) {
+        const v = tmp[yr * W + x];
+        while (head < tail && tmp[deq[tail - 1] * W + x] <= v) tail--;
+        deq[tail++] = yr;
       }
-      out[y * W + x] = m;
+      const yl = y - r;
+      while (head < tail && deq[head] < yl) head++;
+      out[y * W + x] = tmp[deq[head] * W + x];
     }
   }
   return out;
