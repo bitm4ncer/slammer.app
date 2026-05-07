@@ -777,6 +777,47 @@
   height: 100%;
 }
 .alignment-strip[hidden] { display: none; }
+
+/* ---------- Footer transform inspector (Phase 21 first cut) ---------- */
+.transform-inspector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  user-select: none;
+  padding: 0 4px;
+}
+.transform-inspector[hidden] { display: none; }
+.transform-inspector .ti-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  cursor: default;
+}
+.transform-inspector .ti-key {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ctx-accent) 70%, var(--text-secondary));
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.transform-inspector .ti-val {
+  color: var(--text-primary);
+  min-width: 22px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.transform-inspector .ti-cell--rot .ti-val { min-width: 38px; }
+.transform-inspector .ti-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--vhs-shadow);
+  display: inline-block;
+}
 .align-btn {
   min-width: 30px;
   height: 22px;

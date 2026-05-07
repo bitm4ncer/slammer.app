@@ -90,6 +90,7 @@ import { initSidebarPlugins } from './ui/sidebar-plugins.js';
 import { openShop } from './ui/shop-popup.js';
 import { initSnapRulers } from './ui/snap-rulers.js';
 import { initCanvasGrid } from './ui/canvas-grid.js';
+import { initTransformInspector } from './ui/transform-inspector.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -229,6 +230,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAlignmentControls({
     document: doc,
     container: document.getElementById('alignmentStrip'),
+  });
+  initTransformInspector({
+    document: doc,
+    container: document.querySelector('.footer-center'),
   });
 
   initAffinityBridge({ document: doc, renderer });
