@@ -444,12 +444,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   let autosaveMs = getSettings().autosaveMs;
   onSettingsChange((s) => { autosaveMs = s.autosaveMs; });
 
+  // Map autosave dot state → human-readable tooltip. Hovering the dot now
+  // tells the user exactly what's happening rather than just saying
+  // "Autosave" forever.
+  const DOT_TITLES = {
+    dirty:  'Unsaved changes — autosave pending',
+    saving: 'Autosaving…',
+    saved:  'All changes saved',
+  };
   function setDotState(state) {
     dot.classList.remove('dirty', 'saving', 'saved');
     if (state) dot.classList.add(state);
+    dot.title = DOT_TITLES[state] || 'Autosave';
     if (dotResetTimer) clearTimeout(dotResetTimer);
     if (state === 'saved') {
-      dotResetTimer = setTimeout(() => dot.classList.remove('saved'), 1400);
+      dotResetTimer = setTimeout(() => {
+        dot.classList.remove('saved');
+        dot.title = 'Autosave';
+      }, 1400);
     }
   }
   doc.subscribe((e) => {

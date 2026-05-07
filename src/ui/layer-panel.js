@@ -123,15 +123,15 @@ export function initLayerPanel({ container, document, renderer }) {
       </label>` : '';
 
     const lockBtn = `
-      <button class="layer-icon-btn act-lock" title="${layer.locked ? 'Unlock layer' : 'Lock layer'}">
+      <button class="layer-icon-btn act-lock" title="${layer.locked ? 'Unlock layer (Ctrl+L)' : 'Lock layer (Ctrl+L)'}" aria-label="${layer.locked ? 'Unlock layer' : 'Lock layer'}">
         <i class="fas fa-${layer.locked ? 'lock' : 'lock-open'}"></i>
       </button>`;
     const visBtn = `
-      <button class="layer-icon-btn act-vis" title="Toggle visibility">
+      <button class="layer-icon-btn act-vis" title="${layer.visible ? 'Hide layer' : 'Show layer'}" aria-label="${layer.visible ? 'Hide layer' : 'Show layer'}">
         <i class="fas fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
       </button>`;
-    const dupBtn = `<button class="layer-icon-btn act-dup" title="Duplicate layer (Ctrl+D)"><i class="fas fa-clone"></i></button>`;
-    const delBtn = `<button class="layer-icon-btn act-del" title="Delete layer"><i class="fas fa-trash"></i></button>`;
+    const dupBtn = `<button class="layer-icon-btn act-dup" title="Duplicate layer (Ctrl+D)" aria-label="Duplicate layer"><i class="fas fa-clone"></i></button>`;
+    const delBtn = `<button class="layer-icon-btn act-del" title="Delete layer (Del)" aria-label="Delete layer"><i class="fas fa-trash"></i></button>`;
 
     if (layer.type === 'group') {
       const chev = layer.expanded === false ? 'right' : 'down';
