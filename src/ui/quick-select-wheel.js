@@ -61,10 +61,11 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   wheel.className = 'quick-wheel';
   wheel.innerHTML = `
     <svg class="quick-wheel-bg" viewBox="-130 -130 260 260" aria-hidden="true">
-      <!-- Static translucent half-disc background fills the visible
-           hemisphere so the wheel reads as a discrete surface. The
-           diameter line at y=0 acts as the closing edge. -->
-      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="rgba(0, 0, 0, 0.82)" />
+      <!-- Half-disc shape kept as a transparent hit target so the wheel
+           still receives pointer / wheel events anywhere inside its
+           outline. No fill — the host .quick-wheel's backdrop-filter
+           provides the visible frosted-glass surface. -->
+      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="transparent" pointer-events="all" />
       <!-- Rotating spoke rotor + concentric gear rings. The whole group
            rotates as a unit so the gear marks travel with the slots. -->
       <g class="quick-wheel-rotor">
