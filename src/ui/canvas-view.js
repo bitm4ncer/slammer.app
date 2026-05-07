@@ -14,6 +14,14 @@ import { translatePathD } from '../core/vector-renderer.js';
 // never accidentally drags overlay handles.
 Konva.dragButtons = [0];
 
+// Silence Konva's "stage has 6+ layers" performance warning. Our layer
+// count (bg / content / grid / overlay / frameUI / marquee / anchor) is
+// intentional and stable; consolidating into Groups would be a major
+// refactor that buys nothing measurable. The warning fired on every
+// layer add or zIndex shift, polluting the console with hundreds of
+// duplicates.
+try { Konva.showWarnings = false; } catch (_) { /* legacy build */ }
+
 export function initCanvasView({ container, document, onImageDropped }) {
   const stage = new Konva.Stage({
     container,

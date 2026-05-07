@@ -229,7 +229,7 @@
 - [x] **Grain**: Blend Modes — uses canonical `BLEND_MODES` + new `BLEND_LABELS` from `core/layer.js`; composite via OffscreenCanvas + `globalCompositeOperation`
 - [x] **Levels**: rebuilt as a single 3-handle slider (`tripleSlider` helper) — blacks / gamma / whites on one track; numeric LUT identical to old behaviour
 - [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
-- [ ] **Drop Shadow: angle control rework** — current Angle knob UX is unintuitive. Replace with a visual direction widget (small circular handle the user drags to set angle + distance in one gesture, like Figma/Affinity shadow controls). Keep Cartesian X/Y offset inputs as an alternative. Angle preview should update live on canvas during drag.
+- [x] **Drop Shadow: angle control rework** — `createAngleDistanceWidget` (`src/plugins/shared/angle-distance-widget.js`) draws a draggable handle on a circular puck so users set angle + distance in one gesture (Figma/Affinity-style). Live canvas preview while dragging. Cartesian XY mode kept as an alternative tab; the Phase 20 Drop Shadow ships with both. Disk size tuned 108 → 88 px in `653bdc9`.
 
 ### Cluster C — Footer & canvas chrome
 - [x] Frame button: accent-tinted highlight when frame active + inline `×` close affordance (clears `doc.exportFrame`)

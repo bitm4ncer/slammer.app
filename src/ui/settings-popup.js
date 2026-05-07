@@ -318,8 +318,9 @@ function renderWorkflow() {
       <div class="settings-group settings-group--placeholder">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
         <ul class="settings-roadmap-list">
-          <li><span class="settings-roadmap-key">Fit on Open</span><span class="settings-roadmap-desc">Auto-fit when opening someone else's project — Phase 19/C wiring in progress.</span></li>
           <li><span class="settings-roadmap-key">Versioning</span><span class="settings-roadmap-desc">Manual save-as-version + autosave version chain — Phase 24.</span></li>
+          <li><span class="settings-roadmap-key">Frame tool</span><span class="settings-roadmap-desc">Drag on canvas to create export frames — Phase 21.</span></li>
+          <li><span class="settings-roadmap-key">Crop tool</span><span class="settings-roadmap-desc">Non-destructive per-layer crop rect — Phase 21.</span></li>
         </ul>
       </div>
     </section>
