@@ -7,8 +7,21 @@
 // public (rate-limited to 20 req/hour per IP, ~5 req/min — fine for
 // casual browsing). If we ever need higher limits we can ship a
 // pre-verified key via env var.
+//
+// Re-enabled after the multi-proxy fallback chain (wsrv.nl + optional
+// Cloudflare Worker via Settings → Plugins → CORS proxy) landed. Two
+// blockers solved:
+//   1. Anonymous API 401 from non-localhost origins → fetchWithProxy
+//      walks through to a CORS-friendly proxy on failure.
+//   2. Wikimedia thumbnail rate-limiting (429 on non-standard widths)
+//      → mapResult now runs every Wikimedia URL through wikiThumb()
+//      so we always request the pre-cached 250px width.
+// Full-res imports go through the same proxy chain via browsable.js'
+// fetchImageBlob — Wikimedia + Flickr + Met etc. are all in the base
+// allowlist of the Worker.
 
 import { createBrowsable } from '../_shared/browsable.js';
+import { fetchWithProxy } from '../_shared/cors-proxy.js';
 import './openverse.css';
 
 const PLUGIN_ID = 'openverse';
@@ -57,29 +70,43 @@ export default {
       landingTags: ['vintage poster', 'scientific illustration', 'botanical drawing', 'propaganda art', 'woodcut print', 'map cartography', 'Art Deco', 'patent drawing', 'album cover', 'comic art', 'ceramic art', 'folk art'],
       landingQueries: ['vintage illustration', 'botanical art', 'art deco poster', 'scientific drawing', 'folk art pattern', 'retro advertisement'],
       searchFn: async (query, page = 1) => {
-        // Fetch extra to compensate for filtered-out wikimedia results.
-        const url = `${ENDPOINT}?q=${encodeURIComponent(query)}&page=${page}&page_size=50`;
-        const res = await fetch(url, { headers: { Accept: 'application/json' } });
-
+        const url = `${ENDPOINT}?q=${encodeURIComponent(query)}&page=${page}&page_size=40`;
+        // fetchWithProxy: direct first (works on localhost), falls
+        // through to wsrv.nl / corsproxy / allorigins / custom Worker
+        // when the anonymous-tier API blocks third-party origins (401).
+        let res;
+        try {
+          res = await fetchWithProxy(url, {
+            init: { headers: { Accept: 'application/json' } },
+            onProxyFallback: (proxy) => console.warn('[openverse] direct API fetch blocked, proxying via', proxy),
+          });
+        } catch (err) {
+          throw new Error(`Openverse search failed: ${err.message || err}`);
+        }
         if (res.status === 429) throw new Error('Openverse rate limit hit — try again in a minute (anonymous tier is ~20/hour).');
         if (!res.ok) throw new Error(`Openverse ${res.status}`);
         const data = await res.json();
-        // Exclude wikimedia — their thumbnail CDN aggressively rate-limits
-        // non-cached sizes, breaking image grids. TODO: re-enable once
-        // Openverse fixes their /thumb/ proxy (currently returns 424).
-        const results = (data.results || []).filter((r) => r.source !== 'wikimedia');
+        const results = data.results || [];
         const hasMore = page < (data.page_count || 1);
         return { results, hasMore };
       },
-      mapResult: (raw) => ({
-        id: `openverse:${raw.id}`,
-        thumbUrl: raw.thumbnail || raw.url,
-        fullUrl: raw.url,
-        attribution: raw.creator ? `by ${raw.creator}${raw.source ? ` · ${raw.source}` : ''}` : (raw.source || ''),
-        name: `Openverse · ${raw.title || raw.creator || raw.id}`,
-        width: raw.width,
-        height: raw.height,
-      }),
+      mapResult: (raw) => {
+        const isWiki = raw.source === 'wikimedia';
+        // Use Openverse's thumbnail when offered; else the source URL.
+        // For Wikimedia URLs, normalise to the 250 px pre-cached width
+        // so we don't trip the non-standard-width 429 wall.
+        const baseThumb = raw.thumbnail || raw.url;
+        const thumbUrl = isWiki ? wikiThumb(baseThumb, 250) : baseThumb;
+        return {
+          id: `openverse:${raw.id}`,
+          thumbUrl,
+          fullUrl: raw.url,
+          attribution: raw.creator ? `by ${raw.creator}${raw.source ? ` · ${raw.source}` : ''}` : (raw.source || ''),
+          name: `Openverse · ${raw.title || raw.creator || raw.id}`,
+          width: raw.width,
+          height: raw.height,
+        };
+      },
     });
   },
 };

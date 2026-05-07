@@ -68,11 +68,13 @@ import metaballVPlugin from './plugins/vector/metaball/index.js';
 // Phase 16 — panel plugins.
 import unsplashPlugin from './plugins/panels/unsplash/index.js';
 import pexelsPlugin from './plugins/panels/pexels/index.js';
-// Openverse anonymous tier returns 401 from third-party origins (works
-// from localhost, blocked from gh-pages). Their auth flow needs email
-// verification so we can't register-and-go from the browser. Plugin
-// kept on disk for future re-enable behind a proxy or pre-issued token.
-// import openversePlugin from './plugins/panels/openverse/index.js';
+// Openverse — re-enabled after the multi-proxy fallback chain landed.
+// Anonymous tier still rate-limits (~20 req/hour from origins blocked
+// from non-localhost), but fetchWithProxy now walks to a CORS-friendly
+// proxy when the direct API call 401's. Wikimedia results are no
+// longer filtered — the thumbnail-width normalisation in the plugin
+// handles the 429 wall on non-standard widths.
+import openversePlugin from './plugins/panels/openverse/index.js';
 import metPlugin from './plugins/panels/met/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
@@ -115,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     spirographVPlugin, scribbleVPlugin, metaballVPlugin,
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
-    falaiPlugin, unsplashPlugin, pexelsPlugin, metPlugin,
+    falaiPlugin, unsplashPlugin, pexelsPlugin, openversePlugin, metPlugin,
   ].forEach(registerPlugin);
 
   // Local-only: discover premium plugins under src/plugins/premium/ if
