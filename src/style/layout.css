@@ -269,85 +269,108 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   pointer-events: auto;
   transition: color 0.12s ease, background 0.12s ease, transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1.0);
 }
 .quick-wheel-slot:hover {
-  color: var(--text-primary);
+  color: #fff;
 }
 .quick-wheel-slot.is-empty {
-  opacity: 0.45;
+  opacity: 0.4;
+  font-size: 14px;
 }
 .quick-wheel-slot.is-empty:hover {
   opacity: 1;
 }
 .quick-wheel-slot.is-assigning {
-  /* Pulse a subtle accent border when in assign mode so the user knows
-   * which slots are valid drop targets. */
   outline: 1px dashed var(--ctx-accent);
   outline-offset: -3px;
 }
-
-/* ---------- Wheel controls (sci-fi keys) ---------- */
-.quick-wheel-nav {
+.quick-wheel-slot-label {
   position: absolute;
-  /* Stack against the LEFT edge of the wheel's bbox, vertically centred
-   * on the dial. */
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-transform: none;
+}
+.quick-wheel-slot:hover .quick-wheel-slot-label {
+  opacity: 1;
+}
+
+/* ---------- Wheel controls (sci-fi keys) — fixed-positioned siblings of
+ * the wheel so they live ABOVE the footer top edge and are never clipped
+ * by the half-disc clip-path. */
+.quick-wheel-controls {
+  position: fixed;
+  bottom: 40px; /* footer is 36 px tall — clears it with 4 px breathing room */
+  left: 38.2vw;
+  z-index: 51;
+  width: 0;     /* zero-size anchor; children offset themselves */
+  height: 0;
+  pointer-events: none;
+}
+.quick-wheel-nav-stack {
+  position: absolute;
+  bottom: 0;
+  right: 100px;     /* sit just inside the wheel's left arc */
   display: flex;
   flex-direction: column;
   gap: 4px;
   pointer-events: auto;
 }
-.quick-wheel-nav-btn,
-.quick-wheel-config {
-  width: 32px;
-  height: 22px;
+.quick-wheel-key {
+  width: 36px;
+  height: 26px;
   background: #0a0a0a;
-  color: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 3px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 13px;
   padding: 0;
   pointer-events: auto;
+  font-family: inherit;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
-.quick-wheel-nav-btn:hover,
-.quick-wheel-config:hover {
+.quick-wheel-key:hover {
   background: #181818;
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.4);
   color: #fff;
 }
-.quick-wheel-nav-btn:active,
-.quick-wheel-config:active {
+.quick-wheel-key:active {
   background: #050505;
 }
-
 .quick-wheel-config {
   position: absolute;
-  /* Symmetric to the nav stack on the RIGHT edge. */
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 0;
+  left: 100px;      /* mirror of the nav stack */
 }
 
 /* ---------- Assignment flyout ---------- */
@@ -395,7 +418,8 @@ html, body {
   border: 0;
   color: var(--text-secondary);
   cursor: pointer;
-  display: flex;
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
   align-items: center;
   gap: 8px;
   font-size: 11px;
@@ -405,10 +429,22 @@ html, body {
   font-family: inherit;
 }
 .quick-wheel-assign-item i {
-  width: 14px;
   text-align: center;
   font-size: 11px;
   color: var(--ctx-accent);
+}
+.quick-wheel-assign-name {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quick-wheel-assign-kind {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  flex-shrink: 0;
 }
 .quick-wheel-assign-item:hover {
   background: color-mix(in srgb, var(--ctx-accent) 14%, transparent);
