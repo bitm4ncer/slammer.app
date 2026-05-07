@@ -72,24 +72,49 @@ export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {
     if (pendingTimer) commit();
   }
 
+  // Recursive structural equality. Replaces JSON.stringify-then-compare for
+  // the per-layer fields below — string allocation was dominating commit
+  // wall-time on docs with many layers (commit fires every prop debounce).
+  function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+    if (Array.isArray(a)) {
+      if (!Array.isArray(b) || a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!deepEq(a[i], b[i])) return false;
+      return true;
+    }
+    if (Array.isArray(b)) return false;
+    const ka = Object.keys(a);
+    if (ka.length !== Object.keys(b).length) return false;
+    for (let i = 0; i < ka.length; i++) {
+      const k = ka[i];
+      if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
+      if (!deepEq(a[k], b[k])) return false;
+    }
+    return true;
+  }
+
   function statesLookEqual(a, b) {
     if (a.name !== b.name) return false;
-    if (JSON.stringify(a.exportFrame) !== JSON.stringify(b.exportFrame)) return false;
-    if (JSON.stringify(a.guidelines) !== JSON.stringify(b.guidelines)) return false;
+    if (a.activeLayerId !== b.activeLayerId) return false;
     if (a.layers.length !== b.layers.length) return false;
+    if (!deepEq(a.exportFrame, b.exportFrame)) return false;
+    if (!deepEq(a.guidelines, b.guidelines)) return false;
     for (let i = 0; i < a.layers.length; i++) {
       const la = a.layers[i], lb = b.layers[i];
+      // Cheap scalar checks first — bail before the deep comparisons.
       if (la.id !== lb.id) return false;
-      if (la.effects.length !== lb.effects.length) return false;
-      // Detailed param equality: stringify just the effects (small).
-      if (JSON.stringify(la.effects) !== JSON.stringify(lb.effects)) return false;
       if (la.opacity !== lb.opacity) return false;
       if (la.visible !== lb.visible) return false;
       if (la.blendMode !== lb.blendMode) return false;
-      if (JSON.stringify(la.transform) !== JSON.stringify(lb.transform)) return false;
-      if (la.type === 'text' && JSON.stringify(la.text) !== JSON.stringify(lb.text)) return false;
+      if (la.effects.length !== lb.effects.length) return false;
+      const t1 = la.transform, t2 = lb.transform;
+      if (t1.x !== t2.x || t1.y !== t2.y || t1.scaleX !== t2.scaleX
+          || t1.scaleY !== t2.scaleY || t1.rotation !== t2.rotation) return false;
+      if (!deepEq(la.effects, lb.effects)) return false;
+      if (la.type === 'text' && !deepEq(la.text, lb.text)) return false;
     }
-    return a.activeLayerId === b.activeLayerId;
+    return true;
   }
 
   doc.subscribe((e) => {
