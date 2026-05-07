@@ -1,22 +1,40 @@
 // Blur — separable box blur, 3 passes for a Gaussian-ish profile.
+//
+// Mode:
+//   'outer' — blur RGBA. Alpha bleeds outward into transparent regions,
+//             producing a soft glow / halo. Edge is soft.
+//   'inner' — blur RGB but restore the original alpha mask. Colour and
+//             tone soften inside the shape; the shape boundary stays
+//             crisp. Useful for surface-style blurs without losing the
+//             silhouette.
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'blur',
   name: 'Blur',
-  version: '1.0.0',
+  version: '1.1.0',
   type: 'filter',
   icon: 'droplet',
   category: 'image',
 
-  defaultParams() { return { radius: 4 }; },
+  defaultParams() { return { radius: 4, mode: 'outer' }; },
 
   process(imageData, params) {
     const r = Math.max(0, Math.min(100, Math.floor(params.radius ?? 0)));
     if (r <= 0) return imageData;
     const w = imageData.width;
     const h = imageData.height;
+    const mode = params.mode === 'inner' ? 'inner' : 'outer';
+
+    // Snapshot the original alpha for inner-mode restore.
+    let originalAlpha = null;
+    if (mode === 'inner') {
+      const px = w * h;
+      originalAlpha = new Uint8ClampedArray(px);
+      for (let i = 0; i < px; i++) originalAlpha[i] = imageData.data[i * 4 + 3];
+    }
+
     let a = new Uint8ClampedArray(imageData.data);
     let b = new Uint8ClampedArray(a.length);
     for (let pass = 0; pass < 3; pass++) {
@@ -24,15 +42,34 @@ export default {
       boxBlurV(b, a, w, h, r);
     }
     imageData.data.set(a);
+
+    if (mode === 'inner' && originalAlpha) {
+      const data = imageData.data;
+      const px = w * h;
+      for (let i = 0; i < px; i++) data[i * 4 + 3] = originalAlpha[i];
+    }
+
     return imageData;
   },
 
   renderUI(params, onChange) {
     const root = makeRoot();
+
+    root.appendChild(pillGroup({
+      label: 'Mode',
+      options: [
+        { value: 'outer', label: 'Outer' },
+        { value: 'inner', label: 'Inner' },
+      ],
+      value: params.mode === 'inner' ? 'inner' : 'outer',
+      onChange: (v) => onChange({ mode: v }),
+    }));
+
     root.appendChild(sliderRow({
       label: 'Radius', min: 0, max: 100, step: 1, value: params.radius ?? 4, defaultValue: 4,
       onChange: (v) => onChange({ radius: v }),
     }));
+
     return root;
   },
 };
