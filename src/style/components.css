@@ -789,24 +789,27 @@
 }
 .alignment-strip[hidden] { display: none; }
 
-/* ---------- Footer transform inspector (Phase 21 first cut) ---------- */
+/* ---------- Footer transform inspector (Phase 21) ---------- */
 .transform-inspector {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 100%;
   font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
   font-size: 10.5px;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
   user-select: none;
-  padding: 0 4px;
+  padding: 0 6px;
+  margin: 0 4px;
+  border-left: 1px solid var(--vhs-shadow);
+  border-right: 1px solid var(--vhs-shadow);
 }
 .transform-inspector[hidden] { display: none; }
 .transform-inspector .ti-cell {
   display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 3px;
   cursor: default;
 }
 .transform-inspector .ti-key {
@@ -818,16 +821,44 @@
 }
 .transform-inspector .ti-val {
   color: var(--text-primary);
-  min-width: 22px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  width: 38px;
+  height: 18px;
+  padding: 0 4px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  font-size: 10.5px;
+  outline: none;
+  -moz-appearance: textfield;
 }
-.transform-inspector .ti-cell--rot .ti-val { min-width: 38px; }
+.transform-inspector .ti-val::-webkit-outer-spin-button,
+.transform-inspector .ti-val::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.transform-inspector .ti-val:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ctx-accent) 25%, var(--vhs-shadow));
+}
+.transform-inspector .ti-val:focus {
+  border-color: var(--ctx-accent);
+  background: color-mix(in srgb, var(--surface) 85%, var(--ctx-accent) 5%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 18%, transparent);
+}
+.transform-inspector .ti-val:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+}
+.transform-inspector .ti-val--rot { width: 46px; }
 .transform-inspector .ti-sep {
   width: 1px;
   height: 12px;
   background: var(--vhs-shadow);
   display: inline-block;
+  margin: 0 2px;
 }
 .align-btn {
   min-width: 30px;

@@ -235,7 +235,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   initTransformInspector({
     document: doc,
-    container: document.querySelector('.footer-center'),
+    // Mount inside the footer-right cluster, just before the Rulers
+    // button — keeps the canvas-related controls (transform / rulers /
+    // grid / snap) visually grouped together.
+    container: (() => {
+      const right = document.querySelector('.footer-right');
+      const slot = document.createElement('div');
+      slot.id = 'transformInspectorSlot';
+      const beforeEl = document.getElementById('btnRulers');
+      if (right && beforeEl) right.insertBefore(slot, beforeEl);
+      else right?.prepend(slot);
+      return slot;
+    })(),
+    getStage: () => view.stage,
   });
 
   initAffinityBridge({ document: doc, renderer });
