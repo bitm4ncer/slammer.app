@@ -1650,6 +1650,10 @@
   background: #6cda8b;
   box-shadow: 0 0 6px rgba(108, 218, 139, 0.6);
 }
+.autosave-indicator.error {
+  background: #ff5b5b;
+  box-shadow: 0 0 6px rgba(255, 91, 91, 0.65);
+}
 @keyframes autosave-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.4; }

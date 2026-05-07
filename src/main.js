@@ -451,9 +451,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     dirty:  'Unsaved changes — autosave pending',
     saving: 'Autosaving…',
     saved:  'All changes saved',
+    error:  'Autosave failed — check console for details',
   };
   function setDotState(state) {
-    dot.classList.remove('dirty', 'saving', 'saved');
+    dot.classList.remove('dirty', 'saving', 'saved', 'error');
     if (state) dot.classList.add(state);
     dot.title = DOT_TITLES[state] || 'Autosave';
     if (dotResetTimer) clearTimeout(dotResetTimer);
@@ -476,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (err) {
         // No more silent failures — surface so we can debug.
         console.error('[slammer.app] autosave failed:', err);
-        setDotState(null);
+        setDotState('error');
       }
     }, autosaveMs);
   });
