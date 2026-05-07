@@ -170,6 +170,30 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 14. Project browser / floating window / plugin roadmap polish
+
+**Commit:** `c0f2fba`
+**Files:** `src/ui/project-menu.js`, `src/ui/floating-window.js`, `src/ui/settings-popup.js`
+**Why:** Audit pass for tooltips and stale roadmap copy.
+
+- [ ] Open the project browser. Hover Import / Save As / New Folder / Toggle View / Close — each tooltip is now a full sentence ("Import .slmr project file" etc.).
+- [ ] Click Toggle View — tooltip flips between "Switch to list view" and "Switch to grid view" depending on current mode (icon already flipped, now the tip matches).
+- [ ] Open any floating plugin window. Hover the close button — tip reads "Close (Esc)".
+- [ ] Open Settings → Plugins → Coming soon. The list reads Smithsonian / Rijksmuseum / V&A / Plugin sandbox. (Openverse + Plugin Manager were stale — both are already shipped and have been removed.)
+
+---
+
+## 15. Effect-card icon-button labels
+
+**Commit:** `563be91`
+**File:** `src/ui/effect-panel.js`
+**Why:** `act-toggle` and `act-del` previously read just "Disable" / "Enable" / "Remove" — ambiguous to a screen reader. Both buttons now say "… effect" + matching aria-label.
+
+- [ ] Hover an effect card's circle button — tip reads "Disable effect" or "Enable effect" depending on state.
+- [ ] Hover the × — tip reads "Remove effect".
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -190,6 +214,8 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+c0f2fba chore(ui): tooltip consistency in project browser, floating window, plugin roadmap
+563be91 chore(effects): tidy effect-card icon-button labels
 e9a9e31 chore(text-tool): drop dead font-loader re-exports
 586a062 chore(ui): tooltip / aria-label polish on toolbar + layer cards
 ba6964e chore(version): correct display string v1.02 → v1.0.2
