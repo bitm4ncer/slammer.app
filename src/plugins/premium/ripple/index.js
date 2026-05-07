@@ -95,81 +95,97 @@ export default {
     const sample     = params.sampling === 'nearest' ? sampleNearest : sampleBilinear;
 
     const maxDim = Math.max(W, H);
-    const out  = new ImageData(W, H);
-    const dst  = out.data;
+    const out = new ImageData(W, H);
+    const dst = out.data;
+    // Outside the content rect we copy source through, and we keep alpha
+    // unchanged inside; doing one set up front lets us drop the second
+    // full-frame alpha-restore pass entirely.
+    dst.set(src);
 
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const di = (y * W + x) * 4;
-
-        // 1. Distance used for wave phase (depends on polarisation)
-        let d;
-        const dx = x - cx;
-        const dy = y - cy;
-        if (polarisation === 'radial') {
-          d = Math.sqrt(dx * dx + dy * dy);
-        } else if (polarisation === 'horizontal') {
-          d = Math.abs(dx);
-        } else if (polarisation === 'vertical') {
-          d = Math.abs(dy);
-        } else { // diagonal
-          d = (dx + dy) / Math.SQRT2;
-        }
-
-        // 2. Wave value in [-1, +1]
-        const t = (d / wavelength + phase) * TWO_PI;
-        const waveValue = waveFn(t);
-
-        // 3. Decay factor
-        const decayFactor = Math.exp(-decay * d / maxDim);
-
-        // 4. Displacement
-        const disp = amplitude * waveValue * decayFactor;
-        let sdx = 0, sdy = 0;
-
-        if (polarisation === 'radial') {
-          if (d > 0.5) {
-            sdx = disp * dx / d;
-            sdy = disp * dy / d;
-          }
-          // else: pixel is at center — no displacement
-        } else if (polarisation === 'horizontal') {
-          sdx = disp;
-        } else if (polarisation === 'vertical') {
-          sdy = disp;
-        } else { // diagonal
-          sdx = disp;
-          sdy = disp;
-        }
-
-        // 5. Sample source at displaced coords
-        const [r, g, b, a] = sample(src, W, H, x + sdx, y + sdy);
-
-        dst[di]     = r;
-        dst[di + 1] = g;
-        dst[di + 2] = b;
-        dst[di + 3] = a;
-      }
-    }
-
-    // Restore original alpha inside content rect; copy source through outside.
+    // Bbox = canvas ∩ content rect (ripple has no radius — decay handles falloff).
     const xMin = Math.max(0, rect.x);
     const yMin = Math.max(0, rect.y);
     const xMax = Math.min(W, rect.x + rect.w);
     const yMax = Math.min(H, rect.y + rect.h);
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const di = (y * W + x) * 4;
-        if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
-          dst[di]     = src[di];
-          dst[di + 1] = src[di + 1];
-          dst[di + 2] = src[di + 2];
-          dst[di + 3] = src[di + 3];
-        } else {
-          dst[di + 3] = src[di + 3];
+    if (xMax <= xMin || yMax <= yMin) return out;
+
+    // === Wave + decay LUT ===
+    // disp(d) = amplitude * waveFn((d/wavelength + phase)*TWO_PI) * exp(-decay*d/maxDim)
+    // depends only on the (non-negative integer) distance bucket. For radial
+    // we also store disp/d so we don't divide per pixel. Diagonal has a
+    // signed d (can be negative), no clean LUT — slow path preserved below.
+    let lutDisp = null, lutRadialFactor = null;
+    if (polarisation !== 'diagonal') {
+      const lutSize = (maxDim | 0) + 2;
+      lutDisp = new Float32Array(lutSize);
+      if (polarisation === 'radial') lutRadialFactor = new Float32Array(lutSize);
+      const phaseT = phase * TWO_PI;
+      const invWl  = TWO_PI / wavelength;
+      const decayK = -decay / maxDim;
+      for (let d = 0; d < lutSize; d++) {
+        const disp = amplitude * waveFn(d * invWl + phaseT) * Math.exp(decayK * d);
+        lutDisp[d] = disp;
+        if (lutRadialFactor) lutRadialFactor[d] = d > 0 ? disp / d : 0;
+      }
+    }
+
+    if (polarisation === 'radial') {
+      for (let y = yMin; y < yMax; y++) {
+        for (let x = xMin; x < xMax; x++) {
+          const dx = x - cx;
+          const dy = y - cy;
+          const d = Math.sqrt(dx * dx + dy * dy) | 0;
+          const f = lutRadialFactor[d];
+          const [r, g, b] = sample(src, W, H, x + f * dx, y + f * dy);
+          const di = (y * W + x) * 4;
+          dst[di]     = r;
+          dst[di + 1] = g;
+          dst[di + 2] = b;
+        }
+      }
+    } else if (polarisation === 'horizontal') {
+      for (let y = yMin; y < yMax; y++) {
+        for (let x = xMin; x < xMax; x++) {
+          const dx = x - cx;
+          const d = (dx < 0 ? -dx : dx) | 0;
+          const [r, g, b] = sample(src, W, H, x + lutDisp[d], y);
+          const di = (y * W + x) * 4;
+          dst[di]     = r;
+          dst[di + 1] = g;
+          dst[di + 2] = b;
+        }
+      }
+    } else if (polarisation === 'vertical') {
+      for (let y = yMin; y < yMax; y++) {
+        for (let x = xMin; x < xMax; x++) {
+          const dy = y - cy;
+          const d = (dy < 0 ? -dy : dy) | 0;
+          const [r, g, b] = sample(src, W, H, x, y + lutDisp[d]);
+          const di = (y * W + x) * 4;
+          dst[di]     = r;
+          dst[di + 1] = g;
+          dst[di + 2] = b;
+        }
+      }
+    } else {
+      // diagonal — signed d, can't share the non-negative-indexed LUT.
+      const SQRT2 = Math.SQRT2;
+      for (let y = yMin; y < yMax; y++) {
+        for (let x = xMin; x < xMax; x++) {
+          const dx = x - cx;
+          const dy = y - cy;
+          const d = (dx + dy) / SQRT2;
+          const t = (d / wavelength + phase) * TWO_PI;
+          const disp = amplitude * waveFn(t) * Math.exp(-decay * d / maxDim);
+          const [r, g, b] = sample(src, W, H, x + disp, y + disp);
+          const di = (y * W + x) * 4;
+          dst[di]     = r;
+          dst[di + 1] = g;
+          dst[di + 2] = b;
         }
       }
     }
+    // dst[di + 3] stays = src[di + 3] for every pixel (set by dst.set above).
 
     return out;
   },
