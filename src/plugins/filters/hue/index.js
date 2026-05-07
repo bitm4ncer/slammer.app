@@ -18,13 +18,49 @@ export default {
     const litShift = (params.lightness ?? 0) / 100;
     if (!hueShift && !satShift && !litShift) return imageData;
     const d = imageData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const [h, s, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
-      const nh = (h + hueShift + 1) % 1;
-      const ns = clamp01(s + satShift);
-      const nl = clamp01(l + litShift);
-      const [r, g, b] = hslToRgb(nh, ns, nl);
-      d[i] = r; d[i + 1] = g; d[i + 2] = b;
+    const n = d.length;
+    // Inlined RGB↔HSL — was previously two function calls returning fresh
+    // arrays [h,s,l] and [r,g,b] per pixel. With 4M pixels at 2k that's
+    // 8M temporary arrays per frame. Now: local scalars all the way.
+    for (let i = 0; i < n; i += 4) {
+      const r0 = d[i] / 255;
+      const g0 = d[i + 1] / 255;
+      const b0 = d[i + 2] / 255;
+      const max = r0 > g0 ? (r0 > b0 ? r0 : b0) : (g0 > b0 ? g0 : b0);
+      const min = r0 < g0 ? (r0 < b0 ? r0 : b0) : (g0 < b0 ? g0 : b0);
+      const l = (max + min) * 0.5;
+      let h, s;
+      if (max === min) { h = 0; s = 0; }
+      else {
+        const dd = max - min;
+        s = l > 0.5 ? dd / (2 - max - min) : dd / (max + min);
+        if (max === r0)      h = ((g0 - b0) / dd + (g0 < b0 ? 6 : 0)) / 6;
+        else if (max === g0) h = ((b0 - r0) / dd + 2) / 6;
+        else                 h = ((r0 - g0) / dd + 4) / 6;
+      }
+      let nh = h + hueShift;
+      // Wrap into [0,1) without modulo (one branch in steady state).
+      if (nh < 0) nh += 1; else if (nh >= 1) nh -= 1;
+      let ns = s + satShift; ns = ns < 0 ? 0 : ns > 1 ? 1 : ns;
+      let nl = l + litShift; nl = nl < 0 ? 0 : nl > 1 ? 1 : nl;
+      // Inlined hslToRgb.
+      let R, G, B;
+      if (ns === 0) { const v = nl * 255 + 0.5 | 0; R = v; G = v; B = v; }
+      else {
+        const q = nl < 0.5 ? nl * (1 + ns) : nl + ns - nl * ns;
+        const p = 2 * nl - q;
+        // hue2rgb(p, q, t) inlined per channel.
+        let tr = nh + 1 / 3; if (tr < 0) tr += 1; else if (tr > 1) tr -= 1;
+        let tg = nh;
+        let tb = nh - 1 / 3; if (tb < 0) tb += 1; else if (tb > 1) tb -= 1;
+        const fr = tr < 1 / 6 ? p + (q - p) * 6 * tr : tr < 1 / 2 ? q : tr < 2 / 3 ? p + (q - p) * (2 / 3 - tr) * 6 : p;
+        const fg = tg < 1 / 6 ? p + (q - p) * 6 * tg : tg < 1 / 2 ? q : tg < 2 / 3 ? p + (q - p) * (2 / 3 - tg) * 6 : p;
+        const fb = tb < 1 / 6 ? p + (q - p) * 6 * tb : tb < 1 / 2 ? q : tb < 2 / 3 ? p + (q - p) * (2 / 3 - tb) * 6 : p;
+        R = fr * 255 + 0.5 | 0;
+        G = fg * 255 + 0.5 | 0;
+        B = fb * 255 + 0.5 | 0;
+      }
+      d[i] = R; d[i + 1] = G; d[i + 2] = B;
     }
     return imageData;
   },
