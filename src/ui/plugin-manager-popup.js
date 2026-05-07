@@ -19,7 +19,7 @@ export function openPluginManager() {
   backdrop = document.createElement('div');
   backdrop.className = 'settings-backdrop';
   backdrop.innerHTML = `
-    <div class="settings-modal plugin-manager-modal" role="dialog" aria-label="Plugin Manager">
+    <div class="settings-modal plugin-manager-modal" role="dialog" aria-label="Plugin Manager" aria-modal="true">
       <div class="settings-header">
         <span><i class="fas fa-puzzle-piece"></i> Plugins</span>
         <div class="plugin-manager-header-actions">

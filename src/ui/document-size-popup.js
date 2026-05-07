@@ -76,7 +76,7 @@ export function initDocumentSizePopup({ document: doc, view, button }) {
     backdrop = window.document.createElement('div');
     backdrop.className = 'settings-backdrop';
     backdrop.innerHTML = `
-      <div class="settings-modal docsize-modal" role="dialog" aria-label="Document size">
+      <div class="settings-modal docsize-modal" role="dialog" aria-label="Document size" aria-modal="true">
         <div class="settings-header">
           <span><i class="fas fa-vector-square"></i> Document Size</span>
           <button class="settings-close" data-act="close" aria-label="Close"><i class="fas fa-times"></i></button>

@@ -136,7 +136,7 @@ export function initSettingsPopup({ button, version }) {
     backdrop = document.createElement('div');
     backdrop.className = 'settings-backdrop';
     backdrop.innerHTML = `
-      <div class="settings-modal settings-modal--sidebar" role="dialog" aria-label="Settings">
+      <div class="settings-modal settings-modal--sidebar" role="dialog" aria-label="Settings" aria-modal="true">
         <div class="settings-header">
           <span class="settings-title"><i class="fas fa-gear"></i><span class="settings-title-text">Settings</span></span>
           <button class="settings-close" data-act="close" aria-label="Close"><i class="fas fa-times"></i></button>

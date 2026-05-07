@@ -135,7 +135,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
     backdrop = document.createElement('div');
     backdrop.className = 'project-browser-backdrop';
     backdrop.innerHTML = `
-      <div class="project-browser" role="dialog" aria-label="Project Browser">
+      <div class="project-browser" role="dialog" aria-label="Project Browser" aria-modal="true">
         <div class="project-browser-header">
           <div class="project-browser-header-left">
             <span class="project-browser-title">Projects</span>

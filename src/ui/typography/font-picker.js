@@ -59,7 +59,7 @@ export function openFontPicker({ current, onPick, anchor, doc, getSettings } = {
   const backdrop = document.createElement('div');
   backdrop.className = 'font-picker-backdrop';
   backdrop.innerHTML = `
-    <div class="font-picker" role="dialog" aria-label="Font picker">
+    <div class="font-picker" role="dialog" aria-label="Font picker" aria-modal="true">
       <div class="fp-search-row">
         <i class="fas fa-search fp-search-icon"></i>
         <input type="text" class="fp-search" placeholder="Search fonts…" autofocus />

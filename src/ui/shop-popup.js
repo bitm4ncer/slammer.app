@@ -370,7 +370,7 @@ function setView(mode, selectedId = null) {
    Render — root shell + branching by view mode
    ========================================================================= */
 function renderShell() {
-  return `<div class="shop-modal" role="dialog" aria-label="Bitmancer Shop">${renderInner()}</div>`;
+  return `<div class="shop-modal" role="dialog" aria-label="Bitmancer Shop" aria-modal="true">${renderInner()}</div>`;
 }
 function renderInner() {
   return viewState.mode === 'detail'
