@@ -327,6 +327,23 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 - [ ] Click empty canvas to deselect — HUD hides.
 - [ ] Multi-drag many layers — HUD only updates for the active layer (no thrash from sibling `layer:transform` events).
 
+---
+
+## 28. Zoom-level readout pill
+
+**Commit:** `4abaa6f`
+**Files:** `index.html`, `src/ui/toolbar.js`, `src/style/components.css`
+**Why:** Until now the only way to see the current zoom was by hovering the Fit button or by counting wheel ticks. New pill between zoom-in and zoom-out shows the live percentage. Click → reset to 100% around viewport centre. Double-click → fit-to-view.
+
+- [ ] Footer-right zoom-controls show a pill reading e.g. `100%`. Tabular numerics keep the width steady during continuous wheel-zoom.
+- [ ] Mouse-wheel over canvas → readout updates live.
+- [ ] Click the pill while zoomed in/out → snaps to 100% with the viewport centre fixed (doesn't jump to origin).
+- [ ] Double-click the pill → fits content to viewport (same as the Fit button).
+
+---
+
+## What remains in BUGS.md
+
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
 
 ## What remains in Phase 21
@@ -345,6 +362,7 @@ The remaining ones still need dedicated runs, not autonomous polish.
 ## Commit graph for this session
 
 ```
+4abaa6f feat(zoom): footer zoom-level readout with click-to-100% / dblclick-to-fit
 9abb10c feat(phase21): footer transform inspector — read-only X / Y / W / H / rotation
 620d528 chore(a11y): aria-modal="true" on every modal dialog
 19cd441 chore(toolbar): correct btnExport tooltip — formats + .slmr extension
