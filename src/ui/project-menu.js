@@ -680,9 +680,16 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
     el.focus();
     selectAll(el);
     const original = el.textContent;
+    // Track keydown handler so we can remove it on commit OR cancel —
+    // each rename gesture used to leak another listener on the element.
+    const onKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); el.blur(); }
+    };
     const finish = (commit) => {
       el.removeAttribute('contenteditable');
       el.classList.remove('renaming');
+      el.removeEventListener('keydown', onKey);
       const next = el.textContent.trim();
       if (commit && next && next !== original) {
         const p = projects.find((x) => x.id === id);
@@ -698,10 +705,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
       }
     };
     el.addEventListener('blur', () => finish(true), { once: true });
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-      else if (e.key === 'Escape') { e.preventDefault(); finish(false); el.blur(); }
-    });
+    el.addEventListener('keydown', onKey);
   }
 
   function beginFolderRename(el, folderId) {
@@ -711,9 +715,15 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
     el.focus();
     selectAll(el);
     const original = el.textContent;
+    // Same leak fix as beginProjectRename above.
+    const onKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); el.blur(); }
+    };
     const finish = (commit) => {
       el.removeAttribute('contenteditable');
       el.classList.remove('renaming');
+      el.removeEventListener('keydown', onKey);
       const next = el.textContent.trim();
       if (commit && next && next !== original) {
         const f = folders.find((x) => x.id === folderId);
@@ -728,10 +738,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
       }
     };
     el.addEventListener('blur', () => finish(true), { once: true });
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-      else if (e.key === 'Escape') { e.preventDefault(); finish(false); el.blur(); }
-    });
+    el.addEventListener('keydown', onKey);
   }
 
   return { open, close };
