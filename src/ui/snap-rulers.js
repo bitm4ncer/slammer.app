@@ -439,9 +439,13 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
 
   function syncGuidelineEls() {
     const guidelines = getGuidelines(doc);
-    // Remove stale.
-    for (const [id, { el }] of guidelineEls) {
+    // Remove stale — call the entry's cleanup before removing the DOM
+    // node, otherwise the window-level mousemove/mouseup listeners from
+    // createGuidelineEl stay attached forever (one set per guideline ever
+    // created, leaking memory + holding the dead element via closure).
+    for (const [id, { el, cleanup }] of guidelineEls) {
       if (!guidelines.find((g) => g._id === id)) {
+        cleanup?.();
         el.remove();
         guidelineEls.delete(id);
       }
@@ -449,8 +453,8 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
     // Add missing.
     for (const g of guidelines) {
       if (!guidelineEls.has(g._id)) {
-        const el = createGuidelineEl(g);
-        guidelineEls.set(g._id, { el, data: g });
+        const { el, cleanup } = createGuidelineEl(g);
+        guidelineEls.set(g._id, { el, cleanup, data: g });
       }
     }
     // Update positions.
@@ -483,15 +487,12 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
     container.appendChild(el);
     positionGuidelineEl(el, g);
 
-    // Drag to move or delete.
+    // Drag to move or delete. Track handlers so syncGuidelineEls can
+    // call cleanup() before removing the DOM node — otherwise these
+    // window-level listeners stay attached forever, one set per guideline
+    // ever created (memory leak + dead-element retention via closure).
     let dragStart = null;
-    el.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      dragStart = { x: e.clientX, y: e.clientY };
-      el.classList.add('guideline--dragging');
-    });
-    window.addEventListener('mousemove', (ev) => {
+    const onMouseMove = (ev) => {
       if (!dragStart) return;
       const containerRect = container.getBoundingClientRect();
       const relX = ev.clientX - containerRect.left;
@@ -505,8 +506,8 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       const snapOn = getSettings().snapEnabled !== false && !ev.altKey;
       g.pos = snapOn ? snapGuidelinePos(g.axis, raw, doc, stage, _cl, g._id) : raw;
       positionGuidelineEl(el, g);
-    });
-    window.addEventListener('mouseup', (ev) => {
+    };
+    const onMouseUp = (ev) => {
       if (!dragStart) return;
       el.classList.remove('guideline--dragging');
       dragStart = null;
@@ -527,9 +528,22 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
         // Commit the updated pos.
         doc.setGuidelines(current.map((gl) => gl._id === g._id ? { ...gl, pos: g.pos } : gl));
       }
+    };
+    el.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      dragStart = { x: e.clientX, y: e.clientY };
+      el.classList.add('guideline--dragging');
     });
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
 
-    return el;
+    const cleanup = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    return { el, cleanup };
   }
 
   // Drag from ruler to create a new guideline.
@@ -690,7 +704,10 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       topRulerCanvas.remove();
       leftRulerCanvas.remove();
       cornerDiv.remove();
-      for (const [, { el }] of guidelineEls) el.remove();
+      for (const [, { el, cleanup }] of guidelineEls) {
+        cleanup?.();
+        el.remove();
+      }
       guidelineEls.clear();
     },
 
