@@ -269,14 +269,8 @@ function renderWorkflow() {
       <header class="settings-panel-head">
         <span class="settings-panel-eyebrow">Workflow</span>
         <h2 class="settings-panel-title">How the editor responds</h2>
-        <p class="settings-panel-desc">Selection, expansion, and conversion behaviours that tune the editor to your workflow.</p>
+        <p class="settings-panel-desc">Selection, panel, tool, and persistence behaviours that tune the editor to your workflow.</p>
       </header>
-
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Effects panel</div>
-        ${toggleRowHTML('setKeepEffectsOpen', 'Keep all effects open', s.keepEffectsOpen,
-          'When ON, every filter card stays expanded so all sliders are visible at once.')}
-      </div>
 
       <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Selection</div>
@@ -297,15 +291,36 @@ function renderWorkflow() {
       </div>
 
       <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Vector tools</div>
-        ${toggleRowHTML('setTextToPathReplace', 'Convert to Path replaces text', s.textToPathReplace,
-          'When ON, Convert to Path removes the original text layer (Affinity-style). Shift-click the convert button to invert for one conversion.')}
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Panels</div>
+        ${toggleRowHTML('setKeepEffectsOpen', 'Keep all effects open', s.keepEffectsOpen,
+          'When ON, every filter card stays expanded so all sliders are visible at once.')}
       </div>
 
       <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Typography</div>
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Tools</div>
+        ${toggleRowHTML('setTextToPathReplace', 'Convert to Path replaces text', s.textToPathReplace,
+          'When ON, Convert to Path removes the original text layer (Affinity-style). Shift-click the convert button to invert for one conversion.')}
         ${toggleRowHTML('setLiveFontPreview', 'Live font preview', s.liveFontPreview,
           'When ON, hovering a font card in the picker temporarily previews it on the active text layer. Click commits permanently.')}
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Persistence</div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel">Autosave delay</label>
+            <span class="settings-rowhint">How long after your last edit the document is committed to local storage.</span>
+          </div>
+          <div class="settings-control settings-control--knob" id="setAutosaveControl"></div>
+        </div>
+      </div>
+
+      <div class="settings-group settings-group--placeholder">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
+        <ul class="settings-roadmap-list">
+          <li><span class="settings-roadmap-key">Fit on Open</span><span class="settings-roadmap-desc">Auto-fit when opening someone else's project — Phase 19/C wiring in progress.</span></li>
+          <li><span class="settings-roadmap-key">Versioning</span><span class="settings-roadmap-desc">Manual save-as-version + autosave version chain — Phase 24.</span></li>
+        </ul>
       </div>
     </section>
   `;
@@ -327,6 +342,32 @@ function wireWorkflow(root) {
       });
     });
   }
+  // Autosave knob + numeric — persistence is a workflow concern, not on-canvas chrome.
+  const s = getSettings();
+  const autosaveControl = root.querySelector('#setAutosaveControl');
+  if (autosaveControl) {
+    const autosaveKnob = createKnob({
+      size: 32,
+      min: 200, max: 3000, step: 100,
+      value: s.autosaveMs,
+      defaultValue: 800,
+      onChange: (v) => {
+        autosaveNum.setValue(v);
+        setSettings({ autosaveMs: v });
+      },
+    });
+    const autosaveNum = createNumericInput({
+      min: 200, max: 3000, step: 100,
+      value: s.autosaveMs,
+      suffix: 'ms',
+      onChange: (v) => {
+        autosaveKnob.setValue(v);
+        setSettings({ autosaveMs: v });
+      },
+    });
+    autosaveControl.appendChild(autosaveKnob);
+    autosaveControl.appendChild(autosaveNum);
+  }
 }
 
 function renderCanvas() {
@@ -336,8 +377,8 @@ function renderCanvas() {
     <section class="settings-tab-panel" data-tab="canvas" hidden>
       <header class="settings-panel-head">
         <span class="settings-panel-eyebrow">Canvas</span>
-        <h2 class="settings-panel-title">Stage, grid &amp; persistence</h2>
-        <p class="settings-panel-desc">Visual chrome around the canvas, the snap-to-grid overlay, and how often the document autosaves.</p>
+        <h2 class="settings-panel-title">Stage &amp; grid</h2>
+        <p class="settings-panel-desc">Visual chrome on the canvas — the export-frame dim and the snap-to-grid overlay.</p>
       </header>
 
       <div class="settings-group">
@@ -402,30 +443,11 @@ function renderCanvas() {
         </div>
       </div>
 
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Persistence</div>
-        <div class="settings-row settings-row--stack">
-          <div class="settings-rowlabelblock">
-            <label class="settings-rowlabel">Autosave delay</label>
-            <span class="settings-rowhint">How long after your last edit the document is committed to local storage.</span>
-          </div>
-          <div class="settings-control settings-control--knob" id="setAutosaveControl"></div>
-        </div>
-      </div>
-
-      <div class="settings-group settings-group--placeholder">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
-        <ul class="settings-roadmap-list">
-          <li><span class="settings-roadmap-key">Fit on Open</span><span class="settings-roadmap-desc">Auto-fit when opening someone else's project — Phase 19/C wiring in progress.</span></li>
-          <li><span class="settings-roadmap-key">Versioning</span><span class="settings-roadmap-desc">Manual save-as-version + autosave version chain — Phase 24.</span></li>
-        </ul>
-      </div>
     </section>
   `;
 }
 
 function wireCanvas(root) {
-  const s = getSettings();
   // Frame dim slider
   const frameDimInput = root.querySelector('#setFrameDim');
   const frameDimReadout = root.querySelector('#setFrameDimReadout');
@@ -482,31 +504,6 @@ function wireCanvas(root) {
     colorReadout.textContent = hex.toUpperCase();
     setSettings({ canvasGridColor: hex });
   });
-  // Autosave knob + numeric (reused from prior layout)
-  const autosaveControl = root.querySelector('#setAutosaveControl');
-  if (autosaveControl) {
-    const autosaveKnob = createKnob({
-      size: 32,
-      min: 200, max: 3000, step: 100,
-      value: s.autosaveMs,
-      defaultValue: 800,
-      onChange: (v) => {
-        autosaveNum.setValue(v);
-        setSettings({ autosaveMs: v });
-      },
-    });
-    const autosaveNum = createNumericInput({
-      min: 200, max: 3000, step: 100,
-      value: s.autosaveMs,
-      suffix: 'ms',
-      onChange: (v) => {
-        autosaveKnob.setValue(v);
-        setSettings({ autosaveMs: v });
-      },
-    });
-    autosaveControl.appendChild(autosaveKnob);
-    autosaveControl.appendChild(autosaveNum);
-  }
 }
 
 function renderPlugins() {
