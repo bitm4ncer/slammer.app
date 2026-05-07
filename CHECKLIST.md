@@ -239,6 +239,27 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 20. Rename keydown handler leak (layer + project + folder)
+
+**Commits:** `43acc59`, `3e7f6dd`
+**Files:** `src/ui/layer-panel.js`, `src/ui/project-menu.js`
+**Why:** `beginRename` / `beginProjectRename` / `beginFolderRename` each added a `keydown` listener on the contenteditable element on every rename gesture, but never removed it on commit or cancel. Every double-click → cancel cycle leaked another handler. After enough renames, Enter / Escape would trigger the action multiple times. Now `finish()` / `teardown()` calls `removeEventListener` on both paths.
+
+- [ ] Rename a layer 5 times in a row (double-click → type → Esc → repeat). Then Enter once on the 6th — only one rename happens (no duplicate commits from leaked listeners).
+- [ ] Same for project-browser project rename and folder rename.
+
+---
+
+## 21. Layer-card opacity row title
+
+**Commit:** `43acc59`
+**File:** `src/ui/layer-panel.js`
+**Why:** `.layer-opacity-row` had no tooltip; the user had to discover that the knob accepts drag, scroll, AND keyboard input.
+
+- [ ] Hover the opacity area on any layer card — tooltip reads "Layer opacity — drag the knob, scroll, or type a number".
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -259,6 +280,8 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+3e7f6dd fix(project-menu): rename keydown handler leak
+43acc59 fix(layer-panel): rename keydown handler leak + opacity-row title
 eeb8589 chore(layer-panel): blend-mode trigger tooltip + aria
 381c8bc feat(autosave): explicit error dot state — red dot + tooltip on save failure
 1f22a4c docs: extend CHECKLIST with sections 16-17
