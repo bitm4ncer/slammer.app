@@ -194,6 +194,29 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 16. Shortcuts table refresh
+
+**Commit:** `bd5e46e`
+**File:** `src/ui/settings-popup.js`
+**Why:** Settings → Shortcuts table predated Phase 21. Snap / Rulers / Grid / Space-pan / Alt-escape-snap / F11 / Ctrl+Y were all wired in code but invisible in the UI table.
+
+- [ ] Open Settings → Shortcuts.
+- [ ] **Edit** row "Ctrl+Shift+Z / Ctrl+Y" listed for Redo.
+- [ ] **Move & transform** row "Alt+drag — Escape snap during drag" listed.
+- [ ] **Canvas** rows include `Space+drag` (pan), `Ctrl+R` (rulers), `Ctrl+;` (grid), `S` (snap), `F11` (fullscreen).
+
+---
+
+## 17. README ASCII header version bump
+
+**Commit:** `86779b0`
+**File:** `README.md`
+**Why:** Header read v.1.0.1 — last stale version string outside the app shell.
+
+- [ ] `README.md` line 5 reads `v.1.0.2`.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -214,6 +237,9 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+86779b0 docs(readme): bump ASCII header v.1.0.1 → v.1.0.2
+bd5e46e docs(shortcuts): surface Snap / Rulers / Grid / Space-pan / Alt-snap-escape
+c096fc4 docs: extend CHECKLIST with sections 14-15
 c0f2fba chore(ui): tooltip consistency in project browser, floating window, plugin roadmap
 563be91 chore(effects): tidy effect-card icon-button labels
 e9a9e31 chore(text-tool): drop dead font-loader re-exports
