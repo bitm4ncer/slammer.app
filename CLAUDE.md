@@ -88,6 +88,37 @@ The main agent reviews every subagent's diff before committing. Subagents do not
   - **Why**: the user-visible outcome or the rationale tying it back to the user's request (≤ 1 line).
   Then proceed with the actual work / question / answer. Skip only when the reply is a single short clarification or a one-line acknowledgement.
 
+## Premium plugins (`src/plugins/premium/`)
+
+**`src/plugins/premium/` is gitignored on purpose** (see `.gitignore` + `src/plugins/premium-loader.js`). The folder holds paid / licence-gated plugins (datamosh, jpeg-compression, dithering, halftone, stipple at time of writing). It is **not** part of the public AGPL distribution — it is meant to live in its own private git repo.
+
+`src/plugins/premium-loader.js` discovers plugins under that folder via `import.meta.glob('./premium/*/index.js')` at dev-server startup and registers each manifest with `pro: true`. The Bitmancer Shop popup (`src/ui/shop-popup.js`) lists plugins where `pro === true` — so when the folder is missing, **the shop renders empty**.
+
+**Symptom of a missing premium folder**:
+- The shop opens but shows no specimen cards.
+- `Get-ChildItem src/plugins/premium/` returns "No such file or directory".
+- `npm run dev` console shows no `[premium-loader] registered N premium plugins` line.
+
+**Recovery (switching worktrees / fresh clone / new machine)**:
+
+1. If another local worktree on the same machine still has a populated `src/plugins/premium/`:
+   ```
+   cp -r /path/to/other/worktree/src/plugins/premium  src/plugins/premium
+   ```
+   Then **restart `npm run dev`** — Vite resolves `import.meta.glob` at module-graph build time, so HMR alone won't pick up the new files.
+
+2. If no local worktree has them, the canonical source is the maintainer's **private git repo initialised inside the folder**:
+   ```
+   cd src/plugins
+   git clone <private bitmancer-plugins repo> premium
+   ```
+   See `premium-loader.js` doc comment for the recommended setup. VS Code happily handles two git contexts in the same window.
+
+**Don't try to "fix" the missing folder by**:
+- Removing the gitignore entry (would leak premium source into the public repo).
+- Disabling the `pro: true` filter in the shop (the shop is supposed to be empty when premium isn't installed; that's accurate UX).
+- Hard-coding fallback specimens that aren't actually loadable (the user can't install what doesn't exist).
+
 ## Stack additions beyond AGENTS.md
 
 - **Paper.js** (`paper@^0.12`) — vector path engine. Used for bezier maths, path simplify, SVG import/export, boolean ops (Phase 13c).
