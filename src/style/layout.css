@@ -283,10 +283,10 @@ body.color-hub--dot .color-circle-btn:hover {
   clip-path: path('M 2 130 A 128 128 0 0 1 258 130 Z');
   /* Frosted-glass backdrop — clipped to the half-disc shape above so
    * the blur ONLY appears within the wheel's outline, not the bbox.
-   * A subtle dark tint anchors it as a discrete surface. */
-  backdrop-filter: blur(10px) saturate(115%);
-  -webkit-backdrop-filter: blur(10px) saturate(115%);
-  background: rgba(0, 0, 0, 0.5);
+   * No tint — the blur alone is enough to separate the wheel from
+   * canvas content; a dark fill made busy canvases look muddied. */
+  backdrop-filter: blur(22px) saturate(120%);
+  -webkit-backdrop-filter: blur(22px) saturate(120%);
 }
 .quick-wheel-bg {
   position: absolute;
