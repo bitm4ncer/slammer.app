@@ -19,10 +19,37 @@ export function createDocument() {
   };
 
   const listeners = new Set();
-  const emit = (event) => listeners.forEach((fn) => fn(event));
 
-  const findIndex = (id) => state.layers.findIndex((l) => l.id === id);
-  const findLayer = (id) => state.layers.find((l) => l.id === id) || null;
+  // O(1) layer lookups. Lazy-rebuilt: mutators that change layer order /
+  // membership flag the cache dirty via emit(); the next find/index call
+  // walks state.layers once and caches. Renderer's FX-cascade hot paths
+  // were doing 3-5 indexOf calls per dragmove tick — at 30+ layers that
+  // adds up.
+  let _idMap = null;
+  function _rebuildIdMap() {
+    const m = new Map();
+    for (let i = 0; i < state.layers.length; i++) m.set(state.layers[i].id, i);
+    _idMap = m;
+  }
+  // Events that change state.layers identity / order / membership.
+  const _STRUCTURAL = new Set([
+    'layer:added', 'layer:removed', 'layer:reordered',
+    'group:childrenChanged', 'group:dissolved', 'doc:loaded',
+  ]);
+  const emit = (event) => {
+    if (_STRUCTURAL.has(event.type)) _idMap = null;
+    listeners.forEach((fn) => fn(event));
+  };
+
+  const findIndex = (id) => {
+    if (!_idMap) _rebuildIdMap();
+    const idx = _idMap.get(id);
+    return idx === undefined ? -1 : idx;
+  };
+  const findLayer = (id) => {
+    const idx = findIndex(id);
+    return idx >= 0 ? state.layers[idx] : null;
+  };
 
   // Deep-clone a layer's POJO state for duplicate / paste. Blob-typed
   // fields (image source) bypass JSON and are reattached by reference —
@@ -653,6 +680,8 @@ export function createDocument() {
     },
 
     findLayer,
+    findIndex,
+    indexOfLayer(layer) { return layer ? findIndex(layer.id) : -1; },
     serialize() {
       // Sync the latest project-scoped colour vars into state.colors so the
       // .slammerproj snapshot reflects in-session edits made via the colour

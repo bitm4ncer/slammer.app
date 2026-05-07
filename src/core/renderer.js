@@ -582,7 +582,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // the two sources during a live drag produces a ghosted composite where the
   // bbox is sized for the new position but the pixels draw at the old one.
   function compositeLayersBelow(layer) {
-    const idx = document.layers.indexOf(layer);
+    const idx = document.indexOfLayer(layer);
     if (idx <= 0) return null;
     const below = document.layers.slice(0, idx).filter((l) => l.visible);
     const stRefs = below.map((l) => ({ layer: l, st: layerState.get(l.id) }))
@@ -1030,7 +1030,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // their first async paint completes; without this hop the FX bitmap would
     // render with the moved/restored layer missing).
     if (layer.type !== 'fx') {
-      const idx = document.layers.indexOf(layer);
+      const idx = document.indexOfLayer(layer);
       if (idx >= 0) {
         for (let i = idx + 1; i < document.layers.length; i++) {
           const above = document.layers[i];
@@ -1291,7 +1291,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Repaint every FX layer that sits ABOVE the given layer index. Used whenever
   // an underlying layer changes so the FX layer's source-from-composite refreshes.
   function repaintFxAbove(changedLayerId) {
-    const idx = document.layers.findIndex((l) => l.id === changedLayerId);
+    const idx = document.findIndex(changedLayerId);
     if (idx < 0) return;
     for (let i = idx + 1; i < document.layers.length; i++) {
       const l = document.layers[i];
@@ -1574,9 +1574,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // so dragging it doesn't change their output. Skip them. Also short-circuit
     // the RAF entirely if no FX layer is above the drag — the previous version
     // burned a frame on a noop loop for every dragmove on a top-of-stack layer.
-    const draggedIdx = draggedLayerId
-      ? document.layers.findIndex((l) => l.id === draggedLayerId)
-      : -1;
+    const draggedIdx = draggedLayerId ? document.findIndex(draggedLayerId) : -1;
     if (draggedIdx >= 0) {
       let hasFxAbove = false;
       for (let i = draggedIdx + 1; i < document.layers.length; i++) {
@@ -1605,10 +1603,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   let liveDragLayerId = null;
 
   function isLayerUnderTopFx(layerId) {
+    const layers = document.layers;
     let topmostFxIdx = -1;
-    document.layers.forEach((l, i) => { if (l.type === 'fx' && l.visible) topmostFxIdx = i; });
+    for (let i = 0; i < layers.length; i++) {
+      const l = layers[i];
+      if (l.type === 'fx' && l.visible) topmostFxIdx = i;
+    }
     if (topmostFxIdx < 0) return false;
-    const idx = document.layers.findIndex((l) => l.id === layerId);
+    const idx = document.findIndex(layerId);
     return idx >= 0 && idx < topmostFxIdx;
   }
 
