@@ -36,33 +36,83 @@ export default {
     const dst = out.data;
     const mode = params.mode || 'noise';
 
-    let sampleXY; // (x, y) → [-1, +1] each axis
+    // Inlined hot loops per mode — each pixel previously did a closure call
+    // that returned a fresh [nx, ny] array (4M allocs on a 2k canvas, 240M/s
+    // during a 60 Hz knob drag → GC stalls). Both modes now read directly
+    // from cached grid/texture buffers.
     if (mode === 'texture' && params.texture) {
       const tex = await loadTexture(params.texture);
       if (tex) {
-        // Tile the texture across the layer; map R → x-offset, G → y-offset (centred at 128).
-        sampleXY = (x, y) => {
-          const tx = ((x % tex.w) + tex.w) % tex.w | 0;
-          const ty = ((y % tex.h) + tex.h) % tex.h | 0;
-          const i = (ty * tex.w + tx) * 4;
-          return [(tex.data[i] - 128) / 128, (tex.data[i + 1] - 128) / 128];
-        };
+        const tW = tex.w, tH = tex.h;
+        const td = tex.data;
+        const inv128 = 1 / 128;
+        for (let y = 0; y < H; y++) {
+          // Pre-modulate y once per row.
+          const ty = ((y % tH) + tH) % tH;
+          const tyRow = ty * tW * 4;
+          for (let x = 0; x < W; x++) {
+            const tx = ((x % tW) + tW) % tW;
+            const ti = tyRow + tx * 4;
+            const nx = (td[ti] - 128) * inv128;
+            const ny = (td[ti + 1] - 128) * inv128;
+            const sx = clampI(x + Math.round(nx * amount), 0, W - 1);
+            const sy = clampI(y + Math.round(ny * amount), 0, H - 1);
+            const si = (sy * W + sx) * 4;
+            const di = (y * W + x) * 4;
+            dst[di]     = src[si];
+            dst[di + 1] = src[si + 1];
+            dst[di + 2] = src[si + 2];
+            dst[di + 3] = src[si + 3];
+          }
+        }
+        return out;
       }
     }
-    if (!sampleXY) {
-      const scale = Math.max(1, Math.min(100, params.scale ?? 8));
-      const seed = Math.max(1, Math.floor(params.seed || 1));
-      const noiseX = makeValueNoise(W, H, scale, seed * 0xDEADBEEF);
-      const noiseY = makeValueNoise(W, H, scale, seed * 0xCAFEBABE + 17);
-      sampleXY = (x, y) => [noiseX(x, y) * 2 - 1, noiseY(x, y) * 2 - 1];
-    }
+
+    // Noise mode (also the texture-fallback path).
+    const scale = Math.max(1, Math.min(100, params.scale ?? 8));
+    const seed = Math.max(1, Math.floor(params.seed || 1));
+    const gridX = getNoiseGrid(W, H, scale, seed * 0xDEADBEEF);
+    const gridY = getNoiseGrid(W, H, scale, seed * 0xCAFEBABE + 17);
+    const cwX = gridX.cw, chX = gridX.ch, gX = gridX.grid;
+    const cwY = gridY.cw, chY = gridY.ch, gY = gridY.grid;
+    const invScale = 1 / scale;
 
     for (let y = 0; y < H; y++) {
+      const fy = y * invScale;
+      const iyF = Math.floor(fy);
+      const ty = fy - iyF;
+      const sy = ty * ty * (3 - 2 * ty);
+      const ayX = iyF % chX, ayY = iyF % chY;
+      const ay1X = (ayX + 1) % chX, ay1Y = (ayY + 1) % chY;
+      const rowAX = ayX * cwX, rowBX = ay1X * cwX;
+      const rowAY = ayY * cwY, rowBY = ay1Y * cwY;
       for (let x = 0; x < W; x++) {
-        const [nx, ny] = sampleXY(x, y);
-        const sx = clampI(x + Math.round(nx * amount), 0, W - 1);
-        const sy = clampI(y + Math.round(ny * amount), 0, H - 1);
-        const si = (sy * W + sx) * 4;
+        const fx = x * invScale;
+        const ixF = Math.floor(fx);
+        const tx = fx - ixF;
+        const sxN = tx * tx * (3 - 2 * tx);
+
+        const axX = ixF % cwX, ax1X = (axX + 1) % cwX;
+        const axY = ixF % cwY, ax1Y = (axY + 1) % cwY;
+
+        const aX = gX[rowAX + axX], bX = gX[rowAX + ax1X];
+        const cX = gX[rowBX + axX], dX = gX[rowBX + ax1X];
+        const topX = aX + (bX - aX) * sxN;
+        const botX = cX + (dX - cX) * sxN;
+        const nx = (topX + (botX - topX) * sy) * 2 - 1;
+
+        const aY = gY[rowAY + axY], bY = gY[rowAY + ax1Y];
+        const cY = gY[rowBY + axY], dY = gY[rowBY + ax1Y];
+        const topY = aY + (bY - aY) * sxN;
+        const botY = cY + (dY - cY) * sxN;
+        const ny = (topY + (botY - topY) * sy) * 2 - 1;
+
+        const dx = Math.round(nx * amount);
+        const dy = Math.round(ny * amount);
+        let dsx = x + dx; if (dsx < 0) dsx = 0; else if (dsx >= W) dsx = W - 1;
+        let dsy = y + dy; if (dsy < 0) dsy = 0; else if (dsy >= H) dsy = H - 1;
+        const si = (dsy * W + dsx) * 4;
         const di = (y * W + x) * 4;
         dst[di]     = src[si];
         dst[di + 1] = src[si + 1];
@@ -187,28 +237,32 @@ function mulberry32(seed) {
   };
 }
 
-function makeValueNoise(W, H, cellSize, seed) {
+// LRU cache for value-noise grids, keyed by (W, H, cellSize, seed).
+// Each grid was previously rebuilt on every process() call — for noise mode
+// at default settings on a 2k canvas that's ~250 KB × 2 grids per slider
+// tick. During a knob drag (60 Hz onChange) the rebuild dominated frame time.
+// Cap at 6 entries (covers seed/scale toggling without thrashing).
+const _noiseCache = new Map();
+const NOISE_CACHE_MAX = 6;
+
+function getNoiseGrid(W, H, cellSize, seed) {
+  const key = `${W}|${H}|${cellSize}|${seed}`;
+  const cached = _noiseCache.get(key);
+  if (cached) {
+    _noiseCache.delete(key);
+    _noiseCache.set(key, cached);
+    return cached;
+  }
   const rand = mulberry32(seed);
   const cw = Math.ceil(W / cellSize) + 2;
   const ch = Math.ceil(H / cellSize) + 2;
   const grid = new Float32Array(cw * ch);
   for (let i = 0; i < grid.length; i++) grid[i] = rand();
-  return (x, y) => {
-    const fx = x / cellSize;
-    const fy = y / cellSize;
-    const ix = Math.floor(fx);
-    const iy = Math.floor(fy);
-    const tx = fx - ix; const ty = fy - iy;
-    const ax = ix % cw; const ay = iy % ch;
-    const ax1 = (ax + 1) % cw; const ay1 = (ay + 1) % ch;
-    const a = grid[ay * cw + ax];
-    const b = grid[ay * cw + ax1];
-    const c = grid[ay1 * cw + ax];
-    const d = grid[ay1 * cw + ax1];
-    const sx = tx * tx * (3 - 2 * tx);
-    const sy = ty * ty * (3 - 2 * ty);
-    const top = a + (b - a) * sx;
-    const bot = c + (d - c) * sx;
-    return top + (bot - top) * sy;
-  };
+  const entry = { grid, cw, ch };
+  _noiseCache.set(key, entry);
+  if (_noiseCache.size > NOISE_CACHE_MAX) {
+    const oldest = _noiseCache.keys().next().value;
+    _noiseCache.delete(oldest);
+  }
+  return entry;
 }
