@@ -7,6 +7,9 @@ import { sliderRow, makeRoot, selectRow } from '../../shared/ui-helpers.js';
 
 const OPS = ['unite', 'subtract', 'intersect', 'exclude'];
 
+// Memoised last result. See processPaths for cache semantics.
+let _lastResult = null;
+
 export default {
   id: 'vector-boolean',
   name: 'Boolean',
@@ -22,6 +25,16 @@ export default {
     const { paper } = ctx;
     if (paths.length < 2) return paths;
     const op = OPS.includes(params.op) ? params.op : 'unite';
+    // Memoise the last result. Paper.js boolean ops allocate temporary
+    // CompoundPaths and walk every path → expensive to re-run between
+    // renders that don't change the inputs (typical case: user is editing
+    // a different effect's slider while this layer has Boolean attached).
+    // Reference equality on the paths array works because the document
+    // model creates a new array only when the paths actually change
+    // (setVectorPaths replaces the reference).
+    if (_lastResult && _lastResult.paths === paths && _lastResult.op === op) {
+      return _lastResult.out;
+    }
     let agg = null;
     const created = [];
     for (const rec of paths) {
@@ -57,7 +70,9 @@ export default {
     // Inherit the first source path's fill/stroke (matches the "non-
     // destructive Combine" convention used by the panel command).
     const base = paths[0];
-    return [{ d, closed: true, fill: base.fill, stroke: base.stroke }];
+    const out = [{ d, closed: true, fill: base.fill, stroke: base.stroke }];
+    _lastResult = { paths, op, out };
+    return out;
   },
 
   renderUI(params, onChange) {
