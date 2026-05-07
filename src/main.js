@@ -586,6 +586,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   console.log('[slammer.app] loaded — autosave armed (delay ' + autosaveMs + ' ms)');
+
+  // The plastic-texture background is a 1.25 MB JPG — purely decorative.
+  // Defer its fetch to idle time so it doesn't compete with the canvas
+  // for first-paint bandwidth. CSS no longer references the URL directly
+  // (see .plastic-texture in layout.css).
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
+  idle(() => {
+    document.querySelectorAll('.plastic-texture').forEach((el) => {
+      el.style.backgroundImage = 'url("/data/background_01.jpg")';
+    });
+  });
 });
 
 async function restoreLastSession({ doc, projectStore }) {

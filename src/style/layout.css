@@ -593,7 +593,9 @@ html, body {
 }
 
 .plastic-texture {
-  background-image: url('/data/background_01.jpg');
+  /* The 1.25 MB JPG is fetched lazily by main.js after first paint —
+     it's purely decorative and was blocking FCP otherwise. JS sets
+     `background-image` on this element via requestIdleCallback. */
   background-size: 100% auto;
   background-repeat: repeat-y;
   background-position: top center;
