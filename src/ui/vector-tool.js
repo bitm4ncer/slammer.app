@@ -90,7 +90,10 @@ export function initVectorTool({ document: doc }) {
   panel.className = 'vector-tool-panel text-tool-panel';   // share base styling with Typo panel
   panel.style.display = 'none';
   panel.innerHTML = `
-    <h3><i class="fas fa-bezier-curve"></i> Vector</h3>
+    <h3 class="tool-panel-head" data-collapse-trigger="1" tabindex="0" role="button" aria-expanded="true" title="Click to collapse / expand">
+      <i class="fas fa-bezier-curve"></i> <span class="tool-panel-title">Vector</span>
+      <i class="fas fa-chevron-down tool-panel-chevron"></i>
+    </h3>
 
     <div data-host="path-picker"></div>
     <div data-host="shape-controls"></div>
@@ -143,6 +146,27 @@ export function initVectorTool({ document: doc }) {
   const host = effectsGroup?.parentNode || document.querySelector('.side-panel-bottom') || document.querySelector('.side-panel');
   if (effectsGroup && effectsGroup.parentNode === host) host.insertBefore(panel, effectsGroup);
   else host.appendChild(panel);
+
+  // ---------- Collapsible panel header ----------
+  // Click the Vector header to fold the body — same pattern + storage key
+  // shape as the Typo panel.
+  const VECTOR_PANEL_COLLAPSED_KEY = 'slammer:vector:panelCollapsed';
+  {
+    const head = panel.querySelector('[data-collapse-trigger]');
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(VECTOR_PANEL_COLLAPSED_KEY) === '1'; } catch {}
+    function applyCollapsed(next) {
+      collapsed = next;
+      panel.classList.toggle('is-collapsed', next);
+      head.setAttribute('aria-expanded', String(!next));
+      try { localStorage.setItem(VECTOR_PANEL_COLLAPSED_KEY, next ? '1' : '0'); } catch {}
+    }
+    applyCollapsed(collapsed);
+    head.addEventListener('click', () => applyCollapsed(!collapsed));
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); applyCollapsed(!collapsed); }
+    });
+  }
 
   const pathPickerHost    = panel.querySelector('[data-host=path-picker]');
   const shapeControlsHost = panel.querySelector('[data-host=shape-controls]');

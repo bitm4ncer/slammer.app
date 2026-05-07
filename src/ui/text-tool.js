@@ -16,13 +16,17 @@ export { preloadFontsForDoc } from './typography/font-loader.js';
 export { loadFont as ensureGoogleFont } from './typography/font-loader.js';
 
 const FEATURES_EXPANDED_KEY = 'slammer:typo:featuresExpanded';
+const PANEL_COLLAPSED_KEY = 'slammer:typo:panelCollapsed';
 
 export function initTextTool({ document: doc }) {
   const panel = document.createElement('div');
   panel.className = 'text-tool-panel';
   panel.style.display = 'none';
   panel.innerHTML = `
-    <h3><i class="fas fa-font"></i> Typo</h3>
+    <h3 class="tool-panel-head" data-collapse-trigger="1" tabindex="0" role="button" aria-expanded="true" title="Click to collapse / expand">
+      <i class="fas fa-font"></i> <span class="tool-panel-title">Typo</span>
+      <i class="fas fa-chevron-down tool-panel-chevron"></i>
+    </h3>
     <textarea class="text-tool-textarea" data-key="value" rows="2"></textarea>
 
     <div class="effect-slider-row typo-font-row">
@@ -76,6 +80,26 @@ export function initTextTool({ document: doc }) {
   const host = effectsGroup?.parentNode || document.querySelector('.side-panel-bottom') || document.querySelector('.side-panel');
   if (effectsGroup && effectsGroup.parentNode === host) host.insertBefore(panel, effectsGroup);
   else host.appendChild(panel);
+
+  // ---------- Collapsible panel header ----------
+  // Click the Typo header to fold the body away. State persists per-user
+  // so frequent users who don't tweak text often can keep it tucked.
+  {
+    const head = panel.querySelector('[data-collapse-trigger]');
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(PANEL_COLLAPSED_KEY) === '1'; } catch {}
+    function applyCollapsed(next) {
+      collapsed = next;
+      panel.classList.toggle('is-collapsed', next);
+      head.setAttribute('aria-expanded', String(!next));
+      try { localStorage.setItem(PANEL_COLLAPSED_KEY, next ? '1' : '0'); } catch {}
+    }
+    applyCollapsed(collapsed);
+    head.addEventListener('click', () => applyCollapsed(!collapsed));
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); applyCollapsed(!collapsed); }
+    });
+  }
 
   const textarea = panel.querySelector('textarea[data-key=value]');
   const fontBtn = panel.querySelector('[data-act=open-picker]');

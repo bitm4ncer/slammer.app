@@ -1577,6 +1577,45 @@
   padding-bottom: 6px;
   font-family: 'GlyphWorld-Mountain', sans-serif;
 }
+/* Collapsible header — used by Typo + Vector panels. Body collapses by
+   hiding every direct child of the panel except the head. */
+.text-tool-panel h3.tool-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.text-tool-panel h3.tool-panel-head:hover {
+  color: color-mix(in srgb, var(--ctx-accent) 80%, white);
+}
+.text-tool-panel h3.tool-panel-head:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 50%, transparent);
+  border-radius: 3px;
+}
+.text-tool-panel h3.tool-panel-head .tool-panel-title {
+  flex: 1;
+}
+.text-tool-panel h3.tool-panel-head .tool-panel-chevron {
+  transition: transform 160ms ease;
+  font-size: 0.78em;
+  opacity: 0.7;
+}
+.text-tool-panel.is-collapsed h3.tool-panel-head .tool-panel-chevron {
+  transform: rotate(-90deg);
+}
+.text-tool-panel.is-collapsed h3.tool-panel-head {
+  margin-bottom: 0;
+  border-bottom-color: transparent;
+  padding-bottom: 0;
+}
+.text-tool-panel.is-collapsed > :not(.tool-panel-head) {
+  display: none !important;
+}
+.text-tool-panel.is-collapsed {
+  gap: 0;
+}
 .text-tool-textarea {
   background: var(--surface);
   color: var(--text-primary);
