@@ -62,23 +62,23 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   wheel.innerHTML = `
     <svg class="quick-wheel-bg" viewBox="-130 -130 260 260" aria-hidden="true">
       <!-- Static translucent half-disc background fills the visible
-           hemisphere so the wheel reads as a discrete surface, not a
-           floating ring. The diameter line at y=0 acts as the closing
-           edge against the footer chrome. -->
-      <path d="M -118 0 A 118 118 0 0 0 118 0 Z" fill="rgba(0, 0, 0, 0.55)" />
-
-      <!-- Rotating spokes — match the slot wedges. -->
-      <g class="quick-wheel-rotor">${spokes()}</g>
-
-      <!-- Static outer arc outline — sits on top so the spokes don't
-           punch through the rim visually. -->
-      <circle cx="0" cy="0" r="118" fill="none" stroke="rgba(255, 255, 255, 0.32)" stroke-width="1.2"></circle>
+           hemisphere so the wheel reads as a discrete surface. The
+           diameter line at y=0 acts as the closing edge. -->
+      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="rgba(0, 0, 0, 0.72)" />
+      <!-- Rotating spoke rotor + concentric gear rings. The whole group
+           rotates as a unit so the gear marks travel with the slots. -->
+      <g class="quick-wheel-rotor">
+        ${spokes()}
+        <circle cx="0" cy="0" r="118" fill="none" stroke="rgba(255, 255, 255, 0.4)"  stroke-width="2"></circle>
+        <circle cx="0" cy="0" r="62"  fill="none" stroke="rgba(255, 255, 255, 0.18)" stroke-width="1.2"></circle>
+        ${tickMarks()}
+      </g>
     </svg>
-    <div class="quick-wheel-slots"></div>
+    <div class="quick-wheel-slot-rotor"></div>
   `;
   window.document.body.appendChild(wheel);
-  const slotsLayer = wheel.querySelector('.quick-wheel-slots');
-  const rotor      = wheel.querySelector('.quick-wheel-rotor');
+  const slotRotor = wheel.querySelector('.quick-wheel-slot-rotor');
+  const rotor     = wheel.querySelector('.quick-wheel-rotor');
 
   // ── Controls — fixed-positioned siblings of the wheel. They sit
   //    ABOVE the footer (bottom: 40px clears the 36 px footer + 4 px
@@ -98,41 +98,91 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
     const lines = [];
     for (let i = 0; i < SLOT_COUNT; i++) {
       const a = (i * STEP_DEG - 90) * Math.PI / 180;
-      const x = Math.cos(a) * 118;
-      const y = Math.sin(a) * 118;
-      lines.push(`<line x1="0" y1="0" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" stroke="rgba(255,255,255,0.22)" stroke-width="1"></line>`);
+      const x1 = Math.cos(a) * 28;   // start outside the central hub
+      const y1 = Math.sin(a) * 28;
+      const x2 = Math.cos(a) * 118;
+      const y2 = Math.sin(a) * 118;
+      lines.push(`<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="rgba(255,255,255,0.32)" stroke-width="1.6"></line>`);
     }
     return lines.join('');
   }
 
-  function paint() {
-    rotor.setAttribute('transform', `rotate(${rotation})`);
-    slotsLayer.innerHTML = '';
+  // 24 short tick marks around the outer rim — gear / dial detail.
+  function tickMarks() {
+    const ticks = [];
+    for (let i = 0; i < 24; i++) {
+      const a = (i * 15 - 90) * Math.PI / 180;
+      const x1 = Math.cos(a) * 110;
+      const y1 = Math.sin(a) * 110;
+      const x2 = Math.cos(a) * 118;
+      const y2 = Math.sin(a) * 118;
+      ticks.push(`<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="rgba(255,255,255,0.28)" stroke-width="1"></line>`);
+    }
+    return ticks.join('');
+  }
+
+  // Build slot DOM ONCE — slots stay anchored at their fixed polar
+  // positions; only the rotor wrappers rotate. Inner content
+  // counter-rotates so icons stay upright (Affinity / iOS dial style).
+  function buildSlots() {
+    slotRotor.innerHTML = '';
     for (let i = 0; i < SLOT_COUNT; i++) {
-      const angleDeg = SLOT_OFFSET + i * STEP_DEG + rotation;
+      const angleDeg = SLOT_OFFSET + i * STEP_DEG;
       const a = (angleDeg - 90) * Math.PI / 180;
       const x = Math.cos(a) * SLOT_RADIUS;
       const y = Math.sin(a) * SLOT_RADIUS;
 
-      const slot = slots[i];
-      const plugin = slot ? getPlugin(slot.effectId) : null;
-      const labelText = slot ? (plugin?.name || slot.effectId) : 'Empty';
-      const iconName = slot?.icon || 'plus';
-
       const btn = window.document.createElement('button');
-      btn.className = `quick-wheel-slot${slot ? ' is-filled' : ' is-empty'}${assignMode ? ' is-assigning' : ''}`;
+      btn.className = 'quick-wheel-slot';
       btn.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
       btn.setAttribute('data-slot', String(i));
       btn.innerHTML = `
-        <i class="fas fa-${iconName}"></i>
-        <span class="quick-wheel-slot-label">${escapeHtml(labelText)}</span>
+        <span class="quick-wheel-slot-counter">
+          <i class="fas"></i>
+          <span class="quick-wheel-slot-label"></span>
+        </span>
       `;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         onSlotClick(i);
       });
-      slotsLayer.appendChild(btn);
+      slotRotor.appendChild(btn);
     }
+  }
+
+  // Update slot CONTENTS (icon + label + filled/empty class) without
+  // disturbing positions — used after assign / clear / rotation steps.
+  function paintSlotContents() {
+    const slotEls = slotRotor.querySelectorAll('.quick-wheel-slot');
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const el = slotEls[i];
+      if (!el) continue;
+      const slot = slots[i];
+      const plugin = slot ? getPlugin(slot.effectId) : null;
+      const labelText = slot ? (plugin?.name || slot.effectId) : 'Empty';
+      const iconName = slot?.icon || 'plus';
+      el.classList.toggle('is-filled', !!slot);
+      el.classList.toggle('is-empty',  !slot);
+      el.classList.toggle('is-assigning', !!assignMode);
+      el.querySelector('i').className = `fas fa-${iconName}`;
+      el.querySelector('.quick-wheel-slot-label').textContent = labelText;
+    }
+  }
+
+  // Apply the current rotation to the rotors + counter-rotate icon
+  // wrappers so the icons stay upright as the wheel turns. CSS handles
+  // the actual animation via the transition declarations.
+  function paintRotation() {
+    rotor.style.transform = `rotate(${rotation}deg)`;
+    slotRotor.style.transform = `rotate(${rotation}deg)`;
+    slotRotor.querySelectorAll('.quick-wheel-slot-counter').forEach((c) => {
+      c.style.transform = `rotate(${-rotation}deg)`;
+    });
+  }
+
+  function paint() {
+    paintSlotContents();
+    paintRotation();
   }
 
   function onSlotClick(i) {
@@ -182,10 +232,13 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   }
 
   function rotateBy(steps) {
-    rotation = ((rotation + steps * STEP_DEG) % 360 + 360) % 360;
+    // Don't normalise mod 360 here — keeping the cumulative angle lets
+    // CSS transitions take the SHORTER path through 0/360 instead of
+    // springing 315° backwards when you cross the boundary.
+    rotation += steps * STEP_DEG;
     rotor.classList.add(ROTATE_RIPPLE);
-    paint();
-    setTimeout(() => rotor.classList.remove(ROTATE_RIPPLE), 220);
+    paintRotation();
+    setTimeout(() => rotor.classList.remove(ROTATE_RIPPLE), 480);
   }
 
   controls.querySelector('.quick-wheel-nav--up')  .addEventListener('click', (e) => { e.stopPropagation(); rotateBy(-1); });
@@ -270,7 +323,7 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   }
 
   // Right-click clears.
-  slotsLayer.addEventListener('contextmenu', (e) => {
+  slotRotor.addEventListener('contextmenu', (e) => {
     const btn = e.target.closest('.quick-wheel-slot');
     if (!btn) return;
     const i = +btn.dataset.slot;
@@ -278,10 +331,11 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
       e.preventDefault();
       slots[i] = null;
       saveSlots(slots);
-      paint();
+      paintSlotContents();
     }
   });
 
+  buildSlots();
   paint();
 }
 

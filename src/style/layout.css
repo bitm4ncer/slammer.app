@@ -252,19 +252,35 @@ html, body {
   pointer-events: none;
   overflow: visible;
 }
+/* SVG rotor — transform-box: view-box keeps the rotation pivot at the
+ * SVG coordinate origin (0,0) regardless of the host element's bbox. */
 .quick-wheel-rotor {
-  transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1.0);
+  transform-box: view-box;
   transform-origin: 0 0;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.quick-wheel-rotor.rotate-ripple line { stroke-opacity: 0.45; }
+.quick-wheel-rotor.rotate-ripple line { stroke-opacity: 0.55; }
 
-.quick-wheel-slots {
+/* HTML rotor — same easing so the SVG strokes and HTML icons rotate in
+ * lock-step when the wheel turns. */
+.quick-wheel-slot-rotor {
   position: absolute;
   left: 50%;
   top: 50%;
   width: 0;
   height: 0;
   pointer-events: none;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Inner content counter-rotates so icons stay upright as the rotor turns. */
+.quick-wheel-slot-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .quick-wheel-slot {
   position: absolute;
@@ -284,7 +300,10 @@ html, body {
   justify-content: center;
   font-size: 18px;
   pointer-events: auto;
-  transition: color 0.12s ease, background 0.12s ease, transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1.0);
+  /* Slot's translate (its polar position) is set ONCE at build time and
+   * never changes — the rotor parent does the spinning. Only colour
+   * fades during interaction. */
+  transition: color 0.12s ease, background 0.12s ease;
 }
 .quick-wheel-slot:hover {
   color: #fff;
