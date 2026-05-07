@@ -243,13 +243,21 @@ html, body {
   pointer-events: none; /* children opt back in */
   /* Clip lower half — wheel reads as a half-disc rising out of the footer. */
   clip-path: inset(0 0 50% 0);
+  /* Frosted-glass backdrop — blur whatever's behind the visible half-disc
+   * so the canvas doesn't read through the wheel. The SVG path on top
+   * darkens this to ~15 % canvas pass-through. */
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
 }
 .quick-wheel-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  /* visiblePainted — wheel/scroll events fire on painted SVG regions
+   * (the dark half-disc fill). Lets the user rotate by scrolling
+   * anywhere on the wheel itself, not just on the colour dial. */
+  pointer-events: visiblePainted;
   overflow: visible;
 }
 /* SVG rotor — transform-box: view-box keeps the rotation pivot at the

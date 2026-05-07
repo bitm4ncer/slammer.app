@@ -64,7 +64,7 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
       <!-- Static translucent half-disc background fills the visible
            hemisphere so the wheel reads as a discrete surface. The
            diameter line at y=0 acts as the closing edge. -->
-      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="rgba(0, 0, 0, 0.72)" />
+      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="rgba(0, 0, 0, 0.82)" />
       <!-- Rotating spoke rotor + concentric gear rings. The whole group
            rotates as a unit so the gear marks travel with the slots. -->
       <g class="quick-wheel-rotor">
@@ -245,10 +245,14 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   controls.querySelector('.quick-wheel-nav--down').addEventListener('click', (e) => { e.stopPropagation(); rotateBy(+1); });
   controls.querySelector('.quick-wheel-config')   .addEventListener('click', (e) => { e.stopPropagation(); openAssignFlyout(null); });
 
-  anchorEl.addEventListener('wheel', (e) => {
+  // Scroll-wheel rotates the wheel — fires when hovering the colour dial
+  // OR anywhere over the wheel's painted half-disc (not just the dot).
+  function onScrollRotate(e) {
     e.preventDefault();
     rotateBy(e.deltaY > 0 ? +1 : -1);
-  }, { passive: false });
+  }
+  anchorEl.addEventListener('wheel', onScrollRotate, { passive: false });
+  wheel.querySelector('.quick-wheel-bg').addEventListener('wheel', onScrollRotate, { passive: false });
 
   // ── Assignment flyout ─────────────────────────────────────────────────
   let flyout = null;
