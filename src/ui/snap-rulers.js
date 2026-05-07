@@ -529,11 +529,12 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       ghost.remove();
       const relX = ev.clientX - containerRect.left;
       const relY = ev.clientY - containerRect.top;
-      const rulersOn = getSettings().rulersEnabled;
-      const rulerSize = rulersOn ? RULER_SIZE : 0;
-      // Only create if dragged past the ruler edge.
-      const pastRuler = axis === 'h' ? relY > rulerSize : relX > rulerSize;
-      if (pastRuler && guideDrag?.worldPos !== undefined) {
+      // Lower threshold than the full ruler width — 4 px is enough to confirm
+      // intent. The previous 24-px gate (== RULER_SIZE) made guideline creation
+      // feel unreliable: short drops inside the ruler band silently dropped.
+      const COMMIT_THRESHOLD = 4;
+      const dragged = axis === 'h' ? relY > COMMIT_THRESHOLD : relX > COMMIT_THRESHOLD;
+      if (dragged && guideDrag?.worldPos !== undefined) {
         const id = ++nextGuideId;
         const newG = { axis, pos: guideDrag.worldPos, _id: id };
         const current = getGuidelines(doc);

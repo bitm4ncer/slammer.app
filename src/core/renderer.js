@@ -137,13 +137,37 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           if (activeAnchor && activeAnchor !== 'rotater') {
             const targets = transformer.nodes();
             const excludeId = targets[0]?.id?.() || null;
-            const snapped = computeBoxScaleSnap(
-              activeAnchor, oldBox, newBox,
+            // boundBoxFunc gives boxes in ABSOLUTE (post-stage-transform) pixel
+            // coords. Our snap candidates live in WORLD coords (relativeTo:
+            // contentLayer). Convert in, snap, convert back.
+            const sc = stage.scaleX() || 1;
+            const sp = stage.position();
+            const worldNew = {
+              x: (newBox.x - sp.x) / sc,
+              y: (newBox.y - sp.y) / sc,
+              width: newBox.width / sc,
+              height: newBox.height / sc,
+              rotation: newBox.rotation,
+            };
+            const worldOld = {
+              x: (oldBox.x - sp.x) / sc,
+              y: (oldBox.y - sp.y) / sc,
+              width: oldBox.width / sc,
+              height: oldBox.height / sc,
+              rotation: oldBox.rotation,
+            };
+            const snappedWorld = computeBoxScaleSnap(
+              activeAnchor, worldOld, worldNew,
               document, stage, contentLayer, excludeId,
             );
-            // Pass the snapped box through the rest of the boundBoxFunc
-            // so Ctrl+Shift detection still gets the raw user intent.
-            newBox = snapped;
+            // Map back to absolute coords for Konva.
+            newBox = {
+              ...newBox,
+              x: snappedWorld.x * sc + sp.x,
+              y: snappedWorld.y * sc + sp.y,
+              width: snappedWorld.width * sc,
+              height: snappedWorld.height * sc,
+            };
           }
         }
         // Auto-detect a Ctrl+Shift-held resize on a text layer. Capture the
