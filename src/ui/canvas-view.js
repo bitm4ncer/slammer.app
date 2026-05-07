@@ -454,8 +454,12 @@ export function initCanvasView({ container, document, onImageDropped }) {
     stage.batchDraw();
   };
   window.addEventListener('resize', resize);
+  // Keep a ref to the ResizeObserver so the destroy path (below) can
+  // disconnect it. canvas-view is init-once today; this is defensive.
+  let containerResizeObserver = null;
   if (window.ResizeObserver) {
-    new ResizeObserver(resize).observe(container);
+    containerResizeObserver = new ResizeObserver(resize);
+    containerResizeObserver.observe(container);
   }
 
   // ---------- Wheel zoom (zoom-to-pointer) ----------
@@ -1203,5 +1207,9 @@ export function initCanvasView({ container, document, onImageDropped }) {
     zoomBy,
     fitTo,
     getStage: () => stage,
+    destroy() {
+      window.removeEventListener('resize', resize);
+      containerResizeObserver?.disconnect();
+    },
   };
 }
