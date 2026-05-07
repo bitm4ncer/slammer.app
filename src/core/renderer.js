@@ -602,8 +602,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     const h = Math.ceil(maxY - minY);
     if (w <= 0 || h <= 0) return null;
 
-    const out = makeCanvas(w, h);
+    // Reuse a per-FX-layer offscreen canvas. Was previously allocating a
+    // fresh w×h canvas on every paint — at 2k that's ~16 MB per FX paint
+    // per dragmove tick, hammering the GC. Resize only when dims change.
+    const fxSt = layerState.get(layer.id);
+    let out = fxSt && fxSt._compositeCanvas;
+    if (!out) {
+      out = makeCanvas(w, h);
+      if (fxSt) fxSt._compositeCanvas = out;
+    } else if (out.width !== w || out.height !== h) {
+      out.width = w;
+      out.height = h;
+    }
     const octx = out.getContext('2d');
+    // setTransform resets any prior transform and clears the canvas — needed
+    // because we're reusing the buffer.
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, w, h);
     octx.translate(-minX, -minY);
     for (const { st, layer: l } of stRefs) {
       // Live Konva state — matches what the user actually sees on screen.
@@ -622,8 +637,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       octx.restore();
     }
     // Position the FX layer's group so its composite aligns with the canvas.
-    const st = layerState.get(layer.id);
-    if (st) st.fxOrigin = { x: minX, y: minY };
+    if (fxSt) fxSt.fxOrigin = { x: minX, y: minY };
     return octx.getImageData(0, 0, w, h);
   }
 
