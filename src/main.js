@@ -86,6 +86,7 @@ import { initSettingsPopup, getSettings, setSettings, onSettingsChange } from '.
 import { initSidePanelSplit } from './ui/side-panel-split.js';
 import { initLayerStackAdd } from './ui/layer-stack-add.js';
 import { initDocumentSizePopup } from './ui/document-size-popup.js';
+import { initColorCircle } from './ui/color-circle.js';
 import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
@@ -194,6 +195,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ---------- Phase 16 — plugin runtime ----------
   // Single global app context for panel plugins. We expose only what plugins
   // actually need, behind a small façade (no direct closures from this scope).
+  // Phase 23 — colour core API surface for plugins.
+  const colorsApi = await import('./core/colors.js').then((m) => ({
+    getActive:           m.getActive,
+    setActive:           m.setActive,
+    onActiveChange:      m.onActiveChange,
+    getVariables:        m.getVariables,
+    setVariable:         m.setVariable,
+    removeVariable:      m.removeVariable,
+    onVariablesChange:   m.onVariablesChange,
+    getSwatches:         m.getSwatches,
+    addSwatch:           m.addSwatch,
+    removeSwatch:        m.removeSwatch,
+    onSwatchesChange:    m.onSwatchesChange,
+    resolve:             m.resolve,
+  }));
+
   window.__slammer = {
     doc,
     renderer,
@@ -202,6 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSettings,
     onSettingsChange,
     canvasGrid,
+    colors: colorsApi,
     notify: (msg, _kind = 'info') => showNotification(msg),
     importImage: async (sourceOrUrl, name = 'Imported image') => {
       try {
@@ -228,6 +246,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document: doc,
     view,
     button: document.getElementById('btnDocSize'),
+  });
+  initColorCircle({
+    buttonEl: document.getElementById('btnColorCircle'),
+    swatchEl: document.getElementById('colorCircleSwatch'),
   });
   initAlignmentControls({
     document: doc,

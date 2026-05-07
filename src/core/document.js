@@ -2,6 +2,7 @@
 // Mutate via methods so listeners can react with precise change events.
 
 import { createImageLayer, createTextLayer, createFxLayer, createVectorLayer, createGroupLayer, isVectorOnlyGroup as _isVectorOnly } from './layer.js';
+import { setProjectVariables, getProjectVariablesForSerialise } from './colors.js';
 
 const uid = () => crypto.randomUUID();
 
@@ -14,6 +15,7 @@ export function createDocument() {
     activeLayerId: null,
     exportFrame: null,
     guidelines: [],
+    colors: null,
   };
 
   const listeners = new Set();
@@ -652,6 +654,11 @@ export function createDocument() {
 
     findLayer,
     serialize() {
+      // Sync the latest project-scoped colour vars into state.colors so the
+      // .slammerproj snapshot reflects in-session edits made via the colour
+      // popover. Globals are NOT serialised — they live in localStorage.
+      const projectVars = getProjectVariablesForSerialise();
+      state.colors = projectVars ? { variables: projectVars } : null;
       return JSON.parse(JSON.stringify(state, (k, v) => (k === 'naturalSize' ? v : v)));
     },
     load(snapshot) {
@@ -662,6 +669,10 @@ export function createDocument() {
       state.activeLayerId = snapshot.activeLayerId ?? null;
       state.exportFrame = snapshot.exportFrame ?? null;
       state.guidelines = snapshot.guidelines ?? [];
+      state.colors = snapshot.colors ?? null;
+      // Apply project-scoped colour variables so they override globals for
+      // this session. setProjectVariables(null) restores the global view.
+      setProjectVariables(state.colors?.variables ?? null);
       emit({ type: 'doc:loaded' });
     },
   };
