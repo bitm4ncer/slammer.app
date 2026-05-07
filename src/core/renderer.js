@@ -63,7 +63,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   window.addEventListener('keydown', refreshMods);
   window.addEventListener('keyup', refreshMods);
   window.addEventListener('mousedown', refreshMods);
-  window.addEventListener('mousemove', refreshMods);
+  // Reset modifier flags when focus leaves the window — covers the
+  // alt-tab-with-shift-held edge case that the previous mousemove-tick
+  // listener was chasing. Cheap one-shot vs firing on every mouse motion.
+  window.addEventListener('blur', () => {
+    if (ctrlShiftDown || shiftDown) {
+      ctrlShiftDown = false;
+      shiftDown = false;
+      if (transformer) transformer.rotationSnapTolerance(0);
+    }
+  });
 
   // Pre-built snap array — every multiple of 5° in [0, 360).
   const ROTATION_SNAPS_5DEG = Array.from({ length: 72 }, (_, i) => i * 5);
