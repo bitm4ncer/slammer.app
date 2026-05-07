@@ -104,6 +104,22 @@ slammer is licensed AGPL-3.0. That covers the editor, the plugin registry, every
 
 ---
 
+## How you keep your purchases
+
+Two ways, both work — pick whichever you prefer.
+
+**License key (the always-works default).** Polar emails you a key when you buy. Paste it into slammer (Settings → Library) and the plugin activates. Same key works on every device you own — paste it again on the next machine. If you lose the email, request a resend from Polar's customer portal. No login required.
+
+**Sign in to Polar (the convenience layer).** One click in Settings → Library opens a Polar sign-in window. Once you're signed in, slammer pulls all your purchases automatically — every plugin, asset pack, and the Lifetime tier if you have it. New devices: sign in, everything appears. Stop using a device: sign out and the plugins lock until you sign in again or paste the key.
+
+Polar offers email magic-link sign-in plus social OAuth (Google, GitHub) where available. We never run our own identity system, never store your password, never send marketing email.
+
+**Free copies for friends and press.** We give them out as Polar discount codes that take the price to €0. The recipient checks out normally with the code, gets a real license key, activates exactly like a paying user. If you're testing slammer for a review or you're a friend who wants the full version — ask.
+
+**What we do NOT do.** No login required to use slammer. No GitHub account requirement to store your projects (your `.slammerproj` files stay on your machine, end of story). No device limits, no online activation requirement, no telemetry on which plugins you use.
+
+---
+
 ## License
 
 slammer is released under [AGPL-3.0-or-later](LICENSE). You can:

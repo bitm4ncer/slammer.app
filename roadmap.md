@@ -367,7 +367,9 @@
 - [ ] Enable native **License Keys** benefit on each product (Polar generates keys at checkout)
 - [ ] Webhook endpoint registered: `polar.checkout.completed` → notifies Cloudflare Worker so the user's owned-item list refreshes immediately
 
-### License + delivery infrastructure
+### Phase 28a — License-key MVP (must ship for v1.0)
+> Activation path 1 from STRATEGY.md "How you keep your purchases". License keys are the always-works default. No login required.
+
 - [ ] **Cloudflare Worker** (`api.slammer.app/license`):
   - `POST /verify` — accepts Polar license key, validates against Polar API, returns signed JWT containing `owned: string[]` (item IDs) + `exp` (24h)
   - `POST /webhook` — receives Polar `checkout.completed`, caches user's purchase set in KV for fast subsequent verifications
@@ -376,6 +378,20 @@
 - [ ] **Cloudflare KV** (`bitmancer-licenses`): user → owned-item-IDs cache, ~5 min TTL, refreshed by webhook
 - [ ] License-key entry UI in Settings → **Library** tab (new): paste key, status indicator, "Refresh ownership" button
 - [ ] JWT cache in IndexedDB; auto-renew on near-expiry; offline-tolerant (last good token cached, Library still shows owned items if validation server is briefly unreachable)
+- [ ] Local fallback `slammer:license:keys` store — multiple keys can be pasted (one per plugin / bundle); offline reactivation when worker is reachable but Polar API is down
+
+### Phase 28b — Polar account sync (post-MVP convenience)
+> Activation path 2 from STRATEGY.md. Builds on top of 28a — license keys still work, sync layers in.
+
+- [ ] **Cloudflare Worker** OAuth endpoints:
+  - `POST /license/oauth/start` — initiates Polar OAuth, returns redirect URL
+  - `POST /license/oauth/callback` — exchanges OAuth code for token + customer ID
+  - `GET /license/sync` — given the OAuth token, fetches all customer's purchases from Polar, returns JWT covering everything owned
+  - `GET /license/refresh` — refresh-token-based JWT renewal
+- [ ] Settings → Library tab gains a "Sign in to Polar" / "Sign out" action. Status badge shows email when signed in.
+- [ ] In-app shop header gains a small "Sign in" CTA when not authenticated.
+- [ ] Logout clears `slammer:license:jwt` + `slammer:license:user`; does NOT remove installed plugin bundles or stored keys (graceful degrade — user keeps using until JWT expires from cache).
+- [ ] Comp-key workflow: 100%-off Polar discount codes (e.g. `BITMANCER-PRESS-2026`) for friends + press. Recipient checks out at €0, gets real key, activates exactly like a paying user — no special slammer code path.
 
 ### Plugin system extensions
 - [ ] Plugin manifest schema bump: each premium plugin has stable `id` (e.g. `datamosh-studio`); free plugins continue without change
