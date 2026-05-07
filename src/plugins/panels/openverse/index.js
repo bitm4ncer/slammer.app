@@ -70,7 +70,10 @@ export default {
       landingTags: ['vintage poster', 'scientific illustration', 'botanical drawing', 'propaganda art', 'woodcut print', 'map cartography', 'Art Deco', 'patent drawing', 'album cover', 'comic art', 'ceramic art', 'folk art'],
       landingQueries: ['vintage illustration', 'botanical art', 'art deco poster', 'scientific drawing', 'folk art pattern', 'retro advertisement'],
       searchFn: async (query, page = 1) => {
-        const url = `${ENDPOINT}?q=${encodeURIComponent(query)}&page=${page}&page_size=40`;
+        // page_size capped at 20 — anonymous tier returns 401 for any
+        // value > 20 (their gate for "you need an API key"). Higher
+        // values are silently rejected. Probed empirically.
+        const url = `${ENDPOINT}?q=${encodeURIComponent(query)}&page=${page}&page_size=20`;
         // fetchWithProxy: direct first (works on localhost), falls
         // through to wsrv.nl / corsproxy / allorigins / custom Worker
         // when the anonymous-tier API blocks third-party origins (401).
