@@ -185,8 +185,18 @@ html, body {
 .footer-center { flex: 1; justify-content: center; }
 .footer-right { padding-right: 2px; }
 
-/* ---------- Footer color circle (Phase 23) ---------- */
+/* ---------- Footer color circle (Phase 23) ----------
+ * Fixed-position at the LEFT golden-section line of the viewport
+ * (1/φ ≈ 0.382 → 38.2vw). translateX(-50%) centres the button on that
+ * line. Vertically anchored to the bottom so it rides the footer
+ * regardless of side-panel split or window resize.
+ */
 .color-circle-btn {
+  position: fixed;
+  left: 38.2vw;
+  bottom: 6px;
+  transform: translateX(-50%);
+  z-index: 50;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -201,7 +211,7 @@ html, body {
 }
 .color-circle-btn:hover {
   border-color: var(--ctx-accent);
-  transform: scale(1.04);
+  transform: translateX(-50%) scale(1.06);
 }
 .color-circle-swatch {
   width: 100%;
