@@ -25,15 +25,23 @@ async function loadOffset() {
 
 // --- single-path commands ---
 
-export function simplifyPath(doc, layer, pathIdx, tolerance = 2.5) {
+// Pure function — computes a simplified `d` string from the path record
+// without mutating the model. Returns the new `d` string, or null on failure.
+// Used by both the slider live-preview and the committed simplifyPath call.
+export function computeSimplifiedD(layer, pathIdx, tolerance = 2.5) {
   const rec = layer.vector.paths[pathIdx];
-  if (!rec) return false;
+  if (!rec) return null;
   activatePaper();
-  let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return false; }
+  let p; try { p = new paper.CompoundPath({ pathData: rec.d }); } catch { return null; }
   const subs = p.children && p.children.length ? p.children : [p];
   for (const s of subs) { try { s.simplify(tolerance); } catch {} }
   const newD = p.pathData;
   p.remove();
+  return newD || null;
+}
+
+export function simplifyPath(doc, layer, pathIdx, tolerance = 2.5) {
+  const newD = computeSimplifiedD(layer, pathIdx, tolerance);
   if (!newD) return false;
   doc.setVectorPath(layer.id, pathIdx, { d: newD });
   return true;

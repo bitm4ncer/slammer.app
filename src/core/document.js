@@ -417,6 +417,19 @@ export function createDocument() {
       emit({ type: 'layer:vectorChanged', id, prop: 'path', pathIdx });
     },
 
+    // Ephemeral setter — mutates the model + fires a render-only event so the
+    // canvas re-rasterises the live preview WITHOUT entering undo history.
+    // Used by the Simplify slider while the user is dragging. On release,
+    // callers follow up with setVectorPath to commit one undo entry.
+    setVectorPathEphemeral(id, pathIdx, partial) {
+      const layer = findLayer(id);
+      if (!layer || layer.type !== 'vector') return;
+      const p = layer.vector.paths[pathIdx];
+      if (!p) return;
+      Object.assign(p, partial);
+      emit({ type: 'layer:vectorChangedEphemeral', id, prop: 'path', pathIdx });
+    },
+
     // Convenience setters that broadcast the same vectorChanged event so the
     // renderer can re-rasterise and the panel can refresh.
     setVectorFill(id, pathIdx, fill) {

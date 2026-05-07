@@ -14,8 +14,8 @@ import { rebuildShapePathD } from './vector-tools/shape-drawer.js';
 import { computePathBounds } from '../core/vector-renderer.js';
 import { showNotification } from './notifications.js';
 import {
-  simplifyPath, smoothPath, reversePath, toggleClosed, joinSubpaths,
-  outlineStroke, booleanOp,
+  computeSimplifiedD, smoothPath, reversePath, toggleClosed,
+  joinSubpaths, outlineStroke, booleanOp,
 } from './vector-tools/path-actions.js';
 
 // Pills use icons instead of text labels for the type rows.
@@ -429,37 +429,120 @@ export function initVectorTool({ document: doc }) {
     renderBoolOps(l);
   }
 
-  // Path actions — Simplify / Smooth / Reverse / Open or Close / Join
-  // subpaths. Each button calls into path-actions.js, which emits a
-  // single setVectorPath/setVectorPaths so history captures one snapshot.
+  // Path actions — Simplify slider + Smooth / Reverse / Open or Close / Join /
+  // Outline. Each button calls into path-actions.js which emits a single
+  // setVectorPath/setVectorPaths so history captures one snapshot.
   function renderPathActions(l, p) {
-    pathActionsHost.innerHTML = '';
+    pathActionsHost.innerHTML = ‘’;
     const isClosed = p?.closed !== false;
+
+    // --- Simplify tolerance slider (replaces the old one-shot button) ---
+    // Range 0..50, step 0.5, default 2.5.
+    //
+    // Interaction model:
+    //   pointerdown  → snapshot original path d
+    //   onChange (drag) → ephemeral preview (no undo entry)
+    //   pointerup    → commit one undo entry with the final tolerance
+    //   Esc (keydown) → revert to original, no commit
+    //   numeric-input / double-click-reset (no active drag) → commit directly
+    const DEFAULT_TOLERANCE = 2.5;
+    let _dragging = false;
+    let _simplifyOriginalD = null; // d-string at drag start
+    let _lastTolerance = DEFAULT_TOLERANCE;
+
+    // Helper: compute simplified d from _simplifyOriginalD.
+    function _computeFromOriginal(tolerance) {
+      const rec = l.vector.paths[activePathIdx];
+      if (!rec || !_simplifyOriginalD) return null;
+      // Build a temporary path record with the ORIGINAL d so repeated slider
+      // moves don’t compound simplification.
+      const fakeLayer = {
+        vector: { paths: l.vector.paths.map((r, i) => i === activePathIdx ? { ...r, d: _simplifyOriginalD } : r) },
+      };
+      return computeSimplifiedD(fakeLayer, activePathIdx, tolerance);
+    }
+
+    const row = sliderRow({
+      label: ‘Simplify’,
+      min: 0, max: 50, step: 0.5,
+      value: DEFAULT_TOLERANCE,
+      defaultValue: DEFAULT_TOLERANCE,
+      onChange: (v) => {
+        _lastTolerance = v;
+        // Ensure we have a snapshot (onChange can fire before pointerdown in
+        // some edge cases — e.g. numeric input).
+        if (!_simplifyOriginalD) {
+          const rec = l.vector.paths[activePathIdx];
+          if (rec) _simplifyOriginalD = rec.d;
+        }
+        const newD = _computeFromOriginal(v);
+        if (!newD) return;
+        if (_dragging) {
+          // Ephemeral preview during drag — no undo entry.
+          doc.setVectorPathEphemeral(l.id, activePathIdx, { d: newD });
+        } else {
+          // Direct commit: numeric-input change or knob double-click reset.
+          doc.setVectorPath(l.id, activePathIdx, { d: newD });
+          _simplifyOriginalD = null;
+        }
+      },
+    });
+    row.title = ‘Drag to reduce anchors while preserving the curve. Double-click knob to reset.’;
+
+    row.addEventListener(‘pointerdown’, () => {
+      // Snapshot BEFORE the first onChange fires so _simplifyOriginalD always
+      // contains the pre-session state, not an already-simplified version.
+      const rec = l.vector.paths[activePathIdx];
+      if (rec && !_simplifyOriginalD) _simplifyOriginalD = rec.d;
+      _dragging = true;
+    }, { capture: true });
+
+    row.addEventListener(‘pointerup’, () => {
+      if (_dragging) {
+        // Commit the last ephemeral preview as one undo entry.
+        const newD = _computeFromOriginal(_lastTolerance);
+        if (newD) doc.setVectorPath(l.id, activePathIdx, { d: newD });
+        _simplifyOriginalD = null;
+      }
+      _dragging = false;
+    });
+
+    row.addEventListener(‘keydown’, (e) => {
+      if (e.key === ‘Escape’ && _simplifyOriginalD) {
+        // Revert to the state at drag-start (fires a committed revert so undo
+        // brings the user back cleanly).
+        doc.setVectorPath(l.id, activePathIdx, { d: _simplifyOriginalD });
+        _simplifyOriginalD = null;
+        _dragging = false;
+      }
+    });
+
+    pathActionsHost.appendChild(row);
+
+    // --- remaining action buttons ---
     const buttons = [
-      { label: 'Simplify',  title: 'Reduce anchors while preserving the curve',
-        onClick: () => simplifyPath(doc, l, activePathIdx) },
-      { label: 'Smooth',    title: 'Make every anchor smooth via catmull-rom',
+      { label: ‘Smooth’,  title: ‘Make every anchor smooth via catmull-rom’,
         onClick: () => smoothPath(doc, l, activePathIdx) },
-      { label: 'Reverse',   title: 'Flip path direction',
+      { label: ‘Reverse’, title: ‘Flip path direction’,
         onClick: () => reversePath(doc, l, activePathIdx) },
-      { label: isClosed ? 'Open' : 'Close', title: isClosed ? 'Open the path' : 'Close the path',
+      { label: isClosed ? ‘Open’ : ‘Close’, title: isClosed ? ‘Open the path’ : ‘Close the path’,
         onClick: () => toggleClosed(doc, l, activePathIdx) },
-      { label: 'Join',      title: 'Connect this path’s subpaths into one',
+      { label: ‘Join’,    title: ‘Connect this path\’s subpaths into one’,
         onClick: () => {
           if (!joinSubpaths(doc, l, activePathIdx)) {
-            showNotification('Join needs a path with multiple subpaths.');
+            showNotification(‘Join needs a path with multiple subpaths.’);
           }
         } },
-      { label: 'Outline',   title: 'Convert the stroke band into a filled path',
+      { label: ‘Outline’, title: ‘Convert the stroke band into a filled path’,
         onClick: () => outlineStroke(doc, l, activePathIdx) },
     ];
     for (const b of buttons) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'vector-action-btn';
+      const btn = document.createElement(‘button’);
+      btn.type = ‘button’;
+      btn.className = ‘vector-action-btn’;
       btn.textContent = b.label;
       btn.title = b.title;
-      btn.addEventListener('click', b.onClick);
+      btn.addEventListener(‘click’, b.onClick);
       pathActionsHost.appendChild(btn);
     }
   }

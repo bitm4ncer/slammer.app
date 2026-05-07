@@ -532,9 +532,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (isEditingText()) return;
-      const id = document.activeLayerId;
-      if (id) {
-        document.removeLayer(id);
+      // Phase 13d fix: delete EVERY selected layer, not just the active one.
+      // The right-click context menu in layer-panel already does this loop;
+      // the keyboard shortcut was stuck on `activeLayerId` only.
+      const sel = getSelection();
+      const ids = sel.size ? [...sel] : (document.activeLayerId ? [document.activeLayerId] : []);
+      if (ids.length) {
+        for (const id of ids) document.removeLayer(id);
         e.preventDefault();
       }
     }

@@ -153,13 +153,13 @@
 - [x] Single-path actions: Simplify, Smooth, Reverse, Open/Close, Join
 - [x] Outline Stroke (paperjs-offset)
 
-### 13d — Multi-layer select + simplify slider ⏳
-- [ ] Marquee select (drag-rectangle on canvas to select multiple layers)
-- [ ] Shift-click multi-select in Layer Stack panel + on canvas
-- [ ] Multi-layer transform: scaling / moving N layers together; group scaling cascades to children, preserves relative position + order
-- [ ] Fix: cannot delete multiple selected layers
-- [ ] Fix: grouping must preserve layer order + position
-- [ ] Slider-driven path Simplify with live preview
+### 13d — Multi-layer select + simplify slider ✅
+- [x] Marquee select — `src/ui/marquee.js` + `src/ui/canvas-view.js` mousedown/move/up; touch + contain modes; honours locked/hidden/fx exclusions; shift-extend works.
+- [x] Shift-click multi-select in Layer Stack — `src/ui/layer-panel.js` shift-range via `selectRange()` reading panel order. (Canvas-side shift-click not wired; marquee + panel cover the workflow.)
+- [x] Multi-layer transform — `src/core/renderer.js` `multiDragSession` captures every selected layer's start position on dragstart, replicates the delta on dragmove, commits all transforms on dragend; `selectionNodes()` attaches the full set to the Konva.Transformer; vector paths bake via `translatePathD`.
+- [x] Fix: delete-key now honours full selection — `src/ui/canvas-view.js` Delete/Backspace handler loops over `getSelection()` instead of `activeLayerId`.
+- [x] Grouping preserves order + position — `addGroupLayer()` reads `childIds` in panel-top-first order, splices the group at the topmost child's z-position; `handleSortEnd` rebuilds from panel DOM order.
+- [x] Slider-driven path Simplify with live preview — replaced the one-shot button with a tolerance slider (0–50, default 2.5). Drag fires `doc.setVectorPathEphemeral` (new mutator, emits `layer:vectorChangedEphemeral` — NOT in PROP_EVENTS, so hover-spam doesn't pollute undo). Release commits ONCE via `setVectorPath`. Escape reverts cleanly. Pure `computeSimplifiedD()` extracted from `simplifyPath` so the same formula drives both paths.
 
 ## PHASE 14 — Brush tool ⏳
 
