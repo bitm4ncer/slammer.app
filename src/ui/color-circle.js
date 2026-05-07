@@ -7,6 +7,7 @@
 //   • a 'Save current' button that writes the active hex into swatches.
 
 import { getActive, setActive, onActiveChange, getSwatches, addSwatch, onSwatchesChange } from '../core/colors.js';
+import { getSettings, onSettingsChange } from './settings-popup.js';
 
 export function initColorCircle({ buttonEl, swatchEl }) {
   if (!buttonEl || !swatchEl) return;
@@ -16,6 +17,17 @@ export function initColorCircle({ buttonEl, swatchEl }) {
   }
   paintSwatch();
   onActiveChange(paintSwatch);
+
+  // Apply body class so the conditional CSS in layout.css can hide the
+  // radial wheel + reposition the dial as a small footer-left swatch.
+  function applyHubMode() {
+    const mode = getSettings().colorHubMode === 'dot' ? 'dot' : 'wheel';
+    document.body.classList.toggle('color-hub--dot', mode === 'dot');
+  }
+  applyHubMode();
+  onSettingsChange((next) => {
+    if (next?.colorHubMode != null) applyHubMode();
+  });
 
   let flyout = null;
   buttonEl.addEventListener('click', (e) => {

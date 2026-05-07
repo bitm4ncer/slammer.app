@@ -236,6 +236,30 @@ body.panels-collapsed #app {
   background: var(--primary);
 }
 
+/* ---------- Dot mode (Settings → Workflow → Color hub → Dot) ----------
+ * Collapses the radial UI to a single small swatch in the footer-left.
+ * Same click handler — opens the same colour menu, just minimal chrome.
+ */
+body.color-hub--dot .quick-wheel,
+body.color-hub--dot .quick-wheel-controls {
+  display: none;
+}
+body.color-hub--dot .color-circle-btn {
+  /* Override the golden-line + size + border treatment with a compact
+   * footer-anchored swatch. 100 px from the left clears the existing
+   * settings / affinity / autosave-dot icons. */
+  left: 110px;
+  bottom: 10px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-width: 2px;
+  transform: none;
+}
+body.color-hub--dot .color-circle-btn:hover {
+  transform: scale(1.12);
+}
+
 /* ---------- Quick-select wheel (Phase 21) ----------
  * Half-disc surrounding the colour circle. Centre matches the colour
  * dial's centre; lower hemisphere is clipped so the wheel reads as an

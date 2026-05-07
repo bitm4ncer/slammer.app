@@ -15,6 +15,10 @@ const DEFAULTS = {
   textToPathReplace: true,
   marqueeMode: 'touch',          // 'touch' | 'contain'
   clickThroughGroups: false,
+  // Color hub appearance — 'wheel' shows the radial quick-select around
+  // the dial (default); 'dot' collapses it to a small swatch in the
+  // footer-left that opens the same colour menu.
+  colorHubMode: 'wheel',         // 'wheel' | 'dot'
   // Typography
   liveFontPreview: true,         // G3 — hover a font card → canvas updates live
   // Canvas & Export
@@ -332,6 +336,22 @@ function renderWorkflow() {
       </div>
 
       <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Color hub</div>
+        <div class="settings-row">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setColorHubMode">Hub style</label>
+            <span class="settings-rowhint">Wheel — full radial quick-select around the colour dial. Dot — minimal swatch in the footer-left that opens the same colour menu.</span>
+          </div>
+          <div class="settings-control">
+            <div class="settings-segmented" data-key="colorHubMode" id="setColorHubMode">
+              <button type="button" class="settings-seg ${s.colorHubMode !== 'dot' ? 'active' : ''}" data-v="wheel">Wheel</button>
+              <button type="button" class="settings-seg ${s.colorHubMode === 'dot' ? 'active' : ''}" data-v="dot">Dot</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Persistence</div>
         <div class="settings-row settings-row--stack">
           <div class="settings-rowlabelblock">
@@ -378,6 +398,17 @@ function wireWorkflow(root) {
         const v = b.dataset.v;
         scrollSeg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
         setSettings({ scrollBehavior: v === 'zoom' ? 'zoom' : 'pan' });
+      });
+    });
+  }
+  // Segmented control for color hub mode (Wheel / Dot).
+  const hubSeg = root.querySelector('#setColorHubMode');
+  if (hubSeg) {
+    hubSeg.querySelectorAll('.settings-seg').forEach((b) => {
+      b.addEventListener('click', () => {
+        const v = b.dataset.v;
+        hubSeg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
+        setSettings({ colorHubMode: v === 'dot' ? 'dot' : 'wheel' });
       });
     });
   }
