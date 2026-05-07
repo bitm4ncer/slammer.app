@@ -149,11 +149,11 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
             </div>
           </div>
           <div class="project-browser-header-right">
-            <button class="project-browser-btn" id="pbImport" title="Import .slmr"><i class="fas fa-file-import"></i></button>
-            <button class="project-browser-btn" id="pbSaveAs" title="Save As"><i class="fas fa-save"></i></button>
-            <button class="project-browser-btn" id="pbNewFolder" title="New Folder"><i class="fas fa-folder-plus"></i></button>
-            <button class="project-browser-btn" id="pbToggleView" title="Toggle View"><i class="fas fa-list"></i></button>
-            <button class="project-browser-btn project-browser-btn--close" data-act="close" title="Close"><i class="fas fa-times"></i></button>
+            <button class="project-browser-btn" id="pbImport" title="Import .slmr project file" aria-label="Import project"><i class="fas fa-file-import"></i></button>
+            <button class="project-browser-btn" id="pbSaveAs" title="Save current project under a new name" aria-label="Save as"><i class="fas fa-save"></i></button>
+            <button class="project-browser-btn" id="pbNewFolder" title="Create a new folder" aria-label="New folder"><i class="fas fa-folder-plus"></i></button>
+            <button class="project-browser-btn" id="pbToggleView" title="Switch to list view" aria-label="Switch view mode"><i class="fas fa-list"></i></button>
+            <button class="project-browser-btn project-browser-btn--close" data-act="close" title="Close (Esc)" aria-label="Close"><i class="fas fa-times"></i></button>
           </div>
         </div>
         <div class="project-browser-body">
@@ -191,11 +191,15 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
     });
     searchInput.focus();
 
-    // View toggle
-    backdrop.querySelector('#pbToggleView').addEventListener('click', () => {
+    // View toggle — icon + tooltip both reflect the action the click WILL
+    // perform, not the current mode (cleaner mental model: "click this to
+    // get list view" vs "you are in grid view, click for list view").
+    const toggleViewBtn = backdrop.querySelector('#pbToggleView');
+    toggleViewBtn.addEventListener('click', () => {
       viewMode = viewMode === 'grid' ? 'list' : 'grid';
-      const icon = backdrop.querySelector('#pbToggleView i');
+      const icon = toggleViewBtn.querySelector('i');
       icon.className = viewMode === 'grid' ? 'fas fa-list' : 'fas fa-th-large';
+      toggleViewBtn.title = viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view';
       renderContent();
     });
 

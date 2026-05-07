@@ -42,7 +42,7 @@ export function createFloatingWindow({
   el.innerHTML = `
     <div class="floating-header" data-drag-handle>
       <span class="floating-title">${iconHTML} <span>${escapeHtml(title)}</span></span>
-      <button class="floating-close" data-act="close" aria-label="Close"><i class="fas fa-times"></i></button>
+      <button class="floating-close" data-act="close" aria-label="Close" title="Close (Esc)"><i class="fas fa-times"></i></button>
     </div>
     <div class="floating-body"></div>
     <div class="floating-resize" data-resize-handle aria-hidden="true"></div>

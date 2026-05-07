@@ -534,9 +534,10 @@ function renderPlugins() {
       <div class="settings-group settings-group--placeholder">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
         <ul class="settings-roadmap-list">
-          <li><span class="settings-roadmap-key">Openverse</span><span class="settings-roadmap-desc">Public-domain images, anonymous tier currently rate-limited — Phase 26.</span></li>
+          <li><span class="settings-roadmap-key">Smithsonian</span><span class="settings-roadmap-desc">5M+ open-access museum items, free key from edan.si.edu — Phase 26.</span></li>
           <li><span class="settings-roadmap-key">Rijksmuseum</span><span class="settings-roadmap-desc">Free key from data.rijksmuseum.nl — Phase 26.</span></li>
-          <li><span class="settings-roadmap-key">Plugin manager</span><span class="settings-roadmap-desc">Pinning, permissions, plugin update channel — Feature F1.</span></li>
+          <li><span class="settings-roadmap-key">V&amp;A</span><span class="settings-roadmap-desc">No key, CORS-friendly — Phase 26.</span></li>
+          <li><span class="settings-roadmap-key">Plugin sandbox</span><span class="settings-roadmap-desc">iframe / Worker isolation + capability permissions — Feature F4.</span></li>
         </ul>
       </div>
     </section>
