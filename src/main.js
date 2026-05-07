@@ -87,6 +87,7 @@ import { initSidePanelSplit } from './ui/side-panel-split.js';
 import { initLayerStackAdd } from './ui/layer-stack-add.js';
 import { initDocumentSizePopup } from './ui/document-size-popup.js';
 import { initColorCircle } from './ui/color-circle.js';
+import { initQuickSelectWheel } from './ui/quick-select-wheel.js';
 import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
@@ -250,6 +251,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initColorCircle({
     buttonEl: document.getElementById('btnColorCircle'),
     swatchEl: document.getElementById('colorCircleSwatch'),
+  });
+  initQuickSelectWheel({
+    document: doc,
+    anchorEl: document.getElementById('btnColorCircle'),
   });
   initAlignmentControls({
     document: doc,

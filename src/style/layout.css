@@ -225,6 +225,203 @@ html, body {
   background: var(--primary);
 }
 
+/* ---------- Quick-select wheel (Phase 21) ----------
+ * Half-disc surrounding the colour circle. Centre matches the colour
+ * dial's centre; lower hemisphere is clipped so the wheel reads as an
+ * extension of the footer, not a floating ring.
+ */
+.quick-wheel {
+  position: fixed;
+  left: 38.2vw;
+  /* Anchor to the dial's centre: 15 px lift + (58 px / 2) = 44 px. */
+  bottom: 44px;
+  width: 260px;
+  height: 260px;
+  transform: translate(-50%, 50%);
+  z-index: 49;
+  pointer-events: none; /* children opt back in */
+  /* Clip lower half — wheel reads as a half-disc rising out of the footer. */
+  clip-path: inset(0 0 50% 0);
+}
+.quick-wheel-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.quick-wheel-rotor {
+  transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1.0);
+  transform-origin: 0 0;
+}
+.quick-wheel-rotor.rotate-ripple line { stroke-opacity: 0.45; }
+
+.quick-wheel-slots {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.quick-wheel-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  pointer-events: auto;
+  transition: color 0.12s ease, background 0.12s ease, transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1.0);
+}
+.quick-wheel-slot:hover {
+  color: var(--text-primary);
+}
+.quick-wheel-slot.is-empty {
+  opacity: 0.45;
+}
+.quick-wheel-slot.is-empty:hover {
+  opacity: 1;
+}
+.quick-wheel-slot.is-assigning {
+  /* Pulse a subtle accent border when in assign mode so the user knows
+   * which slots are valid drop targets. */
+  outline: 1px dashed var(--ctx-accent);
+  outline-offset: -3px;
+}
+
+/* ---------- Wheel controls (sci-fi keys) ---------- */
+.quick-wheel-nav {
+  position: absolute;
+  /* Stack against the LEFT edge of the wheel's bbox, vertically centred
+   * on the dial. */
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: auto;
+}
+.quick-wheel-nav-btn,
+.quick-wheel-config {
+  width: 32px;
+  height: 22px;
+  background: #0a0a0a;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0;
+  pointer-events: auto;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.quick-wheel-nav-btn:hover,
+.quick-wheel-config:hover {
+  background: #181818;
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+.quick-wheel-nav-btn:active,
+.quick-wheel-config:active {
+  background: #050505;
+}
+
+.quick-wheel-config {
+  position: absolute;
+  /* Symmetric to the nav stack on the RIGHT edge. */
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ---------- Assignment flyout ---------- */
+.quick-wheel-assign-flyout {
+  position: fixed;
+  z-index: 240;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 6px;
+  padding: 10px;
+  width: 240px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text-primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+.quick-wheel-assign-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.quick-wheel-assign-close {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.quick-wheel-assign-close:hover { color: var(--ctx-accent); }
+.quick-wheel-assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.quick-wheel-assign-item {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  text-align: left;
+  font-family: inherit;
+}
+.quick-wheel-assign-item i {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ctx-accent);
+}
+.quick-wheel-assign-item:hover {
+  background: color-mix(in srgb, var(--ctx-accent) 14%, transparent);
+  color: var(--text-primary);
+}
+.quick-wheel-assign-hint {
+  margin-top: 8px;
+  font-size: 9px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  letter-spacing: 0.04em;
+}
+
 .color-flyout {
   position: fixed;
   z-index: 220;
