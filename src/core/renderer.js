@@ -412,14 +412,30 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
   async function rasterizeSource(layer, st) {
     if (layer.type === 'image') {
-      const bmp = await loadImageBitmap(layer.source);
+      // Cache the decoded bitmap on st so effect-driven re-rasterises (which
+      // happen when an expanding effect's params change) don't re-decode.
+      if (st._sourceRef !== layer.source || !st._bitmap) {
+        st._bitmap = await loadImageBitmap(layer.source);
+        st._sourceRef = layer.source;
+      }
+      const bmp = st._bitmap;
       if (!bmp) return null;
       const w = bmp.width || bmp.naturalWidth;
       const h = bmp.height || bmp.naturalHeight;
-      const c = makeCanvas(w, h);
-      c.getContext('2d').drawImage(bmp, 0, 0);
+      // Pad the canvas so outer-mode effects (blur halo, drop shadow) have
+      // headroom past the bitmap edge. The Konva.Image is shifted by -pad in
+      // group-local coords so the visible content stays at the same world
+      // position; getSelfRect (set in createLayerNodes) reports the unpadded
+      // rect so transformer handles still wrap the original image bounds.
+      const pad = computePadForEffects(layer.effects);
+      const W = w + pad * 2, H = h + pad * 2;
+      const c = makeCanvas(W, H);
+      c.getContext('2d').drawImage(bmp, pad, pad);
       st.naturalSize = { w, h };
-      return c.getContext('2d').getImageData(0, 0, w, h);
+      st.imagePad = pad;
+      st.imageContentSize = { w, h };
+      if (st.image) st.image.position({ x: -pad, y: -pad });
+      return c.getContext('2d').getImageData(0, 0, W, H);
     }
     if (layer.type === 'text') {
       return rasterizeText(layer.text, st, layer.effects);
@@ -835,6 +851,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // on the effect stack.
   function sourceDependsOnEffects(layer) {
     if (!layer) return false;
+    if (layer.type === 'image') return true;     // canvas pad budget
     if (layer.type === 'vector' || layer.type === 'text') return true;
     if (layer.type === 'group') {
       // Group with vector-only descendants follows rasterizeVectorGroup.
@@ -1036,6 +1053,19 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           return { x: pad, y: pad, width: cs.w, height: cs.h };
         }
         // Fallback: use the full image while the first paint hasn't happened.
+        return { x: 0, y: 0, width: image.width(), height: image.height() };
+      };
+    }
+    if (layer.type === 'image') {
+      // Image source canvas may carry an effect-pad margin so outer blur etc.
+      // don't clip at the bitmap edge. Selection rect still wraps the
+      // unpadded bitmap.
+      image.getSelfRect = function () {
+        const pad = st.imagePad || 0;
+        const cs = st.imageContentSize;
+        if (cs && cs.w > 0 && cs.h > 0) {
+          return { x: pad, y: pad, width: cs.w, height: cs.h };
+        }
         return { x: 0, y: 0, width: image.width(), height: image.height() };
       };
     }
