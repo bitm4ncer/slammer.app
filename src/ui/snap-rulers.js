@@ -417,7 +417,17 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
     leftRulerCanvas.hidden = !on;
     cornerDiv.hidden       = !on;
     container.classList.toggle('rulers-visible', on);
-    if (on) { resizeRulers(); updateRulers(); }
+    // Guidelines belong to the ruler system — hide them when rulers are off.
+    // (The data is preserved in doc.state.guidelines so they reappear when
+    // rulers are toggled back on.)
+    for (const [, { el }] of guidelineEls) el.hidden = !on;
+    if (on) {
+      resizeRulers();
+      updateRulers();
+      // Reposition guidelines now that the ruler offset has flipped between
+      // 0 and RULER_SIZE.
+      for (const [, { el, data }] of guidelineEls) positionGuidelineEl(el, data);
+    }
   }
 
   // ── Guideline drag from ruler ─────────────────────────────────────────────
@@ -468,6 +478,8 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
   function createGuidelineEl(g) {
     const el = window.document.createElement('div');
     el.className = `guideline guideline--${g.axis === 'h' ? 'horizontal' : 'vertical'}`;
+    // Inherit current ruler visibility — guidelines hide with the rulers.
+    el.hidden = !getSettings().rulersEnabled;
     container.appendChild(el);
     positionGuidelineEl(el, g);
 
