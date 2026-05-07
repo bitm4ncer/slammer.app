@@ -291,6 +291,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // shows ONE union bounding box + handles; these outlines tell the
   // user WHICH layers are part of the selection (matches Figma).
   let selectionOverlayLayer = null;
+  // Pools of Konva.Rect nodes for the multi-select outlines. Reused across
+  // redraws — destroyChildren + new Konva.Rect() per dragmove tick was
+  // allocating one node per selected layer per frame.
+  const primaryRectPool = [];
+  const descendantRectPool = [];
   function ensureSelectionOverlay() {
     if (selectionOverlayLayer) return selectionOverlayLayer;
     selectionOverlayLayer = new Konva.Layer({ listening: false });
@@ -299,7 +304,6 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   }
   function redrawSelectionOutlines() {
     const layer = ensureSelectionOverlay();
-    layer.destroyChildren();
     const sel = getSelection();
     const accent = getComputedStyle(window.document.documentElement)
       .getPropertyValue('--primary').trim() || '#8aff8c';
@@ -320,6 +324,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       }
     }
     const showPrimaries = sel.size > 1 || (sel.size === 1 && childIds.size > 0);
+    let primIdx = 0;
     if (showPrimaries) {
       for (const id of primaryIds) {
         const l = document.findLayer(id);
@@ -328,15 +333,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (!st || !st.group) continue;
         const r = cachedClientRect(st);
         if (!r || !(r.width > 0) || !(r.height > 0)) continue;
-        layer.add(new Konva.Rect({
-          x: r.x, y: r.y, width: r.width, height: r.height,
-          stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
-          dash: [4, 3], listening: false,
-        }));
+        let rect = primaryRectPool[primIdx];
+        if (!rect) {
+          rect = new Konva.Rect({
+            strokeWidth: 1, strokeScaleEnabled: false, listening: false,
+            dash: [4, 3],
+          });
+          primaryRectPool.push(rect);
+          layer.add(rect);
+        }
+        rect.setAttrs({ x: r.x, y: r.y, width: r.width, height: r.height, stroke: accent, visible: true });
+        primIdx++;
       }
     }
+    for (let i = primIdx; i < primaryRectPool.length; i++) primaryRectPool[i].visible(false);
     // Subdued outlines for descendants of selected groups — communicate
     // the selection's "footprint" without drowning out the primary one.
+    let descIdx = 0;
     for (const id of childIds) {
       const l = document.findLayer(id);
       if (!l || l.type === 'fx' || !l.visible) continue;
@@ -344,12 +357,19 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       if (!st || !st.group) continue;
       const r = cachedClientRect(st);
       if (!r || !(r.width > 0) || !(r.height > 0)) continue;
-      layer.add(new Konva.Rect({
-        x: r.x, y: r.y, width: r.width, height: r.height,
-        stroke: accent, strokeWidth: 1, strokeScaleEnabled: false,
-        opacity: 0.45, dash: [2, 4], listening: false,
-      }));
+      let rect = descendantRectPool[descIdx];
+      if (!rect) {
+        rect = new Konva.Rect({
+          strokeWidth: 1, strokeScaleEnabled: false, listening: false,
+          dash: [2, 4], opacity: 0.45,
+        });
+        descendantRectPool.push(rect);
+        layer.add(rect);
+      }
+      rect.setAttrs({ x: r.x, y: r.y, width: r.width, height: r.height, stroke: accent, visible: true });
+      descIdx++;
     }
+    for (let i = descIdx; i < descendantRectPool.length; i++) descendantRectPool[i].visible(false);
     layer.moveToTop();
     layer.batchDraw();
   }
