@@ -1868,6 +1868,101 @@
   text-align: left;
 }
 
+/* ---------- XY pad widget (Radial Blur centre, Bulge centre, …) ---------- */
+.effect-xy-widget {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px 10px;
+}
+.effect-xy-pad {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: crosshair;
+  user-select: none;
+  touch-action: none;
+  outline: none;
+  flex-shrink: 0;
+}
+.effect-xy-pad:focus-visible {
+  border-color: var(--ctx-accent);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.18);
+}
+.effect-xy-pad.is-dragging { cursor: crosshair; }
+.effect-xy-hline,
+.effect-xy-vline {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+.effect-xy-hline { left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+.effect-xy-vline { top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+.effect-xy-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+.effect-xy-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--ctx-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  transition: transform 0.08s ease;
+}
+.effect-xy-pad.is-dragging .effect-xy-dot { transform: scale(1.15); }
+.effect-xy-readout {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translate(-50%, 100%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1px 6px;
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.effect-xy-pad.is-dragging .effect-xy-readout,
+.effect-xy-pad:hover .effect-xy-readout { opacity: 1; }
+.effect-xy-nums {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.effect-xy-num-row {
+  display: grid;
+  grid-template-columns: 24px 70px;
+  align-items: center;
+  gap: 6px;
+}
+.effect-xy-num-row .effect-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.effect-xy-num-row .effect-num-wrap { width: 100%; }
+.effect-xy-num-row .effect-num { width: 100%; text-align: right; }
+
 /* ---------- Angle + distance widget (Drop Shadow polar mode) ---------- */
 .effect-angle-widget {
   display: grid;
