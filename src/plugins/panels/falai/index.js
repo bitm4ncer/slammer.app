@@ -349,13 +349,12 @@ export default {
             },
           });
 
-          // Always log the raw response so a silent shape change surfaces
-          // immediately in the console — fal occasionally changes endpoint
-          // schemas without notice.
-          console.info('[fal.ai] ← result for', usedModelId, result);
-
           const urls = extractImageUrls(result, model.outputPath || 'images[].url');
           if (!urls.length) {
+            // Surface the raw response only when something went wrong so a
+            // silent schema change is debuggable without spamming the console
+            // on every successful generation.
+            console.error('[fal.ai] empty result for', usedModelId, result);
             const data = result?.data ?? result;
             const shape = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
             throw new Error(`No images in response (got: { ${shape} }). See console for full payload.`);
