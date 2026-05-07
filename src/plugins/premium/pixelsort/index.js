@@ -44,11 +44,13 @@ export default {
     function score(r, g, b) {
       if (crit === 'brightness') return (r * 0.299 + g * 0.587 + b * 0.114) / 255;
       if (crit === 'saturation') {
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const max = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        const min = r < g ? (r < b ? r : b) : (g < b ? g : b);
         return max === 0 ? 0 : (max - min) / max;
       }
       // hue
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const max = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      const min = r < g ? (r < b ? r : b) : (g < b ? g : b);
       const delta = max - min;
       if (!delta) return 0;
       let hue;
@@ -60,24 +62,41 @@ export default {
       return hue / 360;
     }
 
-    function sortLine(linePixels) {
-      // linePixels: { i (data index), s (score) }[]; we sort spans where s > threshold.
+    // Reusable per-line buffers. Old code allocated a fresh Array of {i, s}
+    // objects per row/column AND a fresh slice + map of [r,g,b,a] arrays
+    // per span — dozens of MB of garbage on a 2k canvas.
+    const lineLen = w > h ? w : h;
+    const positions = new Int32Array(lineLen);   // data offsets
+    const scores    = new Float32Array(lineLen); // sort keys
+    const sortBuf   = new Int32Array(lineLen);   // working indices for each span
+    const tmpR = new Uint8ClampedArray(lineLen);
+    const tmpG = new Uint8ClampedArray(lineLen);
+    const tmpB = new Uint8ClampedArray(lineLen);
+
+    function processLine(N) {
       let i = 0;
-      while (i < linePixels.length) {
-        if (linePixels[i].s < threshold) { i++; continue; }
+      while (i < N) {
+        if (scores[i] < threshold) { i++; continue; }
         let j = i;
-        while (j < linePixels.length && linePixels[j].s >= threshold) j++;
-        if (j - i > 1) {
-          const span = linePixels.slice(i, j).sort((a, b) => a.s - b.s);
-          // Read original colors first then write back.
-          const colors = span.map((p) => [d[p.i], d[p.i + 1], d[p.i + 2], d[p.i + 3]]);
-          for (let k = 0; k < span.length; k++) {
-            const p = linePixels[i + k];
-            const c = colors[k];
-            // Apply amount as a blend.
-            d[p.i]     = d[p.i]     + (c[0] - d[p.i])     * amount;
-            d[p.i + 1] = d[p.i + 1] + (c[1] - d[p.i + 1]) * amount;
-            d[p.i + 2] = d[p.i + 2] + (c[2] - d[p.i + 2]) * amount;
+        while (j < N && scores[j] >= threshold) j++;
+        const len = j - i;
+        if (len > 1) {
+          // Sort by ascending score using a Int32Array view of indices into
+          // the line. Comparator reads the (separate) scores array.
+          for (let k = 0; k < len; k++) sortBuf[k] = i + k;
+          sortBuf.subarray(0, len).sort((a, b) => scores[a] - scores[b]);
+          // Snapshot colours at the sorted positions before writing back.
+          for (let k = 0; k < len; k++) {
+            const di = positions[sortBuf[k]];
+            tmpR[k] = d[di];
+            tmpG[k] = d[di + 1];
+            tmpB[k] = d[di + 2];
+          }
+          for (let k = 0; k < len; k++) {
+            const di = positions[i + k];
+            d[di]     = d[di]     + (tmpR[k] - d[di])     * amount;
+            d[di + 1] = d[di + 1] + (tmpG[k] - d[di + 1]) * amount;
+            d[di + 2] = d[di + 2] + (tmpB[k] - d[di + 2]) * amount;
           }
         }
         i = j;
@@ -86,21 +105,22 @@ export default {
 
     if (dir === 'horizontal') {
       for (let y = 0; y < h; y++) {
-        const line = new Array(w);
+        const rowOff = y * w * 4;
         for (let x = 0; x < w; x++) {
-          const idx = (y * w + x) * 4;
-          line[x] = { i: idx, s: score(src[idx], src[idx + 1], src[idx + 2]) };
+          const idx = rowOff + x * 4;
+          positions[x] = idx;
+          scores[x] = score(src[idx], src[idx + 1], src[idx + 2]);
         }
-        sortLine(line);
+        processLine(w);
       }
     } else {
       for (let x = 0; x < w; x++) {
-        const line = new Array(h);
         for (let y = 0; y < h; y++) {
           const idx = (y * w + x) * 4;
-          line[y] = { i: idx, s: score(src[idx], src[idx + 1], src[idx + 2]) };
+          positions[y] = idx;
+          scores[y] = score(src[idx], src[idx + 1], src[idx + 2]);
         }
-        sortLine(line);
+        processLine(h);
       }
     }
     return imageData;
