@@ -119,6 +119,28 @@ The main agent reviews every subagent's diff before committing. Subagents do not
 - Disabling the `pro: true` filter in the shop (the shop is supposed to be empty when premium isn't installed; that's accurate UX).
 - Hard-coding fallback specimens that aren't actually loadable (the user can't install what doesn't exist).
 
+## Always keep the main repo runnable after every commit
+
+The user runs the dev server from `C:\GitHub\slammer.app` (the main repo on `v.1.0.2`). Worktrees under `.claude/worktrees/` are throw-away workspaces. **After every commit in a worktree, the main repo must be in a state where `npm run dev` shows the change.**
+
+The standard sequence I already follow for tracked code:
+
+```
+git commit                                # in the worktree branch
+git fetch /c/GitHub/slammer.app v.1.0.2:tmp-main -f
+git rebase tmp-main                       # so the worktree branch tip is on top of main's latest
+cd /c/GitHub/slammer.app
+git merge --ff-only claude/<worktree-branch>   # main now has my commit
+```
+
+For **gitignored assets** the merge can't carry them. Whenever a commit's behaviour depends on a gitignored asset that lives only in some sibling worktree (today: `src/plugins/premium/`), also mirror it into the main repo so the user's dev server sees it:
+
+```
+cp -r .claude/worktrees/<sibling>/src/plugins/premium  /c/GitHub/slammer.app/src/plugins/
+```
+
+Then restart the dev server (gitignored content can't HMR if it's a glob entry). If multiple sibling worktrees have diverging copies of the same gitignored folder, ask the user which one is canonical before copying — never silently overwrite.
+
 ## Stack additions beyond AGENTS.md
 
 - **Paper.js** (`paper@^0.12`) — vector path engine. Used for bezier maths, path simplify, SVG import/export, boolean ops (Phase 13c).
