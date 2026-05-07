@@ -24,6 +24,9 @@ const DEFAULTS = {
   unsplashAccessKey: '',
   pexelsApiKey: '',
   falaiApiKey: '',
+  // Phase 21 — alignment aids.
+  snapEnabled: true,
+  rulersEnabled: false,
 };
 
 // Curated accent palette — clicking a swatch sets accent without opening the

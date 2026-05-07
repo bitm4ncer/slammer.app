@@ -13,6 +13,7 @@ export function createDocument() {
     layers: [],
     activeLayerId: null,
     exportFrame: null,
+    guidelines: [],
   };
 
   const listeners = new Set();
@@ -643,6 +644,12 @@ export function createDocument() {
       emit({ type: 'doc:exportFrame', frame: state.exportFrame });
     },
 
+    setGuidelines(arr) {
+      state.guidelines = Array.isArray(arr) ? arr : [];
+      emit({ type: 'doc:guidelines', guidelines: state.guidelines });
+      emit({ type: 'doc:propChanged', prop: 'guidelines' });
+    },
+
     findLayer,
     serialize() {
       return JSON.parse(JSON.stringify(state, (k, v) => (k === 'naturalSize' ? v : v)));
@@ -654,6 +661,7 @@ export function createDocument() {
       state.layers = snapshot.layers ?? [];
       state.activeLayerId = snapshot.activeLayerId ?? null;
       state.exportFrame = snapshot.exportFrame ?? null;
+      state.guidelines = snapshot.guidelines ?? [];
       emit({ type: 'doc:loaded' });
     },
   };

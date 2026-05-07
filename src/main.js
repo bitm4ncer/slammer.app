@@ -88,6 +88,7 @@ import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
 import { openShop } from './ui/shop-popup.js';
+import { initSnapRulers } from './ui/snap-rulers.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -221,6 +222,64 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   initAffinityBridge({ document: doc, renderer });
+
+  // ---------- Phase 21 — Snap + Rulers ----------
+  const canvasArea = document.querySelector('.canvas-area');
+  const stageContainer = document.getElementById('stageContainer');
+  const snapRulers = initSnapRulers({
+    stage: view.stage,
+    contentLayer: view.contentLayer,
+    container: canvasArea,
+    document: doc,
+    getSettings,
+  });
+  // Expose on __slammer for canvas-view to call into.
+  window.__slammer.snapRulers = snapRulers;
+
+  // Footer toggle buttons.
+  const btnSnap = document.getElementById('btnSnap');
+  const btnRulers = document.getElementById('btnRulers');
+
+  function syncSnapBtn() {
+    const on = getSettings().snapEnabled !== false;
+    btnSnap?.classList.toggle('btn-snap--active', on);
+  }
+  function syncRulersBtn() {
+    const on = !!getSettings().rulersEnabled;
+    btnRulers?.classList.toggle('btn-rulers--active', on);
+    snapRulers.updateRulers();
+  }
+
+  btnSnap?.addEventListener('click', () => {
+    const cur = getSettings().snapEnabled !== false;
+    setSettings({ snapEnabled: !cur });
+  });
+  btnRulers?.addEventListener('click', () => {
+    const cur = !!getSettings().rulersEnabled;
+    setSettings({ rulersEnabled: !cur });
+  });
+
+  // Keyboard shortcuts: S = snap, R = rulers (when not in a text field).
+  window.addEventListener('keydown', (e) => {
+    const ae = document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (inField || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 's' || e.key === 'S') {
+      const cur = getSettings().snapEnabled !== false;
+      setSettings({ snapEnabled: !cur });
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      const cur = !!getSettings().rulersEnabled;
+      setSettings({ rulersEnabled: !cur });
+    }
+  });
+
+  onSettingsChange(() => { syncSnapBtn(); syncRulersBtn(); });
+  syncSnapBtn();
+  syncRulersBtn();
+
+  // Ruler repaint on pan/zoom is handled via window.__slammer.snapRulers.onStageTransform()
+  // called from within canvas-view's wheel and mousemove handlers.
 
   // ---------- Active-layer accent → CSS variable ----------
   // Drives effects/typography panels + slider thumbs to match the active layer's colour.

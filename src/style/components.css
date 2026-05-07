@@ -3132,3 +3132,84 @@
 }
 .settings-group--shortcuts { gap: 0; }
 
+/* ─── Phase 21 — Snap + Ruler toggle active state ───────────────────────── */
+.btn-snap--active,
+.btn-rulers--active {
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 12%, transparent) !important;
+  color: var(--ctx-accent, var(--primary)) !important;
+  border-color: color-mix(in srgb, var(--ctx-accent, var(--primary)) 40%, transparent) !important;
+}
+.btn-snap--active i,
+.btn-rulers--active i {
+  color: var(--ctx-accent, var(--primary));
+}
+
+/* ─── Rulers ─────────────────────────────────────────────────────────────── */
+.ruler {
+  position: absolute;
+  z-index: 15;
+  pointer-events: auto;
+  cursor: crosshair;
+  user-select: none;
+}
+.ruler--top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+}
+.ruler--left {
+  top: 0;
+  left: 0;
+  width: 24px;
+  bottom: 0;
+}
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--surface-2, #1a1a1a);
+  z-index: 16;
+  pointer-events: none;
+}
+
+/* When rulers are visible, shift the Konva stage so layers don't sit under the ruler strip */
+.rulers-visible #stageContainer,
+.canvas-area.rulers-visible #stageContainer {
+  /* rulers are positioned absolute in .canvas-area, no shift needed */
+}
+
+/* ─── Guidelines ─────────────────────────────────────────────────────────── */
+.guideline {
+  position: absolute;
+  z-index: 18;
+  pointer-events: auto;
+  cursor: grab;
+}
+.guideline--horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed color-mix(in srgb, var(--primary) 70%, transparent);
+  cursor: ns-resize;
+}
+.guideline--vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed color-mix(in srgb, var(--primary) 70%, transparent);
+  cursor: ew-resize;
+}
+.guideline--dragging { cursor: grabbing; }
+.guideline--ghost { opacity: 0.5; pointer-events: none; }
+
+/* ─── Snap indicator canvas ──────────────────────────────────────────────── */
+.snap-indicator-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+

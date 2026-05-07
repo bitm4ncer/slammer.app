@@ -473,6 +473,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
   stage.on('wheel', () => {
     if (!dragInProgress) syncExportFrame();
     else repositionInfo();
+    window.__slammer?.snapRulers?.onStageTransform?.();
   });
 
   // ---------- Spacebar + drag pan ----------
@@ -739,9 +740,41 @@ export function initCanvasView({ container, document, onImageDropped }) {
         syncCursor();
       }
       if (pendingGesture.starts.size === 0) return;
+
+      // ── Snap ──────────────────────────────────────────────────────────
+      // Only when snapEnabled and not holding Alt (Alt = temporary disable).
+      const snapEnabled = window.__slammer?.getSettings?.()?.snapEnabled !== false;
+      const altHeld = e.evt?.altKey;
+      let snapDx = 0, snapDy = 0;
+      if (snapEnabled && !altHeld && window.__slammer?.snapRulers) {
+        // Build the union bbox of all moving layers in CONTENT-LAYER coords.
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const [, info] of pendingGesture.starts) {
+          const tx = info.x + dx, ty = info.y + dy;
+          const r2 = info.node.getClientRect({ relativeTo: contentLayer });
+          if (!r2 || !(r2.width > 0)) continue;
+          const ox = tx - info.node.x();
+          const oy = ty - info.node.y();
+          minX = Math.min(minX, r2.x + ox);
+          minY = Math.min(minY, r2.y + oy);
+          maxX = Math.max(maxX, r2.x + r2.width + ox);
+          maxY = Math.max(maxY, r2.y + r2.height + oy);
+        }
+        if (minX < Infinity) {
+          const movingRect = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+          // Exclude all moving layer IDs so they don't snap to themselves.
+          const excludeId = pendingGesture.hitLayerId;
+          const { dx: sdx, dy: sdy, snaps } = window.__slammer.snapRulers.computeSnapForRect(movingRect, excludeId);
+          snapDx = sdx; snapDy = sdy;
+          window.__slammer.snapRulers.showIndicators(snaps);
+        }
+      } else if (window.__slammer?.snapRulers) {
+        window.__slammer.snapRulers.hideIndicators();
+      }
+
       // Apply the same delta to every captured layer's Konva.Group.
       for (const [, info] of pendingGesture.starts) {
-        info.node.position({ x: info.x + dx, y: info.y + dy });
+        info.node.position({ x: info.x + dx + snapDx, y: info.y + dy + snapDy });
       }
       const r = window.__slammer?.renderer;
       r?.redrawSelectionOutlines?.();
@@ -753,6 +786,8 @@ export function initCanvasView({ container, document, onImageDropped }) {
     penTool.up();
     pencilTool.end();
     if (marquee.isActive()) marquee.end();
+    // Clear snap indicators on every mouseup.
+    window.__slammer?.snapRulers?.hideIndicators();
     if (pendingGesture) {
       if (pendingGesture.dragging) {
         // Commit each moved layer's transform. Vector layers also need
@@ -837,11 +872,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
     stage.position({ x: stage.x() + dx, y: stage.y() + dy });
     stage.batchDraw();
     repositionInfo();
+    window.__slammer?.snapRulers?.onStageTransform?.();
   });
   window.addEventListener('mouseup', () => {
     panning = false;
     lastPan = null;
     syncCursor();
+    window.__slammer?.snapRulers?.hideIndicators();
     // If a drag of the selection ends outside the stage, the stage's
     // own mouseup listener won't fire — commit the gesture here as a
     // fallback. Without this, the user releases the mouse off-canvas

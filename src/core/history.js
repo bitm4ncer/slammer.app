@@ -75,6 +75,7 @@ export function createHistory(doc, { capacity = 80, debounceMs = 600 } = {}) {
   function statesLookEqual(a, b) {
     if (a.name !== b.name) return false;
     if (JSON.stringify(a.exportFrame) !== JSON.stringify(b.exportFrame)) return false;
+    if (JSON.stringify(a.guidelines) !== JSON.stringify(b.guidelines)) return false;
     if (a.layers.length !== b.layers.length) return false;
     for (let i = 0; i < a.layers.length; i++) {
       const la = a.layers[i], lb = b.layers[i];

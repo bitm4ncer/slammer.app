@@ -175,13 +175,14 @@ html, body {
   gap: 10px;
 }
 
-.footer-left, .footer-right {
+.footer-left, .footer-center, .footer-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .footer-left { padding-left: 4px; }
+.footer-center { flex: 1; justify-content: center; }
 .footer-right { padding-right: 2px; }
 
 /* ---------- Side panel (split into Layer Stack + contextual panels) ---------- */

@@ -286,8 +286,9 @@
 
 ## PHASE 21 — Canvas Tools & Inspectors 🆕
 
-- [ ] **Snap toggle** in right footer: layer-to-layer edge + center alignment, dashed accent indicator lines
-- [ ] **Ruler toggle** in center footer: rulers on top + left edges; drag from ruler creates a guideline; snap also engages on guidelines
+- [x] **Snap toggle** (right footer, keyboard `S`) — layer-to-layer edge + center alignment with dashed accent indicator lines that span the canvas. Snaps work in single-layer drag AND multi-layer drag (uses union bbox of the whole selection). 6-px screen-space tolerance, converted to world via `1 / stage.scaleX()`. Hold Alt to escape. Persisted as `slammer:settings.snapEnabled` (default ON).
+- [x] **Ruler toggle** (center footer, keyboard `R`) — top + left rulers as `<canvas>` overlays with adaptive zoom-aware ticks (minor / medium / major). Drag from ruler edge → creates a guideline at that world coord. Drag a guideline back into the ruler → deletes. Guidelines persist in `doc.state.guidelines`, survive reload, enter undo (history's `statesLookEqual` extended to compare guidelines). When the Snap toggle is also on, drags snap to guidelines too. Persisted as `slammer:settings.rulersEnabled` (default OFF).
+- [x] New `src/ui/snap-rulers.js` (~350 LOC) module owns the snap math + ruler / guideline rendering; exposes `{ computeSnapForRect, showIndicators, hideIndicators, updateRulers, onStageTransform, destroy }`. Mounted from `main.js`; canvas-view's drag handler calls into it.
 - [ ] **Frame Tool** in left sidebar: drag on canvas to create a new export frame (foundation for Phase 24 multi-frame)
 - [ ] **Crop tool** for layers (non-destructive — stored as crop rect in layer metadata, applied at render time)
 - [ ] **Transform inspector** in footer: X% / Y% scale numerics, lock-aspect button (inverts Shift+drag = no-constrain), reset button; same for rotation
