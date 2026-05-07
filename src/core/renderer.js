@@ -1554,12 +1554,29 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   //   • Commit     → write the new transform into the doc model (history,
   //                  autosave, layer:transform listeners).
   let liveFxRaf = null;
-  function scheduleLiveFxRecompute() {
+  function scheduleLiveFxRecompute(draggedLayerId) {
     if (liveFxRaf) return;
+    // FX layers below the dragged layer don't see it in their below-composite,
+    // so dragging it doesn't change their output. Skip them. Also short-circuit
+    // the RAF entirely if no FX layer is above the drag — the previous version
+    // burned a frame on a noop loop for every dragmove on a top-of-stack layer.
+    const draggedIdx = draggedLayerId
+      ? document.layers.findIndex((l) => l.id === draggedLayerId)
+      : -1;
+    if (draggedIdx >= 0) {
+      let hasFxAbove = false;
+      for (let i = draggedIdx + 1; i < document.layers.length; i++) {
+        if (document.layers[i].type === 'fx') { hasFxAbove = true; break; }
+      }
+      if (!hasFxAbove) return;
+    }
     liveFxRaf = requestAnimationFrame(() => {
       liveFxRaf = null;
-      for (const l of document.layers) {
+      const layers = document.layers;
+      for (let i = 0; i < layers.length; i++) {
+        const l = layers[i];
         if (l.type !== 'fx') continue;
+        if (draggedIdx >= 0 && i <= draggedIdx) continue;
         const st = layerState.get(l.id);
         if (!st) continue;
         st.dirtyFromIndex = 0;
@@ -1644,7 +1661,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           }
         }
       }
-      scheduleLiveFxRecompute();
+      scheduleLiveFxRecompute(layer?.id);
     });
     contentLayer.on('dragend transformend', (e) => {
       const target = e.target;
