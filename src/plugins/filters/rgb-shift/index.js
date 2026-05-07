@@ -75,7 +75,7 @@ export default {
 
     const mode    = params.mode  || 'flat';
     const edge    = params.edge  || 'clamp';
-    const mix     = Math.max(0, Math.min(100, params.mix ?? 100)) / 100;
+    const mix     = 1;
     const edgeFn  = makeEdgeFn(edge);
 
     if (mode === 'flat') {
@@ -257,12 +257,6 @@ export default {
         ],
         value: local.edge || 'clamp',
         onChange: (v) => { local.edge = v; onChange({ edge: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Mix', min: 0, max: 100, step: 1,
-        value: local.mix ?? 100, defaultValue: 100, suffix: '%',
-        onChange: (v) => { local.mix = v; onChange({ mix: v }); },
       }));
     }
 

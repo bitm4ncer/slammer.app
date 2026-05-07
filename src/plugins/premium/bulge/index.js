@@ -18,7 +18,6 @@ export default {
 
   defaultParams() {
     return {
-      scope:     'image',      // 'image' | 'layer' — anchor + alpha mask
       centerX:   50,           // 0..100%
       centerY:   50,           // 0..100%
       radius:    50,           // 0..100% of min(w,h)
@@ -28,7 +27,6 @@ export default {
       strengthX: 50,           // -100..100 (only used when aspect = 'free')
       strengthY: 50,           // -100..100 (only used when aspect = 'free')
       sampling:  'bilinear',   // 'bilinear' | 'nearest'
-      mix:       100,          // 0..100%
     };
   },
 
@@ -37,10 +35,7 @@ export default {
     const H = imageData.height;
     const src = imageData.data;
 
-    const scope = params.scope === 'layer' ? 'layer' : 'image';
-    const rect = (scope === 'image' && ctx?.contentRect)
-      ? ctx.contentRect
-      : { x: 0, y: 0, w: W, h: H };
+    const rect = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
 
     const centerX   = rect.x + clamp(params.centerX  ?? 50, 0, 100) / 100 * rect.w;
     const centerY   = rect.y + clamp(params.centerY  ?? 50, 0, 100) / 100 * rect.h;
@@ -51,12 +46,11 @@ export default {
     const strengthX = clamp(params.strengthX ?? 50, -100, 100) / 100;
     const strengthY = clamp(params.strengthY ?? 50, -100, 100) / 100;
     const sampling  = params.sampling ?? 'bilinear';
-    const mix       = clamp(params.mix ?? 100, 0, 100) / 100;
 
     // Short-circuit: zero radius or zero strength → pass-through.
     if (radius < 0.5) return imageData;
-    if (aspect === 'preserve' && Math.abs(strength) < 1e-6 && mix >= 1) return imageData;
-    if (aspect === 'free' && Math.abs(strengthX) < 1e-6 && Math.abs(strengthY) < 1e-6 && mix >= 1) return imageData;
+    if (aspect === 'preserve' && Math.abs(strength) < 1e-6) return imageData;
+    if (aspect === 'free' && Math.abs(strengthX) < 1e-6 && Math.abs(strengthY) < 1e-6) return imageData;
 
     const out = new ImageData(W, H);
     const dst = out.data;
@@ -71,16 +65,10 @@ export default {
         const di = (y * W + x) * 4;
 
         if (dist > radius || radius < 0.5) {
-          // Outside radius — copy source (respect mix).
-          if (mix >= 1) {
-            dst[di]     = src[di];
-            dst[di + 1] = src[di + 1];
-            dst[di + 2] = src[di + 2];
-            dst[di + 3] = src[di + 3];
-          } else {
-            const [r, g, b, a] = sampleFn(src, W, H, x, y);
-            blendPixel(dst, di, src, di, r, g, b, a, mix);
-          }
+          dst[di]     = src[di];
+          dst[di + 1] = src[di + 1];
+          dst[di + 2] = src[di + 2];
+          dst[di + 3] = src[di + 3];
           continue;
         }
 
@@ -139,33 +127,28 @@ export default {
 
         const [r, g, b, a] = sampleFn(src, W, H, sx, sy);
 
-        if (mix >= 1) {
-          dst[di]     = r;
-          dst[di + 1] = g;
-          dst[di + 2] = b;
-          dst[di + 3] = a;
-        } else {
-          blendPixel(dst, di, src, di, r, g, b, a, mix);
-        }
+        dst[di]     = r;
+        dst[di + 1] = g;
+        dst[di + 2] = b;
+        dst[di + 3] = a;
       }
     }
 
-    if (scope === 'image') {
-      const rectXmax = Math.min(W, rect.x + rect.w);
-      const rectYmax = Math.min(H, rect.y + rect.h);
-      const rectXmin = Math.max(0, rect.x);
-      const rectYmin = Math.max(0, rect.y);
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          const di = (y * W + x) * 4;
-          if (x < rectXmin || x >= rectXmax || y < rectYmin || y >= rectYmax) {
-            dst[di]     = src[di];
-            dst[di + 1] = src[di + 1];
-            dst[di + 2] = src[di + 2];
-            dst[di + 3] = src[di + 3];
-          } else {
-            dst[di + 3] = src[di + 3];
-          }
+    // Restore original alpha inside content rect; copy source through outside.
+    const xMin = Math.max(0, rect.x);
+    const yMin = Math.max(0, rect.y);
+    const xMax = Math.min(W, rect.x + rect.w);
+    const yMax = Math.min(H, rect.y + rect.h);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const di = (y * W + x) * 4;
+        if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
+          dst[di]     = src[di];
+          dst[di + 1] = src[di + 1];
+          dst[di + 2] = src[di + 2];
+          dst[di + 3] = src[di + 3];
+        } else {
+          dst[di + 3] = src[di + 3];
         }
       }
     }
@@ -179,16 +162,6 @@ export default {
 
     function rebuild() {
       root.innerHTML = '';
-
-      root.appendChild(pillGroup({
-        label: 'Scope',
-        options: [
-          { value: 'image', label: 'Image' },
-          { value: 'layer', label: 'Layer' },
-        ],
-        value: local.scope === 'layer' ? 'layer' : 'image',
-        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
-      }));
 
       root.appendChild(sliderRow({
         label: 'Center X', min: 0, max: 100, step: 1,
@@ -258,12 +231,6 @@ export default {
         ],
         value: local.sampling,
         onChange: (v) => { local.sampling = v; onChange({ sampling: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Mix', min: 0, max: 100, step: 1,
-        value: local.mix, defaultValue: 100, suffix: '%',
-        onChange: (v) => { local.mix = v; onChange({ mix: v }); },
       }));
     }
 

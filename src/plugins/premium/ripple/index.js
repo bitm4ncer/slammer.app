@@ -62,7 +62,6 @@ export default {
 
   defaultParams() {
     return {
-      scope:      'image',   // 'image' | 'layer' — anchor + alpha mask
       centerX:     50,       // 0..100 %
       centerY:     50,       // 0..100 %
       wavelength:  30,       // 5..200 px
@@ -72,7 +71,6 @@ export default {
       waveShape:  'sine',    // sine | triangle | square | sawtooth
       polarisation: 'radial',// radial | horizontal | vertical | diagonal
       sampling:  'bilinear', // bilinear | nearest
-      mix:         100,      // 0..100 %
     };
   },
 
@@ -82,15 +80,10 @@ export default {
     const src = imageData.data;
 
     const amplitude  = Math.max(0, Math.min(80,  params.amplitude  ?? 10));
-    const mix        = Math.max(0, Math.min(100, params.mix        ?? 100)) / 100;
 
-    // Early-out: no-op
-    if (amplitude === 0 || mix === 0) return imageData;
+    if (amplitude === 0) return imageData;
 
-    const scope = params.scope === 'layer' ? 'layer' : 'image';
-    const rect = (scope === 'image' && ctx?.contentRect)
-      ? ctx.contentRect
-      : { x: 0, y: 0, w: W, h: H };
+    const rect = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
 
     const wavelength = Math.max(1,   params.wavelength  ?? 30);
     const phase      = (params.phase ?? 0) / 360;
@@ -152,38 +145,28 @@ export default {
         // 5. Sample source at displaced coords
         const [r, g, b, a] = sample(src, W, H, x + sdx, y + sdy);
 
-        // 6. Mix with original
-        if (mix >= 1) {
-          dst[di]     = r;
-          dst[di + 1] = g;
-          dst[di + 2] = b;
-          dst[di + 3] = a;
-        } else {
-          const invMix = 1 - mix;
-          dst[di]     = src[di]     * invMix + r * mix;
-          dst[di + 1] = src[di + 1] * invMix + g * mix;
-          dst[di + 2] = src[di + 2] * invMix + b * mix;
-          dst[di + 3] = src[di + 3] * invMix + a * mix;
-        }
+        dst[di]     = r;
+        dst[di + 1] = g;
+        dst[di + 2] = b;
+        dst[di + 3] = a;
       }
     }
 
-    if (scope === 'image') {
-      const xMin = Math.max(0, rect.x);
-      const yMin = Math.max(0, rect.y);
-      const xMax = Math.min(W, rect.x + rect.w);
-      const yMax = Math.min(H, rect.y + rect.h);
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          const di = (y * W + x) * 4;
-          if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
-            dst[di]     = src[di];
-            dst[di + 1] = src[di + 1];
-            dst[di + 2] = src[di + 2];
-            dst[di + 3] = src[di + 3];
-          } else {
-            dst[di + 3] = src[di + 3];
-          }
+    // Restore original alpha inside content rect; copy source through outside.
+    const xMin = Math.max(0, rect.x);
+    const yMin = Math.max(0, rect.y);
+    const xMax = Math.min(W, rect.x + rect.w);
+    const yMax = Math.min(H, rect.y + rect.h);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const di = (y * W + x) * 4;
+        if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
+          dst[di]     = src[di];
+          dst[di + 1] = src[di + 1];
+          dst[di + 2] = src[di + 2];
+          dst[di + 3] = src[di + 3];
+        } else {
+          dst[di + 3] = src[di + 3];
         }
       }
     }
@@ -199,16 +182,6 @@ export default {
       Object.assign(local, patch);
       onChange(patch);
     }
-
-    root.appendChild(pillGroup({
-      label: 'Scope',
-      options: [
-        { value: 'image', label: 'Image' },
-        { value: 'layer', label: 'Layer' },
-      ],
-      value: local.scope === 'layer' ? 'layer' : 'image',
-      onChange: (v) => set({ scope: v }),
-    }));
 
     root.appendChild(sliderRow({
       label: 'Center X', min: 0, max: 100, step: 1,
@@ -278,12 +251,6 @@ export default {
       ],
       value: local.sampling || 'bilinear',
       onChange: (v) => set({ sampling: v }),
-    }));
-
-    root.appendChild(sliderRow({
-      label: 'Mix', min: 0, max: 100, step: 1,
-      value: local.mix ?? 100, defaultValue: 100, suffix: '%',
-      onChange: (v) => set({ mix: v }),
     }));
 
     return root;

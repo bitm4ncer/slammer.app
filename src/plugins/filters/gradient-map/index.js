@@ -17,29 +17,27 @@ export default {
         { at: 0,   color: '#000000' },
         { at: 1,   color: '#FFFFFF' },
       ],
-      amount: 100,
     };
   },
 
   process(imageData, params) {
     const stops = sortedStops(params.stops);
-    const a = clamp(params.amount ?? 100, 0, 100) / 100;
-    if (a === 0 || stops.length < 2) return imageData;
+    if (stops.length < 2) return imageData;
     const lut = buildLut(stops);
     const d = imageData.data;
     for (let i = 0; i < d.length; i += 4) {
       const lum = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
       const off = lum * 3;
-      d[i]     = lerp(d[i],     lut[off],     a);
-      d[i + 1] = lerp(d[i + 1], lut[off + 1], a);
-      d[i + 2] = lerp(d[i + 2], lut[off + 2], a);
+      d[i]     = lut[off];
+      d[i + 1] = lut[off + 1];
+      d[i + 2] = lut[off + 2];
     }
     return imageData;
   },
 
   renderUI(params, onChange) {
     const root = makeRoot();
-    const local = { stops: (params.stops || defaultStops()).slice(), amount: params.amount ?? 100 };
+    const local = { stops: (params.stops || defaultStops()).slice() };
 
     // Gradient stop editor (shared helper).
     const editor = gradientStopsRow({
@@ -51,11 +49,6 @@ export default {
       },
     });
     root.appendChild(editor);
-
-    root.appendChild(sliderRow({
-      label: 'Amount', min: 0, max: 100, step: 1, value: local.amount, defaultValue: 100, suffix: '%',
-      onChange: (v) => { local.amount = v; onChange({ amount: v }); },
-    }));
 
     return root;
   },

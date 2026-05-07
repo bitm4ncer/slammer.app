@@ -1,7 +1,12 @@
 // Twirl — inverse-warp distortion.
 // For each output pixel, compute its distance + angle from the center.
 // Pixels inside `radius` are rotated by `angle * falloff(distance)`.
-// Pixels outside radius are left unchanged (or blended via Mix).
+// Pixels outside radius are left unchanged.
+//
+// Centre + radius are anchored to ctx.contentRect (the original unpadded
+// content) so adding other expanding effects to the same layer doesn't
+// shift this effect's focal point. Original alpha is restored after the
+// warp so the silhouette stays put.
 
 import { sliderRow, pillGroup, toggleRow, makeRoot } from '../../shared/ui-helpers.js';
 
@@ -17,10 +22,6 @@ export default {
 
   defaultParams() {
     return {
-      scope:    'image',  // 'image' (default) — anchor centre + radius to the
-                          //   original content rect, restore alpha after.
-                          // 'layer' — anchor to the full padded canvas, twirl
-                          //   bleeds into the surrounding pad area.
       angle:    180,      // -1080..1080°
       centerX:  50,       // 0..100%
       centerY:  50,       // 0..100%
@@ -28,7 +29,6 @@ export default {
       falloff:  'smooth', // 'smooth' | 'linear' | 'hard' | 'bell'
       sampling: 'bilinear',  // 'bilinear' | 'nearest'
       inverse:  false,    // twist starts at edge, calm in center
-      mix:      100,      // 0..100%
     };
   },
 
@@ -37,13 +37,7 @@ export default {
     const H = imageData.height;
     const src = imageData.data;
 
-    const scope = params.scope === 'layer' ? 'layer' : 'image';
-    // Anchor centre + radius to either the original content rect (image scope,
-    // default) or the full padded canvas (layer scope). Falls back to full
-    // canvas when no contentRect is provided.
-    const rect = (scope === 'image' && ctx?.contentRect)
-      ? ctx.contentRect
-      : { x: 0, y: 0, w: W, h: H };
+    const rect = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
 
     const angle    = (params.angle    ?? 180)  * (Math.PI / 180);
     const centerX  = rect.x + clamp(params.centerX ?? 50, 0, 100) / 100 * rect.w;
@@ -52,10 +46,9 @@ export default {
     const falloff  = params.falloff  ?? 'smooth';
     const sampling = params.sampling ?? 'bilinear';
     const inverse  = params.inverse  ?? false;
-    const mix      = clamp(params.mix ?? 100, 0, 100) / 100;
 
-    // Short-circuit: zero angle or zero radius → pass-through (still apply mix).
-    if ((Math.abs(angle) < 1e-6 || radius < 0.5) && mix >= 1) return imageData;
+    // Short-circuit: zero angle or zero radius → pass-through.
+    if (Math.abs(angle) < 1e-6 || radius < 0.5) return imageData;
 
     const out = new ImageData(W, H);
     const dst = out.data;
@@ -72,16 +65,10 @@ export default {
         const di = (y * W + x) * 4;
 
         if (dist > radius || radius < 0.5) {
-          // Outside radius — keep original pixel, respect mix.
-          if (mix >= 1) {
-            dst[di]     = src[di];
-            dst[di + 1] = src[di + 1];
-            dst[di + 2] = src[di + 2];
-            dst[di + 3] = src[di + 3];
-          } else {
-            const [r, g, b, a] = sampleFn(src, W, H, x, y);
-            blendPixel(dst, di, src, di, r, g, b, a, mix);
-          }
+          dst[di]     = src[di];
+          dst[di + 1] = src[di + 1];
+          dst[di + 2] = src[di + 2];
+          dst[di + 3] = src[di + 3];
           continue;
         }
 
@@ -105,38 +92,30 @@ export default {
 
         const [r, g, b, a] = sampleFn(src, W, H, sx, sy);
 
-        if (mix >= 1) {
-          dst[di]     = r;
-          dst[di + 1] = g;
-          dst[di + 2] = b;
-          dst[di + 3] = a;
-        } else {
-          blendPixel(dst, di, src, di, r, g, b, a, mix);
-        }
+        dst[di]     = r;
+        dst[di + 1] = g;
+        dst[di + 2] = b;
+        dst[di + 3] = a;
       }
     }
-    // Image scope: restore the original alpha so the silhouette stays intact
-    // (the warp itself can pull colour through the padded transparent area
-    // otherwise, leaving streaks past the original shape).
-    if (scope === 'image') {
-      const rectXmin = Math.max(0, rect.x);
-      const rectYmin = Math.max(0, rect.y);
-      const rectXmax = Math.min(W, rect.x + rect.w);
-      const rectYmax = Math.min(H, rect.y + rect.h);
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          const di = (y * W + x) * 4;
-          if (x < rectXmin || x >= rectXmax || y < rectYmin || y >= rectYmax) {
-            // Outside the content rect — copy through, no warp.
-            dst[di]     = src[di];
-            dst[di + 1] = src[di + 1];
-            dst[di + 2] = src[di + 2];
-            dst[di + 3] = src[di + 3];
-          } else {
-            // Inside content rect — keep warp result but restore the source
-            // alpha so the silhouette doesn't bleed.
-            dst[di + 3] = src[di + 3];
-          }
+
+    // Restore original alpha inside the content rect so the warp can't
+    // bleed silhouette colour through transparent pad pixels. Outside the
+    // content rect, copy source through unchanged.
+    const xMin = Math.max(0, rect.x);
+    const yMin = Math.max(0, rect.y);
+    const xMax = Math.min(W, rect.x + rect.w);
+    const yMax = Math.min(H, rect.y + rect.h);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const di = (y * W + x) * 4;
+        if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
+          dst[di]     = src[di];
+          dst[di + 1] = src[di + 1];
+          dst[di + 2] = src[di + 2];
+          dst[di + 3] = src[di + 3];
+        } else {
+          dst[di + 3] = src[di + 3];
         }
       }
     }
@@ -150,16 +129,6 @@ export default {
 
     function rebuild() {
       root.innerHTML = '';
-
-      root.appendChild(pillGroup({
-        label: 'Scope',
-        options: [
-          { value: 'image', label: 'Image' },
-          { value: 'layer', label: 'Layer' },
-        ],
-        value: local.scope === 'layer' ? 'layer' : 'image',
-        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
-      }));
 
       root.appendChild(sliderRow({
         label: 'Angle', min: -1080, max: 1080, step: 1,
@@ -211,12 +180,6 @@ export default {
         label: 'Inverse',
         value: local.inverse,
         onChange: (v) => { local.inverse = v; onChange({ inverse: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Mix', min: 0, max: 100, step: 1,
-        value: local.mix, defaultValue: 100, suffix: '%',
-        onChange: (v) => { local.mix = v; onChange({ mix: v }); },
       }));
     }
 

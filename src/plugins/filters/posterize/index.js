@@ -19,19 +19,18 @@ export default {
       distribution: 'linear', // 'linear' | 'perceptual' | 'equalised'
       softness: 0,         // 0..100 (%)
       bias: 0,             // -1..+1
-      mix: 100,            // 0..100 (%)
     };
   },
 
   process(imageData, params) {
     const { levels = 5, mode = 'rgb', distribution = 'linear',
-            softness = 0, bias = 0, mix = 100 } = params;
+            softness = 0, bias = 0 } = params;
 
     const d = imageData.data;
     const n = d.length;
     const lvl = Math.max(2, Math.min(32, Math.round(levels)));
     const soft = Math.max(0, Math.min(1, softness / 100));
-    const mixF = Math.max(0, Math.min(1, mix / 100));
+    const mixF = 1;
 
     // --- Equalised distribution: build per-channel CDF lookup (0..255 → 0..255) ---
     // Build histogram + CDF only when needed.
@@ -136,13 +135,6 @@ export default {
       value: Math.round((params.bias ?? 0) * 100), defaultValue: 0,
       format: (v) => Math.round(v) / 100,
       onChange: (v) => onChange({ bias: v }),
-    }));
-
-    root.appendChild(sliderRow({
-      label: 'Mix', min: 0, max: 100, step: 1,
-      value: params.mix ?? 100, defaultValue: 100,
-      suffix: '%',
-      onChange: (v) => onChange({ mix: v }),
     }));
 
     return root;
