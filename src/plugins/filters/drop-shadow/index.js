@@ -196,10 +196,12 @@ export default {
   },
 
   renderUI(params, onChange) {
-    const root = makeRoot();
+    const root = makeRoot('drop-shadow-effect');
 
-    // Input mode toggle
-    root.appendChild(pillGroup({
+    // ── DIRECTION ────────────────────────────────────────────────────────
+    const dirSection = section('Direction');
+
+    dirSection.appendChild(pillGroup({
       label: 'Mode',
       options: [
         { value: 'polar',      label: 'Polar' },
@@ -209,7 +211,6 @@ export default {
       onChange: (v) => onChange({ mode: v }),
     }));
 
-    // Polar controls — visual angle + distance widget
     const polarWrap = document.createElement('div');
     polarWrap.className = 'drop-shadow-mode-group';
     polarWrap.appendChild(createAngleDistanceWidget({
@@ -217,13 +218,13 @@ export default {
       distance: params.distance ?? 12,
       maxDistance: 500,
       visualMax: 200,
+      size: 108,
       defaultAngle: 135,
       defaultDistance: 12,
       onChange: ({ angle, distance }) => onChange({ angle, distance }),
     }));
-    root.appendChild(polarWrap);
+    dirSection.appendChild(polarWrap);
 
-    // Cartesian controls
     const cartWrap = document.createElement('div');
     cartWrap.className = 'drop-shadow-mode-group';
     cartWrap.appendChild(sliderRow({
@@ -236,17 +237,15 @@ export default {
       value: params.offsetY ?? 0, defaultValue: 0, suffix: 'px',
       onChange: (v) => onChange({ offsetY: v }),
     }));
-    root.appendChild(cartWrap);
+    dirSection.appendChild(cartWrap);
 
-    // Show/hide mode groups based on current mode
     function updateModeVisibility(mode) {
       polarWrap.style.display = mode === 'polar'     ? '' : 'none';
       cartWrap.style.display  = mode === 'cartesian' ? '' : 'none';
     }
     updateModeVisibility(params.mode || 'polar');
 
-    // Patch onChange to update visibility immediately
-    const modeGroup = root.querySelector('.effect-pill-group');
+    const modeGroup = dirSection.querySelector('.effect-pill-group');
     if (modeGroup) {
       modeGroup.addEventListener('click', (e) => {
         const pill = e.target.closest('.effect-pill');
@@ -254,32 +253,24 @@ export default {
       });
     }
 
-    // Common controls
-    root.appendChild(colorRow({
+    root.appendChild(dirSection);
+
+    // ── APPEARANCE ───────────────────────────────────────────────────────
+    const apprSection = section('Appearance');
+
+    apprSection.appendChild(colorRow({
       label: 'Color',
       value: params.color || '#000000',
       onChange: (v) => onChange({ color: v }),
     }));
 
-    root.appendChild(sliderRow({
+    apprSection.appendChild(sliderRow({
       label: 'Opacity', min: 0, max: 100, step: 1,
       value: params.opacity ?? 60, defaultValue: 60, suffix: '%',
       onChange: (v) => onChange({ opacity: v }),
     }));
 
-    root.appendChild(sliderRow({
-      label: 'Blur', min: 0, max: 200, step: 1,
-      value: params.blur ?? 8, defaultValue: 8, suffix: 'px',
-      onChange: (v) => onChange({ blur: v }),
-    }));
-
-    root.appendChild(sliderRow({
-      label: 'Spread', min: 0, max: 100, step: 1,
-      value: params.spread ?? 0, defaultValue: 0, suffix: 'px',
-      onChange: (v) => onChange({ spread: v }),
-    }));
-
-    root.appendChild(selectRow({
+    apprSection.appendChild(selectRow({
       label: 'Blend',
       options: [
         { value: 'multiply', label: 'Multiply' },
@@ -291,23 +282,61 @@ export default {
       onChange: (v) => onChange({ blendMode: v }),
     }));
 
-    root.appendChild(toggleRow({
+    root.appendChild(apprSection);
+
+    // ── EDGE ─────────────────────────────────────────────────────────────
+    const edgeSection = section('Edge');
+
+    edgeSection.appendChild(sliderRow({
+      label: 'Blur', min: 0, max: 200, step: 1,
+      value: params.blur ?? 8, defaultValue: 8, suffix: 'px',
+      onChange: (v) => onChange({ blur: v }),
+    }));
+
+    edgeSection.appendChild(sliderRow({
+      label: 'Spread', min: 0, max: 100, step: 1,
+      value: params.spread ?? 0, defaultValue: 0, suffix: 'px',
+      onChange: (v) => onChange({ spread: v }),
+    }));
+
+    root.appendChild(edgeSection);
+
+    // ── OPTIONS ──────────────────────────────────────────────────────────
+    const optsSection = section('Options');
+
+    optsSection.appendChild(toggleRow({
       label: 'Inner Shadow',
       value: !!params.inner,
       onChange: (v) => onChange({ inner: v }),
-      align: 'left',
+      align: 'lead',
     }));
 
-    root.appendChild(toggleRow({
+    optsSection.appendChild(toggleRow({
       label: 'Knockout',
       value: !!params.knockout,
       onChange: (v) => onChange({ knockout: v }),
-      align: 'left',
+      align: 'lead',
     }));
+
+    root.appendChild(optsSection);
 
     return root;
   },
 };
+
+// ---------------------------------------------------------------------------
+// Layout helpers
+// ---------------------------------------------------------------------------
+
+function section(title) {
+  const wrap = document.createElement('div');
+  wrap.className = 'effect-section';
+  const head = document.createElement('div');
+  head.className = 'effect-section-head';
+  head.textContent = title;
+  wrap.appendChild(head);
+  return wrap;
+}
 
 // ---------------------------------------------------------------------------
 // Pure helpers

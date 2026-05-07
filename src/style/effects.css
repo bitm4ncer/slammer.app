@@ -1745,13 +1745,69 @@
   text-align: left;
 }
 
+/* ---------- Effect sections (Drop Shadow + future structured panels) ---------- */
+.effect-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.effect-section:first-child { padding-top: 2px; }
+.effect-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 2px;
+}
+.effect-section-head {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Drop Shadow panel: tighter color swatch row, normalised right column */
+.drop-shadow-effect .effect-slider-row {
+  grid-template-columns: 80px 28px 60px;
+}
+.drop-shadow-effect .effect-slider-row input[type="color"] {
+  height: 22px !important;
+  grid-column: 2 / span 2 !important;
+  width: 100%;
+  cursor: pointer;
+}
+.drop-shadow-effect .effect-select {
+  height: 24px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* Lead-aligned toggle: switch on the left, label after */
+.effect-toggle-row--lead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.effect-toggle-row--lead > .effect-label {
+  flex: 1;
+  text-align: left;
+}
+
 /* ---------- Angle + distance widget (Drop Shadow polar mode) ---------- */
 .effect-angle-widget {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  padding: 4px 2px 6px;
+  justify-content: center;
+  padding: 6px 4px 10px;
 }
 .effect-angle-disk {
   position: relative;
@@ -1856,12 +1912,14 @@
 }
 .effect-angle-num-row {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 60px 70px;
   align-items: center;
   gap: 6px;
 }
 .effect-angle-num-row .effect-label {
-  font-size: 11px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-secondary);
 }
 .effect-angle-num-row .effect-num-wrap {

@@ -147,15 +147,27 @@ export function colorRow({ label, value, onChange }) {
 // ---------- toggleRow ----------
 // Simple on/off toggle switch row.
 // align: 'left' — label hugs left edge, switch pushed to the right.
+// align: 'lead' — switch on the left, label on the right (checkbox-style).
 // align: 'default' (or omitted) — default flex layout (label fills, switch follows).
 export function toggleRow({ label, value, onChange, align }) {
   const wrap = document.createElement('label');
-  wrap.className = `effect-toggle-row${align === 'left' ? ' effect-toggle-row--align-left' : ''}`;
-  wrap.innerHTML = `
-    <span class="effect-label">${label}</span>
-    <input type="checkbox" ${value ? 'checked' : ''} />
-    <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
-  `;
+  const cls = align === 'left' ? ' effect-toggle-row--align-left'
+    : align === 'lead' ? ' effect-toggle-row--lead'
+    : '';
+  wrap.className = `effect-toggle-row${cls}`;
+  if (align === 'lead') {
+    wrap.innerHTML = `
+      <input type="checkbox" ${value ? 'checked' : ''} />
+      <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+      <span class="effect-label">${label}</span>
+    `;
+  } else {
+    wrap.innerHTML = `
+      <span class="effect-label">${label}</span>
+      <input type="checkbox" ${value ? 'checked' : ''} />
+      <span class="effect-toggle-switch"><span class="effect-toggle-thumb"></span></span>
+    `;
+  }
   wrap.querySelector('input').addEventListener('change', (e) => onChange(e.target.checked));
   return wrap;
 }
