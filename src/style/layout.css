@@ -233,8 +233,9 @@ html, body {
 .quick-wheel {
   position: fixed;
   left: 38.2vw;
-  /* Anchor to the dial's centre: 15 px lift + (58 px / 2) = 44 px. */
-  bottom: 44px;
+  /* Anchor pushed slightly below the dial centre so the wheel reads as
+   * sitting INTO the footer rather than centred on the dial. */
+  bottom: 36px;
   width: 260px;
   height: 260px;
   transform: translate(-50%, 50%);
@@ -346,7 +347,7 @@ html, body {
 }
 .quick-wheel-key {
   width: 36px;
-  height: 26px;
+  height: 12px;
   background: #0a0a0a;
   color: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.16);
