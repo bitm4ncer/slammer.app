@@ -216,13 +216,30 @@ function applyFilm(d, W, H, strength, size, mono, seed) {
 }
 
 // Simple grid value-noise with bilinear interpolation. Returns a sample(x,y) fn.
+//
+// The grid + sampler are cached by (W, H, cellSize, seed). At default size=1
+// on a 2k canvas the grid is ~16 MB; previously this got rebuilt on every
+// process() call (every slider tick) even when the noise params hadn't changed.
+// The LRU keeps the most recent ~4 grids (film uses 2 per call, perlin uses 1)
+// so back-to-back calls during a drag hit the cache.
+const _noiseCache = new Map();
+const NOISE_CACHE_MAX = 4;
+
 function makeValueNoise(W, H, cellSize, seed) {
+  const key = `${W}|${H}|${cellSize}|${seed}`;
+  const cached = _noiseCache.get(key);
+  if (cached) {
+    // Refresh LRU position.
+    _noiseCache.delete(key);
+    _noiseCache.set(key, cached);
+    return cached.fn;
+  }
   const rand = mulberry32(seed * 0xBF58476D);
   const cw = Math.ceil(W / cellSize) + 2;
   const ch = Math.ceil(H / cellSize) + 2;
   const grid = new Float32Array(cw * ch);
   for (let i = 0; i < grid.length; i++) grid[i] = rand();
-  return (x, y) => {
+  const fn = (x, y) => {
     const fx = (x % (cw * cellSize)) / cellSize;
     const fy = (y % (ch * cellSize)) / cellSize;
     const ix = Math.floor(fx) % cw;
@@ -242,6 +259,12 @@ function makeValueNoise(W, H, cellSize, seed) {
     const bot = c + (dd - c) * sx;
     return top + (bot - top) * sy;
   };
+  _noiseCache.set(key, { fn });
+  if (_noiseCache.size > NOISE_CACHE_MAX) {
+    const oldest = _noiseCache.keys().next().value;
+    _noiseCache.delete(oldest);
+  }
+  return fn;
 }
 
 function clip255(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
