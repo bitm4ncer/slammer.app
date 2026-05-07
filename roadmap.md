@@ -241,6 +241,10 @@
 - [x] Auto-load fonts on opening another user's project — `preloadFontsForDoc()` now runs on every project-load path (autosave restore, project-menu open, `.slmr` import); `.slmr` manifest enriched with all-provider font metadata (uploaded carries raw bytes; google/fontshare/system carry catalog snapshots so the receiver can `loadFont(meta)` even with a stale catalog)
 
 - [x] **Ctrl+0 fit-to-viewport shortcut** — wired in `toolbar.js` keydown handler alongside the existing modifier shortcuts. Calls `view.fitTo()`.
+- [x] **Keyboard zoom (Ctrl+= / Ctrl+- / Ctrl+1)** — toolbar.js. Both step-zoom (×1.2 per press) and Ctrl+1 (jump to 100 %) operate around viewport center, mirroring `Ctrl+0` (fit). Wheel-zoom remains around-pointer.
+- [x] **Layer Z-order via Ctrl+arrow** — `Ctrl+↑/↓` bring forward / send backward one step; `Ctrl+Shift+↑/↓` bring to front / send to back. `reorderZ()` helper preserves multi-selection relative order while bubbling through unselected siblings. Wired in toolbar.js' keymap.
+- [x] **Layer-stack navigation (Ctrl+Alt+↑/↓)** — clamps at top/bottom of `doc.layers`. Wired in toolbar.js' keymap.
+- [x] **Tab toggles side panels** — `body.panels-collapsed` class hides `.tool-sidebar` + `.side-panel`, grid template collapses tools/panel columns to zero so canvas grows. Toolbar + footer stay (user still needs File / zoom). toolbar.js keymap.
 - [x] **Trackpad & scroll canvas navigation** — `canvas-view.js` wheel handler now branches on `getSettings().scrollBehavior` ('pan' default, 'zoom' legacy). Pan mode: plain scroll = pan (uses `deltaX` + `deltaY`); `Ctrl/Cmd`+scroll + pinch zoom; `Shift`+scroll → horizontal pan with single-axis wheels. Zoom mode swaps the two. Settings → Workflow → Canvas navigation has a Pan / Zoom segmented toggle.
 
 ### Cluster D — Settings tabs

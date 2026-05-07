@@ -60,6 +60,17 @@ html, body {
 .side-panel { grid-area: panel; }
 .app-footer { grid-area: footer; }
 
+/* ---------- Tab — toggle panels for more canvas room ---------- */
+/* When body has .panels-collapsed (set by Tab keypress), hide the
+   tool sidebar + side panel. Toolbar + footer stay because the user
+   still needs File/Save/Settings/zoom controls. The grid template
+   collapses tools and panel columns to zero so canvas grows. */
+body.panels-collapsed .tool-sidebar,
+body.panels-collapsed .side-panel { display: none; }
+body.panels-collapsed #app {
+  grid-template-columns: 0 1fr 0;
+}
+
 /* ---------- Toolbar ---------- */
 .app-toolbar {
   background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);

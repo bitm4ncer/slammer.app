@@ -21,6 +21,49 @@ const SHAPE_OPTIONS = [
   { id: 'line',    label: 'Line',      icon: 'fa-minus' },
 ];
 
+// ── Z-order: move every layer in `selSet` one step (or to the extreme).
+// Operates on the flat doc.layers array; does NOT reorder group children
+// (that's a separate concern handled by the layer panel's drag).
+//
+//   dir 'up'   + extreme=false → bring forward (one step toward end)
+//   dir 'down' + extreme=false → send backward (one step toward start)
+//   dir 'up'   + extreme=true  → bring to front (move all to end)
+//   dir 'down' + extreme=true  → send to back (move all to start)
+//
+// Multi-selection preserves relative order within the group.
+function reorderZ(doc, selIds, dir, extreme) {
+  const layers = doc.layers.slice();
+  const selSet = new Set(selIds);
+  if (!selSet.size) return;
+  if (extreme) {
+    const selected = layers.filter((l) => selSet.has(l.id));
+    const unselected = layers.filter((l) => !selSet.has(l.id));
+    const next = dir === 'up'
+      ? [...unselected, ...selected]   // selected to end (top of stack)
+      : [...selected, ...unselected];  // selected to start (bottom)
+    doc.reorderLayers(next.map((l) => l.id));
+    return;
+  }
+  const arr = layers.slice();
+  if (dir === 'up') {
+    // Walk end → start so a selected layer can hop over the unselected
+    // layer above it without the next iteration also seeing the same
+    // unselected layer in the new position.
+    for (let i = arr.length - 2; i >= 0; i--) {
+      if (selSet.has(arr[i].id) && !selSet.has(arr[i + 1].id)) {
+        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+      }
+    }
+  } else {
+    for (let i = 1; i < arr.length; i++) {
+      if (selSet.has(arr[i].id) && !selSet.has(arr[i - 1].id)) {
+        [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]];
+      }
+    }
+  }
+  doc.reorderLayers(arr.map((l) => l.id));
+}
+
 // Helper: return the given layer IDs ordered by their position in the
 // document's flat layer list (top-of-stack first). Used so a Ctrl+G
 // group's childIds matches the visual order the user just selected.
@@ -272,6 +315,37 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   $('zoomOut').addEventListener('click', () => view.zoomBy(0.8));
   $('zoomFit').addEventListener('click', () => view.fitTo());
 
+  // Keyboard zoom helpers — used by Ctrl+= / Ctrl+- / Ctrl+1. Both
+  // operate around the viewport CENTER so Ctrl+0 (fit) and the keyboard
+  // zoom feel consistent. Differs from wheel-zoom which is around the
+  // pointer.
+  function zoomByCentered(factor) {
+    const stage = view.stage;
+    const oldScale = stage.scaleX() || 1;
+    const next = Math.max(0.05, Math.min(20, oldScale * factor));
+    if (next === oldScale) return;
+    const w = stage.width(), h = stage.height();
+    const cx = w / 2, cy = h / 2;
+    const worldX = (cx - stage.x()) / oldScale;
+    const worldY = (cy - stage.y()) / oldScale;
+    stage.scale({ x: next, y: next });
+    stage.position({ x: cx - worldX * next, y: cy - worldY * next });
+    stage.batchDraw();
+  }
+  function zoomToScale(scale) {
+    const stage = view.stage;
+    const oldScale = stage.scaleX() || 1;
+    const target = Math.max(0.05, Math.min(20, scale));
+    if (target === oldScale) return;
+    const w = stage.width(), h = stage.height();
+    const cx = w / 2, cy = h / 2;
+    const worldX = (cx - stage.x()) / oldScale;
+    const worldY = (cy - stage.y()) / oldScale;
+    stage.scale({ x: target, y: target });
+    stage.position({ x: cx - worldX * target, y: cy - worldY * target });
+    stage.batchDraw();
+  }
+
   // ---------- Zoom % readout ----------
   // Updates whenever the stage scale changes (wheel zoom, +/-, fit, programmatic).
   // Click → reset to 100% around viewport centre. Double-click → fit-to-view.
@@ -369,6 +443,29 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
         view?.fitTo?.();
         return;
       }
+      // Ctrl+1 — zoom to actual size (100 %) around viewport center.
+      if (key === '1' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        zoomToScale(1);
+        return;
+      }
+      // Ctrl+= / Ctrl++ — zoom in (around viewport center). Most US/EU
+      // keyboards emit '=' for the un-shifted +/= key; Shift+= = '+' is
+      // also accepted so num-pad and laptop layouts both work.
+      if ((key === '=' || key === '+') && !e.altKey) {
+        if (inField) return;
+        e.preventDefault();
+        zoomByCentered(1.2);
+        return;
+      }
+      // Ctrl+- — zoom out.
+      if (key === '-' && !e.shiftKey && !e.altKey) {
+        if (inField) return;
+        e.preventDefault();
+        zoomByCentered(1 / 1.2);
+        return;
+      }
 
       // Selection / group shortcuts (Phase D).
       if (key === 'g' && !e.shiftKey) {
@@ -447,6 +544,37 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       }
     }
 
+    // ── Layer Z-order + stack navigation via arrow + modifier ──────────
+    // Ctrl+Up         — bring forward (one step toward top of stack)
+    // Ctrl+Down       — send backward (one step toward bottom)
+    // Ctrl+Shift+Up   — bring to front (top of stack)
+    // Ctrl+Shift+Down — send to back (bottom of stack)
+    // Ctrl+Alt+Up     — select next layer up in the stack
+    // Ctrl+Alt+Down   — select next layer down
+    if (mod && (key === 'arrowup' || key === 'arrowdown')) {
+      if (inField) return;
+      e.preventDefault();
+      const dir = key === 'arrowup' ? 'up' : 'down';
+      // Ctrl+Alt+Up/Down — change active selection to neighbouring layer.
+      if (e.altKey && !e.shiftKey) {
+        const all = doc.layers;
+        if (!all.length) return;
+        let i = all.findIndex((l) => l.id === doc.activeLayerId);
+        if (i < 0) i = dir === 'up' ? -1 : all.length;
+        let next = dir === 'up' ? i + 1 : i - 1;
+        next = Math.max(0, Math.min(all.length - 1, next));
+        const target = all[next];
+        if (target && target.id !== doc.activeLayerId) selectOnly(target.id);
+        return;
+      }
+      // Z-order moves require a non-empty selection (or active layer).
+      const sel = new Set(getSelectionArray());
+      if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
+      if (!sel.size) return;
+      reorderZ(doc, [...sel], dir, e.shiftKey);
+      return;
+    }
+
     // Arrow-key nudge for selected layers (Select tool only).
     if ((key === 'arrowleft' || key === 'arrowright' || key === 'arrowup' || key === 'arrowdown')
         && !mod && !e.altKey) {
@@ -490,6 +618,16 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
           doc.setVectorPaths(id, newPaths);
         }
       }
+      return;
+    }
+
+    // Tab — toggle side panels (more canvas room). Standard
+    // Figma / Photoshop behaviour. Skip when a form field has focus
+    // so Tab still cycles inputs / textareas as the browser default.
+    if (key === 'tab' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+      if (inField) return;
+      e.preventDefault();
+      window.document.body.classList.toggle('panels-collapsed');
       return;
     }
 
