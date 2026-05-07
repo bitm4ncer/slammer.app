@@ -260,6 +260,17 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 22. Guideline drag listener leak
+
+**Commit:** `e565c43`
+**File:** `src/ui/snap-rulers.js`
+**Why:** `createGuidelineEl` attached `mousemove` + `mouseup` listeners on `window` for each guideline and never removed them. Every guideline ever created leaked another pair on `window`, and via closures those listeners held the dead DOM node + guideline object + contentLayer reference forever. Heavy guideline projects = bloated mousemove path. createGuidelineEl now returns `{ el, cleanup }`; both `syncGuidelineEls` (when removing stale guidelines) and the top-level `destroy()` call `cleanup()` before removing the DOM node.
+
+- [ ] Create 10 guidelines from the rulers, drag 9 back to the rulers to delete. The remaining guideline still drags + repositions correctly (other listeners not corrupted).
+- [ ] Open DevTools → Performance → record a brief mouse-wave across the canvas — should not show 10 redundant mousemove handler hits per frame.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -280,6 +291,7 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+e565c43 fix(snap-rulers): guideline drag listener leak
 3e7f6dd fix(project-menu): rename keydown handler leak
 43acc59 fix(layer-panel): rename keydown handler leak + opacity-row title
 eeb8589 chore(layer-panel): blend-mode trigger tooltip + aria
