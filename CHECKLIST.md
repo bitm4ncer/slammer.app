@@ -217,6 +217,28 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 18. Autosave error indicator
+
+**Commit:** `381c8bc`
+**Files:** `src/main.js`, `src/style/effects.css`
+**Why:** Previously an autosave failure reset the dot to its default state with the generic "Autosave" tooltip — silently indistinguishable from "nothing has changed yet". Now sets state='error' (red dot + glow + tooltip "Autosave failed — check console for details"). The console.error keeps surfacing the actual exception.
+
+- [ ] Hard to reproduce naturally — to test, paste this in DevTools console while the app is open: `(()=>{const oldOpen=indexedDB.open;indexedDB.open=()=>{throw new Error('test')};setTimeout(()=>indexedDB.open=oldOpen,100)})();` then make any change. The dot should briefly turn red.
+- [ ] Without provoking it, regular saves still cycle yellow → green → grey.
+
+---
+
+## 19. Layer-card blend-mode trigger tooltip + aria
+
+**Commit:** `eeb8589`
+**File:** `src/ui/layer-panel.js`
+**Why:** Trigger shows abbreviated mode names ("Mult" / "Scrn" / …) — useful at a glance but ambiguous to a screen reader. Title now reads "Blend mode: Multiply — click to pick, scroll to cycle" and an aria-label carries the full name. Both stay in sync with the live state.
+
+- [ ] Hover any layer's blend-mode pill — tooltip includes the full name + the click/scroll hint.
+- [ ] Scroll-wheel over the pill cycles modes; tooltip updates after each step.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -237,6 +259,9 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+eeb8589 chore(layer-panel): blend-mode trigger tooltip + aria
+381c8bc feat(autosave): explicit error dot state — red dot + tooltip on save failure
+1f22a4c docs: extend CHECKLIST with sections 16-17
 86779b0 docs(readme): bump ASCII header v.1.0.1 → v.1.0.2
 bd5e46e docs(shortcuts): surface Snap / Rulers / Grid / Space-pan / Alt-snap-escape
 c096fc4 docs: extend CHECKLIST with sections 14-15
