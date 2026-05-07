@@ -50,9 +50,21 @@ export function computePadForEffects(effects) {
     const p = eff.params || {};
     switch (eff.pluginId) {
       case 'blur': {
-        if ((p.mode || 'outer') === 'outer') {
-          extra = Math.max(extra, p.radius ?? 0);
+        if ((p.mode || 'outer') !== 'outer') break;
+        const k = p.kernel || 'normal';
+        let reach = 0;
+        if (k === 'directional') {
+          reach = (p.length ?? 0) / 2;
+        } else if (k === 'radial') {
+          // Both zoom and spin reach maxes out around the corners — budget the
+          // max spread roughly. Spin reach scales with distance * sin(spread/2);
+          // we approximate from canvas bbox in the renderer call so use length
+          // as a coarse proxy here.
+          reach = (p.radial === 'spin' ? (p.spin ?? 0) * 1.5 : (p.strength ?? 0));
+        } else {
+          reach = p.radius ?? 0;
         }
+        extra = Math.max(extra, reach);
         break;
       }
       case 'drop-shadow': {
