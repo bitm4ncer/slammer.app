@@ -3,6 +3,7 @@
 // Spread dilates the shadow alpha before blur via a separable max-filter pass.
 
 import { sliderRow, pillGroup, colorRow, toggleRow, selectRow, makeRoot } from '../../shared/ui-helpers.js';
+import { createAngleDistanceWidget } from '../../shared/angle-distance-widget.js';
 
 export default {
   id: 'drop-shadow',
@@ -208,18 +209,17 @@ export default {
       onChange: (v) => onChange({ mode: v }),
     }));
 
-    // Polar controls
+    // Polar controls — visual angle + distance widget
     const polarWrap = document.createElement('div');
     polarWrap.className = 'drop-shadow-mode-group';
-    polarWrap.appendChild(sliderRow({
-      label: 'Angle', min: 0, max: 360, step: 1,
-      value: params.angle ?? 135, defaultValue: 135, suffix: '°',
-      onChange: (v) => onChange({ angle: v }),
-    }));
-    polarWrap.appendChild(sliderRow({
-      label: 'Distance', min: 0, max: 500, step: 1,
-      value: params.distance ?? 12, defaultValue: 12, suffix: 'px',
-      onChange: (v) => onChange({ distance: v }),
+    polarWrap.appendChild(createAngleDistanceWidget({
+      angle: params.angle ?? 135,
+      distance: params.distance ?? 12,
+      maxDistance: 500,
+      visualMax: 200,
+      defaultAngle: 135,
+      defaultDistance: 12,
+      onChange: ({ angle, distance }) => onChange({ angle, distance }),
     }));
     root.appendChild(polarWrap);
 

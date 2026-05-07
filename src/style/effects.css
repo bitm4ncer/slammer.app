@@ -1744,3 +1744,130 @@
   width: 12px;
   text-align: left;
 }
+
+/* ---------- Angle + distance widget (Drop Shadow polar mode) ---------- */
+.effect-angle-widget {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 2px 6px;
+}
+.effect-angle-disk {
+  position: relative;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  outline: none;
+  flex-shrink: 0;
+}
+.effect-angle-disk:focus-visible {
+  border-color: var(--ctx-accent);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.18);
+}
+.effect-angle-disk.is-dragging {
+  cursor: grabbing;
+}
+.effect-angle-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+.effect-angle-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.effect-angle-ticks span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 50%;
+  transform-origin: top center;
+  background: linear-gradient(to bottom, transparent 0, transparent calc(100% - 6px), rgba(255, 255, 255, 0.18) calc(100% - 6px), rgba(255, 255, 255, 0.18) 100%);
+}
+.effect-angle-radial {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 2px;
+  background: var(--ctx-accent);
+  border-radius: 1px;
+  transform-origin: 0 50%;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.effect-angle-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+.effect-angle-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--ctx-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  transition: transform 0.08s ease;
+}
+.effect-angle-disk.is-dragging .effect-angle-handle {
+  transform: scale(1.15);
+}
+.effect-angle-readout {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translate(-50%, 100%);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1px 6px;
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.effect-angle-disk.is-dragging .effect-angle-readout,
+.effect-angle-disk:hover .effect-angle-readout {
+  opacity: 1;
+}
+.effect-angle-nums {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.effect-angle-num-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 6px;
+}
+.effect-angle-num-row .effect-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.effect-angle-num-row .effect-num-wrap {
+  width: 100%;
+}
+.effect-angle-num-row .effect-num {
+  width: 100%;
+  text-align: right;
+}
