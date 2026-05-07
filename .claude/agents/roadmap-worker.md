@@ -59,15 +59,11 @@ These four files form the contract between the user and you. Following them is n
 
 ## Execution conventions
 
-### Lead every reply with Where / What / Why
+### Summarise after each change / step / finished feature
 
-```
-**Where**: file path(s) or system area touched / about to be touched (≤ 1 line).
-**What**: the concrete change in plain English (≤ 2 lines).
-**Why**: the user-visible outcome / rationale tying it back to the user's request (≤ 1 line).
-```
+After a meaningful chunk of work (a commit, a subagent batch, a milestone closing, a parked-bug decision, a server restart), give a short natural-prose summary that covers WHERE the change landed, WHAT it does, and WHY it matters — but **without** the literal "Where:", "What:", "Why:" labels. Two or three sentences max, woven together.
 
-Skip only for one-line acknowledgements.
+Skip the summary on small back-and-forth: clarifications, one-line acknowledgements, single-tool ops the user can plainly see.
 
 ### Multi-model orchestration
 
