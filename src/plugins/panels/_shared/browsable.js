@@ -7,6 +7,7 @@ import {
   createFolder, listFolders, renameFolder, deleteFolder, moveFavoriteToFolder,
 } from '../../../io/plugin-store.js';
 import { showConfirm } from '../../../ui/confirm-prompt.js';
+import { fetchImageBlob } from './cors-proxy.js';
 
 export function createBrowsable({
   pluginId,
@@ -597,40 +598,23 @@ export function createBrowsable({
     }
   }
 
-  // Reusable fetch helper — direct first, then a corsproxy.io fallback for
-  // CDNs that don't send Access-Control-Allow-Origin (e.g.
-  // images.metmuseum.org). Strips referrer because some CDNs reject
-  // third-party Referers.
-  async function fetchAsBlob(url) {
-    const tryFetch = async (target) => {
-      const r = await fetch(target, { referrerPolicy: 'no-referrer' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const b = await r.blob();
-      if (!b.size) throw new Error('Empty response');
-      return b;
-    };
-    try {
-      return await tryFetch(url);
-    } catch (directErr) {
-      const proxied = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
-      return await tryFetch(proxied);
-    }
-  }
-
   async function importItem(item) {
     const name = item.name || `${pluginId} · ${item.attribution || item.id}`;
     try {
       ctx.notify('Importing image…');
-      const blob = await fetchAsBlob(item.fullUrl);
+      const blob = await fetchImageBlob(item.fullUrl, {
+        onProxyFallback: (proxy) => console.warn(`[${pluginId}] direct fetch blocked, proxying via`, proxy),
+      });
       ctx.importImage(blob, name);
       ctx.notify('Imported.');
     } catch (err) {
-      // Even the proxied fullUrl failed — fall back to the thumbnail.
-      // Some CDNs serve thumbnails from a different host; this catches
-      // that case before we surface a hard error.
+      // Even the full-proxy chain failed — fall back to the thumbnail.
+      // Some CDNs serve thumbnails from a different host that's still
+      // CORS-friendly; this catches that case before we surface a
+      // hard error.
       if (item.thumbUrl && item.thumbUrl !== item.fullUrl) {
         try {
-          const blob2 = await fetchAsBlob(item.thumbUrl);
+          const blob2 = await fetchImageBlob(item.thumbUrl);
           ctx.importImage(blob2, name);
           ctx.notify('Imported (thumbnail — source CDN blocked full-res).');
           return;

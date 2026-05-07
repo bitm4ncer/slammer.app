@@ -1107,31 +1107,19 @@ export function initCanvasView({ container, document, onImageDropped }) {
         .split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#'))
         || (e.dataTransfer?.getData('text/plain') || '').trim();
       if (uri && /^https?:\/\//i.test(uri)) {
-        // Try direct fetch first; on CORS / network failure fall through
-        // to the corsproxy.io tunnel that the Met plugin uses for the same
-        // class of CDN. This rescues drag-into-canvas for images served by
-        // hosts that don't send Access-Control-Allow-Origin (e.g.
-        // images.metmuseum.org). Tracked in BUGS.md.
-        const fetchAsBlob = async (target) => {
-          const res = await fetch(target, { referrerPolicy: 'no-referrer' });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const blob = await res.blob();
-          if (!blob.type.startsWith('image/')) throw new Error(`Not an image (${blob.type || 'unknown'})`);
-          return blob;
-        };
+        // Try direct fetch first; on CORS / network failure walk the
+        // multi-proxy chain. Single-proxy was fragile — corsproxy.io
+        // started 403'ing Met URLs at some point. fetchImageBlob walks
+        // corsproxy.io → allorigins.win → codetabs.com in order.
         try {
-          let blob;
-          try {
-            blob = await fetchAsBlob(uri);
-          } catch (directErr) {
-            const proxied = `https://corsproxy.io/?url=${encodeURIComponent(uri)}`;
-            console.warn('[canvas-view] direct fetch failed, retrying via corsproxy', directErr?.message || directErr);
-            blob = await fetchAsBlob(proxied);
-          }
+          const { fetchImageBlob } = await import('../plugins/panels/_shared/cors-proxy.js');
+          const blob = await fetchImageBlob(uri, {
+            onProxyFallback: (proxy) => console.warn('[canvas-view] direct fetch failed, proxying via', proxy),
+          });
           const filename = uri.split('/').pop()?.split('?')[0] || 'image';
-          onImageDropped?.(new File([blob], filename, { type: blob.type }));
+          onImageDropped?.(new File([blob], filename, { type: blob.type || 'image/png' }));
         } catch (err) {
-          console.warn('[canvas-view] URL drop failed (direct + proxy)', err);
+          console.warn('[canvas-view] URL drop failed (chain exhausted)', err);
         }
       }
       return;
