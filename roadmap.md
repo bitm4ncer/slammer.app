@@ -200,7 +200,7 @@
 - [ ] Collapsable pages sidebar
 - [ ] Duplicate, reorder pages
 - [ ] Per-page settings icon (change document)
-- [x] Display version unified — `v1.0.2-alpha` everywhere (header tag, Settings → About, Settings sidebar stamp). package.json bumped to `1.0.2`. Note: actual Phase 18 Artboards features still pending.
+- [x] Display version unified — `v1.02` everywhere (header tag, Settings → About, Settings sidebar stamp). package.json carries the canonical `1.0.2`. Note: actual Phase 18 Artboards features still pending.
 
 ---
 
