@@ -307,11 +307,57 @@ function renderWorkflow() {
         ${toggleRowHTML('setLiveFontPreview', 'Live font preview', s.liveFontPreview,
           'When ON, hovering a font card in the picker temporarily previews it on the active text layer. Click commits permanently.')}
       </div>
+    </section>
+  `;
+}
+
+function wireWorkflow(root) {
+  bindToggle(root, 'setKeepEffectsOpen', 'keepEffectsOpen');
+  bindToggle(root, 'setTextToPathReplace', 'textToPathReplace');
+  bindToggle(root, 'setClickThroughGroups', 'clickThroughGroups');
+  bindToggle(root, 'setLiveFontPreview', 'liveFontPreview');
+  // Segmented control for marquee mode
+  const seg = root.querySelector('#setMarqueeMode');
+  if (seg) {
+    seg.querySelectorAll('.settings-seg').forEach((b) => {
+      b.addEventListener('click', () => {
+        const v = b.dataset.v;
+        seg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
+        setSettings({ marqueeMode: v === 'contain' ? 'contain' : 'touch' });
+      });
+    });
+  }
+}
+
+function renderCanvas() {
+  const s = getSettings();
+  const dimPct = Math.round((s.frameDimOpacity ?? 0.80) * 100);
+  return `
+    <section class="settings-tab-panel" data-tab="canvas" hidden>
+      <header class="settings-panel-head">
+        <span class="settings-panel-eyebrow">Canvas</span>
+        <h2 class="settings-panel-title">Stage, grid &amp; persistence</h2>
+        <p class="settings-panel-desc">Visual chrome around the canvas, the snap-to-grid overlay, and how often the document autosaves.</p>
+      </header>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Export frame</div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setFrameDim">Frame dim</label>
+            <span class="settings-rowhint">Darken the area outside the export region so the frame stands out.</span>
+          </div>
+          <div class="settings-control settings-control--full">
+            <input type="range" id="setFrameDim" min="0" max="100" step="1" value="${dimPct}" />
+            <code class="settings-readout settings-readout--inline" id="setFrameDimReadout">${dimPct}%</code>
+          </div>
+        </div>
+      </div>
 
       <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Canvas Grid</div>
         ${toggleRowHTML('setCanvasGridShow', 'Show grid', s.canvasGridShow,
-          'Draws a subtle two-tier grid below all layers. Moves with the canvas when you pan or zoom.')}
+          'Draws a subtle two-tier grid above the dim overlay. Moves with the canvas when you pan or zoom and adapts its pitch when you zoom out.')}
         ${toggleRowHTML('setCanvasGridSnap', 'Snap to grid', s.canvasGridSnap,
           'When Snap is also ON, dragged layers align to the minor grid pitch.')}
         <div class="settings-row settings-row--stack">
@@ -355,38 +401,52 @@ function renderWorkflow() {
           </div>
         </div>
       </div>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Persistence</div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel">Autosave delay</label>
+            <span class="settings-rowhint">How long after your last edit the document is committed to local storage.</span>
+          </div>
+          <div class="settings-control settings-control--knob" id="setAutosaveControl"></div>
+        </div>
+      </div>
+
+      <div class="settings-group settings-group--placeholder">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
+        <ul class="settings-roadmap-list">
+          <li><span class="settings-roadmap-key">Fit on Open</span><span class="settings-roadmap-desc">Auto-fit when opening someone else's project — Phase 19/C wiring in progress.</span></li>
+          <li><span class="settings-roadmap-key">Versioning</span><span class="settings-roadmap-desc">Manual save-as-version + autosave version chain — Phase 24.</span></li>
+        </ul>
+      </div>
     </section>
   `;
 }
 
-function wireWorkflow(root) {
-  bindToggle(root, 'setKeepEffectsOpen', 'keepEffectsOpen');
-  bindToggle(root, 'setTextToPathReplace', 'textToPathReplace');
-  bindToggle(root, 'setClickThroughGroups', 'clickThroughGroups');
-  bindToggle(root, 'setLiveFontPreview', 'liveFontPreview');
-  // Segmented control for marquee mode
-  const seg = root.querySelector('#setMarqueeMode');
-  if (seg) {
-    seg.querySelectorAll('.settings-seg').forEach((b) => {
-      b.addEventListener('click', () => {
-        const v = b.dataset.v;
-        seg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
-        setSettings({ marqueeMode: v === 'contain' ? 'contain' : 'touch' });
-      });
-    });
-  }
+function wireCanvas(root) {
+  const s = getSettings();
+  // Frame dim slider
+  const frameDimInput = root.querySelector('#setFrameDim');
+  const frameDimReadout = root.querySelector('#setFrameDimReadout');
+  frameDimInput?.addEventListener('input', (e) => {
+    const pct = parseInt(e.target.value, 10);
+    frameDimReadout.textContent = `${pct}%`;
+    setSettings({ frameDimOpacity: pct / 100 });
+  });
+
   // Canvas Grid controls
   bindToggle(root, 'setCanvasGridShow', 'canvasGridShow');
   bindToggle(root, 'setCanvasGridSnap', 'canvasGridSnap');
 
-  const minorInput    = root.querySelector('#setCanvasGridMinor');
-  const minorReadout  = root.querySelector('#setCanvasGridMinorReadout');
-  const majorInput    = root.querySelector('#setCanvasGridMajor');
-  const majorReadout  = root.querySelector('#setCanvasGridMajorReadout');
-  const opacityInput  = root.querySelector('#setCanvasGridOpacity');
+  const minorInput     = root.querySelector('#setCanvasGridMinor');
+  const minorReadout   = root.querySelector('#setCanvasGridMinorReadout');
+  const majorInput     = root.querySelector('#setCanvasGridMajor');
+  const majorReadout   = root.querySelector('#setCanvasGridMajorReadout');
+  const opacityInput   = root.querySelector('#setCanvasGridOpacity');
   const opacityReadout = root.querySelector('#setCanvasGridOpacityReadout');
-  const colorInput    = root.querySelector('#setCanvasGridColor');
-  const colorReadout  = root.querySelector('#setCanvasGridColorReadout');
+  const colorInput     = root.querySelector('#setCanvasGridColor');
+  const colorReadout   = root.querySelector('#setCanvasGridColorReadout');
 
   function clampMajorToMultiple(minor, major) {
     if (minor <= 0) return major;
@@ -421,67 +481,6 @@ function wireWorkflow(root) {
     const hex = e.target.value;
     colorReadout.textContent = hex.toUpperCase();
     setSettings({ canvasGridColor: hex });
-  });
-}
-
-function renderCanvas() {
-  const s = getSettings();
-  const dimPct = Math.round((s.frameDimOpacity ?? 0.80) * 100);
-  return `
-    <section class="settings-tab-panel" data-tab="canvas" hidden>
-      <header class="settings-panel-head">
-        <span class="settings-panel-eyebrow">Canvas</span>
-        <h2 class="settings-panel-title">Stage &amp; persistence</h2>
-        <p class="settings-panel-desc">Visual chrome around the canvas + how often the document autosaves.</p>
-      </header>
-
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Export frame</div>
-        <div class="settings-row settings-row--stack">
-          <div class="settings-rowlabelblock">
-            <label class="settings-rowlabel" for="setFrameDim">Frame dim</label>
-            <span class="settings-rowhint">Darken the area outside the export region so the frame stands out.</span>
-          </div>
-          <div class="settings-control settings-control--full">
-            <input type="range" id="setFrameDim" min="0" max="100" step="1" value="${dimPct}" />
-            <code class="settings-readout settings-readout--inline" id="setFrameDimReadout">${dimPct}%</code>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Persistence</div>
-        <div class="settings-row settings-row--stack">
-          <div class="settings-rowlabelblock">
-            <label class="settings-rowlabel">Autosave delay</label>
-            <span class="settings-rowhint">How long after your last edit the document is committed to local storage.</span>
-          </div>
-          <div class="settings-control settings-control--knob" id="setAutosaveControl"></div>
-        </div>
-      </div>
-
-      <div class="settings-group settings-group--placeholder">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
-        <ul class="settings-roadmap-list">
-          <li><span class="settings-roadmap-key">Snap defaults</span><span class="settings-roadmap-desc">Layer-edge + center alignment, dashed accent guides — Phase 21.</span></li>
-          <li><span class="settings-roadmap-key">Ruler defaults</span><span class="settings-roadmap-desc">Top + left rulers, drag to create guides — Phase 21.</span></li>
-          <li><span class="settings-roadmap-key">Fit on Open</span><span class="settings-roadmap-desc">Auto-fit when opening someone else's project — Phase 19/C wiring in progress.</span></li>
-          <li><span class="settings-roadmap-key">Versioning</span><span class="settings-roadmap-desc">Manual save-as-version + autosave version chain — Phase 24.</span></li>
-        </ul>
-      </div>
-    </section>
-  `;
-}
-
-function wireCanvas(root) {
-  const s = getSettings();
-  // Frame dim slider
-  const frameDimInput = root.querySelector('#setFrameDim');
-  const frameDimReadout = root.querySelector('#setFrameDimReadout');
-  frameDimInput?.addEventListener('input', (e) => {
-    const pct = parseInt(e.target.value, 10);
-    frameDimReadout.textContent = `${pct}%`;
-    setSettings({ frameDimOpacity: pct / 100 });
   });
   // Autosave knob + numeric (reused from prior layout)
   const autosaveControl = root.querySelector('#setAutosaveControl');
