@@ -54,102 +54,73 @@ export default {
 
     const out = new ImageData(W, H);
     const dst = out.data;
-    const PI  = Math.PI;
-    const sampleFn = sampling === 'nearest' ? sampleNearest : sampleBilinear;
+    // Pixels outside the affected disc / content rect are unchanged. Mirror
+    // twirl's pattern: copy once, then only touch the bbox below.
+    dst.set(src);
 
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
+    // Bbox = canvas ∩ content-rect ∩ (centerX,centerY ± radius).
+    const xMin = Math.max(0, Math.max(rect.x,              Math.floor(centerX - radius)));
+    const yMin = Math.max(0, Math.max(rect.y,              Math.floor(centerY - radius)));
+    const xMax = Math.min(W, Math.min(rect.x + rect.w,     Math.ceil (centerX + radius)));
+    const yMax = Math.min(H, Math.min(rect.y + rect.h,     Math.ceil (centerY + radius)));
+    if (xMax <= xMin || yMax <= yMin) return out;
+
+    // === Falloff LUT ===
+    // f depends only on the normalised distance t = d/radius, so we can
+    // precompute it once per integer pixel-distance bucket. Per-pixel cost
+    // collapses to one sqrt + one array read.
+    const radiusSq = radius * radius;
+    const lutSize = (radius | 0) + 2;
+    const lutF = new Float32Array(lutSize);
+    const PI = Math.PI;
+    const invRadius = 1 / radius;
+    for (let d = 0; d < lutSize; d++) {
+      const t = Math.min(1, d * invRadius);
+      let f;
+      switch (falloff) {
+        case 'smooth':     f = 0.5 * (1 + Math.cos(PI * t)); break;
+        case 'cone':       f = 1 - t;                        break;
+        case 'pinch-bell': f = Math.sin(PI * t);             break;
+        case 'spherical':
+        default:           f = 1 - Math.sqrt(1 - t * t);     break;
+      }
+      lutF[d] = f;
+    }
+
+    const sampleFn = sampling === 'nearest' ? sampleNearest : sampleBilinear;
+    const useFree = aspect === 'free';
+
+    // Geometry note: the original code computed
+    //   preserve: sx = cx + dx * (1/dist) * dist * (1 - f*strength) = cx + dx * (1 - f*strength)
+    //   free:     sx = cx + dx - (dx/dist) * dist * f * strengthX = cx + dx * (1 - f*strengthX)
+    // — `dist` cancels out, so we don't need it for the source-coord
+    // computation, only for the LUT index.
+    for (let y = yMin; y < yMax; y++) {
+      for (let x = xMin; x < xMax; x++) {
         const dx = x - centerX;
         const dy = y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const di = (y * W + x) * 4;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > radiusSq) continue;
 
-        if (dist > radius || radius < 0.5) {
-          dst[di]     = src[di];
-          dst[di + 1] = src[di + 1];
-          dst[di + 2] = src[di + 2];
-          dst[di + 3] = src[di + 3];
-          continue;
-        }
-
-        // Normalised distance: 0 at center, 1 at edge of radius.
-        const t = dist / radius;
-
-        // Falloff factor f ∈ [0, 1].
-        let f;
-        switch (falloff) {
-          case 'spherical':
-            // True hemisphere projection: f peaks at edge (like a fish-eye).
-            // For bulge: inner pixels are pushed out toward the edge of the lens.
-            // Inverse-warp: to find source for output pixel at distance d,
-            // map d → d * (1 - f * strength) where f = 1 - sqrt(1 - t²).
-            f = 1 - Math.sqrt(1 - t * t);
-            break;
-          case 'smooth':
-            // Cosine bell: smooth falloff from center to edge.
-            f = 0.5 * (1 + Math.cos(PI * t));
-            break;
-          case 'cone':
-            // Linear ramp: maximum at center, zero at edge.
-            f = 1 - t;
-            break;
-          case 'pinch-bell':
-            // Sine bell: zero at center and edge, maximum in the middle.
-            f = Math.sin(PI * t);
-            break;
-          default:
-            f = 1 - Math.sqrt(1 - t * t);
-            break;
-        }
+        const d = Math.sqrt(distSq) | 0;
+        const f = lutF[d];
 
         let sx, sy;
-
-        if (aspect === 'free') {
-          // Separate X and Y strengths — oval distortion.
-          // For each axis, scale the displacement component independently.
-          // Inverse warp: find source by moving TOWARD center by factor.
-          const sdx = dist > 1e-6 ? dx / dist : 0;
-          const sdy = dist > 1e-6 ? dy / dist : 0;
-
-          // Source radial distance for this pixel (inverse warp).
-          // Positive strengthX/Y → bulge out → source closer to center → subtract.
-          sx = centerX + dx - sdx * dist * f * strengthX;
-          sy = centerY + dy - sdy * dist * f * strengthY;
+        if (useFree) {
+          sx = centerX + dx * (1 - f * strengthX);
+          sy = centerY + dy * (1 - f * strengthY);
         } else {
-          // Uniform radial distortion.
-          // Positive strength → bulge out → output pixels pull toward center → source
-          // coordinate is at a shorter radial distance.
-          const srcDist = dist * (1 - f * strength);
-          const dir = dist > 1e-6 ? 1 / dist : 0;
-          sx = centerX + dx * dir * srcDist;
-          sy = centerY + dy * dir * srcDist;
+          const k = 1 - f * strength;
+          sx = centerX + dx * k;
+          sy = centerY + dy * k;
         }
 
-        const [r, g, b, a] = sampleFn(src, W, H, sx, sy);
-
+        const [r, g, b] = sampleFn(src, W, H, sx, sy);
+        const di = (y * W + x) * 4;
         dst[di]     = r;
         dst[di + 1] = g;
         dst[di + 2] = b;
-        dst[di + 3] = a;
-      }
-    }
-
-    // Restore original alpha inside content rect; copy source through outside.
-    const xMin = Math.max(0, rect.x);
-    const yMin = Math.max(0, rect.y);
-    const xMax = Math.min(W, rect.x + rect.w);
-    const yMax = Math.min(H, rect.y + rect.h);
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const di = (y * W + x) * 4;
-        if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
-          dst[di]     = src[di];
-          dst[di + 1] = src[di + 1];
-          dst[di + 2] = src[di + 2];
-          dst[di + 3] = src[di + 3];
-        } else {
-          dst[di + 3] = src[di + 3];
-        }
+        // dst[di + 3] stays = src[di + 3] from the initial dst.set(src).
       }
     }
 
