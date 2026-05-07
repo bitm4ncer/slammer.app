@@ -444,12 +444,9 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
 
     let dragging = false;
     let moved = false;
-    h.addEventListener('mousedown', (e) => {
-      if (e.target === colorInp) return;
-      e.preventDefault();
-      dragging = true;
-      moved = false;
-    });
+    // Window listeners scoped to drag — same fix as the curve / gradient
+    // editors. The previous always-on pattern leaked one set per stop
+    // ever rendered (rebuildHandles wipes + recreates aggressively).
     const onMove = (e) => {
       if (!dragging) return;
       const rect = bar.getBoundingClientRect();
@@ -461,9 +458,19 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
       onChange(local.stops.slice());
       refreshBar();
     };
-    const onUp = () => { dragging = false; };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    const onUp = () => {
+      dragging = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    h.addEventListener('mousedown', (e) => {
+      if (e.target === colorInp) return;
+      e.preventDefault();
+      dragging = true;
+      moved = false;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
     h.addEventListener('click', (e) => { if (moved) e.stopPropagation(); });
     h.addEventListener('dblclick', (e) => {
       e.preventDefault();
