@@ -597,24 +597,40 @@ export function createBrowsable({
     }
   }
 
+  // Reusable fetch helper — direct first, then a corsproxy.io fallback for
+  // CDNs that don't send Access-Control-Allow-Origin (e.g.
+  // images.metmuseum.org). Strips referrer because some CDNs reject
+  // third-party Referers.
+  async function fetchAsBlob(url) {
+    const tryFetch = async (target) => {
+      const r = await fetch(target, { referrerPolicy: 'no-referrer' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const b = await r.blob();
+      if (!b.size) throw new Error('Empty response');
+      return b;
+    };
+    try {
+      return await tryFetch(url);
+    } catch (directErr) {
+      const proxied = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+      return await tryFetch(proxied);
+    }
+  }
+
   async function importItem(item) {
     const name = item.name || `${pluginId} · ${item.attribution || item.id}`;
     try {
       ctx.notify('Importing image…');
-      // Strip referrer — some CDNs (Wikimedia, Flickr) reject third-party Referers.
-      let res = await fetch(item.fullUrl, { referrerPolicy: 'no-referrer' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
+      const blob = await fetchAsBlob(item.fullUrl);
       ctx.importImage(blob, name);
       ctx.notify('Imported.');
     } catch (err) {
-      // fullUrl may be CORS-blocked (e.g. Flickr CDN). Fall back to the
-      // thumbnail URL which often goes through a CORS-friendly proxy.
+      // Even the proxied fullUrl failed — fall back to the thumbnail.
+      // Some CDNs serve thumbnails from a different host; this catches
+      // that case before we surface a hard error.
       if (item.thumbUrl && item.thumbUrl !== item.fullUrl) {
         try {
-          const res2 = await fetch(item.thumbUrl, { referrerPolicy: 'no-referrer' });
-          if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
-          const blob2 = await res2.blob();
+          const blob2 = await fetchAsBlob(item.thumbUrl);
           ctx.importImage(blob2, name);
           ctx.notify('Imported (thumbnail — source CDN blocked full-res).');
           return;
