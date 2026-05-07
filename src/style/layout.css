@@ -221,9 +221,7 @@ html, body {
     /* bottom recess inside the ring */
     inset 0 -3px 6px rgba(0, 0, 0, 0.55),
     /* drop shadow lifting the dial off the chrome */
-    0 6px 16px rgba(0, 0, 0, 0.5),
-    /* faint accent halo — the sci-fi 'powered up' tell */
-    0 0 14px color-mix(in srgb, var(--ctx-accent) 28%, transparent);
+    0 6px 16px rgba(0, 0, 0, 0.5);
 }
 .color-circle-btn:hover {
   border-color: var(--surface-3);
@@ -232,8 +230,7 @@ html, body {
     0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     inset 0 -3px 6px rgba(0, 0, 0, 0.55),
-    0 10px 22px rgba(0, 0, 0, 0.55),
-    0 0 26px color-mix(in srgb, var(--ctx-accent) 55%, transparent);
+    0 10px 22px rgba(0, 0, 0, 0.55);
 }
 .color-circle-swatch {
   width: 100%;
@@ -244,9 +241,7 @@ html, body {
     /* socketed inner well — inverse of the ring's outer well */
     inset 0 0 0 1px rgba(0, 0, 0, 0.6),
     inset 0 2px 4px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
-    /* subtle glow tinted by the active colour itself */
-    0 0 6px color-mix(in srgb, var(--primary) 35%, transparent);
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
 }
 
 .color-flyout {
