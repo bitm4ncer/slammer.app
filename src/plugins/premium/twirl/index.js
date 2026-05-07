@@ -182,16 +182,6 @@ export default {
     function rebuild() {
       root.innerHTML = '';
 
-      root.appendChild(pillGroup({
-        label: 'Scope',
-        options: [
-          { value: 'image', label: 'Image' },
-          { value: 'layer', label: 'Layer' },
-        ],
-        value: local.scope === 'layer' ? 'layer' : 'image',
-        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
-      }));
-
       root.appendChild(sliderRow({
         label: 'Angle', min: -1080, max: 1080, step: 1,
         value: local.angle, defaultValue: 180, suffix: '°',
@@ -242,6 +232,16 @@ export default {
         label: 'Inverse',
         value: local.inverse,
         onChange: (v) => { local.inverse = v; onChange({ inverse: v }); },
+      }));
+
+      root.appendChild(pillGroup({
+        label: 'Scope',
+        options: [
+          { value: 'image', label: 'Image' },
+          { value: 'layer', label: 'Layer' },
+        ],
+        value: local.scope === 'layer' ? 'layer' : 'image',
+        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
       }));
     }
 
