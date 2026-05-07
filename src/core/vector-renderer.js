@@ -35,7 +35,57 @@ import { getPlugin } from '../plugins/registry.js';
 // Padding around the path bbox so blur / displacement / glow don't clip.
 // Exported via the rasterise return so the consumer (renderer.js) can
 // position the Konva.Image to compensate for path-bounds shifts.
-const PAD = 16;
+const PAD_MIN = 16;
+const PAD_MAX = 256;
+
+// Inspect the layer's pixel-effect stack and budget extra canvas padding
+// for any effect that visually expands beyond the path silhouette.
+// Effects that don't expand bounds (color, contrast, hue, ...) contribute 0.
+// Inner-mode blur preserves alpha so it doesn't need extra room.
+export function computePadForEffects(effects) {
+  if (!Array.isArray(effects) || effects.length === 0) return PAD_MIN;
+  let extra = 0;
+  for (const eff of effects) {
+    if (!eff || eff.enabled === false) continue;
+    const p = eff.params || {};
+    switch (eff.pluginId) {
+      case 'blur': {
+        if ((p.mode || 'outer') === 'outer') {
+          extra = Math.max(extra, p.radius ?? 0);
+        }
+        break;
+      }
+      case 'drop-shadow': {
+        const ang = (p.angle ?? 135) * Math.PI / 180;
+        const dist = p.distance ?? 12;
+        const ox = p.mode === 'cartesian' ? Math.abs(p.offsetX ?? 0) : Math.abs(Math.cos(ang) * dist);
+        const oy = p.mode === 'cartesian' ? Math.abs(p.offsetY ?? 0) : Math.abs(Math.sin(ang) * dist);
+        const blur = p.blur ?? 0;
+        const spread = p.spread ?? 0;
+        extra = Math.max(extra, Math.max(ox, oy) + blur + spread);
+        break;
+      }
+      case 'displacement': {
+        extra = Math.max(extra, p.amount ?? 0);
+        break;
+      }
+      case 'rgb-shift': {
+        if (p.mode === 'flat') {
+          const m = Math.max(
+            Math.abs(p.rX ?? 0), Math.abs(p.rY ?? 0),
+            Math.abs(p.gX ?? 0), Math.abs(p.gY ?? 0),
+            Math.abs(p.bX ?? 0), Math.abs(p.bY ?? 0),
+          );
+          extra = Math.max(extra, m);
+        } else {
+          extra = Math.max(extra, p.strength ?? 0);
+        }
+        break;
+      }
+    }
+  }
+  return Math.min(PAD_MAX, Math.max(PAD_MIN, Math.ceil(PAD_MIN + extra)));
+}
 
 function ensureProject() { return ensurePaper(); }
 
@@ -355,6 +405,7 @@ export function rasterizeVectorGroup(group, findLayer) {
     type: 'vector',
     vector: { paths: flat },
     vectorEffects: group.vectorEffects || [],
+    effects: group.effects || [],
   };
   return rasterizeVectorLayer(synth);
 }
@@ -394,17 +445,17 @@ export function rasterizeVectorLayer(layer) {
   // pathBounds + pad so the renderer can call image.position(...) without
   // `undefined` crashes — the symptom of the bug we used to ship: TypeError
   // reading 'x' on initial shape draw.
+  const pad = computePadForEffects(layer.effects);
   const empty = () => ({
     imageData: new ImageData(1, 1),
     naturalSize: { w: 1, h: 1 },
     pathBounds: { x: 0, y: 0, width: 1, height: 1 },
-    pad: PAD,
+    pad,
   });
   if (!recs.length) return empty();
 
   const b = computeBounds(recs);
   if (b.width <= 0 || b.height <= 0) return empty();
-  const pad = PAD;
   const w = Math.max(1, Math.ceil(b.width + pad * 2));
   const h = Math.max(1, Math.ceil(b.height + pad * 2));
   const dx = -b.x + pad;

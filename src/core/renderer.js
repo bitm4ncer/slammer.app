@@ -3,7 +3,7 @@
 import Konva from 'konva';
 import { getPlugin } from '../plugins/registry.js';
 import { findFont } from '../ui/typography/font-sources.js';
-import { rasterizeVectorLayer, rasterizeVectorGroup, translatePathD } from './vector-renderer.js';
+import { rasterizeVectorLayer, rasterizeVectorGroup, translatePathD, computePadForEffects } from './vector-renderer.js';
 import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 import { getSelection, onSelectionChange } from '../ui/selection-state.js';
 import { getSettings } from '../ui/settings-popup.js';
@@ -422,7 +422,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return c.getContext('2d').getImageData(0, 0, w, h);
     }
     if (layer.type === 'text') {
-      return rasterizeText(layer.text, st);
+      return rasterizeText(layer.text, st, layer.effects);
     }
     if (layer.type === 'vector') {
       const { imageData, naturalSize, pathBounds, pad } = rasterizeVectorLayer(layer);
@@ -566,7 +566,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     return octx.getImageData(0, 0, w, h);
   }
 
-  function rasterizeText(text, st) {
+  function rasterizeText(text, st, effects) {
     const meas = window.document.createElement('canvas').getContext('2d');
     // Variable-font weight: prefer text.variation.wght when present so the
     // user's slider drives weight directly (browser picks the variable
@@ -599,8 +599,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     const lineWidths = lines.map((ln) => measureLineWidth(meas, ln, ls));
 
     // Filter-safe padding so blur etc. has room to expand without being clipped.
-    // Heuristic: half a font-size each side, capped to a sensible range.
-    const pad = Math.min(96, Math.max(16, Math.round(text.size * 0.5)));
+    // Base on font size, then take the larger of that and the effect-budget so
+    // a 100 px blur on small text still gets enough canvas headroom.
+    const fontPad = Math.min(96, Math.max(16, Math.round(text.size * 0.5)));
+    const effectPad = computePadForEffects(effects);
+    const pad = Math.max(fontPad, effectPad);
 
     // Vertical extent: top half of size on first line + (n-1) lineH steps + descender on last line.
     // Use 1.2× size as the visual line-box (handles descenders even when lineHeight < 1).
@@ -822,6 +825,22 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     const out = new ImageData(src.width, src.height);
     out.data.set(src.data);
     return out;
+  }
+
+  // Vector, vector-only group, and text layers rasterise WITH a pad budget
+  // computed from the effect stack — when an expanding effect (blur, drop
+  // shadow, displacement, rgb-shift) changes, the source bitmap dimensions
+  // must change too, otherwise the effect's halo gets clipped at the canvas
+  // edge. Image layers' source is a static decoded bitmap and never depends
+  // on the effect stack.
+  function sourceDependsOnEffects(layer) {
+    if (!layer) return false;
+    if (layer.type === 'vector' || layer.type === 'text') return true;
+    if (layer.type === 'group') {
+      // Group with vector-only descendants follows rasterizeVectorGroup.
+      return true;
+    }
+    return false;
   }
 
   // Lerp two ImageDatas of the same dimensions: out = a*(1-t) + b*t per channel.
@@ -1350,6 +1369,15 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (!st) break;
         const fromIndex = event.atIndex ?? event.fromIndex ?? 0;
         st.dirtyFromIndex = Math.min(st.dirtyFromIndex, fromIndex);
+        // Vector, group(vector-only) and text layers may need to re-rasterise
+        // their source so the canvas pad grows / shrinks with the effect stack.
+        if (sourceDependsOnEffects(layer)) {
+          const imgData = await rasterizeSource(layer, st);
+          if (imgData) {
+            st.sourceImageData = imgData;
+            st.dirtyFromIndex = 0;
+          }
+        }
         paintLayer(layer, st);
         if (layer.type !== 'fx') repaintFxAbove(layer.id);
         break;
@@ -1360,6 +1388,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         const st = layerState.get(event.layerId);
         if (!st) break;
         if (event.fromIndex >= 0) st.dirtyFromIndex = Math.min(st.dirtyFromIndex, event.fromIndex);
+        // If the layer's source canvas size depends on the effect stack
+        // (vector / group / text), re-rasterise so blur / shadow / etc. don't
+        // get clipped at the bounding box.
+        if (sourceDependsOnEffects(layer)) {
+          const imgData = await rasterizeSource(layer, st);
+          if (imgData) {
+            st.sourceImageData = imgData;
+            st.dirtyFromIndex = 0;
+          }
+        }
         paintLayer(layer, st);
         // An effect param change on a non-FX layer changes its visible output,
         // so any FX layer above must re-composite.
