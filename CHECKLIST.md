@@ -134,6 +134,42 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 11. Tooltip / aria-label polish on toolbar + layer cards
+
+**Commit:** `586a062`
+**Files:** `index.html`, `src/ui/layer-panel.js`, `src/main.js`
+**Why:** Audit found gaps in icon-only buttons. Zoom-in / Zoom-out had no titles at all; layer-card lock / vis / dup / del were missing aria-labels; the autosave dot was always titled "Autosave" regardless of state.
+
+- [ ] Hover the canvas zoom **+** and **−** buttons: tooltips read "Zoom in (mouse wheel up)" / "Zoom out (mouse wheel down)".
+- [ ] Hover the **Fit** crosshair button: "Fit content to viewport".
+- [ ] Hover a layer card's lock icon: title includes `(Ctrl+L)`. Hover the trash: title includes `(Del)`.
+- [ ] Make any change. The autosave dot tooltip cycles "Unsaved changes — autosave pending" → "Autosaving…" → "All changes saved" → "Autosave".
+
+---
+
+## 12. Drop dead font-loader re-exports from text-tool
+
+**Commit:** `e9a9e31`
+**File:** `src/ui/text-tool.js`
+**Why:** `preloadFontsForDoc` and `ensureGoogleFont` had been moved to `font-loader.js` long ago, but `text-tool.js` still re-exported them "for backward compat". Grep confirms zero callers consume them via `text-tool.js` — every consumer (`main.js`, `project-menu.js`, `project-file.js`) imports straight from `font-loader.js`. Public surface trimmed.
+
+- [ ] Open + close a project — fonts still load (regression check on the actual call sites, not the deleted re-exports).
+- [ ] Type into a text layer — typography panel still renders normally.
+
+---
+
+## 13. Version display final string
+
+**Commits:** `7eb011f` → `ba6964e`
+**Files:** `index.html`, `src/main.js`, `roadmap.md`, `CHECKLIST.md`
+**Why:** Mid-run user clarification — display reads `v1.0.2` (dotted), not `v1.0.2-alpha` and not `v1.02`. package.json keeps the canonical `1.0.2`.
+
+- [ ] Toolbar header tag reads exactly `v1.0.2`.
+- [ ] Settings → About → Version reads `v1.0.2`.
+- [ ] Settings sidebar bottom stamp reads `v1.0.2 · slammer.app`.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -154,6 +190,11 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+e9a9e31 chore(text-tool): drop dead font-loader re-exports
+586a062 chore(ui): tooltip / aria-label polish on toolbar + layer cards
+ba6964e chore(version): correct display string v1.02 → v1.0.2
+7eb011f chore(version): shorten display string v1.0.2-alpha → v1.02
+baa9039 docs: add CHECKLIST.md for the autonomous-run verification pass
 a7aa0e3 chore: silence Konva 6-layer warning, refresh settings roadmap
 eed1303 fix(view): fitTo naturalSize fallback + version display unified
 f24fc89 feat(canvas-view, panels): URL-drop CORS fallback + collapsible Typo/Vector panels
