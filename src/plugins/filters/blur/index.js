@@ -16,9 +16,10 @@
 // computePadForEffects() — see src/core/vector-renderer.js.
 
 import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { createAngleDistanceWidget } from '../../shared/angle-distance-widget.js';
 
 const MAX_RADIUS    = 100;
-const MAX_LENGTH    = 200;
+const MAX_LENGTH    = 400;
 const MAX_STRENGTH  = 100;     // radial-zoom strength (px at edge)
 const MAX_SPIN      = 90;      // radial-spin spread in degrees
 const SAMPLES_CAP   = 64;      // quality cap for directional / radial
@@ -121,15 +122,15 @@ export default {
 
     const dirWrap = document.createElement('div');
     dirWrap.className = 'blur-kernel-group';
-    dirWrap.appendChild(sliderRow({
-      label: 'Angle', min: 0, max: 360, step: 1,
-      value: params.angle ?? 0, defaultValue: 0, suffix: '°',
-      onChange: (v) => onChange({ angle: v }),
-    }));
-    dirWrap.appendChild(sliderRow({
-      label: 'Length', min: 0, max: MAX_LENGTH, step: 1,
-      value: params.length ?? 24, defaultValue: 24, suffix: 'px',
-      onChange: (v) => onChange({ length: v }),
+    dirWrap.appendChild(createAngleDistanceWidget({
+      angle: params.angle ?? 0,
+      distance: params.length ?? 24,
+      maxDistance: MAX_LENGTH,
+      visualMax: 200,
+      size: 88,
+      defaultAngle: 0,
+      defaultDistance: 24,
+      onChange: ({ angle, distance }) => onChange({ angle, length: distance }),
     }));
     root.appendChild(dirWrap);
 

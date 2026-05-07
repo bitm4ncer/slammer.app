@@ -340,7 +340,9 @@
 
 ## PHASE 27 — Advanced Effects 🆕
 
-- [ ] **Blur** rebuild with mode picker: Normal · Directional (angle + length) · Depth of Field (radius map + focal point) · Radial · Noise (custom mask defines blur strength)
+- [x] **Blur** rebuild — Phase 27 first wave: Normal · Directional (radial angle widget + length 0–400 px) · Radial (Zoom + Spin sub-modes with adjustable centre); Inner / Outer alpha toggle orthogonal to kernel; icon swap droplet → feather; vector + text canvas pad now grows with the effect stack so outer blur isn't clipped at the bbox.
+- [ ] **Blur — Depth of Field** mode (radius map + focal point) — needs depth-texture upload UI; ship as a follow-up to the Phase 27 first wave.
+- Noise Blur moved to F5 premium build queue (Glitch Pack candidate) per maintainer call.
 - [ ] **Deform** (single effect, three sub-modes via tab):
   - [ ] **Perspective** — 4 corner handles
   - [ ] **Mesh Warp** — N×M grid handles
@@ -563,6 +565,7 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - [ ] **Organic Gradients** effect (also on roadmap, see Phase 20) — flowing seedable gradients via `noisesc(v + udirsc(v)*t)`. Move from Phase 20 to F5 since it's a strong Pro candidate.
 - [ ] **CRT Look** effect — scan lines + RGB bleed + bloom + vignette + barrel distortion preset
 - [ ] **Mesh Warp** plugin — pin-mesh deformation (also on Phase 27 Deform tab; if shipped here, drop the Phase 27 Mesh Warp sub-task)
+- [ ] **Noise Blur** effect 🟦 PREMIUM (Glitch Pack candidate) — custom-mask-driven variable-strength blur (per-pixel blur amount sampled from an upload-able mask / noise texture). Sits next to the Phase 27 free Blur as a dedicated premium variant; lets the user paint where blur is sharp vs soft. UI: mask drop-zone + noise-fallback generator + per-channel strength curve.
 
 **Architecture notes:**
 - All items live in private `bitmancer-plugins` repo, mounted at `src/plugins/premium/`. Gitignored in slammer.app.
