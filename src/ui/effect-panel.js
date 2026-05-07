@@ -77,10 +77,10 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
       <span class="effect-name">${plugin?.name || eff.pluginId}</span>
       <span class="effect-spinner"></span>
       ${showCaret ? `<i class="effect-caret fas fa-chevron-${expanded ? 'up' : 'down'}"></i>` : ''}
-      <button class="effect-icon-btn act-toggle" title="${eff.enabled ? 'Disable' : 'Enable'}">
+      <button class="effect-icon-btn act-toggle" title="${eff.enabled ? 'Disable effect' : 'Enable effect'}" aria-label="${eff.enabled ? 'Disable effect' : 'Enable effect'}">
         <i class="fas fa-${eff.enabled ? 'circle-check' : 'circle'}"></i>
       </button>
-      <button class="effect-icon-btn act-del" title="Remove"><i class="fas fa-times"></i></button>
+      <button class="effect-icon-btn act-del" title="Remove effect" aria-label="Remove effect"><i class="fas fa-times"></i></button>
     `;
     wrap.appendChild(header);
 
