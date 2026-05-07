@@ -245,7 +245,7 @@ html, body {
    * background colour now follow the wheel's outline instead of a
    * rectangular bbox. Container is 260×260 with the visible disc's
    * outer radius at 128 px (matches the SVG fill path). */
-  clip-path: path('M 2 130 A 128 128 0 0 0 258 130 Z');
+  clip-path: path('M 2 130 A 128 128 0 0 1 258 130 Z');
   /* Frosted-glass backdrop — clipped to the half-disc shape above so
    * the blur ONLY appears within the wheel's outline, not the bbox.
    * A subtle dark tint anchors it as a discrete surface. */
