@@ -294,6 +294,26 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 25. Export-button tooltip correction
+
+**Commit:** `19cd441`
+**File:** `index.html`
+**Why:** Tooltip read "Export PNG (Ctrl+E) · Shift = .slammerproj" — both halves stale. The popup supports PNG / JPEG / WebP, and Shift+click invokes `exportSlmr` which writes `.slmr` (the portable share format), not `.slammerproj` (the local project format).
+
+- [ ] Hover the toolbar Export button — tooltip reads "Export PNG / JPEG / WebP (Ctrl+E) · Shift = portable .slmr".
+
+---
+
+## 26. aria-modal="true" on every modal dialog
+
+**Commit:** `620d528`
+**Files:** `src/ui/settings-popup.js`, `src/ui/project-menu.js`, `src/ui/shop-popup.js`, `src/ui/document-size-popup.js`, `src/ui/plugin-manager-popup.js`, `src/ui/typography/font-picker.js`
+**Why:** All six dialogs already had `role="dialog"` + `aria-label`; only `aria-modal="true"` was missing. Without it, assistive tech doesn't know that focus is trapped to the dialog.
+
+- [ ] No visible change in normal use. Verifiable in DevTools accessibility tree — each dialog now exposes `modal: true`.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -314,6 +334,8 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+620d528 chore(a11y): aria-modal="true" on every modal dialog
+19cd441 chore(toolbar): correct btnExport tooltip — formats + .slmr extension
 0eb989a fix(ui-helpers): gradientStopsRow drag-listener leak
 1352463 fix(shared): gate window-level drag listeners behind mousedown — knob, curves, gradient
 e565c43 fix(snap-rulers): guideline drag listener leak
