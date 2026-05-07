@@ -882,16 +882,30 @@ export function initCanvasView({ container, document, onImageDropped }) {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') shapeDrawer.cancel();
   });
-  window.addEventListener('mousemove', (e) => {
-    if (!panning || !lastPan) return;
-    const dx = e.clientX - lastPan.x;
-    const dy = e.clientY - lastPan.y;
-    lastPan = { x: e.clientX, y: e.clientY };
-    stage.position({ x: stage.x() + dx, y: stage.y() + dy });
+  // Pan mousemove fires at ~60+ Hz. Konva's batchDraw is itself RAF-coalesced,
+  // but the ruler / guideline / grid callbacks are sync canvas paints + DOM
+  // writes — we want them to fire AT MOST once per frame even if the user
+  // throws their mouse around. Accumulate the delta, flush in one RAF.
+  let panDx = 0, panDy = 0, panRaf = null;
+  function flushPan() {
+    panRaf = null;
+    if (!panning) { panDx = 0; panDy = 0; return; }
+    if (panDx !== 0 || panDy !== 0) {
+      stage.position({ x: stage.x() + panDx, y: stage.y() + panDy });
+      panDx = 0;
+      panDy = 0;
+    }
     stage.batchDraw();
     repositionInfo();
     window.__slammer?.snapRulers?.onStageTransform?.();
     window.__slammer?.canvasGrid?.onTransform?.();
+  }
+  window.addEventListener('mousemove', (e) => {
+    if (!panning || !lastPan) return;
+    panDx += e.clientX - lastPan.x;
+    panDy += e.clientY - lastPan.y;
+    lastPan = { x: e.clientX, y: e.clientY };
+    if (!panRaf) panRaf = requestAnimationFrame(flushPan);
   });
   window.addEventListener('mouseup', () => {
     panning = false;
