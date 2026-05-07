@@ -78,14 +78,47 @@ export function initLayerPanel({ container, document, renderer }) {
     return clone;
   }
 
+  // Reusable offscreen canvas for thumbnail downscaling — avoids allocating
+  // a fresh one per layer per render.
+  let _thumbTmp = null;
   function thumbForLayer(layer) {
     const st = renderer.layerState.get(layer.id);
     if (!st || !st.dstCanvas) return '';
+    const src = st.dstCanvas;
+    const w = src.width, h = src.height;
+    if (w <= 0 || h <= 0) return '';
+    // Cache: toDataURL is synchronous and expensive (PNG encode on main thread,
+    // typically 50–100 ms per full-size layer canvas). With N layers in the
+    // panel, every panel rebuild was paying N × encode. Cache keyed by the
+    // renderer's paint version (bumped on every paintLayerSync); we re-encode
+    // only when the layer's pixels actually changed.
+    const v = st._paintVersion ?? 0;
+    if (st._thumbDataUrl && st._thumbDataUrlV === v) return st._thumbDataUrl;
+    // Downscale to ~96 px before encoding — the panel renders thumbs at ~36 px CSS.
+    // Encoding a 1500×1500 layer is wasteful when the user sees a thumbnail.
+    const thumbMax = 96;
+    const ratio = Math.min(thumbMax / w, thumbMax / h, 1);
+    const tw = Math.max(1, Math.round(w * ratio));
+    const th = Math.max(1, Math.round(h * ratio));
+    let url = '';
     try {
-      return st.dstCanvas.toDataURL('image/png');
+      if (ratio === 1) {
+        url = src.toDataURL('image/png');
+      } else {
+        if (!_thumbTmp) _thumbTmp = window.document.createElement('canvas');
+        _thumbTmp.width = tw;
+        _thumbTmp.height = th;
+        const tctx = _thumbTmp.getContext('2d');
+        tctx.clearRect(0, 0, tw, th);
+        tctx.drawImage(src, 0, 0, tw, th);
+        url = _thumbTmp.toDataURL('image/png');
+      }
     } catch {
-      return '';
+      url = '';
     }
+    st._thumbDataUrl = url;
+    st._thumbDataUrlV = v;
+    return url;
   }
 
   const BLEND_SHORT = {

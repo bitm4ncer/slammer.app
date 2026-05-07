@@ -986,6 +986,9 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st.dstCanvas.height = finalImageData.height;
     }
     st.dstCanvas.getContext('2d').putImageData(finalImageData, 0, 0);
+    // Bump the paint version so consumers (layer-panel thumb cache) know to
+    // re-encode. Cheap integer increment; cache lookups stay branch-free.
+    st._paintVersion = (st._paintVersion | 0) + 1;
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
