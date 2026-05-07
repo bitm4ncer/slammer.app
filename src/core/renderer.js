@@ -326,7 +326,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (!l || l.type === 'fx' || !l.visible) continue;
         const st = layerState.get(id);
         if (!st || !st.group) continue;
-        const r = st.group.getClientRect({ relativeTo: contentLayer });
+        const r = cachedClientRect(st);
         if (!r || !(r.width > 0) || !(r.height > 0)) continue;
         layer.add(new Konva.Rect({
           x: r.x, y: r.y, width: r.width, height: r.height,
@@ -342,7 +342,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       if (!l || l.type === 'fx' || !l.visible) continue;
       const st = layerState.get(id);
       if (!st || !st.group) continue;
-      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      const r = cachedClientRect(st);
       if (!r || !(r.width > 0) || !(r.height > 0)) continue;
       layer.add(new Konva.Rect({
         x: r.x, y: r.y, width: r.width, height: r.height,
@@ -374,12 +374,28 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     attachTransformer(st ? st.group : null);
   }
 
+  // Generation counter for cached getClientRect lookups. Bumped whenever a
+  // layer's group geometry might have changed (drag, transform, paint dim
+  // change). FX cascades — a single base-layer paint can repaint N FX layers
+  // above, each calling compositeLayersBelow on the same below-set — reuse
+  // the cached rects within one tick instead of paying N × M getClientRect.
+  let rectGen = 0;
+  function cachedClientRect(st) {
+    if (st._rectGen === rectGen && st._cachedRect) return st._cachedRect;
+    const r = st.group.getClientRect({ relativeTo: contentLayer });
+    st._cachedRect = r;
+    st._rectGen = rectGen;
+    return r;
+  }
+
   onSelectionChange(() => { syncTransformer(); redrawSelectionOutlines(); });
   // Re-draw outlines whenever a selected layer is dragged or its
   // transform changes (so the dashed rect tracks the layer live).
   contentLayer.on('dragmove transform', () => {
+    rectGen++;
     if (getSelection().size > 1) redrawSelectionOutlines();
   });
+  contentLayer.on('dragend transformend', () => { rectGen++; });
 
   function scheduleDraw() {
     if (pendingRedraw) return;
@@ -546,7 +562,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const { st } of stRefs) {
-      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      const r = cachedClientRect(st);
       minX = Math.min(minX, r.x);
       minY = Math.min(minY, r.y);
       maxX = Math.max(maxX, r.x + r.width);
@@ -944,8 +960,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
-    if (dimsChanged && transformer && document.activeLayerId === layer.id) {
-      transformer.forceUpdate();
+    if (dimsChanged) {
+      // Image dims changed → cached getClientRect for this layer (and any
+      // ancestor group) is stale. Bump the generation so the next FX layer
+      // in the cascade recomputes against the new geometry.
+      rectGen++;
+      if (transformer && document.activeLayerId === layer.id) {
+        transformer.forceUpdate();
+      }
     }
     // Text layers: even when the padded canvas dimensions stayed the same,
     // the inner content rect may have shifted (e.g. a single-character edit
@@ -1772,7 +1794,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const { st } of stRefs) {
-      const r = st.group.getClientRect({ relativeTo: contentLayer });
+      const r = cachedClientRect(st);
       minX = Math.min(minX, r.x);
       minY = Math.min(minY, r.y);
       maxX = Math.max(maxX, r.x + r.width);
@@ -1821,7 +1843,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     } else {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const { st } of stRefs) {
-        const r = st.group.getClientRect({ relativeTo: contentLayer });
+        const r = cachedClientRect(st);
         minX = Math.min(minX, r.x);
         minY = Math.min(minY, r.y);
         maxX = Math.max(maxX, r.x + r.width);
