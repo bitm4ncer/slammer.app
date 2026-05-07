@@ -572,7 +572,7 @@ function renderShortcuts() {
             ])}
             ${shortcutSection('Edit', [
               ['Ctrl+Z', 'Undo'],
-              ['Ctrl+Shift+Z', 'Redo'],
+              ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
               ['Ctrl+C / V / X', 'Copy / Paste / Cut active layer'],
               ['Ctrl+D', 'Duplicate active layer (+20 / +20 px)'],
               ['Ctrl+A', 'Select all layers'],
@@ -587,6 +587,7 @@ function renderShortcuts() {
               ['Shift+arrow', 'Nudge selection 10 px'],
               ['Drag rotate handle', 'Free rotate (live degree pill follows pointer)'],
               ['Shift+rotate', 'Snap rotation to nearest 5°'],
+              ['Alt+drag', 'Escape snap during drag'],
               ['Ctrl+Shift+drag handle (text)', 'Resize text-box width (auto-wrap)'],
             ])}
             ${shortcutSection('Tools', [
@@ -601,6 +602,11 @@ function renderShortcuts() {
             ${shortcutSection('Canvas', [
               ['Mouse-wheel', 'Zoom in / out (around pointer)'],
               ['Middle-mouse drag', 'Pan'],
+              ['Space+drag', 'Pan (alternative to middle-mouse)'],
+              ['Ctrl+R', 'Toggle rulers'],
+              ['Ctrl+;', 'Toggle canvas grid'],
+              ['S', 'Toggle snap'],
+              ['F11', 'Toggle fullscreen'],
               ['Drag a layer card to canvas', 'Re-add layer (or to plugin: send for processing)'],
             ])}
           </tbody>
