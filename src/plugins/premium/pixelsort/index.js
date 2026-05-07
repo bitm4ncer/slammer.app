@@ -8,8 +8,10 @@ export default {
   name: 'Pixel Sort',
   version: '1.0.0',
   type: 'tool',
-  icon: 'arrows-up-down-left-right',
+  icon: 'arrow-down-wide-short',          // sorted bars — visually evokes pixel-row reordering
   category: 'glitch',
+  pro: true,
+  pack: 'glitch-pack',
 
   defaultParams() {
     return {

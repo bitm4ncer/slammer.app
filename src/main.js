@@ -39,7 +39,7 @@ import gradientMapPlugin from './plugins/filters/gradient-map/index.js';
 import curvesPlugin from './plugins/filters/curves/index.js';
 import grainPlugin from './plugins/filters/grain/index.js';
 import displacementPlugin from './plugins/filters/displacement/index.js';
-import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
+// pixelsort moved to src/plugins/premium/ — auto-registered via premium-loader.
 // Phase 20 — new effects library (6 free, 4 premium under src/plugins/premium/).
 import posterizePlugin from './plugins/filters/posterize/index.js';
 import rgbShiftPlugin from './plugins/filters/rgb-shift/index.js';
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     huePlugin, colorOverlayPlugin, gradientMapPlugin, curvesPlugin,
     grainPlugin, displacementPlugin,
     posterizePlugin,
-    pixelsortPlugin, rgbShiftPlugin,
+    rgbShiftPlugin,
     dropShadowPlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,

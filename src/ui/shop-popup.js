@@ -51,6 +51,21 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'BLOCK.8x8',
   },
+  'pixelsort': {
+    c: '#7B61FF',                                                                  // electric purple — algorithmic glitch
+    ink: '#0e0e10',
+    // Horizontal sorted "stripes" of varying density — the iconic pixel-sort look.
+    pattern: `repeating-linear-gradient(90deg,
+                rgba(14,14,16,0.55) 0 2px, rgba(14,14,16,0.32) 2px 5px,
+                transparent 5px 12px,
+                rgba(14,14,16,0.18) 12px 16px, transparent 16px 30px),
+              repeating-linear-gradient(90deg,
+                rgba(255,255,255,0.22) 0 1px, transparent 1px 9px)`,
+    size: 'auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'SORT.BRIGHTNESS',
+  },
   'dithering': {
     c: '#7DE0B5',
     ink: '#0e0e10',
