@@ -1,0 +1,167 @@
+# Autonomous run — verification checklist
+
+> Generated 2026-05-07 while the maintainer was away. Each item below corresponds to one commit on `v.1.0.2`. Walk through them in order, tick what passes, file an issue for anything that breaks.
+
+---
+
+## How to verify
+
+Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a broken module-level rewrite.
+
+---
+
+## 1. Canvas Grid — full-stage rendering
+
+**Commits:** `c47ce86` → `07b0212`
+**Files:** `src/ui/canvas-grid.js`
+**Why:** Two earlier attempts left the grid clipped to a fixed-size square in document space. Konva.Shape was caching a bbox from the first sceneFunc draw. Rewrote to paint via the layer's `draw` event onto the raw 2d context — no Shape, no bbox.
+
+- [ ] Footer **Grid** button toggles the grid (also `Ctrl+;`).
+- [ ] Grid covers the **entire viewport** — not bounded to the original-load square.
+- [ ] Pan with middle-mouse: grid scrolls with the canvas, no clipping at the new viewport edges.
+- [ ] Zoom out far enough: lines auto-tier from 10/100 → 100/1000 → 1000/10000 (no infinite-density mush).
+- [ ] Resize side panel / toggle fullscreen: grid re-fits to the new container width without stale dead zones.
+
+---
+
+## 2. Canvas Grid — z-index above export-frame dim
+
+**Commit:** `c47ce86`
+**File:** `src/ui/canvas-grid.js`
+**Why:** Grid was at z=1 (under the dim overlay). Outside the export frame the dim painted ~80% black on top of the grid, making it look "limited to the doc rect". Lifted to z=3 between overlay and frameUI.
+
+- [ ] With an export frame set + frame-dim > 0, the grid stays at its configured opacity **across the entire viewport** including the dimmed area.
+- [ ] Frame-resize handles (corners + the move handle next to the frame) still receive clicks — they sit above the grid layer.
+
+---
+
+## 3. Settings popup — regrouped by intent
+
+**Commit:** `30007d3`
+**File:** `src/ui/settings-popup.js`
+**Why:** Audit moved Autosave (persistence behaviour, not chrome) from Canvas to Workflow; merged single-row Workflow groups (Effects panel / Vector tools / Typography → Panels / Tools); tightened Canvas to "Stage & grid".
+
+- [ ] **Workflow tab** has Selection · Panels · Tools · Persistence · Coming soon (in that order).
+- [ ] **Autosave delay** lives in Workflow → Persistence, with the same knob + numeric input it had before.
+- [ ] **Canvas tab** has Export frame · Canvas Grid · Coming soon (Versioning · Frame tool · Crop tool).
+- [ ] All grid sub-controls (Show grid, Snap to grid, Minor / Major pitch, Opacity, Colour) live in Canvas → Canvas Grid and behave identically to before the move.
+
+---
+
+## 4. Image-URL drop on canvas — corsproxy fallback
+
+**Commit:** `f24fc89`
+**File:** `src/ui/canvas-view.js`
+**Why:** Met-museum image CDN doesn't send CORS headers. Dragging a Met card into the canvas hit `Failed to fetch` and silently dropped. Same fallback the Met API search uses (`https://corsproxy.io/?url=…`) now wraps the drop fetch.
+
+- [ ] Open Met plugin → search → drag a result card onto the canvas → image lands as a layer.
+- [ ] Console may log `direct fetch failed, retrying via corsproxy` once before success — that's expected.
+- [ ] Drag from Unsplash / Pexels still works (they served direct fetch already, so the proxy retry never triggers).
+
+---
+
+## 5. Collapsible Typography & Vector panels
+
+**Commit:** `f24fc89`
+**Files:** `src/ui/text-tool.js`, `src/ui/vector-tool.js`, `src/style/effects.css`
+**Why:** Phase 19 Cluster A leftover. Click the panel header to fold the body away, freeing screen real estate when typography / vector tweaking isn't the current focus.
+
+- [ ] Select a text layer → **Typo** header has a chevron. Click it: body collapses, chevron rotates 90° anticlockwise.
+- [ ] Reload the page: the Typo panel restores its collapsed/expanded state (LocalStorage `slammer:typo:panelCollapsed`).
+- [ ] Select a vector layer → same behaviour for the **Vector** header (`slammer:vector:panelCollapsed`).
+- [ ] Tab onto the header and press Enter or Space: same toggle.
+- [ ] Effects panel below still works while a tool panel is collapsed.
+
+---
+
+## 6. Guidelines hide with rulers
+
+**Commit:** `e613909`
+**File:** `src/ui/snap-rulers.js`
+**Why:** Toggling rulers off used to leave guideline hairlines floating across the canvas with no UI affordance to drag/delete them.
+
+- [ ] Drag a guideline out from a ruler. Toggle rulers off (footer button or `Ctrl+R`): guidelines disappear.
+- [ ] Toggle rulers back on: guidelines reappear at the same world coords.
+- [ ] Reload while rulers are off: guideline data still in `doc.state.guidelines`, hairlines remain hidden until rulers come back.
+
+---
+
+## 7. fitTo on Open — naturalSize fallback
+
+**Commit:** `eed1303`
+**File:** `src/ui/canvas-view.js`
+**Why:** BUGS.md item. `getClientRect` returned 1×1 placeholder dims for Konva.Image nodes whose bitmap hadn't decoded yet, so the bbox was wrong on the first frame after load. Now falls back to `layer.naturalSize × transform.scale*`.
+
+- [ ] Open an existing project from the project menu (Ctrl+O). The view fits — content is centred and visible at a reasonable zoom.
+- [ ] Repeat with a project that contains scaled or rotated layers — layers still fit (rotated bboxes over-estimate by up to √2× but never clip).
+- [ ] User-driven zoom / pan after Open is preserved if you reload (no second forced fit).
+
+---
+
+## 8. Version display unified to v1.0.2-alpha
+
+**Commit:** `eed1303`
+**Files:** `index.html`, `src/main.js`
+**Why:** Old strings drifted (header tag was `v1.0.0-alpha`, settings stamp was `vv1.0.1`). All three render sites now read from a single string passed into the settings popup.
+
+- [ ] Header tag (next to the slammer.app logo) reads `v1.0.2-alpha`.
+- [ ] Settings → About → Build → Version reads `v1.0.2-alpha`.
+- [ ] Settings sidebar bottom stamp reads `v1.0.2-alpha · slammer.app`.
+
+---
+
+## 9. Konva 6-layer warning silenced
+
+**Commit:** `a7aa0e3`
+**File:** `src/ui/canvas-view.js`
+**Why:** Konva spammed `The stage has 6 layers. Recommended maximum is 3-5` on every layer add and zIndex shift. Our layer count is intentional and stable; merging into Groups would be a major refactor with no measurable performance gain.
+
+- [ ] Open DevTools console. Interact with the canvas (zoom, pan, add a layer). No "stage has 6 layers" warnings appear.
+- [ ] Other Konva warnings (real ones) would still surface — only `showWarnings = false` was set, no error filter.
+
+---
+
+## 10. Roadmap.md / BUGS.md cleanup
+
+**Commits:** `eed1303`, `a7aa0e3`
+**Files:** `roadmap.md`, `BUGS.md`
+**Why:** Cluster A items were mostly already shipped — code present in `toolbar.js`, `layer-panel.js`, `canvas-view.js` — but the roadmap still showed them unchecked. Same for Drop Shadow angle widget. BUGS.md fit-to-view entry struck through.
+
+- [ ] `roadmap.md` Phase 19 Cluster A — every checkbox ticked with a one-line note pointing to the implementation.
+- [ ] `roadmap.md` Phase 19 Cluster B — "Drop Shadow angle control rework" ticked.
+- [ ] `roadmap.md` end of Phase 18 — version-number line ticked.
+- [ ] `BUGS.md` — only one open entry remains: "Undo flicker — every history step tears down all Konva nodes" (correctly parked, scope = renderer rewrite).
+
+---
+
+## What remains in BUGS.md
+
+Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
+
+## What remains in Phase 21
+
+Bigger features, all unambiguously bigger than a quick-fix run:
+- Frame Tool (drag-create export frames)
+- Crop tool (non-destructive per-layer crop rect)
+- Transform inspector (footer X% / Y% scale + rotation)
+- Quick adjustments bar (effect knobs below selected image)
+- Ctrl+Space radial effect picker
+
+These need a dedicated run, not autonomous polish.
+
+---
+
+## Commit graph for this session
+
+```
+a7aa0e3 chore: silence Konva 6-layer warning, refresh settings roadmap
+eed1303 fix(view): fitTo naturalSize fallback + version display unified
+f24fc89 feat(canvas-view, panels): URL-drop CORS fallback + collapsible Typo/Vector panels
+30007d3 refactor(settings): regroup by intent — autosave to Workflow, tighter Canvas
+a23b2cd refactor(settings): move Canvas Grid controls into the Canvas tab
+e613909 fix(rulers): hide guidelines when rulers are toggled off
+07b0212 fix(canvas-grid): drop Konva.Shape, paint via layer draw event
+c47ce86 fix(canvas-grid): lift above export-frame dim so grid covers full viewport
+```
+
+All branched from + merged back to `v.1.0.2` via fast-forward.
