@@ -30,62 +30,66 @@ export default {
     const n = d.length;
     const lvl = Math.max(2, Math.min(32, Math.round(levels)));
     const soft = Math.max(0, Math.min(1, softness / 100));
-    const mixF = 1;
 
-    // --- Equalised distribution: build per-channel CDF lookup (0..255 → 0..255) ---
-    // Build histogram + CDF only when needed.
-    let cdfR = null, cdfG = null, cdfB = null, cdfLum = null;
-    if (distribution === 'equalised') {
-      if (mode === 'luminance' || mode === 'palette') {
-        cdfLum = buildCdf(d, 'lum');
-      } else {
-        cdfR = buildCdf(d, 0);
-        cdfG = buildCdf(d, 1);
-        cdfB = buildCdf(d, 2);
+    // Palette mode is a fixed 5-stop greyscale ramp — none of the bias /
+    // softness / distribution params apply. Tight inline loop.
+    if (mode === 'palette') {
+      for (let i = 0; i < n; i += 4) {
+        const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const v = snapPalette(lum);
+        d[i] = v; d[i + 1] = v; d[i + 2] = v;
       }
+      return imageData;
     }
 
-    for (let i = 0; i < n; i += 4) {
-      const r0 = d[i], g0 = d[i + 1], b0 = d[i + 2];
+    // Quantise is a pure function of (input byte, levels, distribution, soft,
+    // bias) — it doesn't depend on x/y or any other channel. Build a 256-entry
+    // LUT once and the per-pixel work collapses to array reads.
+    const qLut = buildQuantiseLut(lvl, distribution, soft, bias);
 
-      let r, g, b;
-
-      if (mode === 'palette') {
-        // Snap to nearest of 5-stop greyscale ramp: 0, 64, 128, 192, 255
+    if (mode === 'luminance') {
+      // For luminance mode we still need the per-pixel scale ratio, but the
+      // (lumInt → qLumInt) lookup is one read. Equalised mode composes the
+      // CDF into the lookup so it's still a single read per pixel.
+      let lumLut = qLut;
+      if (distribution === 'equalised') {
+        const cdfLum = buildCdf(d, 'lum');
+        lumLut = new Uint8Array(256);
+        for (let v = 0; v < 256; v++) lumLut[v] = qLut[cdfLum[v]];
+      }
+      for (let i = 0; i < n; i += 4) {
+        const r0 = d[i], g0 = d[i + 1], b0 = d[i + 2];
         const lum = 0.299 * r0 + 0.587 * g0 + 0.114 * b0;
-        const snapped = snapPalette(lum);
-        r = g = b = snapped;
-      } else if (mode === 'luminance') {
-        // Posterize on luminance, then scale RGB channels proportionally
-        const lum = 0.299 * r0 + 0.587 * g0 + 0.114 * b0;
-        const lumN = distribution === 'equalised' && cdfLum
-          ? cdfLum[Math.round(lum)] / 255
-          : lum / 255;
-        const qLum = quantise(lumN, lvl, soft, bias, distribution) * 255;
+        const lumI = lum < 0 ? 0 : lum > 255 ? 255 : (lum + 0.5) | 0;
+        const qLum = lumLut[lumI];
         const scale = lum > 0 ? qLum / lum : 1;
-        r = clamp255(r0 * scale);
-        g = clamp255(g0 * scale);
-        b = clamp255(b0 * scale);
-      } else {
-        // RGB: quantise each channel independently
-        const rN = distribution === 'equalised' && cdfR ? cdfR[r0] / 255 : r0 / 255;
-        const gN = distribution === 'equalised' && cdfG ? cdfG[g0] / 255 : g0 / 255;
-        const bN = distribution === 'equalised' && cdfB ? cdfB[b0] / 255 : b0 / 255;
-        r = clamp255(quantise(rN, lvl, soft, bias, distribution) * 255);
-        g = clamp255(quantise(gN, lvl, soft, bias, distribution) * 255);
-        b = clamp255(quantise(bN, lvl, soft, bias, distribution) * 255);
+        d[i]     = clamp255(r0 * scale);
+        d[i + 1] = clamp255(g0 * scale);
+        d[i + 2] = clamp255(b0 * scale);
       }
+      return imageData;
+    }
 
-      // Mix with original
-      if (mixF < 1) {
-        r = clamp255(r0 + (r - r0) * mixF);
-        g = clamp255(g0 + (g - g0) * mixF);
-        b = clamp255(b0 + (b - b0) * mixF);
+    // RGB mode — independently per-channel. Compose CDFs into the LUT for
+    // equalised mode so each pixel still costs one read per channel.
+    let lutR = qLut, lutG = qLut, lutB = qLut;
+    if (distribution === 'equalised') {
+      const cdfR = buildCdf(d, 0);
+      const cdfG = buildCdf(d, 1);
+      const cdfB = buildCdf(d, 2);
+      lutR = new Uint8Array(256);
+      lutG = new Uint8Array(256);
+      lutB = new Uint8Array(256);
+      for (let v = 0; v < 256; v++) {
+        lutR[v] = qLut[cdfR[v]];
+        lutG[v] = qLut[cdfG[v]];
+        lutB[v] = qLut[cdfB[v]];
       }
-
-      d[i] = r;
-      d[i + 1] = g;
-      d[i + 2] = b;
+    }
+    for (let i = 0; i < n; i += 4) {
+      d[i]     = lutR[d[i]];
+      d[i + 1] = lutG[d[i + 1]];
+      d[i + 2] = lutB[d[i + 2]];
       // alpha unchanged
     }
 
@@ -146,6 +150,20 @@ export default {
 // ---------------------------------------------------------------------------
 
 function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+
+/**
+ * Build a 256-entry LUT mapping input byte → posterised output byte.
+ * Folds the per-pixel quantise() call into a one-shot table build.
+ */
+function buildQuantiseLut(levels, distribution, soft, bias) {
+  const lut = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) {
+    const out = quantise(v / 255, levels, soft, bias, distribution);
+    const byte = Math.round(out * 255);
+    lut[v] = byte < 0 ? 0 : byte > 255 ? 255 : byte;
+  }
+  return lut;
+}
 
 /**
  * quantise — maps a normalised input [0..1] to a posterized [0..1] output.
