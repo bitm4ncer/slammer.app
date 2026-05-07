@@ -155,12 +155,17 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
 
   gridLayer.add(gridShape);
 
-  // Add the layer to the stage then position it at index 1 (above bgLayer at 0,
-  // below contentLayer). canvas-view adds layers in order: bgLayer(0),
-  // contentLayer(1), overlayLayer(2), frameUiLayer(3). Adding gridLayer here
-  // then moving it to zIndex 1 shifts contentLayer et al. up by one.
+  // Place the grid ABOVE the export-frame dim overlay so the grid stays at its
+  // configured opacity across the whole viewport — putting it under the dim
+  // (the old z=1 spot) made it look like the grid was clipped to the doc rect
+  // because everything outside the export frame was being painted over with
+  // ~80% black.
+  // canvas-view adds layers in order: bgLayer(0), contentLayer(1), overlayLayer(2),
+  // frameUiLayer(3). Slot grid at z=3 — between overlay (dim) and frameUiLayer
+  // (handles). Konva shifts frameUiLayer up to z=4, marquee/anchor overlays
+  // added later land above grid as expected.
   stage.add(gridLayer);
-  gridLayer.setZIndex(1);
+  gridLayer.setZIndex(3);
 
   function redraw() {
     gridShape.width(stage.width());
@@ -172,6 +177,15 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
   const unsubSettings = onSettingsChange(redraw);
   const onResize = () => redraw();
   window.addEventListener('resize', onResize);
+  // canvas-view resizes the stage via ResizeObserver on the container (e.g.
+  // side-panel resize, fullscreen toggle). Mirror that here so the grid stays
+  // sized to the live viewport, not the original-mount viewport.
+  let resizeObserver = null;
+  const containerEl = stage.container?.();
+  if (containerEl && typeof window.ResizeObserver === 'function') {
+    resizeObserver = new ResizeObserver(redraw);
+    resizeObserver.observe(containerEl);
+  }
 
   // ── Initial draw ──────────────────────────────────────────────────────────
   redraw();
@@ -187,6 +201,7 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
     destroy() {
       unsubSettings();
       window.removeEventListener('resize', onResize);
+      resizeObserver?.disconnect();
       gridLayer.destroy();
     },
   };
