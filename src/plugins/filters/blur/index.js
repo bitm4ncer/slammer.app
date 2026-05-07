@@ -15,7 +15,7 @@
 // Canvas headroom for outer mode is provided by the renderer's
 // computePadForEffects() — see src/core/vector-renderer.js.
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
 import { createAngleDistanceWidget } from '../../shared/angle-distance-widget.js';
 import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
@@ -121,7 +121,7 @@ export default {
     // Per-kernel groups
     const normalWrap = document.createElement('div');
     normalWrap.className = 'blur-kernel-group';
-    normalWrap.appendChild(sliderRow({
+    normalWrap.appendChild(sliderRowLg({
       label: 'Radius', min: 0, max: MAX_RADIUS, step: 1,
       value: params.radius ?? 4, defaultValue: 4, suffix: 'px',
       onChange: (v) => onChange({ radius: v }),
@@ -377,6 +377,12 @@ function directionalBlur(imageData, length, angle) {
 
 // Radial zoom blur — for each pixel, sample N points along the radial
 // line from the centre, spanning ±strength along that direction.
+//
+// Math note: original used `scale = strength * dist/maxD` and `ux = ddx/dist`,
+// then `sx = x + ux * scale * t = x + (ddx/dist) * (strength*dist/maxD) * t`.
+// `dist` cancels — sx = x + ddx * (strength/maxD) * t. We pre-compute that
+// `factor[s] = (strength/maxD) * t` once per process call; per pixel work
+// drops to `sx = x + ddx * factor[s]` — no sqrt, no division.
 function radialZoomBlur(imageData, cx, cy, strength) {
   const W = imageData.width;
   const H = imageData.height;
@@ -388,24 +394,21 @@ function radialZoomBlur(imageData, cx, cy, strength) {
   const Wm = W - 1, Hm = H - 1;
   const stepT = 2 / (samples - 1);
 
+  // Pre-compute per-sample stretch factor.
+  const factor = new Float32Array(samples);
+  const k = strength / maxD;
+  for (let s = 0; s < samples; s++) factor[s] = k * (-1 + stepT * s);
+
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const ddx = x - cx;
       const ddy = y - cy;
-      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
       const idx = (y * W + x) << 2;
-      if (dist < 0.5) {
-        dst[idx] = src[idx]; dst[idx + 1] = src[idx + 1];
-        dst[idx + 2] = src[idx + 2]; dst[idx + 3] = src[idx + 3];
-        continue;
-      }
-      const scale = strength * (dist / maxD);
-      const ux = ddx / dist, uy = ddy / dist;
       let sR = 0, sG = 0, sB = 0, sA = 0;
       for (let s = 0; s < samples; s++) {
-        const t = -1 + stepT * s;
-        let sx = x + ux * scale * t;
-        let sy = y + uy * scale * t;
+        const f = factor[s];
+        let sx = x + ddx * f;
+        let sy = y + ddy * f;
         if (sx < 0) sx = 0; else if (sx > Wm) sx = Wm;
         if (sy < 0) sy = 0; else if (sy > Hm) sy = Hm;
         const x0 = sx | 0, y0 = sy | 0;
@@ -445,6 +448,13 @@ function radialZoomBlur(imageData, cx, cy, strength) {
 
 // Radial spin blur — for each pixel, sample N points rotated around the
 // centre by ±spread radians.
+//
+// Math note: rotating (ddx, ddy) by angle alpha gives
+//   ddx' = ddx*cos(alpha) - ddy*sin(alpha)
+//   ddy' = ddx*sin(alpha) + ddy*cos(alpha)
+// so sx = cx + ddx', sy = cy + ddy'. cos(alpha)/sin(alpha) only depend on
+// the sample index — pre-compute once. No per-pixel atan2, no per-sample
+// cos/sin, no sqrt.
 function radialSpinBlur(imageData, cx, cy, spread) {
   const W = imageData.width;
   const H = imageData.height;
@@ -455,23 +465,24 @@ function radialSpinBlur(imageData, cx, cy, spread) {
   const Wm = W - 1, Hm = H - 1;
   const stepT = 2 / (samples - 1);
 
+  // Pre-compute (cos, sin) per sample.
+  const cosL = new Float32Array(samples);
+  const sinL = new Float32Array(samples);
+  for (let s = 0; s < samples; s++) {
+    const a = spread * (-1 + stepT * s);
+    cosL[s] = Math.cos(a);
+    sinL[s] = Math.sin(a);
+  }
+
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const ddx = x - cx, ddy = y - cy;
-      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
       const idx = (y * W + x) << 2;
-      if (dist < 0.5) {
-        dst[idx] = src[idx]; dst[idx + 1] = src[idx + 1];
-        dst[idx + 2] = src[idx + 2]; dst[idx + 3] = src[idx + 3];
-        continue;
-      }
-      const baseAngle = Math.atan2(ddy, ddx);
       let sR = 0, sG = 0, sB = 0, sA = 0;
       for (let s = 0; s < samples; s++) {
-        const t = -1 + stepT * s;
-        const ang = baseAngle + spread * t;
-        let sx = cx + Math.cos(ang) * dist;
-        let sy = cy + Math.sin(ang) * dist;
+        const ca = cosL[s], sa = sinL[s];
+        let sx = cx + ddx * ca - ddy * sa;
+        let sy = cy + ddy * ca + ddx * sa;
         if (sx < 0) sx = 0; else if (sx > Wm) sx = Wm;
         if (sy < 0) sy = 0; else if (sy > Hm) sy = Hm;
         const x0 = sx | 0, y0 = sy | 0;
