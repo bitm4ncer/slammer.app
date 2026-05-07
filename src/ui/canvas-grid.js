@@ -1,5 +1,18 @@
-// canvas-grid.js — subtle two-tier grid rendered below all content layers.
+// canvas-grid.js — subtle two-tier grid rendered as a layer-level overlay.
 // Exports initCanvasGrid({ stage, getSettings, onSettingsChange }) → { destroy, onTransform }
+//
+// Implementation note: we deliberately do NOT use a Konva.Shape with sceneFunc.
+// Konva caches a Shape's bounding rect from the first draw and uses it to
+// clip subsequent renders — even when sceneFunc draws outside that rect.
+// Symptom (tracked through two failed fixes): grid renders only inside a
+// fixed square the size of the viewport at the moment the layer was first
+// added. Setting `width` / `height` properties or providing a stage-sized
+// `hitFunc` does NOT override the bbox cache.
+//
+// Instead, we hook the layer's `draw` event and paint the grid directly onto
+// the layer's 2d context after Konva clears for redraw. Since the layer has
+// no children, our paint becomes the layer's final canvas content. No bbox,
+// no clip, no caching surprise.
 
 import Konva from 'konva';
 
@@ -23,14 +36,14 @@ function hexToRgb(hex) {
 }
 
 /**
- * Draw the two-tier grid onto the Konva context (or raw 2d context).
+ * Draw the two-tier grid onto a raw 2d canvas context.
  * All grid lines are drawn at integer screen pixels for crispness.
  *
- * @param {object} ctx                    — Konva.Context (or raw 2d context)
- * @param {object} stageTransform         — { x, y, scaleX } from stage
- * @param {number} stageW                 — stage width in screen pixels
- * @param {number} stageH                 — stage height in screen pixels
- * @param {object} settings               — current settings snapshot
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} stageTransform  — { x, y, scaleX } from stage
+ * @param {number} stageW          — stage width in screen pixels
+ * @param {number} stageH          — stage height in screen pixels
+ * @param {object} settings        — current settings snapshot
  */
 function drawGrid(ctx, stageTransform, stageW, stageH, settings) {
   const { x: ox, y: oy, scaleX: sc } = stageTransform;
@@ -59,22 +72,18 @@ function drawGrid(ctx, stageTransform, stageW, stageH, settings) {
   const worldRight  = (stageW - ox) / sc;
   const worldBottom = (stageH - oy) / sc;
 
-  // Minor lines — standard opacity
   const minorAlpha = opacity;
-  // Major lines — 2× alpha, minimum 1, capped at 1
   const majorAlpha = Math.min(1, opacity * 2);
 
-  // First grid line at or just before the visible left/top edge
   const firstMinorX = Math.floor(worldLeft / minor) * minor;
   const firstMinorY = Math.floor(worldTop  / minor) * minor;
 
   ctx.save();
   ctx.lineWidth = 1;
 
-  // Draw vertical lines
+  // Vertical lines
   for (let wx = firstMinorX; wx <= worldRight; wx += minor) {
     const isMajor = major > 0 && Math.abs(wx % major) < 0.0001;
-    // Snap to integer screen pixels
     const sx = Math.round(ox + wx * sc) + 0.5;
     ctx.beginPath();
     ctx.globalAlpha = isMajor ? majorAlpha : minorAlpha;
@@ -85,7 +94,7 @@ function drawGrid(ctx, stageTransform, stageW, stageH, settings) {
     ctx.stroke();
   }
 
-  // Draw horizontal lines
+  // Horizontal lines
   for (let wy = firstMinorY; wy <= worldBottom; wy += minor) {
     const isMajor = major > 0 && Math.abs(wy % major) < 0.0001;
     const sy = Math.round(oy + wy * sc) + 0.5;
@@ -111,67 +120,39 @@ function drawGrid(ctx, stageTransform, stageW, stageH, settings) {
  * @returns {{ destroy: function, onTransform: function }}
  */
 export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
-  // ── Create a dedicated Konva.Layer for the grid ──────────────────────────
-  // Inserted at index 1 (above bgLayer at 0, below contentLayer at 1 before
-  // insertion). canvas-view.js calls insertAt or just adds layers in order;
-  // here we inject after mount via insertAt so we don't need to change
-  // canvas-view's API.
+  // Empty layer — no children. We paint into its canvas via the `draw` event.
   const gridLayer = new Konva.Layer({ listening: false, name: 'gridLayer' });
 
-  // The grid is drawn with a single Konva.Shape using sceneFunc for raw canvas
-  // access — far faster than spawning thousands of Konva.Line nodes.
-  const gridShape = new Konva.Shape({
-    listening: false,
-    perfectDrawEnabled: false,
-    x: 0,
-    y: 0,
-    width: stage.width(),
-    height: stage.height(),
-    sceneFunc(ctx) {
-      const s = getSettings();
-      if (!s.canvasGridShow) return;
-      // Refresh bounds in case the stage resized — Konva clips a Shape's
-      // dirty rect to the bounding rect Konva computes from sceneFunc on
-      // first draw. Without explicit width/height the grid would only
-      // appear wherever the FIRST draw's bbox happened to land.
-      this.width(stage.width());
-      this.height(stage.height());
-      const tr = {
-        x: stage.x(),
-        y: stage.y(),
-        scaleX: stage.scaleX() || 1,
-      };
-      drawGrid(ctx, tr, stage.width(), stage.height(), s);
-    },
-    // Explicit hitFunc ensures Konva's bounding-rect cache is always the
-    // stage rectangle — no chance of clipping the visual draw to a stale
-    // bbox computed from earlier line strokes.
-    hitFunc(ctx) {
-      ctx.beginPath();
-      ctx.rect(0, 0, stage.width(), stage.height());
-      ctx.closePath();
-    },
-  });
-
-  gridLayer.add(gridShape);
-
-  // Place the grid ABOVE the export-frame dim overlay so the grid stays at its
-  // configured opacity across the whole viewport — putting it under the dim
-  // (the old z=1 spot) made it look like the grid was clipped to the doc rect
-  // because everything outside the export frame was being painted over with
-  // ~80% black.
+  // Place the grid ABOVE the export-frame dim overlay so the grid stays at
+  // its configured opacity across the whole viewport.
   // canvas-view adds layers in order: bgLayer(0), contentLayer(1), overlayLayer(2),
   // frameUiLayer(3). Slot grid at z=3 — between overlay (dim) and frameUiLayer
-  // (handles). Konva shifts frameUiLayer up to z=4, marquee/anchor overlays
-  // added later land above grid as expected.
+  // (handles). Konva shifts frameUiLayer up to z=4. Marquee/anchor overlays
+  // added later land above grid as expected (interactive UI on top).
   stage.add(gridLayer);
   gridLayer.setZIndex(3);
 
-  function redraw() {
-    gridShape.width(stage.width());
-    gridShape.height(stage.height());
-    gridLayer.batchDraw();
-  }
+  // Paint the grid AFTER Konva has cleared the layer canvas for this frame.
+  // The `draw` event on a Konva.Layer fires after children have been drawn.
+  // Since this layer has no children, the canvas is in a freshly-cleared
+  // state when `draw` fires, and our paint is the final visible content.
+  gridLayer.on('draw', () => {
+    const s = getSettings();
+    if (!s.canvasGridShow) return;
+    // Konva.Context wraps the native context; the underlying CanvasRenderingContext2D
+    // lives on `_context`. Use that for raw 2d API access.
+    const konvaCtx = gridLayer.getCanvas().getContext();
+    const ctx = konvaCtx._context || konvaCtx;
+    drawGrid(
+      ctx,
+      { x: stage.x(), y: stage.y(), scaleX: stage.scaleX() || 1 },
+      stage.width(),
+      stage.height(),
+      s
+    );
+  });
+
+  function redraw() { gridLayer.batchDraw(); }
 
   // ── Subscribe to settings changes + stage resize ──────────────────────────
   const unsubSettings = onSettingsChange(redraw);
@@ -191,12 +172,8 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
   redraw();
 
   return {
-    /**
-     * Redraw the grid after pan or zoom. Called by canvas-view.
-     */
-    onTransform() {
-      redraw();
-    },
+    /** Redraw after pan or zoom. Called by canvas-view. */
+    onTransform() { redraw(); },
 
     destroy() {
       unsubSettings();
