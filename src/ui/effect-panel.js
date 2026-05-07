@@ -126,12 +126,96 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     if (expanded) {
       const body = window.document.createElement('div');
       body.className = 'effect-body';
+
+      // Per-slot dry/wet slider — slim minimalist track at the top of the body.
+      // Currently gated to drop-shadow as the test bed; will roll out to all
+      // effects once the UX is approved.
+      const SHOW_MIX_SLIDER_FOR = new Set(['drop-shadow']);
+      if (SHOW_MIX_SLIDER_FOR.has(eff.pluginId)) {
+        body.appendChild(buildMixSlider(layer, eff));
+      }
+
       const ui = plugin.renderUI(eff.params, (patch) => {
         document.setEffectParams(layer.id, eff.id, patch);
       });
       body.appendChild(ui);
       wrap.appendChild(body);
     }
+
+    return wrap;
+  }
+
+  // Slim dry/wet slider — full-width 3 px track that grows on hover and shows
+  // a tooltip readout. Bound to `eff.mix` (default 1). Sets the prop via
+  // setEffectProp so it goes through the cache-break + history pipeline.
+  function buildMixSlider(layer, eff) {
+    const wrap = window.document.createElement('div');
+    wrap.className = 'effect-mix-slider';
+    wrap.setAttribute('role', 'slider');
+    wrap.setAttribute('aria-label', 'Mix (dry/wet)');
+    wrap.setAttribute('aria-valuemin', '0');
+    wrap.setAttribute('aria-valuemax', '100');
+
+    const fill = window.document.createElement('span');
+    fill.className = 'effect-mix-fill';
+    wrap.appendChild(fill);
+
+    const handle = window.document.createElement('span');
+    handle.className = 'effect-mix-handle';
+    wrap.appendChild(handle);
+
+    const tip = window.document.createElement('span');
+    tip.className = 'effect-mix-tip';
+    wrap.appendChild(tip);
+
+    let mix = eff.mix ?? 1;
+    function paint() {
+      const pct = Math.round(mix * 100);
+      fill.style.width = `${pct}%`;
+      handle.style.left = `${pct}%`;
+      tip.textContent = `Mix · ${pct}%`;
+      wrap.setAttribute('aria-valuenow', String(pct));
+    }
+    paint();
+
+    let dragging = false;
+
+    function valueFromPointer(e) {
+      const r = wrap.getBoundingClientRect();
+      const t = (e.clientX - r.left) / r.width;
+      return Math.max(0, Math.min(1, t));
+    }
+
+    wrap.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dragging = true;
+      wrap.setPointerCapture(e.pointerId);
+      wrap.classList.add('is-dragging');
+      mix = valueFromPointer(e);
+      paint();
+      document.setEffectProp(layer.id, eff.id, 'mix', mix);
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      mix = valueFromPointer(e);
+      paint();
+      document.setEffectProp(layer.id, eff.id, 'mix', mix);
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      wrap.classList.remove('is-dragging');
+      try { wrap.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    wrap.addEventListener('pointerup', endDrag);
+    wrap.addEventListener('pointercancel', endDrag);
+
+    wrap.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      mix = 1;
+      paint();
+      document.setEffectProp(layer.id, eff.id, 'mix', mix);
+    });
 
     return wrap;
   }

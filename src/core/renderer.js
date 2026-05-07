@@ -799,6 +799,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         const ctx = { sourceImageData: st.sourceImageData };
         const r = await plugin.process(input, eff.params || {}, ctx);
         out = r || input;
+        // Per-slot dry/wet — lerp between the slot's input and the plugin's output.
+        const mix = eff.mix ?? 1;
+        if (mix < 1 && out !== prev) {
+          out = blendImageData(prev, out, mix);
+        }
       } catch (err) {
         console.error('[plugin]', eff.pluginId, err);
         out = prev;
@@ -816,6 +821,21 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   function cloneImageData(src) {
     const out = new ImageData(src.width, src.height);
     out.data.set(src.data);
+    return out;
+  }
+
+  // Lerp two ImageDatas of the same dimensions: out = a*(1-t) + b*t per channel.
+  // Returns a fresh ImageData; inputs untouched.
+  function blendImageData(a, b, t) {
+    const W = Math.min(a.width, b.width);
+    const H = Math.min(a.height, b.height);
+    const out = new ImageData(W, H);
+    const da = a.data, db = b.data, dout = out.data;
+    const inv = 1 - t;
+    const len = W * H * 4;
+    for (let i = 0; i < len; i++) {
+      dout[i] = da[i] * inv + db[i] * t;
+    }
     return out;
   }
 

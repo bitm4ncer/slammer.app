@@ -48,5 +48,6 @@ export function makeEffectInstance(pluginId) {
   return {
     pluginId,
     params: p.defaultParams(),
+    mix: 1,
   };
 }

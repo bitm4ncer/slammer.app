@@ -155,6 +155,74 @@
 }
 .effect-item.expanded .effect-header .effect-caret { opacity: 0.9; }
 
+/* ---------- Per-slot dry/wet mix slider ---------- */
+.effect-mix-slider {
+  position: relative;
+  height: 3px;
+  margin: -10px -12px 10px; /* bleed flush to top + side card edges */
+  background: rgba(255, 255, 255, 0.05);
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+  transition: height 0.12s ease, background 0.12s ease;
+}
+.effect-mix-slider:hover,
+.effect-mix-slider.is-dragging {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.effect-mix-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--ctx-accent);
+  opacity: 0.55;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.effect-mix-slider:hover .effect-mix-fill,
+.effect-mix-slider.is-dragging .effect-mix-fill {
+  opacity: 0.85;
+}
+.effect-mix-handle {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 100%;
+  background: var(--ctx-accent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, height 0.12s ease;
+}
+.effect-mix-slider:hover .effect-mix-handle,
+.effect-mix-slider.is-dragging .effect-mix-handle {
+  opacity: 1;
+  height: 12px;
+  width: 2px;
+}
+.effect-mix-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 7px;
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.effect-mix-slider:hover .effect-mix-tip,
+.effect-mix-slider.is-dragging .effect-mix-tip {
+  opacity: 1;
+}
+
 .effect-body {
   padding: 10px 12px;
   background: var(--surface-2);

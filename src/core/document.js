@@ -608,7 +608,7 @@ export function createDocument() {
       const idx = layer.effects.findIndex((e) => e.id === effectId);
       if (idx < 0) return;
       layer.effects[idx][prop] = value;
-      const cacheBreaking = prop === 'enabled' || prop === 'params';
+      const cacheBreaking = prop === 'enabled' || prop === 'params' || prop === 'mix';
       emit({ type: 'effect:propChanged', layerId, effectId, prop, value, fromIndex: cacheBreaking ? idx : -1 });
     },
 
