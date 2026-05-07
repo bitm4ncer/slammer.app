@@ -149,7 +149,7 @@ export function initLayerPanel({ container, document, renderer }) {
             <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
             <div class="layer-blend-opacity-row">
               <div class="layer-blend-dropdown">
-                <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+                <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
               </div>
               <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
                 <span class="layer-opacity-knob"></span>
@@ -178,7 +178,7 @@ export function initLayerPanel({ container, document, renderer }) {
             <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
             <div class="layer-blend-opacity-row">
               <div class="layer-blend-dropdown">
-                <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+                <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
               </div>
               <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
                 <span class="layer-opacity-knob"></span>
@@ -208,7 +208,7 @@ export function initLayerPanel({ container, document, renderer }) {
           <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
           <div class="layer-blend-opacity-row">
             <div class="layer-blend-dropdown">
-              <button class="layer-blend-trigger" title="Blend mode" data-mode="${layer.blendMode || 'source-over'}">${blendShort(layer.blendMode || 'source-over')}</button>
+              <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
             </div>
             <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
               <span class="layer-opacity-knob"></span>
