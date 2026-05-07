@@ -815,7 +815,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         // pixelsort can sample the original tones even when the immediate
         // input has been quantised (e.g. dithered above them in the stack).
         // Two-arg plugins keep working — JS ignores extra args.
-        const ctx = { sourceImageData: st.sourceImageData };
+        // contentRect lets distortion plugins anchor centre/radius % math to
+        // the original content rect rather than the padded canvas, so a 50%
+        // centre stays on the same world pixel regardless of which other
+        // effects in the stack grew the pad.
+        const ctx = {
+          sourceImageData: st.sourceImageData,
+          contentRect: getContentRect(layer, st),
+        };
         const r = await plugin.process(input, eff.params || {}, ctx);
         out = r || input;
         // Per-slot dry/wet — lerp between the slot's input and the plugin's output.
@@ -849,6 +856,25 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // must change too, otherwise the effect's halo gets clipped at the canvas
   // edge. Image layers' source is a static decoded bitmap and never depends
   // on the effect stack.
+  // Return the unpadded content rect (in the source-canvas's pixel coords)
+  // for plugins that want to anchor their % math to the original content
+  // rather than the padded canvas. Falls back to the full source.
+  function getContentRect(layer, st) {
+    if (!st.sourceImageData) return null;
+    const W = st.sourceImageData.width, H = st.sourceImageData.height;
+    if (layer.type === 'image') {
+      const pad = st.imagePad || 0;
+      const cs = st.imageContentSize;
+      if (cs) return { x: pad, y: pad, w: cs.w, h: cs.h };
+    }
+    if (layer.type === 'text' || layer.type === 'vector') {
+      const pad = st.textPad || 0;
+      const cs = st.textContentSize;
+      if (cs && cs.w > 0 && cs.h > 0) return { x: pad, y: pad, w: cs.w, h: cs.h };
+    }
+    return { x: 0, y: 0, w: W, h: H };
+  }
+
   function sourceDependsOnEffects(layer) {
     if (!layer) return false;
     if (layer.type === 'image') return true;     // canvas pad budget

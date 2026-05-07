@@ -18,6 +18,7 @@ export default {
 
   defaultParams() {
     return {
+      scope:     'image',      // 'image' | 'layer' — anchor + alpha mask
       centerX:   50,           // 0..100%
       centerY:   50,           // 0..100%
       radius:    50,           // 0..100% of min(w,h)
@@ -31,14 +32,19 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const W = imageData.width;
     const H = imageData.height;
     const src = imageData.data;
 
-    const centerX   = clamp(params.centerX  ?? 50, 0, 100) / 100 * W;
-    const centerY   = clamp(params.centerY  ?? 50, 0, 100) / 100 * H;
-    const radius    = clamp(params.radius   ?? 50, 0, 100) / 100 * Math.min(W, H);
+    const scope = params.scope === 'layer' ? 'layer' : 'image';
+    const rect = (scope === 'image' && ctx?.contentRect)
+      ? ctx.contentRect
+      : { x: 0, y: 0, w: W, h: H };
+
+    const centerX   = rect.x + clamp(params.centerX  ?? 50, 0, 100) / 100 * rect.w;
+    const centerY   = rect.y + clamp(params.centerY  ?? 50, 0, 100) / 100 * rect.h;
+    const radius    = clamp(params.radius   ?? 50, 0, 100) / 100 * Math.min(rect.w, rect.h);
     const strength  = clamp(params.strength ?? 50, -100, 100) / 100;
     const falloff   = params.falloff  ?? 'spherical';
     const aspect    = params.aspect   ?? 'preserve';
@@ -143,6 +149,27 @@ export default {
         }
       }
     }
+
+    if (scope === 'image') {
+      const rectXmax = Math.min(W, rect.x + rect.w);
+      const rectYmax = Math.min(H, rect.y + rect.h);
+      const rectXmin = Math.max(0, rect.x);
+      const rectYmin = Math.max(0, rect.y);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const di = (y * W + x) * 4;
+          if (x < rectXmin || x >= rectXmax || y < rectYmin || y >= rectYmax) {
+            dst[di]     = src[di];
+            dst[di + 1] = src[di + 1];
+            dst[di + 2] = src[di + 2];
+            dst[di + 3] = src[di + 3];
+          } else {
+            dst[di + 3] = src[di + 3];
+          }
+        }
+      }
+    }
+
     return out;
   },
 
@@ -152,6 +179,16 @@ export default {
 
     function rebuild() {
       root.innerHTML = '';
+
+      root.appendChild(pillGroup({
+        label: 'Scope',
+        options: [
+          { value: 'image', label: 'Image' },
+          { value: 'layer', label: 'Layer' },
+        ],
+        value: local.scope === 'layer' ? 'layer' : 'image',
+        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
+      }));
 
       root.appendChild(sliderRow({
         label: 'Center X', min: 0, max: 100, step: 1,

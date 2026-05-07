@@ -66,7 +66,7 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const W = imageData.width;
     const H = imageData.height;
     const src = imageData.data;
@@ -115,12 +115,14 @@ export default {
         }
       }
     } else {
-      // radial mode
+      // radial mode — anchor centre + max-dim to the original content rect
+      // when available so the focal point stays consistent regardless of pad.
+      const rect = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
       const strength = Math.max(0, Math.min(500, params.strength ?? 6));
-      const cx = ((params.centerX ?? 50) / 100) * W;
-      const cy = ((params.centerY ?? 50) / 100) * H;
+      const cx = rect.x + rect.w * (params.centerX ?? 50) / 100;
+      const cy = rect.y + rect.h * (params.centerY ?? 50) / 100;
       const bias = Math.max(-1, Math.min(1, params.bias ?? 0));
-      const maxDim = Math.max(W, H);
+      const maxDim = Math.max(rect.w, rect.h);
 
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {

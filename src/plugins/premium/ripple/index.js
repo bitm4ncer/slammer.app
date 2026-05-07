@@ -62,6 +62,7 @@ export default {
 
   defaultParams() {
     return {
+      scope:      'image',   // 'image' | 'layer' — anchor + alpha mask
       centerX:     50,       // 0..100 %
       centerY:     50,       // 0..100 %
       wavelength:  30,       // 5..200 px
@@ -75,7 +76,7 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const W = imageData.width;
     const H = imageData.height;
     const src = imageData.data;
@@ -86,11 +87,16 @@ export default {
     // Early-out: no-op
     if (amplitude === 0 || mix === 0) return imageData;
 
+    const scope = params.scope === 'layer' ? 'layer' : 'image';
+    const rect = (scope === 'image' && ctx?.contentRect)
+      ? ctx.contentRect
+      : { x: 0, y: 0, w: W, h: H };
+
     const wavelength = Math.max(1,   params.wavelength  ?? 30);
     const phase      = (params.phase ?? 0) / 360;
     const decay      = Math.max(0, Math.min(1, params.decay ?? 0.5));
-    const cx         = W * (params.centerX ?? 50) / 100;
-    const cy         = H * (params.centerY ?? 50) / 100;
+    const cx         = rect.x + rect.w * (params.centerX ?? 50) / 100;
+    const cy         = rect.y + rect.h * (params.centerY ?? 50) / 100;
     const polarisation = params.polarisation || 'radial';
     const waveFn     = WAVE_FNS[params.waveShape] || waveSine;
     const sample     = params.sampling === 'nearest' ? sampleNearest : sampleBilinear;
@@ -162,6 +168,26 @@ export default {
       }
     }
 
+    if (scope === 'image') {
+      const xMin = Math.max(0, rect.x);
+      const yMin = Math.max(0, rect.y);
+      const xMax = Math.min(W, rect.x + rect.w);
+      const yMax = Math.min(H, rect.y + rect.h);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const di = (y * W + x) * 4;
+          if (x < xMin || x >= xMax || y < yMin || y >= yMax) {
+            dst[di]     = src[di];
+            dst[di + 1] = src[di + 1];
+            dst[di + 2] = src[di + 2];
+            dst[di + 3] = src[di + 3];
+          } else {
+            dst[di + 3] = src[di + 3];
+          }
+        }
+      }
+    }
+
     return out;
   },
 
@@ -173,6 +199,16 @@ export default {
       Object.assign(local, patch);
       onChange(patch);
     }
+
+    root.appendChild(pillGroup({
+      label: 'Scope',
+      options: [
+        { value: 'image', label: 'Image' },
+        { value: 'layer', label: 'Layer' },
+      ],
+      value: local.scope === 'layer' ? 'layer' : 'image',
+      onChange: (v) => set({ scope: v }),
+    }));
 
     root.appendChild(sliderRow({
       label: 'Center X', min: 0, max: 100, step: 1,

@@ -17,6 +17,10 @@ export default {
 
   defaultParams() {
     return {
+      scope:    'image',  // 'image' (default) — anchor centre + radius to the
+                          //   original content rect, restore alpha after.
+                          // 'layer' — anchor to the full padded canvas, twirl
+                          //   bleeds into the surrounding pad area.
       angle:    180,      // -1080..1080°
       centerX:  50,       // 0..100%
       centerY:  50,       // 0..100%
@@ -28,15 +32,23 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const W = imageData.width;
     const H = imageData.height;
     const src = imageData.data;
 
+    const scope = params.scope === 'layer' ? 'layer' : 'image';
+    // Anchor centre + radius to either the original content rect (image scope,
+    // default) or the full padded canvas (layer scope). Falls back to full
+    // canvas when no contentRect is provided.
+    const rect = (scope === 'image' && ctx?.contentRect)
+      ? ctx.contentRect
+      : { x: 0, y: 0, w: W, h: H };
+
     const angle    = (params.angle    ?? 180)  * (Math.PI / 180);
-    const centerX  = clamp(params.centerX ?? 50, 0, 100) / 100 * W;
-    const centerY  = clamp(params.centerY ?? 50, 0, 100) / 100 * H;
-    const radius   = clamp(params.radius  ?? 50, 0, 100) / 100 * Math.min(W, H);
+    const centerX  = rect.x + clamp(params.centerX ?? 50, 0, 100) / 100 * rect.w;
+    const centerY  = rect.y + clamp(params.centerY ?? 50, 0, 100) / 100 * rect.h;
+    const radius   = clamp(params.radius  ?? 50, 0, 100) / 100 * Math.min(rect.w, rect.h);
     const falloff  = params.falloff  ?? 'smooth';
     const sampling = params.sampling ?? 'bilinear';
     const inverse  = params.inverse  ?? false;
@@ -103,6 +115,32 @@ export default {
         }
       }
     }
+    // Image scope: restore the original alpha so the silhouette stays intact
+    // (the warp itself can pull colour through the padded transparent area
+    // otherwise, leaving streaks past the original shape).
+    if (scope === 'image') {
+      const rectXmin = Math.max(0, rect.x);
+      const rectYmin = Math.max(0, rect.y);
+      const rectXmax = Math.min(W, rect.x + rect.w);
+      const rectYmax = Math.min(H, rect.y + rect.h);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const di = (y * W + x) * 4;
+          if (x < rectXmin || x >= rectXmax || y < rectYmin || y >= rectYmax) {
+            // Outside the content rect — copy through, no warp.
+            dst[di]     = src[di];
+            dst[di + 1] = src[di + 1];
+            dst[di + 2] = src[di + 2];
+            dst[di + 3] = src[di + 3];
+          } else {
+            // Inside content rect — keep warp result but restore the source
+            // alpha so the silhouette doesn't bleed.
+            dst[di + 3] = src[di + 3];
+          }
+        }
+      }
+    }
+
     return out;
   },
 
@@ -112,6 +150,16 @@ export default {
 
     function rebuild() {
       root.innerHTML = '';
+
+      root.appendChild(pillGroup({
+        label: 'Scope',
+        options: [
+          { value: 'image', label: 'Image' },
+          { value: 'layer', label: 'Layer' },
+        ],
+        value: local.scope === 'layer' ? 'layer' : 'image',
+        onChange: (v) => { local.scope = v; onChange({ scope: v }); },
+      }));
 
       root.appendChild(sliderRow({
         label: 'Angle', min: -1080, max: 1080, step: 1,

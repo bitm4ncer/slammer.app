@@ -48,13 +48,14 @@ export default {
     };
   },
 
-  process(imageData, params) {
+  process(imageData, params, ctx) {
     const W = imageData.width;
     const H = imageData.height;
     if (W < 2 || H < 2) return imageData;
 
     const kernel = params.kernel || 'normal';
     const mode   = params.mode === 'inner' ? 'inner' : 'outer';
+    const rect   = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
 
     let originalAlpha = null;
     if (mode === 'inner') {
@@ -71,8 +72,8 @@ export default {
       }
     } else if (kernel === 'radial') {
       const sub = params.radial === 'spin' ? 'spin' : 'zoom';
-      const cx = (clamp(params.centerX ?? 50, 0, 100) / 100) * (W - 1);
-      const cy = (clamp(params.centerY ?? 50, 0, 100) / 100) * (H - 1);
+      const cx = rect.x + (clamp(params.centerX ?? 50, 0, 100) / 100) * (rect.w - 1);
+      const cy = rect.y + (clamp(params.centerY ?? 50, 0, 100) / 100) * (rect.h - 1);
       if (sub === 'zoom') {
         const strength = clamp(Math.round(params.strength ?? 24), 0, MAX_STRENGTH);
         if (strength > 0) radialZoomBlur(imageData, cx, cy, strength);
