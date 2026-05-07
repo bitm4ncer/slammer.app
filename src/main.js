@@ -95,7 +95,7 @@ import { initCanvasGrid } from './ui/canvas-grid.js';
 document.addEventListener('DOMContentLoaded', async () => {
   initSettingsPopup({
     button: document.getElementById('btnSettings'),
-    version: 'v1.0.1',
+    version: '1.0.2-alpha',
   });
   initSidePanelSplit();
 

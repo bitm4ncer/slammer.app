@@ -200,7 +200,7 @@
 - [ ] Collapsable pages sidebar
 - [ ] Duplicate, reorder pages
 - [ ] Per-page settings icon (change document)
-- [ ]  change version number to v1.0.1
+- [x] Display version unified — `v1.0.2-alpha` everywhere (header tag, Settings → About, Settings sidebar stamp). package.json bumped to `1.0.2`. Note: actual Phase 18 Artboards features still pending.
 
 ---
 
@@ -209,12 +209,12 @@
 > Parallel swarm — each cluster ≤ 3 files where possible, dispatched to a Sonnet 4.6 subagent in its own worktree. Main agent reviews diffs.
 
 ### Cluster A — Layer panel & multi-select shortcuts
-- [ ] Ctrl+C / Ctrl+V / Ctrl+D / Ctrl+X on active layer (copy / paste / duplicate / delete)
-- [ ] Visible **Duplicate** button on layer card (next to trash)
-- [ ] Arrow keys nudge selected layer 1 px; Shift+Arrow = 10 px
-- [ ] Auto-scroll layer panel to selected layer
-- [ ] Selection-on-click (not on mousedown) — fixes "drag accidentally re-selects overlapping layer"
-- [ ] **Collapsible Typography & Vector panels** — click the panel header to collapse/expand; persisted to localStorage so the state survives reload
+- [x] Ctrl+C / Ctrl+V / Ctrl+D / Ctrl+X on active layer (copy / paste / duplicate / delete) — main.js layer clipboard + toolbar.js Ctrl+D handler
+- [x] Visible **Duplicate** button on layer card (next to trash) — `.act-dup` button, `fa-clone`, layer-panel.js
+- [x] Arrow keys nudge selected layer 1 px; Shift+Arrow = 10 px — toolbar.js arrow handler, drops nested-under-group children, vector paths translate too
+- [x] Auto-scroll layer panel to selected layer — `scrollIntoView({ block: 'nearest', behavior: 'smooth' })` on the active row
+- [x] Selection-on-click (not on mousedown) — `pendingGesture` state in canvas-view.js with `DRAG_THRESHOLD = 4`, mousedown alone never auto-changes selection
+- [x] **Collapsible Typography & Vector panels** — click the `.tool-panel-head` header to fold the body; chevron rotates; per-panel state under `slammer:typo:panelCollapsed` and `slammer:vector:panelCollapsed`; keyboard-activatable (Enter / Space)
 
 ### Cluster B — Effect panel & existing-effect tweaks
 - [x] Bug: **Pixelsort above Dither** — root cause was uniform-score input after dither (binary B/W) made every qualifying span have identical scores → sort no-op. Fix: renderer now threads `ctx.sourceImageData` (pre-effect-stack pixels) into `process()`; pixelsort scores from the original tones but writes permutations into the current pipeline buffer.

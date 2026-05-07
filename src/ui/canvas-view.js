@@ -1155,7 +1155,26 @@ export function initCanvasView({ container, document, onImageDropped }) {
     }
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const g of groups) {
-      const r = g.getClientRect({ skipTransform: false, relativeTo: contentLayer });
+      let r = g.getClientRect({ skipTransform: false, relativeTo: contentLayer });
+      // BUGS.md fallback: when getClientRect returns a placeholder (1×1 etc.)
+      // because the bitmap hasn't decoded yet, derive the bbox from the layer
+      // model's naturalSize + transform. This matters mainly when fitTo is
+      // called from `doc:loaded` via `onceLayersMounted` — Konva.Image nodes
+      // are constructed with `naturalSize?.w | 0 || 1` and the real dims arrive
+      // a frame or two later via paintLayerSync.
+      if ((r.width <= 2 || r.height <= 2) && document?.findLayer) {
+        const layer = document.findLayer(g.id());
+        const ns = layer?.naturalSize;
+        if (ns && ns.w > 0 && ns.h > 0) {
+          const t = layer.transform || {};
+          const sx = (typeof t.scaleX === 'number' && t.scaleX !== 0) ? t.scaleX : 1;
+          const sy = (typeof t.scaleY === 'number' && t.scaleY !== 0) ? t.scaleY : 1;
+          // Ignore rotation here — the resulting bbox will over-estimate by
+          // up to √2× for a 45°-rotated layer, still strictly better than the
+          // wrong-by-100 % placeholder rect.
+          r = { x: t.x || 0, y: t.y || 0, width: ns.w * Math.abs(sx), height: ns.h * Math.abs(sy) };
+        }
+      }
       minX = Math.min(minX, r.x);
       minY = Math.min(minY, r.y);
       maxX = Math.max(maxX, r.x + r.width);

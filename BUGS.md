@@ -22,17 +22,13 @@
 
 ---
 
-## Fit-to-view positions the canvas wrong on Open
+## ~~Fit-to-view positions the canvas wrong on Open~~ — fixed
 
-**Symptom**: After commit `5f48941`'s `renderer.onceLayersMounted` wiring, opening a project from the project menu DOES trigger `view.fitTo()`, but the resulting view is "somewhere" — not centered on the content.
+**Symptom (was)**: After commit `5f48941`'s `renderer.onceLayersMounted` wiring, opening a project from the project menu DOES trigger `view.fitTo()`, but the resulting view is "somewhere" — not centered on the content.
 
-**Suspected cause**: `view.fitTo()` uses `g.getClientRect({ relativeTo: contentLayer })` per layer group. Even though `onceLayersMounted` fires after `createLayerNodes` returns, the per-layer `Konva.Image` has been initialised with `naturalSize?.w | 0 || 1` and `naturalSize?.h | 0 || 1` — the actual decoded bitmap dimensions arrive later (next paint via `paintLayerSync`). So the rect math runs against placeholder 1×1 dims for some layers and the bbox is wrong.
+**Cause**: `view.fitTo()` used `g.getClientRect({ relativeTo: contentLayer })` per layer group. Even though `onceLayersMounted` fires after `createLayerNodes` returns, the per-layer `Konva.Image` has been initialised with `naturalSize?.w | 0 || 1` placeholder dims; the actual decoded bitmap dimensions arrive a frame or two later via `paintLayerSync`. So the rect math ran against 1×1 placeholder dims for some layers and the bbox was wrong.
 
-**Files involved**: `src/core/renderer.js` (createLayerNodes / paintLayerSync), `src/ui/canvas-view.js` (`fitTo`).
-
-**What was tried**: replaced `setTimeout(0)` polling with the `onceLayersMounted` deterministic hook. Helped timing but the bbox is still computed off pre-paint dims.
-
-**Possible fixes**: (a) emit a separate `doc:rendered` event after the FIRST paint finishes for every layer (i.e., when every layerState has had `paintLayerSync` complete once), and have project-menu / project-file listen for that instead; (b) inside `fitTo`, fall back to `layer.naturalSize` from the doc model when `getClientRect` returns 1×1; (c) re-run `view.fitTo()` once more after a short delay as a belt-and-braces.
+**Fix**: option (b) from the original sketch. Inside `canvas-view.js#fitTo`, when `getClientRect` returns ≤2-pixel dims, fall back to `layer.naturalSize` × `layer.transform.scale*` from the doc model. Rotation is ignored in the fallback (resulting bbox over-estimates by up to √2× for a 45°-rotated layer), but that's strictly better than the wrong-by-100 % placeholder rect.
 
 ---
 
