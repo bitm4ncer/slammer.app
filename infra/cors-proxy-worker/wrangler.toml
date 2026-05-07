@@ -1,0 +1,25 @@
+name = "slammer-cors-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Free-tier defaults are fine. Bump these only if you outgrow them.
+# Free-tier limits as of 2025-09: 100,000 requests / day, 10 ms CPU / req.
+# Caching keeps real CPU well under the limit even at scale.
+
+[observability]
+enabled = true
+
+# Optional: pin the route to a custom domain you own. Comment back in
+# after `wrangler deploy` succeeds and you've added the route in the
+# Cloudflare dashboard.
+# routes = [
+#   { pattern = "api.slammer.app/cors", custom_domain = false },
+#   { pattern = "api.slammer.app/cors/*", custom_domain = false },
+# ]
+
+# Optional: extra hosts to allowlist beyond the BASE_ALLOWLIST baked into
+# index.ts. Comma-separated, no spaces. Useful when you add a new image
+# source plugin and don't want to redeploy the Worker just to allow its
+# host.
+# [vars]
+# EXTRA_HOSTS = "example.com,cdn.example.com"

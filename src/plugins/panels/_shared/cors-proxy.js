@@ -5,23 +5,55 @@
 // thumbnails, and a handful of other museum / archive CDNs return raw
 // bytes without CORS. <img src=…> works for display (the browser just
 // won't expose pixels), but fetch().blob() — needed to import the image
-// as a layer — fails. We therefore tunnel through one of the public
-// CORS proxies. Single-proxy was fragile: corsproxy.io started 403'ing
-// Met URLs (rate limiting / host blocklist) at some point, breaking all
-// import paths. Multi-proxy keeps the door open.
+// as a layer — fails. We tunnel through a chain of CORS-friendly proxies.
 //
-// Order: try direct first (fastest, only succeeds for CORS-friendly
-// hosts). Then walk a small list of free public proxies. The first one
-// that returns a valid 2xx body wins.
+// Proxy ladder (first 2xx wins):
+//   0. User-supplied custom proxy from Settings → Plugins (when set)
+//      Use this for production: deploy the Cloudflare Worker in
+//      infra/cors-proxy-worker/ and paste its URL.
+//   1. images.weserv.nl  — purpose-built image proxy, free, aggressive
+//                          edge caching, no host blocklist. Most reliable
+//                          public option. URL form differs from generic
+//                          proxies (?url= takes URL WITHOUT scheme).
+//   2. corsproxy.io      — generic, fast when it works but increasingly
+//                          403's museum CDNs (rate limiting / host blocks).
+//   3. allorigins.win    — slower, can 522 on slow upstreams but a useful
+//                          last public fallback.
 
 const PROXIES = [
-  // corsproxy.io — historically the fastest, but flaky for Met / Wikimedia.
+  // wsrv.nl: image-specific, most reliable for free use. Strips the
+  // protocol from the URL when proxying.
+  (url) => `https://wsrv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}&n=-1`,
+  // corsproxy.io: generic, currently flaky for Met but kept because it's
+  // fast for hosts it doesn't block.
   (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  // allorigins — slower but more permissive. Path is /raw for binary.
+  // allorigins: slower, more permissive. Path is /raw for binary.
   (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  // codetabs — small monthly quota but a good last-chance fallback.
-  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
 ];
+
+const CUSTOM_PROXY_KEY = 'corsProxyUrl';
+
+/**
+ * Read the custom proxy template from Settings, if set. Format mirrors
+ * the public ones — a function returning the proxied URL — but stored
+ * as a string with `{url}` placeholder OR a `?url=`-style suffix that
+ * we auto-encode against. Returns null if unset / invalid.
+ */
+function getCustomProxy() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('slammer:settings') || '{}');
+    const tmpl = raw[CUSTOM_PROXY_KEY];
+    if (!tmpl || typeof tmpl !== 'string') return null;
+    if (tmpl.includes('{url}')) {
+      return (url) => tmpl.replace('{url}', encodeURIComponent(url));
+    }
+    // Bare URL — append ?url= or &url= as appropriate.
+    return (url) => {
+      const sep = tmpl.includes('?') ? '&' : '?';
+      return `${tmpl}${sep}url=${encodeURIComponent(url)}`;
+    };
+  } catch { return null; }
+}
 
 async function tryFetch(target, init) {
   const r = await fetch(target, init);
@@ -30,21 +62,22 @@ async function tryFetch(target, init) {
 }
 
 /**
- * Fetch a URL, automatically falling back through the public-proxy chain
- * on failure. Returns the Response object (call .blob() / .json() on it).
+ * Fetch a URL, automatically falling back through the proxy chain on
+ * failure. Returns the Response object (call .blob() / .json() on it).
  *
  * @param {string} url        — original URL
  * @param {object} [opts]
  * @param {RequestInit} [opts.init]    — fetch init for direct attempt
- * @param {boolean}     [opts.skipDirect]  — true: bypass direct attempt entirely
+ * @param {boolean}     [opts.skipDirect]  — true: bypass direct attempt
  *                                            (use when caller already knows direct fails)
  * @param {function(string, Error): void} [opts.onProxyFallback]  — debug hook,
  *                                            invoked once with the proxy URL when
- *                                            direct fails and we move to proxy.
+ *                                            direct fails and we move to a proxy.
  */
 export async function fetchWithProxy(url, opts = {}) {
   const init = { referrerPolicy: 'no-referrer', ...(opts.init || {}) };
   const errors = [];
+  let firstProxyHit = false;
 
   if (!opts.skipDirect) {
     try {
@@ -54,16 +87,25 @@ export async function fetchWithProxy(url, opts = {}) {
     }
   }
 
+  // Build the ordered chain: custom proxy (if set) first, then publics.
+  const chain = [];
+  const custom = getCustomProxy();
+  if (custom) chain.push({ name: 'custom', build: custom });
   for (let i = 0; i < PROXIES.length; i++) {
-    const proxied = PROXIES[i](url);
+    chain.push({ name: `public:${i}`, build: PROXIES[i] });
+  }
+
+  for (const { name, build } of chain) {
+    const proxied = build(url);
     try {
       const r = await tryFetch(proxied, init);
-      if (i === 0 && opts.onProxyFallback) {
+      if (!firstProxyHit && opts.onProxyFallback) {
+        firstProxyHit = true;
         try { opts.onProxyFallback(proxied, errors[0]?.err); } catch (_) {}
       }
       return r;
     } catch (err) {
-      errors.push({ source: `proxy:${i}`, err });
+      errors.push({ source: name, err });
     }
   }
 
@@ -85,10 +127,11 @@ export async function fetchImageBlob(url, opts = {}) {
   const blob = await r.blob();
   if (!blob.size) throw new Error('Empty response');
   // Some proxies forward HTML error pages with type text/html — guard.
-  if (!blob.type.startsWith('image/') && !blob.type.startsWith('application/octet-stream')) {
+  if (!blob.type.startsWith('image/') && !blob.type.startsWith('application/octet-stream') && blob.type !== '') {
     // application/octet-stream is acceptable; a few proxies strip the
-    // image/* type when re-streaming binary.
-    throw new Error(`Not an image (${blob.type || 'unknown'})`);
+    // image/* type when re-streaming binary. Empty MIME is also OK
+    // (wsrv.nl sometimes returns no Content-Type on cached hits).
+    throw new Error(`Not an image (${blob.type})`);
   }
   return blob;
 }

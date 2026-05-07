@@ -24,6 +24,12 @@ const DEFAULTS = {
   unsplashAccessKey: '',
   pexelsApiKey: '',
   falaiApiKey: '',
+  // Custom CORS proxy (production deploy of the Cloudflare Worker in
+  // infra/cors-proxy-worker/). When set, used BEFORE any public proxy
+  // for plugins that fetch from CORS-blocked CDNs (Met, Wikimedia, …).
+  // Format: bare URL (e.g. https://api.slammer.app/cors) — slammer
+  // appends ?url=<encoded>. Or a template with {url} placeholder.
+  corsProxyUrl: '',
   // Phase 21 — alignment aids.
   snapEnabled: true,
   rulersEnabled: false,
@@ -531,6 +537,19 @@ function renderPlugins() {
           'fal.ai/dashboard/keys', 'Format like <code>id:secret</code>. Calls the fal client directly from your browser.')}
       </div>
 
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>CORS proxy</div>
+        <div class="settings-row settings-row--stack">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setCorsProxy">Custom proxy URL</label>
+            <span class="settings-rowhint">Used <strong>before</strong> the public proxy chain for plugins that fetch from CORS-blocked CDNs (Met, Wikimedia, …). Bare URL gets <code>?url=&lt;encoded&gt;</code> appended; template with <code>{url}</code> placeholder is substituted directly. See <code>infra/cors-proxy-worker/README.md</code> for a Cloudflare Worker you can deploy in 10 min.</span>
+          </div>
+          <input type="text" id="setCorsProxy" class="settings-text-input" autocomplete="off"
+                 placeholder="https://your-worker.example.com/cors  (leave blank to use public proxies)"
+                 value="${escapeAttr(s.corsProxyUrl)}" />
+        </div>
+      </div>
+
       <div class="settings-group settings-group--placeholder">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
         <ul class="settings-roadmap-list">
@@ -548,6 +567,7 @@ function wirePlugins(root) {
   bindKeyInput(root.querySelector('#setUnsplashKey'), 'unsplashAccessKey');
   bindKeyInput(root.querySelector('#setPexelsKey'), 'pexelsApiKey');
   bindKeyInput(root.querySelector('#setFalaiKey'), 'falaiApiKey');
+  bindKeyInput(root.querySelector('#setCorsProxy'), 'corsProxyUrl');
 }
 
 function renderShortcuts() {
