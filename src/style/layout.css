@@ -194,17 +194,17 @@ html, body {
 .color-circle-btn {
   position: fixed;
   left: 38.2vw;
-  bottom: 0;
+  bottom: 15px;
   transform: translateX(-50%);
   z-index: 50;
-  /* Diameter = 2× footer height (footer is 36 px). Half of the circle
-   * pokes above the footer's top edge so it reads as a 'recessed dial'. */
-  width: 72px;
-  height: 72px;
+  /* Diameter ≈ 1.6 × footer height — 20 % smaller than the previous
+   * 72 px dial. Lower portion overlaps the footer; upper protrusion
+   * reads as a single piece extending up out of the footer. */
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  /* Fat border in the footer's top-gradient colour so the lower half
-   * fuses with the footer chrome and the upper half sits as a metal
-   * ring against the canvas. */
+  /* Border in the footer's top-gradient colour so circle + footer
+   * fuse into one piece. No outer outline, no drop shadow. */
   border: 6px solid var(--surface-2);
   background: var(--surface);
   padding: 4px;
@@ -212,36 +212,17 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-  box-shadow:
-    /* dark hairline separating ring from canvas */
-    0 0 0 1px rgba(0, 0, 0, 0.7),
-    /* top highlight on the metal ring */
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    /* bottom recess inside the ring */
-    inset 0 -3px 6px rgba(0, 0, 0, 0.55),
-    /* drop shadow lifting the dial off the chrome */
-    0 6px 16px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.18s ease, transform 0.18s ease;
 }
 .color-circle-btn:hover {
   border-color: var(--surface-3);
   transform: translateX(-50%) scale(1.04);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.55),
-    0 10px 22px rgba(0, 0, 0, 0.55);
 }
 .color-circle-swatch {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   background: var(--primary);
-  box-shadow:
-    /* socketed inner well — inverse of the ring's outer well */
-    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-    inset 0 2px 4px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
 }
 
 .color-flyout {
