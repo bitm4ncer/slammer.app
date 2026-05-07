@@ -31,13 +31,18 @@ function makeEdgeFn(mode) {
   return edgeClamp; // default: clamp
 }
 
-// Bilinear sample of src at float coords (sx, sy) with given edge fn.
-// Returns [r, g, b, a].
-function sampleNearest(src, W, H, sx, sy, edgeFn) {
-  const ix = edgeFn(Math.round(sx) | 0, W);
-  const iy = edgeFn(Math.round(sy) | 0, H);
-  const i = (iy * W + ix) * 4;
-  return [src[i], src[i + 1], src[i + 2], src[i + 3]];
+// Per-axis specialised wrap/mirror — pre-binds the period so the inner loop
+// can call them without re-multiplying max each tick.
+function makeWrapFn(max) {
+  return (v) => ((v % max) + max) % max;
+}
+function makeMirrorFn(max) {
+  const period = max * 2;
+  return (v) => {
+    let m = ((v % period) + period) % period;
+    if (m >= max) m = period - 1 - m;
+    return m;
+  };
 }
 
 export default {
@@ -73,10 +78,23 @@ export default {
     const out = new ImageData(W, H);
     const dst = out.data;
 
-    const mode    = params.mode  || 'flat';
-    const edge    = params.edge  || 'clamp';
-    const mix     = 1;
-    const edgeFn  = makeEdgeFn(edge);
+    const mode = params.mode || 'flat';
+    const edge = params.edge || 'clamp';
+    const Wm = W - 1, Hm = H - 1;
+
+    // Inline edge functions per axis. Specialised at process()-entry so V8
+    // can inline the small body in the per-pixel call site. Was previously a
+    // closure returning [r,g,b,a] → 3 array allocations × 4M pixels = GC-fest.
+    const edgeX = edge === 'mirror'
+      ? makeMirrorFn(W)
+      : edge === 'wrap'
+        ? makeWrapFn(W)
+        : (v) => (v < 0 ? 0 : v > Wm ? Wm : v);
+    const edgeY = edge === 'mirror'
+      ? makeMirrorFn(H)
+      : edge === 'wrap'
+        ? makeWrapFn(H)
+        : (v) => (v < 0 ? 0 : v > Hm ? Hm : v);
 
     if (mode === 'flat') {
       const rx = Math.round(params.rx ?? 4);
@@ -87,83 +105,52 @@ export default {
       const by = Math.round(params.by ?? 0);
 
       for (let y = 0; y < H; y++) {
+        // Row offsets are constant for this y; lift them out of the inner loop.
+        const rRow = edgeY(y + ry) * W;
+        const gRow = edgeY(y + gy) * W;
+        const bRow = edgeY(y + by) * W;
         for (let x = 0; x < W; x++) {
           const di = (y * W + x) * 4;
-
-          const rr = sampleNearest(src, W, H, x + rx, y + ry, edgeFn);
-          const gg = sampleNearest(src, W, H, x + gx, y + gy, edgeFn);
-          const bb = sampleNearest(src, W, H, x + bx, y + by, edgeFn);
-
-          // Alpha preserved from green channel to avoid fringing at transparent edges
-          const R = rr[0];
-          const G = gg[1];
-          const B = bb[2];
-          const A = gg[3];
-
-          if (mix >= 1) {
-            dst[di]     = R;
-            dst[di + 1] = G;
-            dst[di + 2] = B;
-            dst[di + 3] = A;
-          } else {
-            const origI = di;
-            dst[di]     = Math.round(src[origI]     * (1 - mix) + R * mix);
-            dst[di + 1] = Math.round(src[origI + 1] * (1 - mix) + G * mix);
-            dst[di + 2] = Math.round(src[origI + 2] * (1 - mix) + B * mix);
-            dst[di + 3] = Math.round(src[origI + 3] * (1 - mix) + A * mix);
-          }
+          const ri = (rRow + edgeX(x + rx)) * 4;
+          const gi = (gRow + edgeX(x + gx)) * 4;
+          const bi = (bRow + edgeX(x + bx)) * 4;
+          dst[di]     = src[ri];          // R from red-shifted sample
+          dst[di + 1] = src[gi + 1];      // G from green-shifted sample
+          dst[di + 2] = src[bi + 2];      // B from blue-shifted sample
+          dst[di + 3] = src[gi + 3];      // alpha tracks green to avoid fringing
         }
       }
     } else {
-      // radial mode — anchor centre + max-dim to the original content rect
-      // when available so the focal point stays consistent regardless of pad.
+      // radial — anchor centre + max-dim to the original content rect when
+      // available so the focal point stays stable regardless of pad.
       const rect = ctx?.contentRect || { x: 0, y: 0, w: W, h: H };
       const strength = Math.max(0, Math.min(500, params.strength ?? 6));
       const cx = rect.x + rect.w * (params.centerX ?? 50) / 100;
       const cy = rect.y + rect.h * (params.centerY ?? 50) / 100;
       const bias = Math.max(-1, Math.min(1, params.bias ?? 0));
       const maxDim = Math.max(rect.w, rect.h);
+      const rFactor = strength * (1 + bias) * (2 / maxDim);
+      const bFactor = strength * (1 - bias) * (2 / maxDim);
 
+      // Math note: original was sx = x + (dx/dist) * (strength * m * (1+bias))
+      // with m = 2*dist/maxDim. The dist cancels: sx = x + dx * rFactor where
+      // rFactor folds strength*(1+bias)*2/maxDim. Saves one sqrt + one
+      // division per pixel and removes the dist > 0 guard entirely.
       for (let y = 0; y < H; y++) {
+        const dy = y - cy;
         for (let x = 0; x < W; x++) {
-          const di = (y * W + x) * 4;
           const dx = x - cx;
-          const dy = y - cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const m = (dist / maxDim) * 2; // 0 at centre → peaks at corners
-
-          let ux = 0, uy = 0;
-          if (dist > 0) {
-            ux = dx / dist;
-            uy = dy / dist;
-          }
-
-          // Red: pushed outward, modulated by positive bias
-          const rStrength = strength * m * (1 + bias);
-          // Blue: pushed inward (opposite direction), modulated by negative bias
-          const bStrength = strength * m * (1 - bias);
-
-          const rr = sampleNearest(src, W, H, x + ux * rStrength, y + uy * rStrength, edgeFn);
-          // Green stays at the original pixel (anchors the alpha)
-          const origI = di;
-          const bb = sampleNearest(src, W, H, x - ux * bStrength, y - uy * bStrength, edgeFn);
-
-          const R = rr[0];
-          const G = src[origI + 1];
-          const B = bb[2];
-          const A = src[origI + 3];
-
-          if (mix >= 1) {
-            dst[di]     = R;
-            dst[di + 1] = G;
-            dst[di + 2] = B;
-            dst[di + 3] = A;
-          } else {
-            dst[di]     = Math.round(src[origI]     * (1 - mix) + R * mix);
-            dst[di + 1] = Math.round(src[origI + 1] * (1 - mix) + G * mix);
-            dst[di + 2] = Math.round(src[origI + 2] * (1 - mix) + B * mix);
-            dst[di + 3] = Math.round(src[origI + 3] * (1 - mix) + A * mix);
-          }
+          const di = (y * W + x) * 4;
+          const rxs = edgeX(Math.round(x + dx * rFactor));
+          const rys = edgeY(Math.round(y + dy * rFactor));
+          const bxs = edgeX(Math.round(x - dx * bFactor));
+          const bys = edgeY(Math.round(y - dy * bFactor));
+          const ri = (rys * W + rxs) * 4;
+          const bi = (bys * W + bxs) * 4;
+          dst[di]     = src[ri];
+          dst[di + 1] = src[di + 1];   // green/alpha stay at the original pixel
+          dst[di + 2] = src[bi + 2];
+          dst[di + 3] = src[di + 3];
         }
       }
     }
