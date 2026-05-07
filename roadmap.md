@@ -215,6 +215,8 @@
 - [x] Auto-scroll layer panel to selected layer — `scrollIntoView({ block: 'nearest', behavior: 'smooth' })` on the active row
 - [x] Selection-on-click (not on mousedown) — `pendingGesture` state in canvas-view.js with `DRAG_THRESHOLD = 4`, mousedown alone never auto-changes selection
 - [x] **Collapsible Typography & Vector panels** — click the `.tool-panel-head` header to fold the body; chevron rotates; per-panel state under `slammer:typo:panelCollapsed` and `slammer:vector:panelCollapsed`; keyboard-activatable (Enter / Space)
+- [x] **Alt+drag to duplicate layer** — `canvas-view.js` mousedown captures `modAlt`; on first dragmove past threshold the gesture pivots: every layer in `pendingGesture.starts` is `doc.duplicateLayer()`-ed at offsetXY {0,0}, the new groups become the drag targets (lazy-resolved through `renderer.layerState`), selection moves to the duplicates. Multi-layer Alt+drag duplicates all selected layers simultaneously.
+- [x] **Ctrl+V paste image from clipboard** — `paste` listener in `main.js` reads `clipboardData.items` for `image/*` MIME (screenshots, copied images). Internal layer-paste still takes priority — when `layerClipboard` is non-null the keydown handler `preventDefault`s and the browser never fires `paste`. Otherwise the image is wrapped in a `File` and routed through `addImageFile()`.
 
 ### Cluster B — Effect panel & existing-effect tweaks
 - [x] Bug: **Pixelsort above Dither** — root cause was uniform-score input after dither (binary B/W) made every qualifying span have identical scores → sort no-op. Fix: renderer now threads `ctx.sourceImageData` (pre-effect-stack pixels) into `process()`; pixelsort scores from the original tones but writes permutations into the current pipeline buffer.
@@ -237,6 +239,9 @@
 - [x] Rotater anchor cursor: `grab` on hover, `grabbing` while rotating
 - [x] Project loads in **Fit view** (`view.fitTo()` on every `doc:loaded` event, deferred one tick so Konva groups mount first)
 - [x] Auto-load fonts on opening another user's project — `preloadFontsForDoc()` now runs on every project-load path (autosave restore, project-menu open, `.slmr` import); `.slmr` manifest enriched with all-provider font metadata (uploaded carries raw bytes; google/fontshare/system carry catalog snapshots so the receiver can `loadFont(meta)` even with a stale catalog)
+
+- [x] **Ctrl+0 fit-to-viewport shortcut** — wired in `toolbar.js` keydown handler alongside the existing modifier shortcuts. Calls `view.fitTo()`.
+- [x] **Trackpad & scroll canvas navigation** — `canvas-view.js` wheel handler now branches on `getSettings().scrollBehavior` ('pan' default, 'zoom' legacy). Pan mode: plain scroll = pan (uses `deltaX` + `deltaY`); `Ctrl/Cmd`+scroll + pinch zoom; `Shift`+scroll → horizontal pan with single-axis wheels. Zoom mode swaps the two. Settings → Workflow → Canvas navigation has a Pan / Zoom segmented toggle.
 
 ### Cluster D — Settings tabs
 - [x] **Info** tab: app + version, supported file types (project / image / vector / fonts / export), Buy-a-coffee button + GitHub link
@@ -261,11 +266,20 @@
 
 ### Cluster H — Vector
 - [x] **Split** button on the path picker (visible only on multi-path vector layers) — turns the layer into N independent vector layers, preserves per-path fill/stroke/shape, copies transform/accent/opacity/blendMode/visible/locked + parent group membership, removes the source. New `doc.splitVectorLayer(id)` mutator emits one `layer:removed` + N `layer:added` so history captures it as a single structural commit.
+- [ ] **Vector panel layout polish** — PATH actions section (Smooth, Reverse, Open, Join, Outline) looks messy as a vertical button stack. Redesign as a compact horizontal pill row or icon-button grid. Simplify slider + COMBINE section should also be visually tightened. Overall: the vector panel should feel as polished as the Typography panel.
 
 ### Cluster I — Plugin polish
 - [x] Image plugins (Unsplash / Pexels / Met): sticky search header — search row + tag pills now wrap in a `.browsable-search-header` that uses `display: contents` in landing state (so the centred landing layout is unaffected) and `position: sticky; top: 38px` once the user's first search exits the landing state.
 - [x] fal.ai: progress indicator — a `setRunning(bool)` helper swaps the Run button to a spinner + "Generating…" label, shows a 3 px indeterminate animated progress bar below the actions row, and surfaces queue position when known ("Queued · N ahead…"). Hidden on success / error / cancel.
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
+- [ ] **Image plugin loading spinner** — Unsplash / Pexels / Met show an empty panel while the landing page content loads. Add a centered spinner (reuse the `.is-processing` pattern from effect cards) that disappears once the first batch of images renders.
+
+### Cluster J — UI animations & transitions
+- [ ] **Plugin window open/close** — fade + slide-in from bottom on open (~200ms ease-out), slide-down + fade-out on close (~150ms ease-in). Apply to `floating-window.js` so all plugin windows inherit the animation.
+- [ ] **Panel collapse/expand** — smooth height transition on Typography, Vector, Effects, and any future collapsible panel. Use `max-height` transition or `grid-template-rows: 0fr → 1fr` for a clean accordion feel (~200ms ease).
+- [ ] **Settings modal overlay** — background overlay (`--modal-backdrop`) fades in slowly (~300ms) when Settings opens. Ensure the overlay sits below the Settings modal content but above everything else.
+- [ ] **Z-index hierarchy** — enforce a strict stacking order: Settings modal + overlay (highest) → Shop popup → Plugin windows (in focus order) → rest of the app. Define named z-index layers in `variables.css` (`--z-app`, `--z-plugin-window`, `--z-shop`, `--z-settings-overlay`, `--z-settings`).
+- [ ] **General micro-transitions** — audit remaining abrupt show/hide interactions (dropdowns, tooltips, effect-card expand, add-menu) and add subtle fade/scale transitions where it feels natural. Keep durations short (100–200ms) and respect `prefers-reduced-motion`.
 
 ## PHASE 20 — New Effects Library ✅
 
@@ -295,6 +309,13 @@
 - [ ] **Quick adjustments bar** below selected image: every effect/typo knob currently on the layer in one bar. Settings toggle.
 - [ ] **Ctrl+Space** opens center-screen radial effect picker
 - [x] **Canvas Grid** — subtle two-tier grid (default 10 px minor / 100 px major) rendered between bgLayer and contentLayer, moves with the canvas via stage transform. Footer button (right footer next to Snap + Ruler, keyboard `Ctrl+;`) toggles visibility. Settings → Workflow → Canvas Grid: Show grid + Snap to grid toggles, Minor pitch slider (5..100), Major pitch slider (50..500, auto-clamped to multiple of minor), Opacity (0..100), Colour. Grid lines drawn via single `Konva.Shape` `sceneFunc` (raw canvas) with integer-pixel snap for crispness; major lines render at 2× alpha + 1.5 px. `snap-rulers.gatherCandidates` extends with grid-line candidates when `snapEnabled && canvasGridShow && canvasGridSnap` — capped at 200 per axis across the visible viewport. New `src/ui/canvas-grid.js` module.
+
+## PHASE 21b — Shortcut Manager (centralise before more pile up) 🆕
+
+- [ ] **Central shortcut registry** (`src/ui/shortcut-manager.js`) — single module that owns all key bindings. Each shortcut = action ID + default combo + category (File / Edit / Move / Tools / Canvas). All existing `keydown` listeners across the app (~10 files: toolbar, canvas-view, vector tools, layer-panel, etc.) refactored to register through the registry instead of ad-hoc `addEventListener`.
+- [ ] **User-configurable shortcuts** — Settings → Shortcuts tab becomes editable: click a row, press a new combo, confirm. Conflict detection warns when two actions share the same combo. Overrides stored in `slammer:settings.shortcuts` (sparse map of action ID → custom combo; absent = default).
+- [ ] **Reset to defaults** — per-shortcut and global reset button in the Shortcuts tab.
+- [ ] Migrate the existing Ctrl+0 fit-to-viewport shortcut (Phase 19 Cluster C) through the new registry once it ships.
 
 ## PHASE 22 — Selection Tools 🆕
 
@@ -419,6 +440,28 @@
 - [ ] Three-test gate: every premium item in the launch catalog must individually pass the **Tutorial / 2-Hour / Eigengeld** tests in [STRATEGY.md](STRATEGY.md). Maintainer signs off in writing per item before it's listed in Polar.
 
 ---
+
+## PHASE 30 — Themes 🆕
+
+- [ ] **Theme switcher** — Settings → General. Three built-in themes + system auto. Implemented via a top-level `[data-theme="dark|anthracite|light"]` attribute on `<html>` that flips all CSS custom properties in `variables.css`. Dark stays the default.
+- [ ] **CSS variable layer**: define every surface/text/border colour as a `--sl-*` variable in `variables.css`, with dark values as default and overrides under `[data-theme="anthracite"]` and `[data-theme="light"]`. Audit all hardcoded `#xxx` / `rgb()` in `components.css` and inline styles — migrate to variables.
+- [ ] **Dark** (default) — current colour scheme, unchanged.
+- [ ] **Anthracite** — mid-tone grey theme, slightly lighter than Dark. Warm charcoal surfaces (~`#2a2a2e` panels, `#343438` sidebar, `#3e3e42` cards) instead of the near-black current palette. Softer contrast, easier on the eyes for long sessions. Same text/icon colours as Dark, just lifted backgrounds.
+- [ ] **Light** — full light mode: light grey/white surfaces, dark text, adapted icons.
+- [ ] **Canvas background**: each theme gets its own checkerboard / grid / ruler tones. Anthracite uses a subtly lighter checker than Dark; Light uses warm grey or white.
+- [ ] **Accent colour interaction**: user's chosen accent (`--ctx-accent`) stays unchanged across all themes; only surface/chrome colours flip. Ensure contrast ratios pass WCAG AA in every theme.
+- [ ] **Persist** theme choice in `slammer:settings.theme` (values: `dark` / `anthracite` / `light` / `system`). `system` follows `prefers-color-scheme` media query (maps to Light or Dark; Anthracite is manual-only).
+- [ ] **Transition**: smooth 200ms transition on theme swap (on `background-color`, `color`, `border-color` only — no transition on box-shadow or transform to avoid jank).
+
+### Phase 30b — Custom Theme Editor (v2) 🆕
+
+> Builds on Phase 30's CSS variable infrastructure. Ship after the three fixed presets are stable.
+
+- [ ] **Theme Editor UI** — Settings → Themes tab. Colour pickers for the ~8-10 key surfaces: panel background, sidebar, cards, borders, text primary/secondary, canvas checker, scrollbar. Live preview while editing — changes apply instantly via `style.setProperty`.
+- [ ] **Save / Load / Delete** custom themes — stored in `slammer:settings.customThemes` (array of `{ name, colors }` objects). Theme switcher dropdown shows built-in presets + user themes.
+- [ ] **Duplicate preset as starting point** — user picks Dark/Anthracite/Light, hits "Customize", edits from there instead of starting blank.
+- [ ] **Import / Export** — JSON file in/out so users can share themes. Drag a `.slammer-theme.json` onto the app to import.
+- [ ] **Community themes** — potential future tie-in with F4 (Community Plugin Marketplace): themes as a shareable asset type alongside plugins and asset packs.
 
 ### Deferred / parked
 - Midjourney Discord Bot plugin — needs server-side relay, conflicts with no-backend v1. Revisit after F1 SDK / browser-extension MCP.
@@ -560,8 +603,11 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 | Pack | Items | Status |
 |---|---|---|
 | **Glitch Pack** | Datamosh · JPEG Compression | Migrated, pre-existing functionality |
-| **Raster Pack** | Dither · Halftone (raster) | Dither migrated; raster Halftone TBD |
+| **Raster Pack** | Dither · Halftone (raster) · **ASCII** (new) | Dither migrated; raster Halftone + ASCII TBD |
 | **Dots Pack** | Stipple · Halftone (vector) | Migrated, pre-existing functionality |
+| **Liquid Pack** | Twirl · Ripple · Bulge · **Liquify** (new) | Twirl/Ripple/Bulge shipped Phase 20; Liquify TBD |
+| **Gradient Pack** | Liquid Gradients (rename from Organic Gradient) · Mesh Gradient · Gradient Library | Shipped as "Infinity Gradients"; renaming pack + lead effect |
+| **Mosaic Pack** | Emoji · Photo Mosaic · Pixel Art · LEGO Brick (all new) | New pack — all TBD |
 
 **Existing premium plugins (migrated from free folders, polish pending):**
 - [x] **Datamosh** — moved to `premium/datamosh/`, `pack: 'glitch-pack'`
@@ -572,16 +618,22 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 
 **New premium plugins / effects / assets (build queue):**
 - [ ] **Halftone (raster)** — real screenprint dot pattern with DPI + angle + dot-shape (distinct from vector Halftone, distinct from Dither's halftone mode). Goes into Raster Pack alongside Dither.
+- [ ] **ASCII** 🟦 PREMIUM (Raster Pack) — converts image to ASCII art. Grid of cells, each cell's average luminance mapped to a character from a density ramp. Controls: cell size, font size, character set (preset + custom), foreground/background colour mode (original colour / monochrome / custom), contrast, invert. Preset character sets: Standard (` .:-=+*#%@`), Blocks (`░▒▓█`), Braille, Minimal, Digits, Katakana. Custom character set input field lets users type their own ramp. Output rendered onto canvas via fillText at cell positions — stays raster, not a text layer. Goes into Raster Pack alongside Dither + Halftone.
 - [ ] **Instagram Importer** plugin — login-free public profile scraping or oEmbed-based, pulls user's own posts as image layers
 - [ ] **Background Removal** plugin (client-side) — runs on local model (e.g. ONNX U²-Net or BiRefNet via WebGPU/WASM). Available as both standalone plugin AND as a per-layer effect.
 - [ ] **AI Inpainting** plugin — fal.ai-backed (BYO key), masked region → AI fill
 - [ ] **Soft Face Filter** effect — lightweight skin-smoothing / colour-balancing for portraits
 - [ ] **Y2K Vector Pack** assets — curated SVG kit (logos, shapes, ornaments, stickers)
 - [ ] **Xerox Textures** asset pack — high-res scan textures of photocopied / faxed material
-- [ ] **Organic Gradients** effect (also on roadmap, see Phase 20) — flowing seedable gradients via `noisesc(v + udirsc(v)*t)`. Move from Phase 20 to F5 since it's a strong Pro candidate.
+- [ ] **Vignette** effect — standalone radial darkening/lightening. Extracted from Organic Gradient (which loses its built-in vignette). Controls: amount, roundness, feather, midpoint, colour. Free or premium TBD.
 - [ ] **CRT Look** effect — scan lines + RGB bleed + bloom + vignette + barrel distortion preset
 - [ ] **Mesh Warp** plugin — pin-mesh deformation (also on Phase 27 Deform tab; if shipped here, drop the Phase 27 Mesh Warp sub-task)
+- [ ] **Emoji** 🟨 PREMIUM (Mosaic Pack) — two layout modes in one effect. **Grid mode**: splits image into a cell grid, computes each cell's average colour in CIELAB, matches to the perceptually closest emoji. **Scatter mode**: luminance-driven density scatter (Poisson disk sampling) — darker areas get more/larger emoji packed tighter, lighter areas sparser. Emoji overlap, vary in size, and rotate randomly for an organic collage look (similar to Stipple's spatial distribution but with emoji glyphs). Ships a Twemoji sprite atlas (~200KB, CC-BY 4.0) for pixel-identical cross-platform rendering. Shared controls: emoji set (Full / Faces / Nature / Food / Objects / custom subset), background mode (transparent / original / solid), colour bias strength. Grid controls: cell size. Scatter controls: density, size range (min/max), rotation variance, overlap amount. Live preview at reduced resolution during slider drag, full-res on release.
+- [ ] **Photo Mosaic** 🟨 PREMIUM (Mosaic Pack) — rebuilds the image from a library of small tile images. Integrates with the Unified Media Library (Phase 25) and plugin folders: user selects a folder of images as the tile source. Each cell's average colour matched against tile averages via CIELAB Delta-E. Controls: cell size, tile repetition limit (min distance before reuse), colour tint strength (blend tile toward target colour vs show original tile), tile rotation (0° / random / match gradient), source folder picker. Falls back to a bundled default tile set (geometric shapes / textures) when no folder is selected.
+- [ ] **Pixel Art** 🟨 PREMIUM (Mosaic Pack) — downscales the image to a low-res grid then renders each cell as a clean flat-colour square (nearest-neighbour upscale with hard edges). Controls: cell size (pixel block size), colour palette (Unlimited / NES 54 / Game Boy 4 / SNES 256 / C64 16 / CGA 16 / custom palette picker), dither within palette (none / ordered / Floyd-Steinberg), outline mode (adds 1px dark outline per colour region for a sprite look), grid lines toggle. Distinct from Dither: Pixel Art enforces flat fills per cell and palette-locks, Dither preserves continuous tonal gradients.
+- [ ] **LEGO Brick** 🟨 PREMIUM (Mosaic Pack) — renders the image as a grid of LEGO-style circular studs. Each cell becomes a raised stud with a subtle 3D bevel (CSS-style radial gradient for the dome highlight + shadow). Controls: stud size, colour palette (Official LEGO 40-colour palette / extended / full), plate colour (baseplate behind studs), bevel strength, gap size between studs, shadow direction. Output looks like a real LEGO mosaic set instruction — could pair with a "parts list" export (count per colour) as a bonus feature.
 - [ ] **Noise Blur** effect 🟦 PREMIUM (Glitch Pack candidate) — custom-mask-driven variable-strength blur (per-pixel blur amount sampled from an upload-able mask / noise texture). Sits next to the Phase 27 free Blur as a dedicated premium variant; lets the user paint where blur is sharp vs soft. UI: mask drop-zone + noise-fallback generator + per-channel strength curve.
+- [ ] **Liquify** effect 🟦 PREMIUM (Liquid Pack) — domain-warped displacement. Uses the same multi-iteration simplex noise engine as Liquid Gradients, but instead of mapping noise → colour, it maps noise → per-pixel displacement (dx, dy). Result: organic, flowing distortion with much more structure and control than the basic value-noise Displacement effect. Controls: scale, warp strength, warp iterations (1–4), edge mode (clamp/wrap/mirror), seed, "Move on canvas" spatial offset (shared concept with Liquid Gradients). Animate toggle reuses the same rAF tick + time-offset architecture. Think: Photoshop Liquify-meets-procedural-distortion — no brush painting, pure generative warp.
 
 **Architecture notes:**
 - All items live in private `bitmancer-plugins` repo, mounted at `src/plugins/premium/`. Gitignored in slammer.app.
@@ -595,6 +647,14 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - [ ] Dither polish — algorithm preview thumbnails in picker, scroll-wheel cycle (Phase 19 todo), better palette UI
 - [ ] Stipple polish — preview overlay during edit, denser jitter modes, layout previews
 - [ ] Halftone (vector) polish — gradient direction handles on canvas
+- [ ] Liquid Gradients overhaul (currently "Organic Gradient") — rename + restructure + new capabilities:
+  1. **Rename** — `Organic Gradient` → `Liquid Gradients` everywhere (id, display name, manifest, shop card, PACK_INFO). Pack rename: `infinity-gradients` → `gradient-pack`.
+  2. **Gradient Library integration** — if the user owns the Gradient Library plugin, show a "Browse presets…" button that opens the library and lets the user pick a gradient to use as the colour source. Falls back to the built-in stops editor if library isn't owned.
+  3. **Play/Pause animation** — replace the current on/off toggle with a play/pause button. Pausing freezes the animation at its current time offset (keeps the visual state). Stopping/disabling should NOT reset to start — the frozen frame is the feature.
+  4. **Remove Mix knob** — redundant now that we have global per-effect opacity/mix slider.
+  5. **Remove Vignette** — extract to standalone Vignette effect (see build queue above). Liquid Gradients should do one thing well.
+  6. **"Move on canvas" mode** — toggle button: when enabled, the user can grab and drag the noise texture across the layer, offsetting it in X/Y. Similar to the time-offset concept but spatial, in all directions. Persisted as `offsetX` / `offsetY` params. Works with or without animation.
+  7. **Shop restructuring** — move from Infinity Gradients pack to new **Gradient Pack** alongside Gradient Library and Mesh Gradient. Update `PLUGIN_PALETTE`, `PACK_INFO`, and shop card in `shop-popup.js`.
 
 **Open decisions** (defer until Phase 28 / launch nears):
 - Per-plugin price points (single plugin €5–10, but flat or tiered?)

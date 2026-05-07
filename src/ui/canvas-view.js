@@ -6,7 +6,7 @@ import { getTool, setTool, onToolChange, TOOL_CURSORS } from './vector-tools/act
 import { attachShapeDrawer } from './vector-tools/shape-drawer.js';
 import { attachPenTool } from './vector-tools/pen-tool.js';
 import { attachPencilTool } from './vector-tools/pencil-tool.js';
-import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection, onSelectionChange } from './selection-state.js';
+import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection, setSelection, onSelectionChange } from './selection-state.js';
 import { attachMarquee } from './marquee.js';
 import { translatePathD } from '../core/vector-renderer.js';
 
@@ -462,25 +462,52 @@ export function initCanvasView({ container, document, onImageDropped }) {
     containerResizeObserver.observe(container);
   }
 
-  // ---------- Wheel zoom (zoom-to-pointer) ----------
+  // ---------- Wheel — pan or zoom depending on settings + modifiers ----------
+  // Modes (Settings → Workflow → Canvas → Scroll behaviour):
+  //   'pan'  — plain wheel / two-finger trackpad pan = pan canvas;
+  //            Ctrl/Cmd+wheel + pinch-zoom = zoom (Figma / Miro / Maps).
+  //   'zoom' — plain wheel = zoom; Ctrl/Cmd+wheel = pan. (Legacy default.)
+  // The browser dispatches pinch-zoom gestures as wheel events with
+  // ctrlKey=true and small deltaY, which is why Ctrl is the universal
+  // "this is a zoom" signal.
+  function readScrollMode() {
+    return getSettings().scrollBehavior === 'zoom' ? 'zoom' : 'pan';
+  }
   stage.on('wheel', (e) => {
     e.evt.preventDefault();
-    const scaleBy = 1.08;
-    const oldScale = stage.scaleX();
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
-    const direction = e.evt.deltaY > 0 ? -1 : 1;
-    const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    const clamped = Math.max(0.05, Math.min(20, newScale));
-    stage.scale({ x: clamped, y: clamped });
-    stage.position({
-      x: pointer.x - mousePointTo.x * clamped,
-      y: pointer.y - mousePointTo.y * clamped,
-    });
+    const scrollMode = readScrollMode();
+    const wantsZoom = scrollMode === 'zoom'
+      ? !(e.evt.ctrlKey || e.evt.metaKey)
+      : (e.evt.ctrlKey || e.evt.metaKey);
+
+    if (wantsZoom) {
+      // Zoom-to-pointer.
+      const scaleBy = 1.08;
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
+      const direction = e.evt.deltaY > 0 ? -1 : 1;
+      const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+      const clamped = Math.max(0.05, Math.min(20, newScale));
+      stage.scale({ x: clamped, y: clamped });
+      stage.position({
+        x: pointer.x - mousePointTo.x * clamped,
+        y: pointer.y - mousePointTo.y * clamped,
+      });
+    } else {
+      // Pan — apply both axes. Trackpad scrolls give us deltaX naturally
+      // (two-finger horizontal swipe); a regular mouse wheel only fires
+      // deltaY, which becomes vertical pan. Hold Shift to swap deltaY
+      // → deltaX for horizontal pan with a single-axis wheel — also
+      // standard convention.
+      const dx = e.evt.shiftKey && !e.evt.deltaX ? -e.evt.deltaY : -e.evt.deltaX;
+      const dy = e.evt.shiftKey && !e.evt.deltaX ? 0 : -e.evt.deltaY;
+      stage.position({ x: stage.x() + dx, y: stage.y() + dy });
+    }
     stage.batchDraw();
     syncCursor();
   });
@@ -624,9 +651,14 @@ export function initCanvasView({ container, document, onImageDropped }) {
     return null;
   }
 
-  function snapshotSelectionPositions() {
+  // When `forceId` is non-null, snapshot ONLY that layer (used for
+  // Alt+drag on an unselected layer — we want THAT specific layer
+  // duplicated, not the current selection). Otherwise iterate the
+  // current selection.
+  function snapshotSelectionPositions(forceId = null) {
     const map = new Map();
-    for (const id of getSelection()) {
+    const ids = forceId ? [forceId] : Array.from(getSelection());
+    for (const id of ids) {
       const layer = document.findLayer(id);
       if (!layer || layer.type === 'fx' || layer.locked) continue;
       const node = stage.findOne((n) => n.id?.() === id);
@@ -706,13 +738,20 @@ export function initCanvasView({ container, document, onImageDropped }) {
     // Otherwise `starts` stays empty: the gesture is alive only for
     // click-vs-drag classification on mouseup.
     const inSelectedBbox = getSelection().has(hitLayerId) || cursorInsideAnySelected(startWorld);
-    const starts = inSelectedBbox ? snapshotSelectionPositions() : new Map();
+    // For Alt+drag on an UNSELECTED layer: still snapshot it as the
+    // drag target. Figma/Affinity/PS behaviour is "Alt+drag any layer
+    // duplicates THAT layer" regardless of prior selection.
+    const starts = (inSelectedBbox || e.evt.altKey)
+      ? snapshotSelectionPositions(inSelectedBbox ? null : hitLayerId)
+      : new Map();
     pendingGesture = {
       startWorld,
       hitLayerId,
       modShift: e.evt.shiftKey,
       modMeta: e.evt.metaKey || e.evt.ctrlKey,
+      modAlt: !!e.evt.altKey,    // Alt+drag → duplicate-and-drag (set on first dragmove past threshold)
       dragging: false,
+      duplicated: false,         // becomes true once we've spawned the duplicates
       starts,
     };
     e.evt.preventDefault();
@@ -756,8 +795,47 @@ export function initCanvasView({ container, document, onImageDropped }) {
         pendingGesture.dragging = true;
         // Drag just started — flip cursor to grabbing.
         syncCursor();
+        // Alt+drag → duplicate every captured layer in-place and pivot
+        // the gesture onto the duplicates. The originals stay where the
+        // user grabbed them; the new copies follow the cursor for the
+        // rest of the drag. Standard Photoshop / Affinity / Figma
+        // behaviour.
+        if (pendingGesture.modAlt && pendingGesture.starts.size > 0 && !pendingGesture.duplicated) {
+          pendingGesture.duplicated = true;
+          const newStarts = new Map();
+          // Duplicate in panel-top-first order so multi-layer selections
+          // keep their stacking. Konva groups for the duplicates may not
+          // exist yet (createLayerNodes is async); resolve lazily below.
+          const orderedIds = Array.from(pendingGesture.starts.keys());
+          for (const origId of orderedIds) {
+            const info = pendingGesture.starts.get(origId);
+            const clone = document.duplicateLayer(origId, { offsetXY: { x: 0, y: 0 } });
+            if (!clone) continue;
+            // Vector layers store path d-coords in WORLD space; the
+            // duplicate's d still points to the ORIGINAL world location.
+            // We don't translate here — when the dragend bake-step runs
+            // it walks the cloned layer's paths through translatePathD.
+            newStarts.set(clone.id, { x: info.x, y: info.y, node: null });
+          }
+          pendingGesture.starts = newStarts;
+          // Hand selection to the duplicates so the user sees the new
+          // layers selected. Anchor on the first one.
+          const ids = Array.from(newStarts.keys());
+          if (ids.length) setSelection(ids, ids[0]);
+        }
       }
       if (pendingGesture.starts.size === 0) return;
+      // Lazy-resolve any node references that weren't ready when
+      // duplicateLayer returned. createLayerNodes is async; the new
+      // Konva.Group lands in renderer.layerState a tick or two later.
+      if (pendingGesture.duplicated) {
+        const r = window.__slammer?.renderer;
+        for (const [id, info] of pendingGesture.starts) {
+          if (info.node) continue;
+          const st = r?.layerState?.get?.(id);
+          if (st?.group) info.node = st.group;
+        }
+      }
 
       // ── Snap ──────────────────────────────────────────────────────────
       // Only when snapEnabled and not holding Alt (Alt = temporary disable).
@@ -768,6 +846,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
         // Build the union bbox of all moving layers in CONTENT-LAYER coords.
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const [, info] of pendingGesture.starts) {
+          if (!info.node) continue;        // Alt+drag duplicate not mounted yet
           const tx = info.x + dx, ty = info.y + dy;
           const r2 = info.node.getClientRect({ relativeTo: contentLayer });
           if (!r2 || !(r2.width > 0)) continue;
@@ -791,7 +870,12 @@ export function initCanvasView({ container, document, onImageDropped }) {
       }
 
       // Apply the same delta to every captured layer's Konva.Group.
+      // Guard against null nodes — when an Alt+drag duplicate fires,
+      // the new layer's Konva.Group is created asynchronously by
+      // renderer.createLayerNodes; until that completes we just skip
+      // it for this frame.
       for (const [, info] of pendingGesture.starts) {
+        if (!info.node) continue;
         info.node.position({ x: info.x + dx + snapDx, y: info.y + dy + snapDy });
       }
       const r = window.__slammer?.renderer;

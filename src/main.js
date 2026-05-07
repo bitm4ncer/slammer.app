@@ -467,6 +467,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       layerClipboard = snapshotLayer(layer);
     } else if (k === 'v') {
+      // Internal layer-paste takes priority. When the clipboard holds
+      // an internal layer (Ctrl+C / Ctrl+X), paste that and prevent
+      // default — the browser will NOT fire a `paste` event after this.
+      // When layerClipboard is empty, do nothing here; the `paste`
+      // listener below picks up image-from-clipboard (screenshots etc.)
       if (!layerClipboard) return;
       e.preventDefault();
       pasteFromClipboard();
@@ -479,6 +484,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       const lastLayer = doc.findLayer(targets[targets.length - 1]);
       if (lastLayer) layerClipboard = snapshotLayer(lastLayer);
       for (const id of targets) doc.removeLayer(id);
+    }
+  });
+
+  // ---------- Ctrl+V — paste image from system clipboard ----------
+  // Fires AFTER our keydown handler above. When layerClipboard is set,
+  // the keydown preventDefault'd and the browser doesn't fire `paste`
+  // — so this handler only runs in the "no internal layer" case (e.g.
+  // user just took a screenshot or copied an image elsewhere). Reads
+  // clipboardData.items for the first image/* MIME and routes the
+  // resulting Blob through addImageFile().
+  window.document.addEventListener('paste', async (e) => {
+    const ae = window.document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (inField) return;          // let normal paste happen in inputs
+    if (layerClipboard) return;   // belt-and-braces — keydown should have preventDefault'd
+    const items = e.clipboardData?.items || [];
+    for (const it of items) {
+      if (it.kind === 'file' && it.type?.startsWith('image/')) {
+        const blob = it.getAsFile();
+        if (blob) {
+          e.preventDefault();
+          const ext = (blob.type.split('/')[1] || 'png').split(';')[0];
+          const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: blob.type });
+          try { await addImageFile(file, doc); } catch (err) { console.warn('[paste] image import failed', err); }
+        }
+        return;
+      }
     }
   });
 

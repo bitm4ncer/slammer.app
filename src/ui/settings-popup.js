@@ -30,6 +30,11 @@ const DEFAULTS = {
   // Format: bare URL (e.g. https://api.slammer.app/cors) — slammer
   // appends ?url=<encoded>. Or a template with {url} placeholder.
   corsProxyUrl: '',
+  // Canvas scroll/zoom behaviour — 'pan' is the Figma/Miro/Maps default
+  // (plain scroll / two-finger trackpad swipe pans the canvas; Ctrl+scroll
+  // / pinch zooms). 'zoom' is the legacy slammer default (plain scroll
+  // zooms; Ctrl+scroll pans).
+  scrollBehavior: 'pan',
   // Phase 21 — alignment aids.
   snapEnabled: true,
   rulersEnabled: false,
@@ -297,6 +302,22 @@ function renderWorkflow() {
       </div>
 
       <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Canvas navigation</div>
+        <div class="settings-row">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setScrollBehavior">Scroll behaviour</label>
+            <span class="settings-rowhint">Pan — plain wheel / two-finger trackpad pans the canvas; <kbd>Ctrl</kbd>+wheel + pinch zoom (Figma / Miro convention). Zoom — plain wheel zooms; <kbd>Ctrl</kbd>+wheel pans.</span>
+          </div>
+          <div class="settings-control">
+            <div class="settings-segmented" data-key="scrollBehavior" id="setScrollBehavior">
+              <button type="button" class="settings-seg ${s.scrollBehavior !== 'zoom' ? 'active' : ''}" data-v="pan">Pan</button>
+              <button type="button" class="settings-seg ${s.scrollBehavior === 'zoom' ? 'active' : ''}" data-v="zoom">Zoom</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Panels</div>
         ${toggleRowHTML('setKeepEffectsOpen', 'Keep all effects open', s.keepEffectsOpen,
           'When ON, every filter card stays expanded so all sliders are visible at once.')}
@@ -346,6 +367,17 @@ function wireWorkflow(root) {
         const v = b.dataset.v;
         seg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
         setSettings({ marqueeMode: v === 'contain' ? 'contain' : 'touch' });
+      });
+    });
+  }
+  // Segmented control for scroll behaviour (Pan / Zoom).
+  const scrollSeg = root.querySelector('#setScrollBehavior');
+  if (scrollSeg) {
+    scrollSeg.querySelectorAll('.settings-seg').forEach((b) => {
+      b.addEventListener('click', () => {
+        const v = b.dataset.v;
+        scrollSeg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
+        setSettings({ scrollBehavior: v === 'zoom' ? 'zoom' : 'pan' });
       });
     });
   }
@@ -594,6 +626,7 @@ function renderShortcuts() {
               ['Ctrl+Z', 'Undo'],
               ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
               ['Ctrl+C / V / X', 'Copy / Paste / Cut active layer'],
+              ['Ctrl+V', 'Paste image from system clipboard (when no internal layer is buffered)'],
               ['Ctrl+D', 'Duplicate active layer (+20 / +20 px)'],
               ['Ctrl+A', 'Select all layers'],
               ['Ctrl+G', 'Group selection'],
@@ -607,7 +640,8 @@ function renderShortcuts() {
               ['Shift+arrow', 'Nudge selection 10 px'],
               ['Drag rotate handle', 'Free rotate (live degree pill follows pointer)'],
               ['Shift+rotate', 'Snap rotation to nearest 5°'],
-              ['Alt+drag', 'Escape snap during drag'],
+              ['Alt+drag layer', 'Duplicate the layer and drag the copy (Photoshop / Figma convention)'],
+              ['Alt+drag (mid-gesture)', 'Escape snap during drag'],
               ['Ctrl+Shift+drag handle (text)', 'Resize text-box width (auto-wrap)'],
             ])}
             ${shortcutSection('Tools', [
@@ -620,9 +654,12 @@ function renderShortcuts() {
               ['I', 'Add image layer'],
             ])}
             ${shortcutSection('Canvas', [
-              ['Mouse-wheel', 'Zoom in / out (around pointer)'],
+              ['Mouse-wheel', 'Pan or zoom — Settings → Workflow → Canvas navigation chooses the default'],
+              ['Ctrl+wheel / pinch', 'Zoom (when scroll is set to Pan) / Pan (when scroll is set to Zoom)'],
+              ['Shift+wheel', 'Pan horizontally with a single-axis mouse wheel'],
               ['Middle-mouse drag', 'Pan'],
               ['Space+drag', 'Pan (alternative to middle-mouse)'],
+              ['Ctrl+0', 'Fit content to viewport'],
               ['Ctrl+R', 'Toggle rulers'],
               ['Ctrl+;', 'Toggle canvas grid'],
               ['S', 'Toggle snap'],

@@ -362,6 +362,13 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
         $('btnOpen')?.click();
         return;
       }
+      // Ctrl+0 — fit content to viewport (Affinity / Figma convention).
+      if (key === '0' && !e.shiftKey) {
+        if (inField) return;
+        e.preventDefault();
+        view?.fitTo?.();
+        return;
+      }
 
       // Selection / group shortcuts (Phase D).
       if (key === 'g' && !e.shiftKey) {
