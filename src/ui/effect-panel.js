@@ -9,6 +9,7 @@ import { clampToViewport } from '../plugins/shared/ui-helpers.js';
 
 export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   let sortable = null;
+  let sortableInitToken = 0;
 
   function activeLayer() { return document.activeLayer; }
 
@@ -43,15 +44,24 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
 
   function setupSortable(layer) {
     destroySortable();
-    sortable = Sortable.create(stackEl, {
-      animation: 140,
-      handle: '.eff-drag-handle',
-      filter: '.effect-empty',
-      onEnd: () => {
-        const ids = Array.from(stackEl.querySelectorAll('.effect-item')).map((el) => el.dataset.effectId);
-        document.reorderEffects(layer.id, ids);
-      },
-    });
+    // Defer Sortable.create to idle time so the visible stack renders one
+    // frame faster after a layer flip — drag-reorder becomes available a
+    // few ms later, well within the user's reaction time.
+    const myToken = ++sortableInitToken;
+    const init = () => {
+      if (myToken !== sortableInitToken) return; // superseded by a later render
+      if (!stackEl.isConnected) return;
+      sortable = Sortable.create(stackEl, {
+        animation: 140,
+        handle: '.eff-drag-handle',
+        filter: '.effect-empty',
+        onEnd: () => {
+          const ids = Array.from(stackEl.querySelectorAll('.effect-item')).map((el) => el.dataset.effectId);
+          document.reorderEffects(layer.id, ids);
+        },
+      });
+    };
+    (window.requestIdleCallback || ((cb) => setTimeout(cb, 16)))(init);
   }
 
   function isExpanded(eff, plugin) {
@@ -302,10 +312,35 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
       'effect:added', 'effect:removed', 'effect:reordered',
       'doc:loaded',
     ].includes(e.type);
-    // Re-render also on enabled/expanded changes so the visual state updates.
-    // CRITICAL: do NOT rebuild on prop=params — that would destroy the user's slider mid-drag.
-    const visualToggle = e.type === 'effect:propChanged' && (e.prop === 'enabled' || e.prop === 'expanded');
-    if (structural || visualToggle) render();
+    if (structural) { render(); return; }
+
+    // Enabled/expanded toggles are CSS-class flips — no DOM rebuild needed.
+    // Previously this fired a full render() which destroyed every effect
+    // card's DOM and re-ran plugin.renderUI() (slider DOM, listeners, etc).
+    // For a stack with several effects, that's a chunk of work per click.
+    if (e.type === 'effect:propChanged' && (e.prop === 'enabled' || e.prop === 'expanded')) {
+      const card = stackEl.querySelector(`.effect-item[data-effect-id="${e.effectId}"]`);
+      if (!card) { render(); return; }  // card missing → fall back to rebuild
+      if (e.prop === 'enabled') {
+        card.classList.toggle('disabled', !e.value);
+      } else {
+        // For tool-type effects we ALWAYS recompute expanded — only one tool
+        // is open at a time, so a non-target card may need to fold. Easier
+        // to just rebuild in that case (rare path).
+        const layer = activeLayer();
+        const eff = layer?.effects.find((x) => x.id === e.effectId);
+        const plugin = eff && getPlugin(eff.pluginId);
+        if (plugin?.type === 'tool') { render(); return; }
+        const expanded = !!e.value;
+        card.classList.toggle('expanded', expanded);
+        const caret = card.querySelector('.effect-caret');
+        if (caret) {
+          caret.classList.remove('fa-chevron-up', 'fa-chevron-down');
+          caret.classList.add(expanded ? 'fa-chevron-up' : 'fa-chevron-down');
+        }
+      }
+      return;
+    }
 
     // Per-effect processing spinner — no re-render, just toggle the class.
     if (e.type === 'effect:processing') {
