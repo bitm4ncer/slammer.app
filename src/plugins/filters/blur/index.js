@@ -20,7 +20,7 @@ import { createAngleDistanceWidget } from '../../shared/angle-distance-widget.js
 
 const MAX_RADIUS    = 100;
 const MAX_LENGTH    = 400;
-const MAX_STRENGTH  = 100;     // radial-zoom strength (px at edge)
+const MAX_STRENGTH  = 200;     // radial-zoom strength (px at edge)
 const MAX_SPIN      = 90;      // radial-spin spread in degrees
 const SAMPLES_CAP   = 64;      // quality cap for directional / radial
 
@@ -273,6 +273,11 @@ function boxBlurV(src, dst, w, h, r) {
 
 // Directional motion blur — average N samples along a line of length L
 // centred on each pixel, oriented at `angle` radians.
+//
+// Premultiplied-alpha averaging: transparent samples contribute 0 to the
+// colour sum but still count toward the alpha average. Without this, sampling
+// across a shape edge into the transparent pad pulls colour toward black and
+// makes outer-mode streaks look broken.
 function directionalBlur(imageData, length, angle) {
   const W = imageData.width;
   const H = imageData.height;
@@ -288,18 +293,28 @@ function directionalBlur(imageData, length, angle) {
 
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      let r = 0, g = 0, b = 0, a = 0;
+      let sR = 0, sG = 0, sB = 0, sA = 0, wA = 0;
       for (let s = 0; s < samples; s++) {
         const sx = x - dx * half + stepX * s;
         const sy = y - dy * half + stepY * s;
         const px = sampleBilinear(src, W, H, sx, sy);
-        r += px[0]; g += px[1]; b += px[2]; a += px[3];
+        const a = px[3];
+        sR += px[0] * a;
+        sG += px[1] * a;
+        sB += px[2] * a;
+        sA += a;
+        wA += a;
       }
       const idx = (y * W + x) * 4;
-      dst[idx]     = r / samples;
-      dst[idx + 1] = g / samples;
-      dst[idx + 2] = b / samples;
-      dst[idx + 3] = a / samples;
+      const outA = sA / samples;
+      if (wA > 0) {
+        dst[idx]     = sR / wA;
+        dst[idx + 1] = sG / wA;
+        dst[idx + 2] = sB / wA;
+      } else {
+        dst[idx] = dst[idx + 1] = dst[idx + 2] = 0;
+      }
+      dst[idx + 3] = outA;
     }
   }
 }
@@ -332,19 +347,29 @@ function radialZoomBlur(imageData, cx, cy, strength) {
       const scale = strength * (dist / maxD);
       const ux = dx / dist;
       const uy = dy / dist;
-      let r = 0, g = 0, b = 0, a = 0;
+      let sR = 0, sG = 0, sB = 0, sA = 0, wA = 0;
       for (let s = 0; s < samples; s++) {
         const t = -1 + (2 * s) / (samples - 1); // -1 .. +1
         const sx = x + ux * scale * t;
         const sy = y + uy * scale * t;
         const px = sampleBilinear(src, W, H, sx, sy);
-        r += px[0]; g += px[1]; b += px[2]; a += px[3];
+        const a = px[3];
+        sR += px[0] * a;
+        sG += px[1] * a;
+        sB += px[2] * a;
+        sA += a;
+        wA += a;
       }
       const idx = (y * W + x) * 4;
-      dst[idx]     = r / samples;
-      dst[idx + 1] = g / samples;
-      dst[idx + 2] = b / samples;
-      dst[idx + 3] = a / samples;
+      const outA = sA / samples;
+      if (wA > 0) {
+        dst[idx]     = sR / wA;
+        dst[idx + 1] = sG / wA;
+        dst[idx + 2] = sB / wA;
+      } else {
+        dst[idx] = dst[idx + 1] = dst[idx + 2] = 0;
+      }
+      dst[idx + 3] = outA;
     }
   }
 }
@@ -372,20 +397,30 @@ function radialSpinBlur(imageData, cx, cy, spread) {
         continue;
       }
       const baseAngle = Math.atan2(dy, dx);
-      let r = 0, g = 0, b = 0, a = 0;
+      let sR = 0, sG = 0, sB = 0, sA = 0, wA = 0;
       for (let s = 0; s < samples; s++) {
         const t = -1 + (2 * s) / (samples - 1); // -1 .. +1
         const ang = baseAngle + spread * t;
         const sx = cx + Math.cos(ang) * dist;
         const sy = cy + Math.sin(ang) * dist;
         const px = sampleBilinear(src, W, H, sx, sy);
-        r += px[0]; g += px[1]; b += px[2]; a += px[3];
+        const a = px[3];
+        sR += px[0] * a;
+        sG += px[1] * a;
+        sB += px[2] * a;
+        sA += a;
+        wA += a;
       }
       const idx = (y * W + x) * 4;
-      dst[idx]     = r / samples;
-      dst[idx + 1] = g / samples;
-      dst[idx + 2] = b / samples;
-      dst[idx + 3] = a / samples;
+      const outA = sA / samples;
+      if (wA > 0) {
+        dst[idx]     = sR / wA;
+        dst[idx + 1] = sG / wA;
+        dst[idx + 2] = sB / wA;
+      } else {
+        dst[idx] = dst[idx + 1] = dst[idx + 2] = 0;
+      }
+      dst[idx + 3] = outA;
     }
   }
 }
