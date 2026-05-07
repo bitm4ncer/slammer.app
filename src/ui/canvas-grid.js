@@ -34,12 +34,22 @@ function hexToRgb(hex) {
  */
 function drawGrid(ctx, stageTransform, stageW, stageH, settings) {
   const { x: ox, y: oy, scaleX: sc } = stageTransform;
-  const minor = Math.max(1, settings.canvasGridMinor || 10);
-  const major = Math.max(0, settings.canvasGridMajor || 100);
+  const baseMinor = Math.max(1, settings.canvasGridMinor || 10);
+  const baseMajor = Math.max(baseMinor, settings.canvasGridMajor || 100);
   const opacity = (settings.canvasGridOpacity ?? 25) / 100;
   const color = settings.canvasGridColor || '#ffffff';
 
   if (opacity <= 0 || sc <= 0) return;
+
+  // Zoom-adaptive tiering — keep minor lines roughly TARGET_SCREEN_PX apart on
+  // screen. As the user zooms out, multiply both pitches by 10× per LOD step
+  // so the grid never goes denser than ~one line every 6 px nor sparser than
+  // ~one line every 60 px. Major lines stay 10× the minor.
+  const TARGET_SCREEN_PX = 12;
+  const idealMinorWorld = TARGET_SCREEN_PX / sc;
+  const tier = Math.max(0, Math.round(Math.log10(idealMinorWorld / baseMinor)));
+  const minor = baseMinor * Math.pow(10, tier);
+  const major = baseMajor * Math.pow(10, tier);
 
   const { r, g, b } = hexToRgb(color);
 
@@ -113,16 +123,33 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
   const gridShape = new Konva.Shape({
     listening: false,
     perfectDrawEnabled: false,
-    // Expand hit area to cover the full stage; we never receive events anyway.
+    x: 0,
+    y: 0,
+    width: stage.width(),
+    height: stage.height(),
     sceneFunc(ctx) {
       const s = getSettings();
       if (!s.canvasGridShow) return;
+      // Refresh bounds in case the stage resized — Konva clips a Shape's
+      // dirty rect to the bounding rect Konva computes from sceneFunc on
+      // first draw. Without explicit width/height the grid would only
+      // appear wherever the FIRST draw's bbox happened to land.
+      this.width(stage.width());
+      this.height(stage.height());
       const tr = {
         x: stage.x(),
         y: stage.y(),
         scaleX: stage.scaleX() || 1,
       };
       drawGrid(ctx, tr, stage.width(), stage.height(), s);
+    },
+    // Explicit hitFunc ensures Konva's bounding-rect cache is always the
+    // stage rectangle — no chance of clipping the visual draw to a stale
+    // bbox computed from earlier line strokes.
+    hitFunc(ctx) {
+      ctx.beginPath();
+      ctx.rect(0, 0, stage.width(), stage.height());
+      ctx.closePath();
     },
   });
 
@@ -136,11 +163,15 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
   gridLayer.setZIndex(1);
 
   function redraw() {
+    gridShape.width(stage.width());
+    gridShape.height(stage.height());
     gridLayer.batchDraw();
   }
 
-  // ── Subscribe to settings changes ─────────────────────────────────────────
+  // ── Subscribe to settings changes + stage resize ──────────────────────────
   const unsubSettings = onSettingsChange(redraw);
+  const onResize = () => redraw();
+  window.addEventListener('resize', onResize);
 
   // ── Initial draw ──────────────────────────────────────────────────────────
   redraw();
@@ -155,6 +186,7 @@ export function initCanvasGrid({ stage, getSettings, onSettingsChange }) {
 
     destroy() {
       unsubSettings();
+      window.removeEventListener('resize', onResize);
       gridLayer.destroy();
     },
   };
