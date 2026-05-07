@@ -242,21 +242,16 @@ export function initProjectStore() {
     if (!id || name) id = crypto.randomUUID();
     if (name) doc.setName(name);
 
-    // Convert image-layer Blob sources to Blobs (already Blobs typically).
-    // For .slmr export we'll convert to data URLs; here we store binary as-is.
     const docCopy = JSON.parse(JSON.stringify(doc.serialize(), (k, v) => {
       if (v && typeof v === 'object' && v.__isFile) return undefined; // safety
       return v;
     }));
 
-    // Re-attach Blob refs since JSON.stringify drops them.
+    // Re-attach Blob sources directly (IDB handles them via structured clone
+    // — no base64 round-trip). String sources (data URLs from old projects)
+    // pass through unchanged.
     for (let i = 0; i < doc.layers.length; i++) {
-      const src = doc.layers[i].source;
-      if (src instanceof Blob) {
-        docCopy.layers[i].source = await blobToDataURL(src);
-      } else {
-        docCopy.layers[i].source = src;
-      }
+      docCopy.layers[i].source = doc.layers[i].source;
     }
 
     const thumbnail = await captureThumbnail(view);
@@ -295,18 +290,12 @@ export function initProjectStore() {
       throw new Error(`autosave: serialize failed — ${err.message}`);
     }
 
-    // Step 2: re-attach Blob sources as data URLs (JSON.stringify dropped them).
+    // Step 2: re-attach the source ref. Blobs go straight in — IDB's
+    // structured-clone handles them natively, no base64 (which used to add
+    // 33 % size + ~150 ms encode per image-layer save). String sources
+    // (legacy data URLs from old projects) pass through unchanged.
     for (let i = 0; i < doc.layers.length; i++) {
-      const src = doc.layers[i].source;
-      if (src instanceof Blob) {
-        try {
-          docCopy.layers[i].source = await blobToDataURL(src);
-        } catch (err) {
-          throw new Error(`autosave: blobToDataURL failed for layer ${i} (${doc.layers[i].name}) — ${err.message}`);
-        }
-      } else {
-        docCopy.layers[i].source = src;
-      }
+      docCopy.layers[i].source = doc.layers[i].source;
     }
 
     // Step 3: write to IndexedDB.
@@ -379,12 +368,8 @@ export function initProjectStore() {
       return v;
     }));
     for (let i = 0; i < doc.layers.length; i++) {
-      const src = doc.layers[i].source;
-      if (src instanceof Blob) {
-        docCopy.layers[i].source = await blobToDataURL(src);
-      } else {
-        docCopy.layers[i].source = src;
-      }
+      // Blobs go straight to IDB via structured clone — no base64 detour.
+      docCopy.layers[i].source = doc.layers[i].source;
     }
     const thumbnail = await captureThumbnail(view);
     const rec = { id, document: docCopy, updatedAt: Date.now() };
