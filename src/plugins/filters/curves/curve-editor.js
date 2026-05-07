@@ -108,6 +108,30 @@ export function createCurveEditor({ getPoints, setPoints, channelColor }) {
     }
   }
 
+  // Window listeners are gated on mousedown — without this, every Curves
+  // editor instance leaked a mousemove + mouseup on window for the
+  // session lifetime (each curve editor = one set, multiple curves
+  // editors per project from the per-channel Master/R/G/B switching).
+  const onWinMove = (e) => {
+    if (dragging < 0) return;
+    const rect = canvas.getBoundingClientRect();
+    const uv = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const pts = getPoints().slice();
+    if (dragging >= pts.length) { dragging = -1; return; }
+    const newPos = toData(uv);
+    if (dragging === 0) newPos.x = 0;
+    if (dragging === pts.length - 1) newPos.x = 255;
+    pts[dragging] = newPos;
+    pts.sort((a, b) => a.x - b.x);
+    dragging = pts.findIndex((p) => p === newPos);
+    setPoints(pts);
+    draw();
+  };
+  const onWinUp = () => {
+    dragging = -1;
+    window.removeEventListener('mousemove', onWinMove);
+    window.removeEventListener('mouseup', onWinUp);
+  };
   canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const uv = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -123,24 +147,9 @@ export function createCurveEditor({ getPoints, setPoints, channelColor }) {
       dragging = pts.findIndex((p) => p.x === newPt.x && p.y === newPt.y);
       draw();
     }
+    window.addEventListener('mousemove', onWinMove);
+    window.addEventListener('mouseup', onWinUp);
   });
-  window.addEventListener('mousemove', (e) => {
-    if (dragging < 0) return;
-    const rect = canvas.getBoundingClientRect();
-    const uv = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    const pts = getPoints().slice();
-    if (dragging >= pts.length) { dragging = -1; return; }
-    const newPos = toData(uv);
-    // Endpoints stay locked to x = 0 / 255 (we keep at least the first and last fixed in X).
-    if (dragging === 0) newPos.x = 0;
-    if (dragging === pts.length - 1) newPos.x = 255;
-    pts[dragging] = newPos;
-    pts.sort((a, b) => a.x - b.x);
-    dragging = pts.findIndex((p) => p === newPos);
-    setPoints(pts);
-    draw();
-  });
-  window.addEventListener('mouseup', () => { dragging = -1; });
   canvas.addEventListener('dblclick', (e) => {
     const rect = canvas.getBoundingClientRect();
     const uv = { x: e.clientX - rect.left, y: e.clientY - rect.top };

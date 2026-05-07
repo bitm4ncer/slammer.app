@@ -52,12 +52,10 @@ export function createGradientEditor({ stops, onChange, hint = true }) {
 
       let dragging = false;
       let moved = false;
-      h.addEventListener('mousedown', (e) => {
-        if (e.target === colorInp) return;
-        e.preventDefault();
-        dragging = true;
-        moved = false;
-      });
+      // Window listeners are attached on mousedown and detached on
+      // mouseup — the previous always-on pattern leaked one set per
+      // gradient stop ever rendered (gradient editors rebuild
+      // aggressively when stops are added / removed).
       const onMove = (e) => {
         if (!dragging) return;
         const rect = bar.getBoundingClientRect();
@@ -69,9 +67,19 @@ export function createGradientEditor({ stops, onChange, hint = true }) {
         refreshBar();
         onChange(local.slice());
       };
-      const onUp = () => { dragging = false; };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+      const onUp = () => {
+        dragging = false;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      h.addEventListener('mousedown', (e) => {
+        if (e.target === colorInp) return;
+        e.preventDefault();
+        dragging = true;
+        moved = false;
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
       h.addEventListener('click', (e) => { if (moved) e.stopPropagation(); });
       h.addEventListener('dblclick', (e) => {
         e.preventDefault();

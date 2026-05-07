@@ -127,6 +127,22 @@ export function createKnob({ size = 32, min, max, step = 1, value, defaultValue,
   let dragStartY = 0;
   let dragStartVal = 0;
 
+  // Window-level handlers — defined as named refs so we can detach them
+  // when the drag ends. The OLD pattern attached them once at knob
+  // creation and left them on window forever, which means every knob
+  // (one per layer-card opacity, one per slider on every effect, etc.)
+  // leaked four window listeners (mousemove + mouseup + touchmove +
+  // touchend) that fired on every move event for the rest of the
+  // session. With dozens of knobs per project that adds real cost.
+  const onWinMouseMove = (e) => updateDrag(e.clientY, e.shiftKey);
+  const onWinMouseUp   = () => { if (dragging) endDrag(); };
+  const onWinTouchMove = (e) => {
+    if (!dragging) return;
+    updateDrag(e.touches[0].clientY, false);
+    e.preventDefault();
+  };
+  const onWinTouchEnd  = () => { if (dragging) endDrag(); };
+
   function startDrag(clientY) {
     dragging = true;
     dragStartY = clientY;
@@ -134,11 +150,19 @@ export function createKnob({ size = 32, min, max, step = 1, value, defaultValue,
     wrap.classList.add('dragging');
     canvas.style.cursor = 'grabbing';
     wrap.focus({ preventScroll: true });
+    window.addEventListener('mousemove', onWinMouseMove);
+    window.addEventListener('mouseup', onWinMouseUp);
+    window.addEventListener('touchmove', onWinTouchMove, { passive: false });
+    window.addEventListener('touchend', onWinTouchEnd);
   }
   function endDrag() {
     dragging = false;
     wrap.classList.remove('dragging');
     canvas.style.cursor = 'ns-resize';
+    window.removeEventListener('mousemove', onWinMouseMove);
+    window.removeEventListener('mouseup', onWinMouseUp);
+    window.removeEventListener('touchmove', onWinTouchMove);
+    window.removeEventListener('touchend', onWinTouchEnd);
   }
   function updateDrag(clientY, shift) {
     if (!dragging) return;
@@ -171,20 +195,11 @@ export function createKnob({ size = 32, min, max, step = 1, value, defaultValue,
     startDrag(e.clientY);
     e.preventDefault();
   });
-  window.addEventListener('mousemove', (e) => updateDrag(e.clientY, e.shiftKey));
-  window.addEventListener('mouseup', () => { if (dragging) endDrag(); });
-
   // Touch
   wrap.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     startDrag(e.touches[0].clientY);
   }, { passive: false });
-  window.addEventListener('touchmove', (e) => {
-    if (!dragging) return;
-    updateDrag(e.touches[0].clientY, false);
-    e.preventDefault();
-  }, { passive: false });
-  window.addEventListener('touchend', () => { if (dragging) endDrag(); });
 
   // Wheel
   wrap.addEventListener('wheel', (e) => {
