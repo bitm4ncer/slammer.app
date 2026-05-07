@@ -98,15 +98,15 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
-## 8. Version display unified to v1.02
+## 8. Version display unified to v1.0.2
 
 **Commit:** `eed1303`
 **Files:** `index.html`, `src/main.js`
 **Why:** Old strings drifted (header tag was `v1.0.0-alpha`, settings stamp was `vv1.0.1`). All three render sites now read from a single string passed into the settings popup.
 
-- [ ] Header tag (next to the slammer.app logo) reads `v1.02`.
-- [ ] Settings → About → Build → Version reads `v1.02`.
-- [ ] Settings sidebar bottom stamp reads `v1.02 · slammer.app`.
+- [ ] Header tag (next to the slammer.app logo) reads `v1.0.2`.
+- [ ] Settings → About → Build → Version reads `v1.0.2`.
+- [ ] Settings sidebar bottom stamp reads `v1.0.2 · slammer.app`.
 
 ---
 
