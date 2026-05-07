@@ -14,6 +14,8 @@ import { openContextMenu } from './context-menu.js';
 
 export function initLayerPanel({ container, document, renderer }) {
   const sortableInstances = [];
+  // Token bumped on every render to invalidate stale idle-callback init work.
+  let sortableInitToken = 0;
   let customLayerColors = getSettings().customLayerColors !== false;
 
   // Combine button — visible when ≥2 top-level layers are selected.
@@ -462,26 +464,42 @@ export function initLayerPanel({ container, document, renderer }) {
     // dragging a node between them moves it into / out of a group.
     // `draggable: '.layer-tree-node'` ensures only the wrappers are
     // dragged (rows inside the wrappers ride along).
+    //
+    // Sortable.create() is non-trivial work (DOM observers + listener
+    // attachment per container). Defer it to idle time so that the
+    // visible panel renders one frame faster after layer add/remove —
+    // the user gets the new layer card instantly, drag-reorder becomes
+    // available a few ms later. Old DOM is destroyed by innerHTML so
+    // its Sortable observers go with it; we only have to clean up our
+    // own tracked refs.
     if (sortableInstances.length) {
       sortableInstances.forEach((s) => { try { s.destroy(); } catch {} });
       sortableInstances.length = 0;
     }
-    sortableInstances.push(Sortable.create(container, {
-      animation: 140,
-      handle: '.layer-drag-handle',
-      draggable: '.layer-tree-node',
-      group: { name: 'layers', pull: true, put: true },
-      onEnd: handleSortEnd,
-    }));
-    container.querySelectorAll('.layer-children').forEach((kidsEl) => {
-      sortableInstances.push(Sortable.create(kidsEl, {
+    // Invalidate any pending init from a previous render — it may be
+    // about to wire up DOM nodes that no longer exist.
+    const myToken = ++sortableInitToken;
+    const initSortables = () => {
+      if (myToken !== sortableInitToken) return; // a newer render superseded us
+      if (!container.isConnected) return;
+      sortableInstances.push(Sortable.create(container, {
         animation: 140,
         handle: '.layer-drag-handle',
         draggable: '.layer-tree-node',
         group: { name: 'layers', pull: true, put: true },
         onEnd: handleSortEnd,
       }));
-    });
+      container.querySelectorAll('.layer-children').forEach((kidsEl) => {
+        sortableInstances.push(Sortable.create(kidsEl, {
+          animation: 140,
+          handle: '.layer-drag-handle',
+          draggable: '.layer-tree-node',
+          group: { name: 'layers', pull: true, put: true },
+          onEnd: handleSortEnd,
+        }));
+      });
+    };
+    (window.requestIdleCallback || ((cb) => setTimeout(cb, 16)))(initSortables);
   }
 
   // After ANY drag ends, walk the panel DOM and rebuild parentage +
