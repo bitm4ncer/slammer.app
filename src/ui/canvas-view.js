@@ -442,11 +442,16 @@ export function initCanvasView({ container, document, onImageDropped }) {
   // Live re-render when the dim opacity changes.
   onSettingsChange(() => overlayLayer.batchDraw());
 
-  // Resize stage with container.
+  // Resize stage with container. Redraw the whole stage — not just the
+  // content layer — so the bg fill, overlay (export-frame dim + stroke),
+  // frame UI handles, and grid all repaint at the new viewport size.
+  // Konva auto-resizes each layer's canvas to match the new stage size,
+  // but it does NOT auto-redraw them; without this, side-panel resize
+  // left stale pixels in non-content layers until the next interaction.
   const resize = () => {
     stage.width(container.clientWidth);
     stage.height(container.clientHeight);
-    contentLayer.batchDraw();
+    stage.batchDraw();
   };
   window.addEventListener('resize', resize);
   if (window.ResizeObserver) {
