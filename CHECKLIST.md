@@ -271,6 +271,19 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
+## 23. Drag-listener leaks across knob, curve editor, gradient editor
+
+**Commit:** `1352463`
+**Files:** `src/plugins/shared/knob.js`, `src/plugins/filters/curves/curve-editor.js`, `src/plugins/shared/gradient-editor.js`
+**Why:** All three widgets attached `window` mousemove + mouseup listeners on construction and never removed them. Each instance leaked a permanent set of handlers that fired on every move event for the session lifetime, and held the widget's DOM via closure. With dozens of knobs per project (every layer opacity, every effect parameter), and gradient editors that rebuild on every stop add/remove, this was real cost. Listeners now attach on mousedown / startDrag and detach on mouseup / endDrag.
+
+- [ ] Drag any knob (e.g. layer opacity). Releases cleanly, value updates as before.
+- [ ] Open a Curves filter, drag a curve point. Same behaviour as before, no console errors.
+- [ ] Open a Gradient Map filter, drag a gradient stop. Same behaviour as before.
+- [ ] Heavy projects (many layers + effects) feel slightly less heavy under sustained mouse motion — measurable in DevTools Performance recording, not by eye.
+
+---
+
 ## What remains in BUGS.md
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
@@ -291,6 +304,7 @@ These need a dedicated run, not autonomous polish.
 ## Commit graph for this session
 
 ```
+1352463 fix(shared): gate window-level drag listeners behind mousedown — knob, curves, gradient
 e565c43 fix(snap-rulers): guideline drag listener leak
 3e7f6dd fix(project-menu): rename keydown handler leak
 43acc59 fix(layer-panel): rename keydown handler leak + opacity-row title
