@@ -45,7 +45,7 @@ export default {
   name: 'RGB Shift',
   version: '1.0.0',
   type: 'filter',
-  icon: 'arrows-up-down-left-right',
+  icon: 'arrow-right-arrow-left',
   category: 'glitch',
 
   defaultParams() {

@@ -42,13 +42,11 @@ import displacementPlugin from './plugins/filters/displacement/index.js';
 import pixelsortPlugin from './plugins/tools/pixelsort/index.js';
 // Phase 20 — new effects library (6 free, 4 premium under src/plugins/premium/).
 import posterizePlugin from './plugins/filters/posterize/index.js';
-import twirlPlugin from './plugins/filters/twirl/index.js';
-import ripplePlugin from './plugins/filters/ripple/index.js';
 import rgbShiftPlugin from './plugins/filters/rgb-shift/index.js';
-import bulgePlugin from './plugins/filters/bulge/index.js';
 import dropShadowPlugin from './plugins/filters/drop-shadow/index.js';
-// datamosh, jpeg-compression, dithering moved to src/plugins/premium/ — loaded
-// in dev via premium-loader.js, served via Bitmancer Library shop in prod.
+// datamosh, jpeg-compression, dithering, twirl, ripple, bulge moved to
+// src/plugins/premium/ — loaded in dev via premium-loader.js, served via
+// Bitmancer Library shop in prod.
 
 // Vector-only plugins (run inside vector-renderer pre-rasterise).
 import zigzagVPlugin from './plugins/vector/zigzag/index.js';
@@ -106,7 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     grainPlugin, displacementPlugin,
     posterizePlugin,
     pixelsortPlugin, rgbShiftPlugin,
-    twirlPlugin, ripplePlugin, bulgePlugin,
     dropShadowPlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,

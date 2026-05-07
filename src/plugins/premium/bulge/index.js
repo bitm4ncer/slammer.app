@@ -11,8 +11,10 @@ export default {
   name: 'Bulge',
   version: '1.0.0',
   type: 'filter',
-  icon: 'circle-dot',
+  icon: 'up-right-and-down-left-from-center',
   category: 'distort',
+  pro: true,
+  pack: 'liquid-pack',
 
   defaultParams() {
     return {

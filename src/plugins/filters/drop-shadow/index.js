@@ -9,7 +9,7 @@ export default {
   name: 'Drop Shadow',
   version: '1.0.0',
   type: 'filter',
-  icon: 'clone',
+  icon: 'square-caret-down',
   category: 'stylize',
 
   defaultParams() {

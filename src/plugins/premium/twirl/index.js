@@ -10,8 +10,10 @@ export default {
   name: 'Twirl',
   version: '1.0.0',
   type: 'filter',
-  icon: 'wind',
+  icon: 'arrows-spin',
   category: 'distort',
+  pro: true,
+  pack: 'liquid-pack',
 
   defaultParams() {
     return {

@@ -138,6 +138,41 @@ const PLUGIN_PALETTE = {
     opacity: 0.85,
     mark: 'PRESETS.80',
   },
+  // Liquid Pack — distortion effects reclassified to premium.
+  'twirl': {
+    c: '#5BD9FF',                                     // sky blue — fluid motion
+    ink: '#0e0e10',
+    pattern: `repeating-radial-gradient(circle at 50% 50%,
+               rgba(14,14,16,0.35) 0 1px, transparent 1px 14px),
+             repeating-conic-gradient(from 0deg at 50% 50%,
+               rgba(255,255,255,0.18) 0deg 4deg, transparent 4deg 12deg)`,
+    size: 'auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'SPIRAL.A=180',
+  },
+  'ripple': {
+    c: '#A0E024',                                     // chartreuse — ripple-water-edge
+    ink: '#0e0e10',
+    pattern: `repeating-radial-gradient(circle at 50% 50%,
+               rgba(14,14,16,0.4) 0 2px, transparent 2px 18px),
+             repeating-radial-gradient(circle at 50% 50%,
+               rgba(255,255,255,0.22) 0 1px, transparent 1px 9px)`,
+    size: 'auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'WAVE.SINE',
+  },
+  'bulge': {
+    c: '#FF8FB1',                                     // peach — soft pinch tone
+    ink: '#0e0e10',
+    pattern: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.5) 0%, transparent 35%),
+             radial-gradient(circle at 50% 50%, transparent 60%, rgba(14,14,16,0.5) 100%)`,
+    size: 'auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'SPHERIZE.+50',
+  },
 };
 
 /* =========================================================================
@@ -159,6 +194,10 @@ const PACK_INFO = {
   'infinity-gradients': {
     label: 'Infinity Gradients',
     rule: 'Generative fields and palettes. Domain-warped noise, bicubic mesh control, and a curated library to feed both.',
+  },
+  'liquid-pack': {
+    label: 'Liquid Pack',
+    rule: 'Reality bent. Twist, ripple, pinch, bulge — distortion you can drag a slider for.',
   },
 };
 
@@ -357,7 +396,7 @@ function renderLede() {
 /* ----- Grid view ----- */
 function renderGrid() {
   const grouped = pluginsByPack();
-  const order = ['glitch-pack', 'raster-pack', 'dots-pack', 'misc'];
+  const order = ['glitch-pack', 'raster-pack', 'dots-pack', 'liquid-pack', 'misc'];
   const sections = order
     .filter((p) => grouped[p]?.length)
     .map((p, idx) => renderPackSection(p, grouped[p], idx))

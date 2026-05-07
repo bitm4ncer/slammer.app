@@ -55,8 +55,10 @@ export default {
   name: 'Ripple',
   version: '1.0.0',
   type: 'filter',
-  icon: 'water',
+  icon: 'bullseye',
   category: 'distort',
+  pro: true,
+  pack: 'liquid-pack',
 
   defaultParams() {
     return {

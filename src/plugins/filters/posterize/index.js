@@ -9,7 +9,7 @@ export default {
   name: 'Posterize',
   version: '1.0.0',
   type: 'filter',
-  icon: 'layer-group',
+  icon: 'bars-staggered',
   category: 'image',
 
   defaultParams() {

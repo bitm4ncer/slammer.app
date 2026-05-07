@@ -214,6 +214,7 @@
 - [ ] Arrow keys nudge selected layer 1 px; Shift+Arrow = 10 px
 - [ ] Auto-scroll layer panel to selected layer
 - [ ] Selection-on-click (not on mousedown) — fixes "drag accidentally re-selects overlapping layer"
+- [ ] **Collapsible Typography & Vector panels** — click the panel header to collapse/expand; persisted to localStorage so the state survives reload
 
 ### Cluster B — Effect panel & existing-effect tweaks
 - [x] Bug: **Pixelsort above Dither** — root cause was uniform-score input after dither (binary B/W) made every qualifying span have identical scores → sort no-op. Fix: renderer now threads `ctx.sourceImageData` (pre-effect-stack pixels) into `process()`; pixelsort scores from the original tones but writes permutations into the current pipeline buffer.
@@ -228,6 +229,7 @@
 - [x] **Grain**: Blend Modes — uses canonical `BLEND_MODES` + new `BLEND_LABELS` from `core/layer.js`; composite via OffscreenCanvas + `globalCompositeOperation`
 - [x] **Levels**: rebuilt as a single 3-handle slider (`tripleSlider` helper) — blacks / gamma / whites on one track; numeric LUT identical to old behaviour
 - [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
+- [ ] **Drop Shadow: angle control rework** — current Angle knob UX is unintuitive. Replace with a visual direction widget (small circular handle the user drags to set angle + distance in one gesture, like Figma/Affinity shadow controls). Keep Cartesian X/Y offset inputs as an alternative. Angle preview should update live on canvas during drag.
 
 ### Cluster C — Footer & canvas chrome
 - [x] Frame button: accent-tinted highlight when frame active + inline `×` close affordance (clears `doc.exportFrame`)
@@ -291,6 +293,7 @@
 - [ ] **Transform inspector** in footer: X% / Y% scale numerics, lock-aspect button (inverts Shift+drag = no-constrain), reset button; same for rotation
 - [ ] **Quick adjustments bar** below selected image: every effect/typo knob currently on the layer in one bar. Settings toggle.
 - [ ] **Ctrl+Space** opens center-screen radial effect picker
+- [ ] **Canvas Grid** — subtle 10 px / 100 px grid rendered below all layers. Moves with the canvas (not fixed like the transparency checkerboard). Settings popup controls: on/off toggle, opacity, colour, snap-to-grid. Grid snapping integrates with the Snap toggle above.
 
 ## PHASE 22 — Selection Tools 🆕
 
