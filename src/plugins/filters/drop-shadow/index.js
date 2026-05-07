@@ -218,7 +218,7 @@ export default {
       distance: params.distance ?? 12,
       maxDistance: 500,
       visualMax: 200,
-      size: 108,
+      size: 88,
       defaultAngle: 135,
       defaultDistance: 12,
       onChange: ({ angle, distance }) => onChange({ angle, distance }),
