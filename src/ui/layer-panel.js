@@ -151,7 +151,7 @@ export function initLayerPanel({ container, document, renderer }) {
               <div class="layer-blend-dropdown">
                 <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
               </div>
-              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}" title="Layer opacity — drag the knob, scroll, or type a number">
                 <span class="layer-opacity-knob"></span>
                 <span class="layer-opacity-num"></span>
               </div>
@@ -180,7 +180,7 @@ export function initLayerPanel({ container, document, renderer }) {
               <div class="layer-blend-dropdown">
                 <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
               </div>
-              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+              <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}" title="Layer opacity — drag the knob, scroll, or type a number">
                 <span class="layer-opacity-knob"></span>
                 <span class="layer-opacity-num"></span>
               </div>
@@ -210,7 +210,7 @@ export function initLayerPanel({ container, document, renderer }) {
             <div class="layer-blend-dropdown">
               <button class="layer-blend-trigger" title="Blend mode: ${blendFull(layer.blendMode || 'source-over')} — click to pick, scroll to cycle" data-mode="${layer.blendMode || 'source-over'}" aria-label="Blend mode: ${blendFull(layer.blendMode || 'source-over')}">${blendShort(layer.blendMode || 'source-over')}</button>
             </div>
-            <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}">
+            <div class="layer-opacity-row" data-opacity="${Math.round((layer.opacity ?? 1) * 100)}" title="Layer opacity — drag the knob, scroll, or type a number">
               <span class="layer-opacity-knob"></span>
               <span class="layer-opacity-num"></span>
             </div>
@@ -667,9 +667,21 @@ export function initLayerPanel({ container, document, renderer }) {
     range.selectNodeContents(nameEl);
     sel.removeAllRanges();
     sel.addRange(range);
-    const commit = () => {
+    // Track the keydown handler so we can detach it on commit OR cancel.
+    // Without this, every double-click → cancel cycle accumulated another
+    // listener on the layer-name element (slow leak, duplicate handlers
+    // on the next rename).
+    const onKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); nameEl.blur(); }
+    };
+    const teardown = () => {
       nameEl.removeAttribute('contenteditable');
       nameEl.classList.remove('renaming');
+      nameEl.removeEventListener('keydown', onKey);
+    };
+    const commit = () => {
+      teardown();
       const next = nameEl.textContent.trim() || layer.name;
       if (next !== layer.name) {
         // User typed a new name — disable auto-rename so it stays.
@@ -678,15 +690,11 @@ export function initLayerPanel({ container, document, renderer }) {
       } else nameEl.textContent = layer.name;
     };
     const cancel = () => {
-      nameEl.removeAttribute('contenteditable');
-      nameEl.classList.remove('renaming');
+      teardown();
       nameEl.textContent = layer.name;
     };
     nameEl.addEventListener('blur', commit, { once: true });
-    nameEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
-      else if (e.key === 'Escape') { e.preventDefault(); cancel(); nameEl.blur(); }
-    });
+    nameEl.addEventListener('keydown', onKey);
   }
 
   // Selection / active-layer changes only flip CSS classes on the
