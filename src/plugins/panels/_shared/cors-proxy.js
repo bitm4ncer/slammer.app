@@ -61,6 +61,18 @@ async function tryFetch(target, init) {
   return r;
 }
 
+// In-memory cache of hosts known to need the proxy. Once we've seen a
+// host fail the direct attempt, every subsequent fetch for that host
+// skips the direct call and goes straight to the proxy chain. Saves
+// the user from seeing two CORS errors in the console for every
+// imported image. Cleared on page reload (intentional — host might
+// have added CORS headers since last visit).
+const _proxyOnlyHosts = new Set();
+
+function hostOf(url) {
+  try { return new URL(url).hostname; } catch { return ''; }
+}
+
 /**
  * Fetch a URL, automatically falling back through the proxy chain on
  * failure. Returns the Response object (call .blob() / .json() on it).
@@ -79,11 +91,21 @@ export async function fetchWithProxy(url, opts = {}) {
   const errors = [];
   let firstProxyHit = false;
 
-  if (!opts.skipDirect) {
+  // Skip direct if the caller forced it OR if we've previously seen
+  // this host need the proxy in this session. Cuts console-noise
+  // dramatically when importing many images from the same source
+  // (Met, Wikimedia, …): the user sees the CORS error ONCE per host
+  // per session instead of once per image.
+  const host = hostOf(url);
+  const skipDirect = opts.skipDirect || _proxyOnlyHosts.has(host);
+
+  if (!skipDirect) {
     try {
       return await tryFetch(url, init);
     } catch (err) {
       errors.push({ source: 'direct', err });
+      // Remember this host so future fetches skip direct.
+      if (host) _proxyOnlyHosts.add(host);
     }
   }
 
