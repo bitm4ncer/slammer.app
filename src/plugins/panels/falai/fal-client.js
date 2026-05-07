@@ -8,8 +8,18 @@
 // their OWN localStorage, used in their OWN browser. The same model as a CLI.
 // We dedupe config calls so the warning fires at most once per key change.
 
-import { fal } from '@fal-ai/client';
 import { getSettings } from '../../../ui/settings-popup.js';
+
+// @fal-ai/client is loaded lazily — it's a non-trivial dependency that
+// should not be in the cold-load bundle. The fal.ai panel may never be
+// opened in a session.
+let _falPromise = null;
+function getFal() {
+  if (!_falPromise) {
+    _falPromise = import('@fal-ai/client').then((m) => m.fal);
+  }
+  return _falPromise;
+}
 
 export class FalConfigError extends Error {
   constructor(msg) { super(msg); this.name = 'FalConfigError'; }
@@ -20,16 +30,18 @@ export function isConfigured() {
 }
 
 let _configuredKey = null;
-function ensureConfigured() {
+async function ensureConfigured() {
   const key = getSettings().falaiApiKey;
   if (!key) throw new FalConfigError('fal.ai API key missing — set in Settings → API Keys');
-  if (key === _configuredKey) return;  // already configured with this key
+  const fal = await getFal();
+  if (key === _configuredKey) return fal;  // already configured with this key
   fal.config({ credentials: key });
   _configuredKey = key;
+  return fal;
 }
 
 export async function runModel({ modelId, input, signal, onQueueUpdate }) {
-  ensureConfigured();
+  const fal = await ensureConfigured();
   const result = await fal.subscribe(modelId, {
     input,
     logs: true,
