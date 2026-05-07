@@ -314,26 +314,38 @@ Hard reload the dev server (`Ctrl+Shift+R`) before starting so HMR can't mask a 
 
 ---
 
-## What remains in BUGS.md
+## 27. Phase 21 Transform inspector (read-only)
+
+**Commit:** `9abb10c`
+**Files:** `src/ui/transform-inspector.js` (new), `src/main.js`, `src/style/components.css`, `roadmap.md`
+**Why:** First chunk of the Phase 21 Transform inspector task. Fills the previously empty `.footer-center` area with a tabular-numerics HUD showing the active layer's world-space coordinates, scaled W × H, and rotation. Editable inputs + lock-aspect + reset deferred to a follow-up — the readout alone closes the "user can't see exact coords without DevTools" gap. Roadmap entry marked partially-shipped (`[~]`).
+
+- [ ] Select any non-FX layer. Footer center reads e.g. `X 120 Y 80 W 320 H 240 ∠ 0.0°` with tabular numerics + accent-tinted keys.
+- [ ] Drag the layer on canvas — the HUD updates live (`layer:transform` event hook).
+- [ ] Rotate via the rotater handle — rotation reads e.g. `∠ 5.0°` (snapped) or `∠ -42.7°` (free).
+- [ ] Click an FX layer in the layer panel — HUD hides (FX layers have no own pixels).
+- [ ] Click empty canvas to deselect — HUD hides.
+- [ ] Multi-drag many layers — HUD only updates for the active layer (no thrash from sibling `layer:transform` events).
 
 Just the **undo flicker**. It's a renderer-rewrite task — diff the new state's layers against the live `layerState` map and patch in place instead of nuking + recreating. Best done as its own dedicated cluster, not folded into a polish pass.
 
 ## What remains in Phase 21
 
-Bigger features, all unambiguously bigger than a quick-fix run:
+After this run:
 - Frame Tool (drag-create export frames)
 - Crop tool (non-destructive per-layer crop rect)
-- Transform inspector (footer X% / Y% scale + rotation)
+- Transform inspector — **read-only HUD shipped** ✓ (commit `9abb10c`); editable inputs + lock-aspect + reset still TBD
 - Quick adjustments bar (effect knobs below selected image)
 - Ctrl+Space radial effect picker
 
-These need a dedicated run, not autonomous polish.
+The remaining ones still need dedicated runs, not autonomous polish.
 
 ---
 
 ## Commit graph for this session
 
 ```
+9abb10c feat(phase21): footer transform inspector — read-only X / Y / W / H / rotation
 620d528 chore(a11y): aria-modal="true" on every modal dialog
 19cd441 chore(toolbar): correct btnExport tooltip — formats + .slmr extension
 0eb989a fix(ui-helpers): gradientStopsRow drag-listener leak
