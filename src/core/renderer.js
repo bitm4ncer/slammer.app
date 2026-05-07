@@ -6,6 +6,8 @@ import { findFont } from '../ui/typography/font-sources.js';
 import { rasterizeVectorLayer, rasterizeVectorGroup, translatePathD } from './vector-renderer.js';
 import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 import { getSelection, onSelectionChange } from '../ui/selection-state.js';
+import { getSettings } from '../ui/settings-popup.js';
+import { computeBoxScaleSnap } from '../ui/snap-rulers.js';
 
 function resolveFontMeta(text) {
   if (!text) return null;
@@ -119,6 +121,25 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       // the user gets the standard rotation affordance.
       rotateAnchorCursor: 'grab',
       boundBoxFunc: (oldBox, newBox) => {
+        // Phase 21 follow-up: scale-snap. When the snap toggle is on AND the
+        // user is dragging a corner / edge anchor (not the rotater), snap
+        // the dragged edge to nearby layer / frame / guideline candidates
+        // BEFORE Konva commits the new transform. Skips during the
+        // Ctrl+Shift text-box gesture (handled below).
+        if (!ctrlShiftDown && getSettings().snapEnabled !== false) {
+          const activeAnchor = transformer.getActiveAnchor?.();
+          if (activeAnchor && activeAnchor !== 'rotater') {
+            const targets = transformer.nodes();
+            const excludeId = targets[0]?.id?.() || null;
+            const snapped = computeBoxScaleSnap(
+              activeAnchor, oldBox, newBox,
+              document, stage, contentLayer, excludeId,
+            );
+            // Pass the snapped box through the rest of the boundBoxFunc
+            // so Ctrl+Shift detection still gets the raw user intent.
+            newBox = snapped;
+          }
+        }
         // Auto-detect a Ctrl+Shift-held resize on a text layer. Capture the
         // starting boxWidth + a fixed reference width on the first tick so
         // we can derive a proportional new width every tick from a CONSTANT

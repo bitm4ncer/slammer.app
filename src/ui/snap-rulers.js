@@ -121,6 +121,102 @@ export function computeSnapForRect(rect, excludeLayerId, stage, doc, contentLaye
   return { dx, dy, snaps };
 }
 
+/**
+ * Snap a guideline being dragged to nearby layer edges / frame edges /
+ * other guidelines. Returns the (possibly snapped) world-space pos.
+ * `axis` is the GUIDELINE axis: 'h' (horizontal guideline → snaps along Y)
+ * or 'v' (vertical guideline → snaps along X).
+ */
+export function snapGuidelinePos(axis, pos, doc, stage, contentLayer, ignoreId = null) {
+  const sc = stage.scaleX() || 1;
+  const tolWorld = SNAP_TOLERANCE_PX / sc;
+  // A horizontal guideline is a candidate Y line, so it should snap to other
+  // Y candidates. A vertical guideline → X candidates.
+  const candAxis = axis === 'h' ? 'y' : 'x';
+  const candidates = gatherCandidates(candAxis, stage, doc, null, contentLayer);
+  // Drop self when re-dragging an existing guideline by id.
+  let best = null;
+  for (const c of candidates) {
+    // Skip OUR own guideline candidate to avoid snapping to ourselves.
+    if (ignoreId != null && c.src === 'guideline') {
+      // gatherCandidates doesn't tag guideline candidates with ids today;
+      // skip the closest match to our own pos to prevent self-snap.
+      if (Math.abs(c.pos - pos) < 0.0001) continue;
+    }
+    const d = Math.abs(c.pos - pos);
+    if (d <= tolWorld && (!best || d < best.dist)) best = { pos: c.pos, dist: d };
+  }
+  return best ? best.pos : pos;
+}
+
+/**
+ * Snap a transformer scale gesture by adjusting the new bbox so the
+ * dragged edge(s) align with nearby layer / frame / guideline candidates.
+ *
+ * Konva's transformer calls boundBoxFunc(oldBox, newBox) during scale —
+ * the active anchor name tells us which edges are moving.
+ *
+ * Returns a (possibly adjusted) box in the same shape as newBox:
+ *   { x, y, width, height, rotation }.
+ *
+ * The fixed (non-dragged) edge stays put — only the dragged edge snaps.
+ */
+export function computeBoxScaleSnap(anchor, oldBox, newBox, doc, stage, contentLayer, excludeLayerId = null) {
+  if (!anchor || anchor === 'rotater') return newBox;
+  const out = { ...newBox };
+  const sc = stage.scaleX() || 1;
+  const tolWorld = SNAP_TOLERANCE_PX / sc;
+  const movingX = anchor.includes('left') ? 'left' : anchor.includes('right') ? 'right' : null;
+  const movingY = anchor.includes('top')  ? 'top'  : anchor.includes('bottom') ? 'bottom' : null;
+
+  function pickClosest(candidates, refPos) {
+    let best = null;
+    for (const c of candidates) {
+      const d = Math.abs(c.pos - refPos);
+      if (d <= tolWorld && (!best || d < best.dist)) best = { pos: c.pos, dist: d };
+    }
+    return best;
+  }
+
+  if (movingX) {
+    const xCands = gatherCandidates('x', stage, doc, excludeLayerId, contentLayer);
+    if (movingX === 'left') {
+      const fixedRight = out.x + out.width;
+      const snap = pickClosest(xCands, out.x);
+      if (snap) {
+        out.x = snap.pos;
+        out.width = Math.max(1, fixedRight - snap.pos);
+      }
+    } else {
+      const right = out.x + out.width;
+      const snap = pickClosest(xCands, right);
+      if (snap) {
+        out.width = Math.max(1, snap.pos - out.x);
+      }
+    }
+  }
+
+  if (movingY) {
+    const yCands = gatherCandidates('y', stage, doc, excludeLayerId, contentLayer);
+    if (movingY === 'top') {
+      const fixedBottom = out.y + out.height;
+      const snap = pickClosest(yCands, out.y);
+      if (snap) {
+        out.y = snap.pos;
+        out.height = Math.max(1, fixedBottom - snap.pos);
+      }
+    } else {
+      const bottom = out.y + out.height;
+      const snap = pickClosest(yCands, bottom);
+      if (snap) {
+        out.height = Math.max(1, snap.pos - out.y);
+      }
+    }
+  }
+
+  return out;
+}
+
 // ─── Ruler rendering ─────────────────────────────────────────────────────────
 
 function drawRuler(canvas, axis, stage) {
@@ -358,11 +454,12 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       const relY = ev.clientY - containerRect.top;
       const sc = stage.scaleX() || 1;
       const sp = stage.position();
-      if (g.axis === 'h') {
-        g.pos = (relY - sp.y) / sc;
-      } else {
-        g.pos = (relX - sp.x) / sc;
-      }
+      let raw;
+      if (g.axis === 'h') raw = (relY - sp.y) / sc;
+      else                raw = (relX - sp.x) / sc;
+      // Snap to nearby element edges + frame edges + other guidelines (Alt to escape).
+      const snapOn = getSettings().snapEnabled !== false && !ev.altKey;
+      g.pos = snapOn ? snapGuidelinePos(g.axis, raw, doc, stage, contentLayer, g._id) : raw;
       positionGuidelineEl(el, g);
     });
     window.addEventListener('mouseup', (ev) => {
@@ -408,14 +505,21 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       const sp = stage.position();
       const rulersOn = getSettings().rulersEnabled;
       const offset = rulersOn ? RULER_SIZE : 0;
+      const snapOn = getSettings().snapEnabled !== false && !ev.altKey;
       if (axis === 'h') {
-        const worldPos = (relY - sp.y) / sc;
-        ghost.style.top = relY + 'px';
+        const rawWorld = (relY - sp.y) / sc;
+        const worldPos = snapOn ? snapGuidelinePos('h', rawWorld, doc, stage, contentLayer) : rawWorld;
+        // Re-derive screen Y from the (possibly snapped) world pos so the ghost
+        // visually anchors to the snap point.
+        const screenY = sp.y + worldPos * sc;
+        ghost.style.top = screenY + 'px';
         ghost.style.left = offset + 'px';
         guideDrag.worldPos = worldPos;
       } else {
-        const worldPos = (relX - sp.x) / sc;
-        ghost.style.left = relX + 'px';
+        const rawWorld = (relX - sp.x) / sc;
+        const worldPos = snapOn ? snapGuidelinePos('v', rawWorld, doc, stage, contentLayer) : rawWorld;
+        const screenX = sp.x + worldPos * sc;
+        ghost.style.left = screenX + 'px';
         ghost.style.top = offset + 'px';
         guideDrag.worldPos = worldPos;
       }
