@@ -10,11 +10,6 @@ import { getSettings } from './settings-popup.js';
 import { renderVariableAxes } from './typography/variable-axis-controls.js';
 import { renderFeaturesSection } from './typography/opentype-features.js';
 
-// Re-export so existing call sites that imported preloadFontsForDoc / ensureGoogleFont
-// from this module keep working. (Both are now owned by font-loader.js.)
-export { preloadFontsForDoc } from './typography/font-loader.js';
-export { loadFont as ensureGoogleFont } from './typography/font-loader.js';
-
 const FEATURES_EXPANDED_KEY = 'slammer:typo:featuresExpanded';
 const PANEL_COLLAPSED_KEY = 'slammer:typo:panelCollapsed';
 
