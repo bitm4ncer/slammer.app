@@ -127,13 +127,10 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
       const body = window.document.createElement('div');
       body.className = 'effect-body';
 
-      // Per-slot dry/wet slider — slim minimalist track at the top of the body.
-      // Currently gated to drop-shadow as the test bed; will roll out to all
-      // effects once the UX is approved.
-      const SHOW_MIX_SLIDER_FOR = new Set(['drop-shadow']);
-      if (SHOW_MIX_SLIDER_FOR.has(eff.pluginId)) {
-        body.appendChild(buildMixSlider(layer, eff));
-      }
+      // Per-slot dry/wet slider — slim minimalist track at the top of every
+      // expanded effect body. Plugins don't need to know about it; the renderer
+      // applies mix as a post-process lerp.
+      body.appendChild(buildMixSlider(layer, eff));
 
       const ui = plugin.renderUI(eff.params, (patch) => {
         document.setEffectParams(layer.id, eff.id, patch);
