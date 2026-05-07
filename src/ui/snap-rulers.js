@@ -459,7 +459,7 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       else                raw = (relX - sp.x) / sc;
       // Snap to nearby element edges + frame edges + other guidelines (Alt to escape).
       const snapOn = getSettings().snapEnabled !== false && !ev.altKey;
-      g.pos = snapOn ? snapGuidelinePos(g.axis, raw, doc, stage, contentLayer, g._id) : raw;
+      g.pos = snapOn ? snapGuidelinePos(g.axis, raw, doc, stage, _cl, g._id) : raw;
       positionGuidelineEl(el, g);
     });
     window.addEventListener('mouseup', (ev) => {
@@ -508,7 +508,7 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
       const snapOn = getSettings().snapEnabled !== false && !ev.altKey;
       if (axis === 'h') {
         const rawWorld = (relY - sp.y) / sc;
-        const worldPos = snapOn ? snapGuidelinePos('h', rawWorld, doc, stage, contentLayer) : rawWorld;
+        const worldPos = snapOn ? snapGuidelinePos('h', rawWorld, doc, stage, _cl) : rawWorld;
         // Re-derive screen Y from the (possibly snapped) world pos so the ghost
         // visually anchors to the snap point.
         const screenY = sp.y + worldPos * sc;
@@ -517,7 +517,7 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
         guideDrag.worldPos = worldPos;
       } else {
         const rawWorld = (relX - sp.x) / sc;
-        const worldPos = snapOn ? snapGuidelinePos('v', rawWorld, doc, stage, contentLayer) : rawWorld;
+        const worldPos = snapOn ? snapGuidelinePos('v', rawWorld, doc, stage, _cl) : rawWorld;
         const screenX = sp.x + worldPos * sc;
         ghost.style.left = screenX + 'px';
         ghost.style.top = offset + 'px';
