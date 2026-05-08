@@ -3266,15 +3266,7 @@
   top: 0;
   left: 0;
   width: 24px;
-  /* Stop well above the bottom-left zoom controls (.zoom-controls at
-   * bottom: 16px, 22 px button height = top edge ~38 px from canvas
-   * bottom). Ruler at 24 px width AND zoom-controls at left: 16 px —
-   * the buttons start at x=16 inside the canvas-area, so the LAST 8 px
-   * of the ruler horizontally overlaps the buttons. The vertical clip
-   * is what keeps them visually separate. 76 px = 16 px gap + 22 px
-   * button + 38 px clearance — generous enough that even a different
-   * viewport / DPI can't squeeze the two together. */
-  bottom: 76px;
+  bottom: 0;
 }
 .ruler-corner {
   position: absolute;

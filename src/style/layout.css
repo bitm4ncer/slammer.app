@@ -155,7 +155,11 @@ body.panels-collapsed #app {
 .zoom-controls {
   position: absolute;
   bottom: 16px;
-  left: 16px;
+  /* 50 px clears the 24 px-wide left ruler (`canvas.ruler--left`)
+   * with breathing room — ruler bottoms out at the canvas-area floor,
+   * so we route the zoom controls to the right instead of clipping
+   * the ruler. */
+  left: 50px;
   display: flex;
   gap: 6px;
   z-index: 10;
@@ -325,18 +329,29 @@ body.color-hub--dot .color-circle-btn:hover {
   transition: bottom 240ms cubic-bezier(.2,.7,.2,1);
 }
 
-/* ---------- Drawer-open lift: wheel + dot rise as one cluster ---------- */
-:root { --color-hub-h: 280px; }
+/* ---------- Drawer-open lift: wheel + dot rise as one cluster ----------
+ * The cluster lift is `--color-hub-h + 21 px`. The +21 comes from the
+ * dot's natural offset below the wheel's bottom edge (.color-circle-btn
+ * `bottom: 15px` vs .quick-wheel `bottom: 36px` = 21 px). At rest the
+ * dot sinks 21 px into the footer; when the drawer opens we want the
+ * dot's bottom to kiss the drawer's top edge — not penetrate it — so
+ * we lift by 21 px MORE than the popover's height. All three cluster
+ * elements (wheel, dot, controls) lift by the SAME amount so they
+ * read as one rigid unit; the relative dot-vs-wheel offset stays at
+ * 21 px throughout the animation.
+ */
+:root {
+  --color-hub-h: 280px;
+  --color-hub-cluster-lift: calc(var(--color-hub-h) + 21px);
+}
 body.color-hub-open:not(.color-hub--dot) .quick-wheel {
-  bottom: calc(36px + var(--color-hub-h) + 8px);
+  bottom: calc(36px + var(--color-hub-cluster-lift));
 }
 body.color-hub-open:not(.color-hub--dot) .color-circle-btn {
-  bottom: calc(15px + var(--color-hub-h) + 8px);
+  bottom: calc(15px + var(--color-hub-cluster-lift));
 }
-/* Quick-wheel-controls sit at bottom: 40 px around the dial. Lift them
-   too so the entire cluster moves as one unit. */
 body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
-  bottom: calc(40px + var(--color-hub-h) + 8px);
+  bottom: calc(40px + var(--color-hub-cluster-lift));
 }
 .quick-wheel-bg {
   position: absolute;
