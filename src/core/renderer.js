@@ -1784,8 +1784,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
               if (!ost || !ost.group) continue;
               ost.group.position({ x: s0.x + dx, y: s0.y + dy });
             }
-            // Per-layer outlines should follow the live drag.
-            if (typeof redrawSelectionOutlines === 'function') redrawSelectionOutlines();
+            // Per-layer outlines should follow the live drag. We just moved
+            // every non-anchor selected layer's group, so the cached
+            // getClientRects for those sts are stale — bump rectGen before
+            // the redraw so cachedClientRect re-reads fresh positions.
+            // Without this, the dashed outlines stick to the OLD positions
+            // (the contentLayer dragmove handler ran rectGen++ + redraw
+            // BEFORE this multi-drag positioning loop, populating the cache
+            // with pre-move values).
+            rectGen++;
+            redrawSelectionOutlines();
           }
         }
       }
