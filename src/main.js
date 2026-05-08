@@ -46,6 +46,7 @@ import displacementPlugin from './plugins/filters/displacement/index.js';
 import posterizePlugin from './plugins/filters/posterize/index.js';
 import rgbShiftPlugin from './plugins/filters/rgb-shift/index.js';
 import dropShadowPlugin from './plugins/filters/drop-shadow/index.js';
+import solarizePlugin from './plugins/filters/solarize/index.js';
 // datamosh, jpeg-compression, dithering, twirl, ripple, bulge moved to
 // src/plugins/premium/ — loaded in dev via premium-loader.js, served via
 // Bitmancer Library shop in prod.
@@ -132,6 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     posterizePlugin,
     rgbShiftPlugin,
     dropShadowPlugin,
+    solarizePlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
     twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,
