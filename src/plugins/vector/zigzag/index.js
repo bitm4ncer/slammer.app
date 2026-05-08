@@ -15,6 +15,7 @@ export default {
   type: 'vector-filter',
   icon: 'wave-square',
   category: 'distort',
+  description: 'Replace edges with sawtooth zigzag',
 
   defaultParams() { return { amplitude: 12, wavelength: 24, smooth: false }; },
 
@@ -32,24 +33,27 @@ export default {
         const len = sub.length;
         const count = Math.max(3, Math.ceil(len / W));
         const step = len / count;
+        // Flat [x, y] tuples to skip per-sample paper.Point + paper.Segment alloc.
         const newPts = [];
+        const subClosed = !!sub.closed;
         for (let i = 0; i <= count; i++) {
           const off = Math.min(i * step, len);
           const pt = sub.getPointAt(off);
           if (!pt) continue;
-          const tan = sub.getTangentAt(off) || new paper.Point(1, 0);
-          // Perpendicular = rotate tangent 90°.
-          const nx = -tan.y, ny = tan.x;
-          const sign = (i % 2 === 0) ? 1 : -1;
-          // Endpoints stay put for open paths so the curve still meets
-          // its neighbours; closed paths get the full wave everywhere.
-          const isEnd = !sub.closed && (i === 0 || i === count);
+          const tan = sub.getTangentAt(off);
+          // Perpendicular = rotate tangent 90°. Fallback (1,0) when no tangent.
+          const tx = tan ? tan.x : 1;
+          const ty = tan ? tan.y : 0;
+          const nx = -ty, ny = tx;
+          const sign = (i & 1) === 0 ? 1 : -1;
+          // Endpoints stay put for open paths; closed paths get full wave.
+          const isEnd = !subClosed && (i === 0 || i === count);
           const a = isEnd ? 0 : A * sign;
-          newPts.push(new paper.Point(pt.x + nx * a, pt.y + ny * a));
+          newPts.push([pt.x + nx * a, pt.y + ny * a]);
         }
         const fresh = new paper.Path({
-          segments: newPts.map((p) => new paper.Segment(p)),
-          closed: !!sub.closed,
+          segments: newPts,
+          closed: subClosed,
         });
         if (params.smooth) smoothPath(fresh);
         out.addChild(fresh);

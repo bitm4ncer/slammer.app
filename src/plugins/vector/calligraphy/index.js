@@ -24,6 +24,18 @@ function profileAt(t, kind) {
   }
 }
 
+// Hoist the switch out of the per-sample loop — pick the function once.
+function profileFn(kind) {
+  switch (kind) {
+    case 'linear':  return (t) => 1 - t;
+    case 'reverse': return (t) => t;
+    case 'tapered': return (t) => Math.sin(t * Math.PI);
+    case 'bulge':   return (t) => 1 - Math.abs(2 * t - 1) * 0.6;
+    case 'wave':    return (t) => 0.5 + 0.5 * Math.sin(t * Math.PI * 4);
+    default:        return () => 1;
+  }
+}
+
 export default {
   id: 'vector-calligraphy',
   name: 'Calligraphy',
@@ -31,6 +43,7 @@ export default {
   type: 'vector-filter',
   icon: 'paint-brush',
   category: 'stroke',
+  description: 'Variable stroke width along the path',
 
   defaultParams() {
     return { width: 24, profile: 'tapered', density: 4, color: '#FFFFFF' };
@@ -40,8 +53,10 @@ export default {
     const { paper } = ctx;
     const W = Math.max(0.1, params.width || 1) / 2;  // half-width
     const profile = params.profile || 'tapered';
+    const profFn = profileFn(profile);
     const step = Math.max(2, params.density || 4);
     const color = params.color || '#FFFFFF';
+    void profileAt; // keep export-named for HMR; unused after profFn fast path
     const out = [];
     for (const rec of paths) {
       const cp = hydrate(paper, rec);
@@ -50,23 +65,26 @@ export default {
         if (!sub.segments?.length || !(sub.length > 0)) continue;
         const len = sub.length;
         const count = Math.max(8, Math.ceil(len / step));
+        // Flat [x, y] tuples — no per-sample paper.Point + paper.Segment.
         const left = [];
         const right = [];
+        const invCount = 1 / count;
         for (let i = 0; i <= count; i++) {
-          const t = i / count;
+          const t = i * invCount;
           const off = Math.min(t * len, len);
           const pt = sub.getPointAt(off);
           const tan = sub.getTangentAt(off);
           if (!pt || !tan) continue;
-          const w = W * profileAt(t, profile);
+          const w = W * profFn(t);
           // Perpendicular = rotate tangent 90°.
           const nx = -tan.y, ny = tan.x;
-          left.push(new paper.Point(pt.x + nx * w, pt.y + ny * w));
-          right.push(new paper.Point(pt.x - nx * w, pt.y - ny * w));
+          const px = pt.x, py = pt.y;
+          left.push([px + nx * w, py + ny * w]);
+          right.push([px - nx * w, py - ny * w]);
         }
         if (left.length < 2) continue;
         // Stitch: left forward + right reversed → closed silhouette.
-        const segs = left.concat(right.reverse()).map((p) => new paper.Segment(p));
+        const segs = left.concat(right.reverse());
         const blob = new paper.Path({ segments: segs, closed: true });
         try { blob.smooth({ type: 'catmull-rom' }); } catch {}
         const d = blob.pathData;

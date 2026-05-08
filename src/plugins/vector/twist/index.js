@@ -12,6 +12,7 @@ export default {
   type: 'vector-filter',
   icon: 'sync-alt',
   category: 'distort',
+  description: 'Spiral path coordinates around a centre',
 
   defaultParams() { return { angle: 30 }; },
 
@@ -25,21 +26,26 @@ export default {
       for (const sub of subpaths(cp)) {
         if (!sub.segments?.length) continue;
         const c = centroid(sub);
+        const cx = c.x, cy = c.y;
         // Reference radius — max distance from centroid. Twist scales
         // linearly with r/maxR so the outer rim swings the full angle.
-        let maxR = 1;
+        // Compare squared distances in the first pass — sqrt only once.
+        let maxRSq = 1;
         for (const seg of sub.segments) {
-          const r = Math.hypot(seg.point.x - c.x, seg.point.y - c.y);
-          if (r > maxR) maxR = r;
+          const dx = seg.point.x - cx;
+          const dy = seg.point.y - cy;
+          const rSq = dx * dx + dy * dy;
+          if (rSq > maxRSq) maxRSq = rSq;
         }
+        const invMaxR = 1 / Math.sqrt(maxRSq);
         for (const seg of sub.segments) {
-          const dx = seg.point.x - c.x;
-          const dy = seg.point.y - c.y;
-          const r = Math.hypot(dx, dy);
-          const ang = baseAngle * (r / maxR);
+          const dx = seg.point.x - cx;
+          const dy = seg.point.y - cy;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          const ang = baseAngle * (r * invMaxR);
           const cs = Math.cos(ang), sn = Math.sin(ang);
-          seg.point.x = c.x + dx * cs - dy * sn;
-          seg.point.y = c.y + dx * sn + dy * cs;
+          seg.point.x = cx + dx * cs - dy * sn;
+          seg.point.y = cy + dx * sn + dy * cs;
           // Rotate handles by the same local angle (they're relative to
           // the anchor, so no centroid offset needed).
           if (seg.handleIn) {

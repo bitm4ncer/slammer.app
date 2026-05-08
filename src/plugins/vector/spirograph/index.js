@@ -13,6 +13,7 @@ export default {
   type: 'vector-filter',
   icon: 'compact-disc',
   category: 'generate',
+  description: 'Trace nested rotation curves',
 
   defaultParams() {
     return { kind: 'hypo', innerRatio: 0.35, pen: 0.7, turns: 12, samples: 720 };
@@ -38,23 +39,29 @@ export default {
       const r = R * innerRatio;
       const d = R * pen;
       const totalTheta = Math.PI * 2 * turns;
+      const invSamples = 1 / samples;
+      // Hoist branch + per-iter divisions outside the inner loop.
+      // Hypotrochoid: x = A·cos t + d·cos(k t), y = A·sin t - d·sin(k t)
+      // Epitrochoid:  x = A·cos t - d·cos(k t), y = A·sin t - d·sin(k t)
+      // Differs only by the sign of the d-cos term — fold into `dxSign`.
+      const A = kind === 'hypo' ? (R - r) : (R + r);
+      const k = A / r;
+      const dxSign = kind === 'hypo' ? 1 : -1;
+      // paper.Path accepts a flat [x, y, x, y, …] array via `segments`,
+      // skipping the per-sample paper.Point + paper.Segment allocation
+      // (was 2 × (samples+1) ephemeral objects per layer paint).
       const pts = new Array(samples + 1);
       for (let i = 0; i <= samples; i++) {
-        const t = (i / samples) * totalTheta;
-        let x, y;
-        if (kind === 'hypo') {
-          const k = (R - r) / r;
-          x = (R - r) * Math.cos(t) + d * Math.cos(k * t);
-          y = (R - r) * Math.sin(t) - d * Math.sin(k * t);
-        } else {
-          const k = (R + r) / r;
-          x = (R + r) * Math.cos(t) - d * Math.cos(k * t);
-          y = (R + r) * Math.sin(t) - d * Math.sin(k * t);
-        }
-        pts[i] = new paper.Point(cx + x, cy + y);
+        const t = i * invSamples * totalTheta;
+        const kt = k * t;
+        const cosT = Math.cos(t), sinT = Math.sin(t);
+        const cosKt = Math.cos(kt), sinKt = Math.sin(kt);
+        const x = A * cosT + dxSign * d * cosKt;
+        const y = A * sinT - d * sinKt;
+        pts[i] = [cx + x, cy + y];
       }
       const fresh = new paper.Path({
-        segments: pts.map((p) => new paper.Segment(p)),
+        segments: pts,
         closed: false,
       });
       try { fresh.smooth({ type: 'catmull-rom' }); } catch {}

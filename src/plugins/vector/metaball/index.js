@@ -16,6 +16,7 @@ export default {
   type: 'vector-filter',
   icon: 'circle',
   category: 'combine',
+  description: 'Blend nearby paths into liquid blobs',
   multiPathPreferred: true,
 
   defaultParams() {
@@ -144,16 +145,21 @@ export default {
 
     // 4. Stitch raw segments into chains via endpoint-matching. We bin
     //    points into a small spatial hash so floating-point matches
-    //    survive linear-interpolation rounding.
+    //    survive linear-interpolation rounding. Use packed integer keys
+    //    (32-bit lanes for ix/iy) instead of `${ix}|${iy}` template
+    //    literals — kills GC pressure during large grids (res ≥ 200).
     const eps = cellSize * 0.05;
-    const bin = (p) => `${Math.round(p.x / eps)}|${Math.round(p.y / eps)}`;
+    const invEps = 1 / eps;
+    // Numeric keys: shift signed bin coords into unsigned, pack into one int.
+    const KEY_BIAS = 0x4000; // 16384 — bin coords stay below this in practice
+    const bin = (p) => (((Math.round(p.x * invEps) + KEY_BIAS) << 16) | (Math.round(p.y * invEps) + KEY_BIAS)) >>> 0;
     const open = new Map();   // key -> array of segs that touch
     for (const s of segs) {
       const ka = bin(s[0]), kb = bin(s[1]);
-      if (!open.has(ka)) open.set(ka, []);
-      if (!open.has(kb)) open.set(kb, []);
-      open.get(ka).push({ seg: s, end: 0 });
-      open.get(kb).push({ seg: s, end: 1 });
+      let la = open.get(ka); if (!la) { la = []; open.set(ka, la); }
+      let lb = open.get(kb); if (!lb) { lb = []; open.set(kb, lb); }
+      la.push({ seg: s, end: 0 });
+      lb.push({ seg: s, end: 1 });
     }
 
     const used = new Set();

@@ -12,6 +12,7 @@ export default {
   type: 'vector-filter',
   icon: 'mountain',
   category: 'distort',
+  description: 'Jitter anchors with controlled chaos',
 
   defaultParams() { return { amplitude: 8, density: 12, smooth: true, seed: 1 }; },
 
@@ -29,17 +30,20 @@ export default {
         if (!sub.segments?.length || !(sub.length > 0)) continue;
         const len = sub.length;
         const count = Math.max(3, Math.ceil(len / step));
+        // Flat [x, y] tuples to skip per-sample paper.Point + paper.Segment alloc.
         const newPts = [];
+        const invCount = 1 / count;
         for (let i = 0; i <= count; i++) {
-          const off = Math.min((i / count) * len, len);
+          const off = Math.min(i * invCount * len, len);
           const pt = sub.getPointAt(off);
           if (!pt) continue;
-          const dx = noise2(pt.x * 0.13, pt.y * 0.13, seed) * A;
-          const dy = noise2(pt.x * 0.17 + 7.7, pt.y * 0.11 - 3.3, seed + 11) * A;
-          newPts.push(new paper.Point(pt.x + dx, pt.y + dy));
+          const px = pt.x, py = pt.y;
+          const dx = noise2(px * 0.13, py * 0.13, seed) * A;
+          const dy = noise2(px * 0.17 + 7.7, py * 0.11 - 3.3, seed + 11) * A;
+          newPts.push([px + dx, py + dy]);
         }
         const fresh = new paper.Path({
-          segments: newPts.map((p) => new paper.Segment(p)),
+          segments: newPts,
           closed: !!sub.closed,
         });
         if (params.smooth) smoothPath(fresh);

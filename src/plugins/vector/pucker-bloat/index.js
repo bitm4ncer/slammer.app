@@ -12,6 +12,7 @@ export default {
   type: 'vector-filter',
   icon: 'compress-arrows-alt',
   category: 'distort',
+  description: 'Pull anchors inward or outward',
 
   defaultParams() { return { amount: 0 }; },
 
@@ -22,20 +23,22 @@ export default {
     return paths.map((rec) => {
       const cp = hydrate(paper, rec);
       if (!cp) return rec;
+      const k1 = 1 + k;
       for (const sub of subpaths(cp)) {
         if (!sub.segments?.length) continue;
         const c = centroid(sub);
+        const cx = c.x, cy = c.y;
         for (const seg of sub.segments) {
-          const dx = seg.point.x - c.x;
-          const dy = seg.point.y - c.y;
+          const dx = seg.point.x - cx;
+          const dy = seg.point.y - cy;
           seg.point.x += dx * k;
           seg.point.y += dy * k;
           // Scale handles too so curvature stays roughly proportional.
           if (seg.handleIn) {
-            seg.handleIn = new paper.Point(seg.handleIn.x * (1 + k), seg.handleIn.y * (1 + k));
+            seg.handleIn = new paper.Point(seg.handleIn.x * k1, seg.handleIn.y * k1);
           }
           if (seg.handleOut) {
-            seg.handleOut = new paper.Point(seg.handleOut.x * (1 + k), seg.handleOut.y * (1 + k));
+            seg.handleOut = new paper.Point(seg.handleOut.x * k1, seg.handleOut.y * k1);
           }
         }
       }

@@ -13,6 +13,7 @@ export default {
   type: 'vector-filter',
   icon: 'water',
   category: 'distort',
+  description: 'Sine-wave deform along the path',
 
   defaultParams() {
     return { amplitude: 14, wavelength: 80, axis: 'x', displace: 'y', phase: 0, density: 8 };
@@ -36,20 +37,20 @@ export default {
         if (!sub.segments?.length || !(sub.length > 0)) continue;
         const len = sub.length;
         const count = Math.max(3, Math.ceil(len / step));
+        // Flat [x, y] tuples; branch on dispX out of the loop body.
         const newPts = [];
+        const invCount = 1 / count;
         for (let i = 0; i <= count; i++) {
-          const off = Math.min((i / count) * len, len);
+          const off = Math.min(i * invCount * len, len);
           const pt = sub.getPointAt(off);
           if (!pt) continue;
-          const drive = sourceX ? pt.x : pt.y;
-          const d = Math.sin(drive * k + phi) * A;
-          newPts.push(new paper.Point(
-            pt.x + (dispX ? d : 0),
-            pt.y + (dispX ? 0 : d),
-          ));
+          const px = pt.x, py = pt.y;
+          const drive = sourceX ? px : py;
+          const dd = Math.sin(drive * k + phi) * A;
+          newPts.push(dispX ? [px + dd, py] : [px, py + dd]);
         }
         const fresh = new paper.Path({
-          segments: newPts.map((p) => new paper.Segment(p)),
+          segments: newPts,
           closed: !!sub.closed,
         });
         smoothPath(fresh);

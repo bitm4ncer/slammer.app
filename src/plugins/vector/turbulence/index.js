@@ -12,6 +12,7 @@ export default {
   type: 'vector-filter',
   icon: 'wind',
   category: 'distort',
+  description: 'Perlin-style organic warp',
 
   defaultParams() { return { amplitude: 14, detail: 0.02, octaves: 2, seed: 1, sampleEvery: 8 }; },
 
@@ -31,17 +32,21 @@ export default {
         if (!sub.segments?.length || !(sub.length > 0)) continue;
         const len = sub.length;
         const count = Math.max(3, Math.ceil(len / step));
+        // Flat [x, y] tuples — paper.Path accepts these directly,
+        // skipping the per-sample paper.Point + paper.Segment alloc.
         const newPts = [];
+        const invCount = 1 / count;
         for (let i = 0; i <= count; i++) {
-          const off = Math.min((i / count) * len, len);
+          const off = Math.min(i * invCount * len, len);
           const pt = sub.getPointAt(off);
           if (!pt) continue;
-          const dx = fbm(pt.x * D, pt.y * D, seed, O) * A;
-          const dy = fbm(pt.x * D + 31.7, pt.y * D - 17.3, seed + 5.5, O) * A;
-          newPts.push(new paper.Point(pt.x + dx, pt.y + dy));
+          const px = pt.x, py = pt.y;
+          const dx = fbm(px * D, py * D, seed, O) * A;
+          const dy = fbm(px * D + 31.7, py * D - 17.3, seed + 5.5, O) * A;
+          newPts.push([px + dx, py + dy]);
         }
         const fresh = new paper.Path({
-          segments: newPts.map((p) => new paper.Segment(p)),
+          segments: newPts,
           closed: !!sub.closed,
         });
         smoothPath(fresh);

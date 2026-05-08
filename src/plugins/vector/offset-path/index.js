@@ -14,6 +14,7 @@ export default {
   type: 'vector-filter',
   icon: 'expand-arrows-alt',
   category: 'distort',
+  description: 'Inflate or contract along the normal',
 
   defaultParams() { return { distance: 6, density: 6 }; },
 
@@ -30,9 +31,11 @@ export default {
         if (!sub.segments?.length || !(sub.length > 0)) continue;
         const len = sub.length;
         const count = Math.max(4, Math.ceil(len / step));
+        // Flat [x, y] tuples — skip per-sample paper.Point + Segment alloc.
         const newPts = [];
+        const invCount = 1 / count;
         for (let i = 0; i <= count; i++) {
-          const off = Math.min((i / count) * len, len);
+          const off = Math.min(i * invCount * len, len);
           const pt = sub.getPointAt(off);
           const tan = sub.getTangentAt(off);
           if (!pt || !tan) continue;
@@ -40,10 +43,10 @@ export default {
           // pushes left of travel direction (visually outward for a
           // CCW-wound shape; CW shapes invert — both behaviours are
           // legitimate "offset").
-          newPts.push(new paper.Point(pt.x - tan.y * d0, pt.y + tan.x * d0));
+          newPts.push([pt.x - tan.y * d0, pt.y + tan.x * d0]);
         }
         const fresh = new paper.Path({
-          segments: newPts.map((p) => new paper.Segment(p)),
+          segments: newPts,
           closed: !!sub.closed,
         });
         smoothPath(fresh);
