@@ -219,6 +219,7 @@
 - [x] **Ctrl+V paste image from clipboard** — `paste` listener in `main.js` reads `clipboardData.items` for `image/*` MIME (screenshots, copied images). Internal layer-paste still takes priority — when `layerClipboard` is non-null the keydown handler `preventDefault`s and the browser never fires `paste`. Otherwise the image is wrapped in a `File` and routed through `addImageFile()`.
 
 ### Cluster B — Effect panel & existing-effect tweaks
+- [ ] **`E` shortcut opens the Advanced Effect Picker** — when an active layer is selected and no text input has focus, pressing `E` opens the new effect-selection panel (the same panel the `+` button on the Effects header opens — see the in-flight Advanced Effect Picker work). Pressing `E` again or `Esc` closes it. Wires through the new `src/ui/shortcut-manager.js` registry (Phase 21b) under scope `global` with `text-input-blocked` guard, action id `effects.open-picker`. If no active layer or layer is locked, the shortcut no-ops with a subtle notification ("Select a layer first").
 - [x] Bug: **Pixelsort above Dither** — root cause was uniform-score input after dither (binary B/W) made every qualifying span have identical scores → sort no-op. Fix: renderer now threads `ctx.sourceImageData` (pre-effect-stack pixels) into `process()`; pixelsort scores from the original tones but writes permutations into the current pipeline buffer.
 - [x] Pixelsort: Direction control is an arrow-icon toggle (`pillGroup` gained `variant: 'icon'` + `iconClass`)
 - [x] Rename "Dithering" → **"Dither"** (id stays `'dithering'` for save-file back-compat)
@@ -289,6 +290,31 @@
 - [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch — **parked in BUGS.md** (renderer rewrite scope; needs its own cluster)
 - [x] Audit: plugin params persistence — every plugin stores state in `effect.params` (snapshotted per `JSON.stringify`); only `displacement` keeps a module-level `_textureCache` Map that's a non-persisted in-memory perf cache (correct). No gaps found.
 - [x] Audit: events missing from undo coverage — `doc:propChanged` (project rename) was the only gap. Added to history's PROP_EVENTS so renaming a project commits to history; `statesLookEqual` extended to compare `state.name` + `state.exportFrame` so renames + frame edits aren't dropped as duplicate snapshots.
+- [ ] **History v2 — switch from snapshot-based to command-pattern undo** (architectural overhaul). Quick fixes for the immediate "only 1 step back" + missing-event-coverage bugs are tracked in `BUGS.md` and ship first; History v2 is the proper long-term solution. See dedicated section below.
+
+#### History v2 — Command-pattern undo (architectural overhaul)
+
+> The current `history.js` uses **full document snapshots**: every commit deep-clones `doc.state` (capacity 80, debounce 600 ms). Works for simple cases but has three structural weaknesses:
+> 1. **Memory cost** — 80 snapshots × ~1-3 MB per project = 80-240 MB tied up in undo stack. Forces capacity to stay low; user feels it as "history runs out".
+> 2. **Comparison fragility** — `statesLookEqual` must enumerate every persisted field; missing one (vector data, layer name, locked state) silently drops actions from history. Already bit us multiple times.
+> 3. **Event-whitelist fragility** — only events listed in `STRUCTURAL_EVENTS` / `PROP_EVENTS` trigger commits. New event types added later silently bypass history.
+>
+> **Established alternative**: the **Command Pattern** (Photoshop, Figma, Affinity — every serious creative tool). Each mutation is a Command object with `apply(doc)` and `revert(doc)` that store ONLY the diff. Memory per command is tiny (a 1 px nudge ≈ `{ type: 'translate', layerId, dx: 1, dy: 0 }`, ~50 bytes). Capacity can be effectively unlimited (1000+ steps).
+
+- [ ] **Define the Command interface**: `{ id, type, apply(doc), revert(doc), label, mergeKey? }`. `mergeKey` lets sequential commands of the same kind coalesce (a continuous slider drag → one command, replacing the previous unmerged one in the stack).
+- [ ] **Refactor `document.js` mutators to dispatch commands** instead of mutating state + emitting events directly. Every existing mutator (`setLayerTransform`, `setEffectParams`, `setVectorPath`, `addLayer`, `removeLayer`, `setBlendMode`, `setLayerName`, etc.) becomes a Command. The mutator's job: build a Command, call `history.dispatch(cmd)`; history calls `cmd.apply(doc)` which performs the state change + emits the matching event.
+- [ ] **Implement `history.dispatch(cmd)`**: runs `cmd.apply(doc)`, pushes onto past[], clears future[]. If the previous command has the same `mergeKey` AND was committed less than `mergeWindowMs` ago, replace it instead of pushing (debounce at the command level rather than snapshot level).
+- [ ] **Implement `history.undo()`**: pops past[], runs `cmd.revert(doc)`, pushes onto future[]. Symmetric for redo.
+- [ ] **Capacity** — bump default to 500 (or unlimited with a memory budget — sum command sizes, drop oldest when budget exceeded). Memory cost per command is so small that 500 is trivially affordable.
+- [ ] **Per-command labels for the UI** — "Move layer 'Hero'", "Change Drop Shadow blur", "Add Halftone effect". Surface in a History panel (Settings → Edit → History, or a small flyout near Undo) so users can see where they are and click-to-jump back N steps.
+- [ ] **Migration strategy**: implement Commands incrementally. Phase A: add the command infrastructure alongside the existing snapshot system (both run, snapshot is the safety net). Phase B: migrate mutators one-by-one to Commands; snapshots cover only unmigrated paths. Phase C: remove snapshot path once every mutator is converted. Avoids a single risky big-bang switch.
+- [ ] **Unit tests** for each command's apply/revert symmetry (do a mutation, undo → state equals pre-mutation; redo → equals post-mutation).
+- [ ] **Persistence**: command stack stays in-memory only; not serialised into `.slammerproj` (consistent with current behaviour). Reload = fresh history.
+- [ ] **History panel UI** (Settings → Edit OR a small popover from a footer button): scrollable list of commands with timestamps, click to jump to that state. Bonus: a chip-style "branch" indicator if the user undoes then makes a new change (forks the history — most editors discard the future, but a tree-view is possible).
+
+**Effort**: 5-7 days for Phases A + B + tests. Phase C cleanup is small. The bulk of work is converting ~30 mutators in `document.js` to Commands — mechanical but tedious.
+
+**Pre-requisite**: the quick-fix bugs in `BUGS.md` (extend `statesLookEqual`, defend `doc:loaded`, audit event coverage, bump capacity to 200) ship first. History v2 is the long-term replacement, not the short-term fix.
 
 ### Cluster G — Typography polish
 - [x] Text layer auto-renames to its text content (debounced 300 ms; first 30 chars; stops the moment the user manually renames via layer-card double-click — tracked by a `_autoNamed` flag that persists across reload)
@@ -386,6 +412,7 @@
 - [x] **Two-slot active colour state** — `colors.js` storage migrated to `{ fill, stroke }`. Old string shape transparently wrapped on first read (`fill = oldString`, `stroke = #000000`). New API: `getActiveFill / getActiveStroke / getActiveSlots / setActiveSlot / swapFillStroke`. `getActive()` kept as back-compat for plugins (returns fill string). Exposed via `window.__slammer.colors`.
 - [x] **Swap fill/stroke** keyboard shortcut — `X` wired in `toolbar.js` keymap; calls `colors.swapFillStroke()`. Settings → Shortcuts table updated. Convenience swap button (fa-arrows-rotate) inside the popover's slot toggle row does the same.
 - [x] **No-fill / no-stroke** option in the picker — third button (slashed circle / `fa-ban` icon) in the mode row. When selected, the picker dims, the slot chip + dial swatch / ring render a checker pattern, and `buildVectorFillFromActive` / `buildVectorStrokeFromActive` emit `{ type: 'none' }` for new layers.
+- [ ] **Text layer stroke support** — extend the text rasteriser to outline glyphs so the colour hub's stroke slot actually applies to text. Add `text.stroke = { color, width, opacity, align }` to the text-layer model, plumb through `setTextProp` / autosave / undo, and render via Canvas 2D `strokeText` after `fillText` (or reuse the opentype.js Path the Text→Path conversion already builds for crisper joins). Stroke alignment defaults to `outside` (the type convention) but offer `center` / `inside` like Affinity. Once supported, flip the `layer.type === 'vector'` gate in `src/ui/selection-style.js#applySlotColor`/`applySlotKind` so stroke writes are accepted for text layers; the colour hub already has the active-state fallback in place so no UI changes are needed there. Files: `src/core/layer.js` (model), `src/core/text-renderer.js` (or wherever `fillText` lives), `src/ui/selection-style.js` (gate flip).
 
 ### New layer inheritance
 
