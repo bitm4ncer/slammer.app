@@ -12,6 +12,7 @@ export default {
   type: 'filter',
   icon: 'square-caret-down',
   category: 'stylize',
+  description: 'Cast soft shadow under the layer',
 
   defaultParams() {
     return {
@@ -450,33 +451,40 @@ function boxBlurAlpha(src, W, H, r) {
 }
 
 function boxBlurAlphaH(src, dst, W, H, r) {
-  const div = r * 2 + 1;
+  const invDiv = 1 / (r * 2 + 1);
+  const Wm = W - 1;
   for (let y = 0; y < H; y++) {
     const row = y * W;
     let s = 0;
+    // Initial window — clamped indices on the left edge.
     for (let i = -r; i <= r; i++) {
-      s += src[row + Math.max(0, Math.min(W - 1, i))];
+      s += src[row + (i < 0 ? 0 : i > Wm ? Wm : i)];
     }
     for (let x = 0; x < W; x++) {
-      dst[row + x] = s / div;
-      const xAdd = Math.min(W - 1, x + r + 1);
-      const xRem = Math.max(0, x - r);
+      dst[row + x] = s * invDiv;
+      const xAddRaw = x + r + 1;
+      const xRemRaw = x - r;
+      const xAdd = xAddRaw > Wm ? Wm : xAddRaw;
+      const xRem = xRemRaw < 0 ? 0 : xRemRaw;
       s += src[row + xAdd] - src[row + xRem];
     }
   }
 }
 
 function boxBlurAlphaV(src, dst, W, H, r) {
-  const div = r * 2 + 1;
+  const invDiv = 1 / (r * 2 + 1);
+  const Hm = H - 1;
   for (let x = 0; x < W; x++) {
     let s = 0;
     for (let i = -r; i <= r; i++) {
-      s += src[Math.max(0, Math.min(H - 1, i)) * W + x];
+      s += src[(i < 0 ? 0 : i > Hm ? Hm : i) * W + x];
     }
     for (let y = 0; y < H; y++) {
-      dst[y * W + x] = s / div;
-      const yAdd = Math.min(H - 1, y + r + 1);
-      const yRem = Math.max(0, y - r);
+      dst[y * W + x] = s * invDiv;
+      const yAddRaw = y + r + 1;
+      const yRemRaw = y - r;
+      const yAdd = yAddRaw > Hm ? Hm : yAddRaw;
+      const yRem = yRemRaw < 0 ? 0 : yRemRaw;
       s += src[yAdd * W + x] - src[yRem * W + x];
     }
   }

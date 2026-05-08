@@ -15,7 +15,7 @@
 // Canvas headroom for outer mode is provided by the renderer's
 // computePadForEffects() — see src/core/vector-renderer.js.
 
-import { sliderRow, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowXl, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
 import { createAngleDistanceWidget } from '../../shared/angle-distance-widget.js';
 import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
@@ -32,6 +32,7 @@ export default {
   type: 'filter',
   icon: 'feather',
   category: 'image',
+  description: 'Smooth gaussian softening',
 
   defaultParams() {
     return {
@@ -121,7 +122,7 @@ export default {
     // Per-kernel groups
     const normalWrap = document.createElement('div');
     normalWrap.className = 'blur-kernel-group';
-    normalWrap.appendChild(sliderRowLg({
+    normalWrap.appendChild(sliderRowXl({
       label: 'Radius', min: 0, max: MAX_RADIUS, step: 1,
       value: params.radius ?? 4, defaultValue: 4, suffix: 'px',
       onChange: (v) => onChange({ radius: v }),
@@ -251,26 +252,29 @@ function boxBlur3Pass(imageData, r) {
 }
 
 function boxBlurH(src, dst, w, h, r) {
-  const div = r * 2 + 1;
+  const invDiv = 1 / (r * 2 + 1);
+  const wm = w - 1;
   for (let y = 0; y < h; y++) {
     let rs = 0, gs = 0, bs = 0, as = 0;
     const row = y * w;
     for (let i = -r; i <= r; i++) {
-      const x = Math.max(0, Math.min(w - 1, i));
+      const x = i < 0 ? 0 : i > wm ? wm : i;
       const idx = (row + x) * 4;
       rs += src[idx]; gs += src[idx + 1]; bs += src[idx + 2]; as += src[idx + 3];
     }
     for (let x = 0; x < w; x++) {
       const out = (row + x) * 4;
-      dst[out] = rs / div;
-      dst[out + 1] = gs / div;
-      dst[out + 2] = bs / div;
-      dst[out + 3] = as / div;
-      const xAdd = Math.min(w - 1, x + r + 1);
-      const xRem = Math.max(0, x - r);
+      dst[out]     = rs * invDiv;
+      dst[out + 1] = gs * invDiv;
+      dst[out + 2] = bs * invDiv;
+      dst[out + 3] = as * invDiv;
+      const xAddRaw = x + r + 1;
+      const xRemRaw = x - r;
+      const xAdd = xAddRaw > wm ? wm : xAddRaw;
+      const xRem = xRemRaw < 0 ? 0 : xRemRaw;
       const aIdx = (row + xAdd) * 4;
       const rIdx = (row + xRem) * 4;
-      rs += src[aIdx] - src[rIdx];
+      rs += src[aIdx]     - src[rIdx];
       gs += src[aIdx + 1] - src[rIdx + 1];
       bs += src[aIdx + 2] - src[rIdx + 2];
       as += src[aIdx + 3] - src[rIdx + 3];
@@ -278,25 +282,28 @@ function boxBlurH(src, dst, w, h, r) {
   }
 }
 function boxBlurV(src, dst, w, h, r) {
-  const div = r * 2 + 1;
+  const invDiv = 1 / (r * 2 + 1);
+  const hm = h - 1;
   for (let x = 0; x < w; x++) {
     let rs = 0, gs = 0, bs = 0, as = 0;
     for (let i = -r; i <= r; i++) {
-      const y = Math.max(0, Math.min(h - 1, i));
+      const y = i < 0 ? 0 : i > hm ? hm : i;
       const idx = (y * w + x) * 4;
       rs += src[idx]; gs += src[idx + 1]; bs += src[idx + 2]; as += src[idx + 3];
     }
     for (let y = 0; y < h; y++) {
       const out = (y * w + x) * 4;
-      dst[out] = rs / div;
-      dst[out + 1] = gs / div;
-      dst[out + 2] = bs / div;
-      dst[out + 3] = as / div;
-      const yAdd = Math.min(h - 1, y + r + 1);
-      const yRem = Math.max(0, y - r);
+      dst[out]     = rs * invDiv;
+      dst[out + 1] = gs * invDiv;
+      dst[out + 2] = bs * invDiv;
+      dst[out + 3] = as * invDiv;
+      const yAddRaw = y + r + 1;
+      const yRemRaw = y - r;
+      const yAdd = yAddRaw > hm ? hm : yAddRaw;
+      const yRem = yRemRaw < 0 ? 0 : yRemRaw;
       const aIdx = (yAdd * w + x) * 4;
       const rIdx = (yRem * w + x) * 4;
-      rs += src[aIdx] - src[rIdx];
+      rs += src[aIdx]     - src[rIdx];
       gs += src[aIdx + 1] - src[rIdx + 1];
       bs += src[aIdx + 2] - src[rIdx + 2];
       as += src[aIdx + 3] - src[rIdx + 3];
