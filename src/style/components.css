@@ -807,6 +807,11 @@
   height: 100%;
 }
 .alignment-strip[hidden] { display: none; }
+/* When the alignment-strip is hidden the two flanking .tb-sep dividers
+ * collapse into a doubled bar — hide the trailing separator so only one
+ * remains between the toggle buttons and the undo/redo cluster. When
+ * the strip is visible, both separators show to bracket it. */
+.alignment-strip[hidden] + .tb-sep { display: none; }
 
 /* ---------- Footer transform inspector (Phase 21) ---------- */
 .transform-inspector {
