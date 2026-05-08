@@ -514,11 +514,20 @@ export function initCanvasView({ container, document, onImageDropped }) {
   // After the zoom handler above mutates stage transform, rebuild the frame
   // overlay so handle/bracket pixel-sizes stay constant and the info chip
   // stays glued to the bottom-left corner.
-  stage.on('wheel', () => {
+  //
+  // Trackpad wheel events fire at 60-120+ Hz; the heavy follow-up work
+  // (ruler redraw + guideline DOM resync, grid redraw, frame rebuild) only
+  // needs to land once per frame. RAF-coalesce same as the pan handler.
+  let wheelRaf = null;
+  function flushWheelTail() {
+    wheelRaf = null;
     if (!dragInProgress) syncExportFrame();
     else repositionInfo();
     window.__slammer?.snapRulers?.onStageTransform?.();
     window.__slammer?.canvasGrid?.onTransform?.();
+  }
+  stage.on('wheel', () => {
+    if (!wheelRaf) wheelRaf = requestAnimationFrame(flushWheelTail);
   });
 
   // ---------- Spacebar + drag pan ----------
