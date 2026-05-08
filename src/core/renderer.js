@@ -1514,6 +1514,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       case 'layer:transform': {
         const layer = document.findLayer(event.id);
         if (layer) applyTransform(layer);
+        // The layer's group position just changed → invalidate the rect
+        // cache before any redraw consumes it. Multi-drag dragend fires
+        // setLayerTransform in a loop (one per non-anchor selected layer);
+        // each iteration's redraw was reading a cache populated in the
+        // FIRST iteration with mixed-state positions, leaving ghost
+        // outlines at pre-move locations.
+        rectGen++;
         // Moving / scaling / rotating an underlying layer changes the composite.
         repaintFxAbove(event.id);
         if (getSelection().size > 1) redrawSelectionOutlines();
