@@ -6,6 +6,7 @@ import './style/components.css';
 import './style/effects.css';
 import './style/typography.css';
 import './style/vector.css';
+import './style/color-hub.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';

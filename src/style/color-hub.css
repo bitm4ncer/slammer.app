@@ -1,0 +1,289 @@
+/* Color Hub popover — Phase 23b. Floats above the dial when open. */
+
+.color-hub {
+  position: fixed;
+  z-index: 240;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text-primary);
+  user-select: none;
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  width: 360px;
+}
+
+.color-hub-row {
+  display: grid;
+  grid-template-columns: var(--ring-outer) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+/* ---------- Picker (hue ring + SV pad) ---------- */
+
+.color-hub-picker {
+  position: relative;
+  width: var(--ring-outer);
+  height: var(--ring-outer);
+}
+
+.color-hub-hue-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    hsl(0, 100%, 50%),
+    hsl(60, 100%, 50%),
+    hsl(120, 100%, 50%),
+    hsl(180, 100%, 50%),
+    hsl(240, 100%, 50%),
+    hsl(300, 100%, 50%),
+    hsl(360, 100%, 50%)
+  );
+  /* Punch out the centre with a radial gradient mask so the ring is an
+   * annulus, not a full disc. */
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent calc(var(--ring-inner) / 2),
+    #000 calc(var(--ring-inner) / 2 + 1px)
+  );
+  mask: radial-gradient(
+    circle,
+    transparent calc(var(--ring-inner) / 2),
+    #000 calc(var(--ring-inner) / 2 + 1px)
+  );
+  cursor: pointer;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+.color-hub-hue-ring:focus-visible {
+  outline: 2px solid var(--ctx-accent);
+  outline-offset: 2px;
+}
+.color-hub-hue-cursor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: transparent;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+}
+
+/* SV pad sits inside the ring's hole, centred on the picker. */
+.color-hub-sv-pad {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--sv-size);
+  height: var(--sv-size);
+  transform: translate(-50%, -50%);
+  border-radius: 4px;
+  background: hsl(0, 100%, 50%);
+  cursor: crosshair;
+  outline: none;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.color-hub-sv-overlay-s,
+.color-hub-sv-overlay-v {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.color-hub-sv-overlay-s {
+  /* white → transparent left-to-right === lower saturation on the left */
+  background: linear-gradient(to right, #fff, transparent);
+}
+.color-hub-sv-overlay-v {
+  /* black → transparent bottom-to-top === lower brightness at the bottom */
+  background: linear-gradient(to top, #000, transparent);
+}
+.color-hub-sv-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: transparent;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Side column ---------- */
+
+.color-hub-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.color-hub-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.color-hub-preview {
+  flex: 1;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  background: #888;
+}
+.color-hub-icon-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.color-hub-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-primary);
+}
+
+.color-hub-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.color-hub-input-row--rgb {
+  gap: 4px;
+}
+.color-hub-input-trio {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.color-hub-input-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.color-hub-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  -moz-appearance: textfield;
+}
+.color-hub-input::-webkit-outer-spin-button,
+.color-hub-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.color-hub-input:focus {
+  outline: 1px solid var(--ctx-accent);
+  border-color: var(--ctx-accent);
+}
+.color-hub-hex {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Tabs + library ---------- */
+
+.color-hub-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 4px;
+}
+.color-hub-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  font-family: inherit;
+}
+.color-hub-tab:hover {
+  color: var(--text-primary);
+}
+.color-hub-tab.is-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--ctx-accent);
+}
+
+.color-hub-tab-panel {
+  min-height: 64px;
+}
+.color-hub-tab-panel[hidden] { display: none; }
+
+.color-hub-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+.color-hub-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+.color-hub-swatch:hover {
+  transform: scale(1.1);
+  border-color: var(--ctx-accent);
+}
+.color-hub-empty,
+.color-hub-vars-placeholder {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  text-align: center;
+  padding: 14px 4px;
+}
+
+/* ---------- Toast (eyedropper unavailability hint) ---------- */
+.color-hub-toast {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+.color-hub-toast.is-visible { opacity: 1; }
