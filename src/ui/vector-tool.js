@@ -224,6 +224,15 @@ export function initVectorTool({ document: doc }) {
   let pillsBuilt = false;
   let fillTypeBtns, strokeTypeBtns, strokeAlignBtns, strokeCapBtns, strokeJoinBtns;
 
+  // BUGS.md fix — Simplify slider was destructive: each session snapshotted
+  // the LAYER'S CURRENT d (which on a second session is the already-simplified
+  // result), so dialing the slider back to 0 didn't restore the original
+  // sharp shape. Persist the very first pristine d per (layerId, pathIdx)
+  // for as long as this vector-tool instance is alive — slider sessions
+  // always simplify FROM the pristine, so tolerance=0 returns to it.
+  // Layer removal evicts the entry below.
+  const simplifyPristineDs = new Map();   // key: `${layerId}:${pathIdx}` → d-string
+
   function ensurePills() {
     if (pillsBuilt) return;
     fillTypeBtns = buildPills(fillTypeHost, FILL_TYPES, (v) => setFillType(v));
@@ -470,24 +479,34 @@ export function initVectorTool({ document: doc }) {
     // Range 0..50, step 0.5, default 2.5.
     //
     // Interaction model:
-    //   pointerdown  → snapshot original path d
+    //   pointerdown  → ensure pristine d snapshotted in simplifyPristineDs
     //   onChange (drag) → ephemeral preview (no undo entry)
     //   pointerup    → commit one undo entry with the final tolerance
-    //   Esc (keydown) → revert to original, no commit
+    //   Esc (keydown) → revert to pristine, no commit
     //   numeric-input / double-click-reset (no active drag) → commit directly
+    //
+    // Pristine d persists for the layer + path lifetime — dialing the slider
+    // back to 0 restores the truly-original shape even after multiple
+    // committed simplifications + panel rebuilds.
     const DEFAULT_TOLERANCE = 2.5;
+    const pristineKey = `${l.id}:${activePathIdx}`;
     let _dragging = false;
-    let _simplifyOriginalD = null; // d-string at drag start
     let _lastTolerance = DEFAULT_TOLERANCE;
 
-    // Helper: compute simplified d from _simplifyOriginalD.
-    function _computeFromOriginal(tolerance) {
+    function _ensurePristine() {
+      if (simplifyPristineDs.has(pristineKey)) return simplifyPristineDs.get(pristineKey);
       const rec = l.vector.paths[activePathIdx];
-      if (!rec || !_simplifyOriginalD) return null;
-      // Build a temporary path record with the ORIGINAL d so repeated slider
-      // moves don't compound simplification.
+      if (!rec) return null;
+      simplifyPristineDs.set(pristineKey, rec.d);
+      return rec.d;
+    }
+
+    // Helper: compute simplified d from the persisted pristine d.
+    function _computeFromOriginal(tolerance) {
+      const pristine = simplifyPristineDs.get(pristineKey);
+      if (!pristine) return null;
       const fakeLayer = {
-        vector: { paths: l.vector.paths.map((r, i) => i === activePathIdx ? { ...r, d: _simplifyOriginalD } : r) },
+        vector: { paths: l.vector.paths.map((r, i) => i === activePathIdx ? { ...r, d: pristine } : r) },
       };
       return computeSimplifiedD(fakeLayer, activePathIdx, tolerance);
     }
@@ -499,12 +518,9 @@ export function initVectorTool({ document: doc }) {
       defaultValue: DEFAULT_TOLERANCE,
       onChange: (v) => {
         _lastTolerance = v;
-        // Ensure we have a snapshot (onChange can fire before pointerdown in
-        // some edge cases — e.g. numeric input).
-        if (!_simplifyOriginalD) {
-          const rec = l.vector.paths[activePathIdx];
-          if (rec) _simplifyOriginalD = rec.d;
-        }
+        // Ensure pristine d is snapshotted (onChange can fire before
+        // pointerdown for non-drag commits like numeric input).
+        _ensurePristine();
         const newD = _computeFromOriginal(v);
         if (!newD) return;
         if (_dragging) {
@@ -512,18 +528,17 @@ export function initVectorTool({ document: doc }) {
           doc.setVectorPathEphemeral(l.id, activePathIdx, { d: newD });
         } else {
           // Direct commit: numeric-input change or knob double-click reset.
+          // Pristine stays in the Map so a follow-up gesture can still
+          // restore further toward the original.
           doc.setVectorPath(l.id, activePathIdx, { d: newD });
-          _simplifyOriginalD = null;
         }
       },
     });
     row.title = 'Drag to reduce anchors while preserving the curve. Double-click knob to reset.';
 
     row.addEventListener('pointerdown', () => {
-      // Snapshot BEFORE the first onChange fires so _simplifyOriginalD always
-      // contains the pre-session state, not an already-simplified version.
-      const rec = l.vector.paths[activePathIdx];
-      if (rec && !_simplifyOriginalD) _simplifyOriginalD = rec.d;
+      // Make sure the pristine d is captured before the first onChange fires.
+      _ensurePristine();
       _dragging = true;
     }, { capture: true });
 
@@ -532,17 +547,18 @@ export function initVectorTool({ document: doc }) {
         // Commit the last ephemeral preview as one undo entry.
         const newD = _computeFromOriginal(_lastTolerance);
         if (newD) doc.setVectorPath(l.id, activePathIdx, { d: newD });
-        _simplifyOriginalD = null;
+        // Pristine stays in the Map — next gesture still reads from it
+        // so dialing the slider back toward 0 keeps recovering original
+        // detail rather than the now-committed simplification.
       }
       _dragging = false;
     });
 
     row.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && _simplifyOriginalD) {
-        // Revert to the state at drag-start (fires a committed revert so undo
+      if (e.key === 'Escape' && simplifyPristineDs.has(pristineKey)) {
+        // Revert to the pristine d (fires a committed revert so undo
         // brings the user back cleanly).
-        doc.setVectorPath(l.id, activePathIdx, { d: _simplifyOriginalD });
-        _simplifyOriginalD = null;
+        doc.setVectorPath(l.id, activePathIdx, { d: simplifyPristineDs.get(pristineKey) });
         _dragging = false;
       }
     });
@@ -662,6 +678,15 @@ export function initVectorTool({ document: doc }) {
   }
 
   doc.subscribe((e) => {
+    // Evict simplify-slider pristine snapshots for removed layers — they
+    // can't be hit again and would leak if the user creates many vector
+    // layers in one session.
+    if (e.type === 'layer:removed' && e.id) {
+      const prefix = `${e.id}:`;
+      for (const k of [...simplifyPristineDs.keys()]) {
+        if (k.startsWith(prefix)) simplifyPristineDs.delete(k);
+      }
+    }
     if (e.type === 'layer:active' || e.type === 'layer:added' || e.type === 'layer:removed' || e.type === 'doc:loaded') {
       rebuild();
     }
