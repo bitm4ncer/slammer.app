@@ -142,7 +142,16 @@ function build() {
       </div>
     </div>
   `;
-  document.body.appendChild(popover);
+  // Mount inside #app so the popover shares the footer's stacking
+  // context. The footer is a descendant of #app at z-index 245; the
+  // popover at z-index 240 in the SAME stacking context renders BEHIND
+  // the footer (the "drawer pulled out from under a shelf" visual). If
+  // we appended to body instead, the popover would float at body-level
+  // z-index 240 above #app's whole subtree — including the footer —
+  // and the footer could never cover it. Fall back to body if #app
+  // somehow isn't there yet (dev-server boot race).
+  const host = document.getElementById('app') || document.body;
+  host.appendChild(popover);
 }
 
 // ---------------------------------------------------------------------------
