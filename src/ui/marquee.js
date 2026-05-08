@@ -163,7 +163,16 @@ export function attachMarquee({ stage, document: doc }) {
     } else {
       next = new Set(matched);
     }
-    setSelection(next, matched[matched.length - 1] || null);
+    const anchor = matched[matched.length - 1] || null;
+    setSelection(next, anchor);
+    // Sync doc.activeLayer to the anchor — same contract as a click on a
+    // layer card. Without this, a marquee that hits exactly one layer
+    // selects the layer in selection-state but leaves doc.activeLayer
+    // pointing at whatever was active before, so the Effects / Vector /
+    // Text panels (which read doc.activeLayer) don't switch to the
+    // marqueed layer. The Transformer also wraps the wrong node because
+    // syncTransformer falls back to doc.activeLayer when sel.size === 1.
+    if (anchor && doc.activeLayerId !== anchor) doc.setActiveLayer(anchor);
     destroyRect();
   }
 
