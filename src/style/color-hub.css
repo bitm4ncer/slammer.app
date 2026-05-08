@@ -80,37 +80,23 @@
   transform: translate(-50%, -50%);
 }
 
-/* SV pad sits inside the ring's hole, centred on the picker. */
-.color-hub-sv-pad {
+/* Triangle picker (Adobe-style) sits inside the ring's hole. The canvas
+ * is the same size as the ring's inner diameter; barycentric mixing
+ * paints the gradient. */
+.color-hub-tri {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--sv-size);
-  height: var(--sv-size);
+  width: var(--ring-inner);
+  height: var(--ring-inner);
   transform: translate(-50%, -50%);
-  border-radius: 4px;
-  background: hsl(0, 100%, 50%);
   cursor: crosshair;
-  outline: none;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  display: block;
 }
-.color-hub-sv-overlay-s,
-.color-hub-sv-overlay-v {
+.color-hub-tri-cursor {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.color-hub-sv-overlay-s {
-  /* white → transparent left-to-right === lower saturation on the left */
-  background: linear-gradient(to right, #fff, transparent);
-}
-.color-hub-sv-overlay-v {
-  /* black → transparent bottom-to-top === lower brightness at the bottom */
-  background: linear-gradient(to top, #000, transparent);
-}
-.color-hub-sv-cursor {
-  position: absolute;
+  top: 0;
+  left: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;

@@ -15,10 +15,10 @@ import {
   getSwatches, addSwatch, removeSwatch, onSwatchesChange,
 } from '../core/colors.js';
 
-const RING_OUTER = 96;     // px — outer radius of the hue ring
-const RING_INNER = 78;     // px — inner radius (where the SV pad starts)
-const RING_THICK = RING_OUTER - RING_INNER;
-const SV_SIZE    = 110;    // px — saturation/brightness pad inside the ring
+const RING_OUTER  = 96;       // px — outer radius of the hue ring
+const RING_INNER  = 78;       // px — inner radius (where the triangle starts)
+const TRI_RADIUS  = 70;       // px — triangle inscribed radius (slightly < ring inner)
+const TRI_BOX     = RING_INNER * 2;  // canvas size for the triangle
 
 let popover = null;
 let unsubs = [];
@@ -56,17 +56,14 @@ function build() {
   popover.className = 'color-hub';
   popover.style.setProperty('--ring-outer', `${RING_OUTER * 2}px`);
   popover.style.setProperty('--ring-inner', `${RING_INNER * 2}px`);
-  popover.style.setProperty('--sv-size',    `${SV_SIZE}px`);
+  popover.style.setProperty('--tri-box',    `${TRI_BOX}px`);
   popover.innerHTML = `
     <div class="color-hub-row">
       <div class="color-hub-picker">
         <div class="color-hub-hue-ring" tabindex="0" aria-label="Hue ring">
           <div class="color-hub-hue-cursor"></div>
-          <div class="color-hub-sv-pad" tabindex="0" aria-label="Saturation and brightness">
-            <div class="color-hub-sv-overlay-s"></div>
-            <div class="color-hub-sv-overlay-v"></div>
-            <div class="color-hub-sv-cursor"></div>
-          </div>
+          <canvas class="color-hub-tri" width="${TRI_BOX}" height="${TRI_BOX}" aria-label="Saturation and brightness triangle"></canvas>
+          <div class="color-hub-tri-cursor"></div>
         </div>
       </div>
       <div class="color-hub-side">
@@ -133,8 +130,8 @@ function position(anchorEl) {
 function bindEvents(anchorEl) {
   const hueRing  = popover.querySelector('.color-hub-hue-ring');
   const hueCursor = popover.querySelector('.color-hub-hue-cursor');
-  const svPad    = popover.querySelector('.color-hub-sv-pad');
-  const svCursor = popover.querySelector('.color-hub-sv-cursor');
+  const triCanvas = popover.querySelector('.color-hub-tri');
+  const triCursor = popover.querySelector('.color-hub-tri-cursor');
   const preview  = popover.querySelector('.color-hub-preview');
   const hexEl    = popover.querySelector('.color-hub-hex');
   const rEl      = popover.querySelector('.color-hub-r');
@@ -145,19 +142,28 @@ function bindEvents(anchorEl) {
   // Local HSV state — updated by interactions; reflected to active colour.
   let { h, s, v } = hexToHsv(getActive());
 
+  // Cache the triangle bitmap — repaint only when hue changes.
+  let lastTriHue = null;
+
   function paint() {
     const hex = hsvToHex(h, s, v);
     preview.style.background = hex;
-    svPad.style.background = `hsl(${h}, 100%, 50%)`;
     // Cursor on hue ring — at midline of the ring thickness.
     const ringMidR = (RING_OUTER + RING_INNER) / 2;
     const a = (h - 90) * Math.PI / 180;
     const hx = Math.cos(a) * ringMidR;
     const hy = Math.sin(a) * ringMidR;
     hueCursor.style.transform = `translate(calc(-50% + ${hx}px), calc(-50% + ${hy}px))`;
-    // Cursor on SV pad — left = saturation, top = inverse value.
-    svCursor.style.left = `${(s / 100) * SV_SIZE}px`;
-    svCursor.style.top  = `${(1 - v / 100) * SV_SIZE}px`;
+    // Repaint the triangle gradient if the hue moved.
+    if (lastTriHue !== h) {
+      paintTriangle(triCanvas, h);
+      lastTriHue = h;
+    }
+    // Triangle cursor at the (s, v) point in barycentric space.
+    const pos = svToTrianglePos(s, v, h);
+    const ringR = hueRing.getBoundingClientRect();
+    triCursor.style.left = `${ringR.width / 2 + pos.x}px`;
+    triCursor.style.top  = `${ringR.height / 2 + pos.y}px`;
     // Inputs (don't fight the user as they type).
     if (document.activeElement !== hexEl) hexEl.value = hex.toUpperCase();
     const rgb = hexToRgb(hex);
@@ -210,35 +216,33 @@ function bindEvents(anchorEl) {
     try { hueRing.releasePointerCapture(e.pointerId); } catch {}
   });
 
-  // ── SV pad drag ──────────────────────────────────────────────────────
-  function svFromEvent(e) {
-    const r = svPad.getBoundingClientRect();
-    let nx = (e.clientX - r.left) / r.width;
-    let ny = (e.clientY - r.top)  / r.height;
-    nx = Math.max(0, Math.min(1, nx));
-    ny = Math.max(0, Math.min(1, ny));
-    return { s: nx * 100, v: (1 - ny) * 100 };
+  // ── Triangle drag ────────────────────────────────────────────────────
+  function triSvFromEvent(e) {
+    const ringR = hueRing.getBoundingClientRect();
+    const cx = ringR.left + ringR.width / 2;
+    const cy = ringR.top  + ringR.height / 2;
+    return trianglePosToSv(e.clientX - cx, e.clientY - cy, h);
   }
-  let svdrag = false;
-  svPad.addEventListener('pointerdown', (e) => {
+  let tridrag = false;
+  triCanvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    svdrag = true;
-    svPad.setPointerCapture(e.pointerId);
-    const next = svFromEvent(e);
+    tridrag = true;
+    triCanvas.setPointerCapture(e.pointerId);
+    const next = triSvFromEvent(e);
     s = next.s; v = next.v;
     commit();
   });
-  svPad.addEventListener('pointermove', (e) => {
-    if (!svdrag) return;
-    const next = svFromEvent(e);
+  triCanvas.addEventListener('pointermove', (e) => {
+    if (!tridrag) return;
+    const next = triSvFromEvent(e);
     s = next.s; v = next.v;
     commit();
   });
-  svPad.addEventListener('pointerup', (e) => {
-    if (!svdrag) return;
-    svdrag = false;
-    try { svPad.releasePointerCapture(e.pointerId); } catch {}
+  triCanvas.addEventListener('pointerup', (e) => {
+    if (!tridrag) return;
+    tridrag = false;
+    try { triCanvas.releasePointerCapture(e.pointerId); } catch {}
   });
 
   // ── Hex input ────────────────────────────────────────────────────────
@@ -406,6 +410,127 @@ export function hexToHsv(hex) {
   const s = max === 0 ? 0 : (d / max) * 100;
   const v = max * 100;
   return { h, s, v };
+}
+
+// ---------------------------------------------------------------------------
+// Adobe-style HSL triangle inscribed in the hue ring's hole.
+// Three vertices around a circle of radius TRI_RADIUS, centred on the picker:
+//   • Hue vertex    — at the angle of the current hue (12 o'clock = hue 0)
+//   • White vertex  — 120° clockwise from hue
+//   • Black vertex  — 240° clockwise from hue (i.e. 120° CCW)
+// (s, v) ↔ barycentric:
+//   wHue   = s * v
+//   wWhite = (1 - s) * v
+//   wBlack = 1 - v
+// ---------------------------------------------------------------------------
+
+function triangleVertices(hueDeg) {
+  const a0 = (hueDeg - 90) * Math.PI / 180;        // hue vertex
+  const a1 = a0 + (2 * Math.PI / 3);                // white vertex (120° CW)
+  const a2 = a0 - (2 * Math.PI / 3);                // black vertex (120° CCW)
+  return {
+    hue:   [Math.cos(a0) * TRI_RADIUS, Math.sin(a0) * TRI_RADIUS],
+    white: [Math.cos(a1) * TRI_RADIUS, Math.sin(a1) * TRI_RADIUS],
+    black: [Math.cos(a2) * TRI_RADIUS, Math.sin(a2) * TRI_RADIUS],
+  };
+}
+
+function svToTrianglePos(s, v, hueDeg) {
+  const sN = s / 100;
+  const vN = v / 100;
+  const wHue   = sN * vN;
+  const wWhite = (1 - sN) * vN;
+  const wBlack = 1 - vN;
+  const tri = triangleVertices(hueDeg);
+  return {
+    x: wHue * tri.hue[0]   + wWhite * tri.white[0] + wBlack * tri.black[0],
+    y: wHue * tri.hue[1]   + wWhite * tri.white[1] + wBlack * tri.black[1],
+  };
+}
+
+// Convert a click position (relative to the ring's centre) into (s, v) by
+// solving for barycentric weights against the triangle vertices, then
+// clamping out-of-triangle clicks to the nearest in-triangle point.
+function trianglePosToSv(x, y, hueDeg) {
+  const tri = triangleVertices(hueDeg);
+  let { w0, w1, w2 } = barycentric(x, y, tri.hue, tri.white, tri.black);
+  if (w0 < 0 || w1 < 0 || w2 < 0) {
+    w0 = Math.max(0, w0);
+    w1 = Math.max(0, w1);
+    w2 = Math.max(0, w2);
+    const sum = w0 + w1 + w2;
+    if (sum > 0) { w0 /= sum; w1 /= sum; w2 /= sum; }
+  }
+  const v = (w0 + w1) * 100;
+  const s = (w0 + w1) > 1e-3 ? (w0 / (w0 + w1)) * 100 : 0;
+  return { s, v };
+}
+
+function barycentric(px, py, A, B, C) {
+  const v0x = B[0] - A[0], v0y = B[1] - A[1];
+  const v1x = C[0] - A[0], v1y = C[1] - A[1];
+  const v2x = px - A[0],   v2y = py - A[1];
+  const d00 = v0x * v0x + v0y * v0y;
+  const d01 = v0x * v1x + v0y * v1y;
+  const d11 = v1x * v1x + v1y * v1y;
+  const d20 = v2x * v0x + v2y * v0y;
+  const d21 = v2x * v1x + v2y * v1y;
+  const denom = d00 * d11 - d01 * d01;
+  const w1 = (d11 * d20 - d01 * d21) / denom;
+  const w2 = (d00 * d21 - d01 * d20) / denom;
+  const w0 = 1 - w1 - w2;
+  return { w0, w1, w2 };
+}
+
+function paintTriangle(canvas, hueDeg) {
+  const W = canvas.width;
+  const H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // Triangle vertices in canvas coords (centre = canvas centre).
+  const cx = W / 2, cy = H / 2;
+  const tri = triangleVertices(hueDeg);
+  const A = [tri.hue[0]   + cx, tri.hue[1]   + cy];
+  const B = [tri.white[0] + cx, tri.white[1] + cy];
+  const C = [tri.black[0] + cx, tri.black[1] + cy];
+
+  const hueRgb = hsvToRgb(hueDeg, 100, 100);
+
+  // Restrict iteration to the triangle's bbox + 1 px slack for AA.
+  const minX = Math.max(0,    Math.floor(Math.min(A[0], B[0], C[0])) - 1);
+  const maxX = Math.min(W - 1, Math.ceil (Math.max(A[0], B[0], C[0])) + 1);
+  const minY = Math.max(0,    Math.floor(Math.min(A[1], B[1], C[1])) - 1);
+  const maxY = Math.min(H - 1, Math.ceil (Math.max(A[1], B[1], C[1])) + 1);
+
+  const img = ctx.getImageData(0, 0, W, H);
+  const data = img.data;
+
+  for (let py = minY; py <= maxY; py++) {
+    for (let px = minX; px <= maxX; px++) {
+      const { w0, w1, w2 } = barycentric(px, py, A, B, C);
+      // 1 px AA slack
+      if (w0 < -0.005 || w1 < -0.005 || w2 < -0.005) continue;
+      const cw0 = Math.max(0, w0), cw1 = Math.max(0, w1), cw2 = Math.max(0, w2);
+      const sum = cw0 + cw1 + cw2;
+      if (sum === 0) continue;
+      const nw0 = cw0 / sum, nw1 = cw1 / sum, nw2 = cw2 / sum;
+      const r = nw0 * hueRgb.r + nw1 * 255;
+      const g = nw0 * hueRgb.g + nw1 * 255;
+      const b = nw0 * hueRgb.b + nw1 * 255;
+      const idx = (py * W + px) * 4;
+      data[idx]     = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function hsvToRgb(h, s, v) {
+  const hex = hsvToHex(h, s, v);
+  return hexToRgb(hex);
 }
 
 export function hsvToHex(h, s, v) {

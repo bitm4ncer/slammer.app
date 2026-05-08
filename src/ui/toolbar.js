@@ -1,6 +1,7 @@
 // Toolbar — wires the top-bar buttons.
 
 import { showNotification } from './notifications.js';
+import { toggleColorHub } from './color-hub.js';
 import { exportSlmr, importSlmr } from '../io/project-file.js';
 import { openExportPopup } from './export-popup.js';
 import { setTool, getTool, getLastShape, onToolChange } from './vector-tools/active-tool.js';
@@ -640,6 +641,11 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     else if (key === 'a') { e.preventDefault(); setTool('directSelect'); }
     else if (key === 'p') { e.preventDefault(); setTool('pen'); }
     else if (key === 'b') { e.preventDefault(); setTool('pencil'); }
+    else if (key === 'c') {
+      e.preventDefault();
+      const dial = document.getElementById('btnColorCircle');
+      if (dial) toggleColorHub(dial);
+    }
     else if (key === 'r') {
       e.preventDefault();
       // R cycles through shapes if pressed repeatedly while a shape is active.
