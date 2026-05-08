@@ -114,20 +114,25 @@ export function getEffectiveStyle() {
         strokeGradient: stroke.type === 'gradient' ? gradientFromVectorFill(stroke) : getActiveGradient('stroke'),
       };
     }
-    // Text layer. Fill comes from the layer's text.color; stroke falls
-    // back to the ACTIVE state so the user can navigate the stroke
-    // controls and set defaults for the next vector layer they create.
-    // (The rasteriser doesn't honour text stroke yet — writes to stroke
-    // are a no-op on the text itself, but they still update the active
-    // state via applySlot* in the apply helpers.)
+    // Text layer. The rasteriser only honours `text.color` (a solid
+    // fill — no gradient, no stroke). So both fillKind AND strokeKind
+    // fall back to the active state, letting the user navigate the
+    // mode pills and set defaults for the next vector they create.
+    // Writes to stroke / non-solid fill / stroke-width / opacity all
+    // no-op on the text layer itself (applySlot* skip non-vector
+    // layers); the active-state side-effect still happens so
+    // newly-created vectors inherit the chosen look.
+    //
+    // The fill HEX still mirrors text.color when the user is in solid
+    // mode — that's the one place text actually responds to writes.
     return {
       source: 'layer',
       layerId: layer.id,
-      fillKind: 'solid',
+      fillKind: getActiveKind('fill'),
       strokeKind: getActiveKind('stroke'),
-      fill: layer.text?.color || '#ffffff',
+      fill: getActiveKind('fill') === 'solid' ? (layer.text?.color || '#ffffff') : getActiveFill(),
       stroke: getActiveStroke(),
-      fillOpacity: 1,
+      fillOpacity: getActiveOpacity('fill'),
       strokeOpacity: getActiveOpacity('stroke'),
       strokeWidth: getActiveStrokeWidth(),
       fillGradient: getActiveGradient('fill'),
