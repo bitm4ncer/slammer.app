@@ -545,22 +545,31 @@
   cursor: pointer;
 }
 
-/* ---------- Gradient editor ---------- */
+/* ---------- Gradient editor ----------
+ * Lives in the same vertical slot as the preview-row (.color-hub-preview-row)
+ * — same height so the popover doesn't shift when the user toggles modes.
+ * Single row: gradient track (flex:1) + compact angle input + save button.
+ */
 .color-hub-gradient {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   width: 100%;
-  margin: 4px 0 4px;
 }
 .color-hub-gradient[hidden] { display: none; }
 .color-hub-gradient-track {
   position: relative;
-  height: 28px;
-  border-radius: 4px;
+  flex: 1;
+  height: 22px;        /* match .color-hub-preview height for invariant total height */
+  border-radius: 3px;
   background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.55);
   overflow: visible;
+}
+.color-hub-gradient-angle-input {
+  width: 40px;
+  flex: 0 0 40px;
+  text-align: right;
 }
 .color-hub-gradient-bar {
   position: absolute;
@@ -588,36 +597,8 @@
   transform: translate(-50%, -50%) scale(1.2);
   box-shadow: 0 0 0 2px var(--ctx-accent);
 }
-.color-hub-gradient-angle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.color-hub-gradient-angle-input {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  outline: none;
-  margin: 0;
-}
-.color-hub-gradient-angle-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  cursor: pointer;
-}
-.color-hub-gradient-angle-readout {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  color: var(--text-secondary);
-  width: 36px;
-  text-align: right;
-  flex-shrink: 0;
-}
+/* (gradient angle is now a numeric input alongside the track — see
+ * .color-hub-gradient-angle-input above) */
 
 /* ---------- Toast (eyedropper unavailability hint) ---------- */
 .color-hub-toast {

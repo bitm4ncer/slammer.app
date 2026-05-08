@@ -116,26 +116,23 @@ function build() {
           <div class="color-hub-tri-cursor"></div>
         </div>
       </div>
-      <!-- Gradient editor — shown when active slot's kind === 'gradient'.
-           Sits BELOW the hue ring + triangle so the picker stays available
-           for editing the SELECTED stop's colour. Track + draggable stops
-           + angle slider. -->
-      <div class="color-hub-gradient" hidden>
-        <div class="color-hub-gradient-track" aria-label="Gradient stops">
-          <div class="color-hub-gradient-bar"></div>
-          <div class="color-hub-gradient-stops"></div>
-        </div>
-        <div class="color-hub-gradient-angle">
-          <label class="color-hub-input-label">ANGLE</label>
-          <input class="color-hub-gradient-angle-input" type="range" min="0" max="360" step="1" />
-          <span class="color-hub-gradient-angle-readout">0°</span>
-        </div>
-      </div>
       <div class="color-hub-side">
+        <!-- Preview row (solid mode) and gradient editor (gradient mode) share
+             the same vertical slot. Same total height so the popover doesn't
+             shift when the user toggles modes. paintMode() flips which one
+             is shown. -->
         <div class="color-hub-preview-row">
           <span class="color-hub-preview" aria-label="Active colour"></span>
           <button class="color-hub-icon-btn color-hub-eyedropper" title="Eyedropper" aria-label="Eyedropper"><i class="fas fa-eye-dropper"></i></button>
           <button class="color-hub-icon-btn color-hub-save" title="Save to swatches" aria-label="Save to swatches"><i class="fas fa-bookmark"></i></button>
+        </div>
+        <div class="color-hub-gradient" hidden>
+          <div class="color-hub-gradient-track" aria-label="Gradient stops">
+            <div class="color-hub-gradient-bar"></div>
+            <div class="color-hub-gradient-stops"></div>
+          </div>
+          <input class="color-hub-gradient-angle-input color-hub-input" type="number" min="0" max="360" step="1" title="Gradient angle" aria-label="Gradient angle" />
+          <button class="color-hub-icon-btn color-hub-save" title="Save gradient" aria-label="Save gradient"><i class="fas fa-bookmark"></i></button>
         </div>
         <div class="color-hub-input-row">
           <label class="color-hub-input-label">HEX</label>
@@ -343,15 +340,15 @@ function bindEvents(anchorEl) {
   function paintMode() {
     const kind = getActiveKind(activeSlot);
     modeBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.mode === kind));
-    // Picker visibility:
-    //   solid    → ring + triangle visible
-    //   gradient → ring + triangle visible (drives the SELECTED stop's
-    //              colour) AND gradient editor shown below them
-    //   none     → ring + triangle dimmed (color-hub--none class), no editor
-    const gradient = popover.querySelector('.color-hub-gradient');
+    // Solid / gradient mode swap which row sits in the side column's top
+    // slot — the preview row OR the gradient editor. Same height so the
+    // popover doesn't shift when toggling.
+    const previewRow = popover.querySelector('.color-hub-preview-row');
+    const gradient   = popover.querySelector('.color-hub-gradient');
     const isGrad = kind === 'gradient';
     const isNone = kind === 'none';
-    gradient.hidden = !isGrad;
+    previewRow.hidden = isGrad;
+    gradient.hidden   = !isGrad;
     popover.classList.toggle('color-hub--none', isNone);
     popover.classList.toggle('color-hub--gradient', isGrad);
     // Stroke-width row visible only when active slot === stroke and not none.
@@ -429,7 +426,6 @@ function bindEvents(anchorEl) {
   const gradBar      = popover.querySelector('.color-hub-gradient-bar');
   const gradStops    = popover.querySelector('.color-hub-gradient-stops');
   const gradAngleIn  = popover.querySelector('.color-hub-gradient-angle-input');
-  const gradAngleOut = popover.querySelector('.color-hub-gradient-angle-readout');
 
   function paintGradient() {
     if (getActiveKind(activeSlot) !== 'gradient') return;
@@ -456,8 +452,7 @@ function bindEvents(anchorEl) {
       });
       gradStops.appendChild(handle);
     });
-    if (document.activeElement !== gradAngleIn) gradAngleIn.value = String(g.angle);
-    gradAngleOut.textContent = `${Math.round(g.angle)}°`;
+    if (document.activeElement !== gradAngleIn) gradAngleIn.value = String(Math.round(g.angle));
   }
   gradAngleIn.addEventListener('input', () => {
     const angle = parseFloat(gradAngleIn.value);
@@ -627,14 +622,18 @@ function bindEvents(anchorEl) {
   });
 
   // ── Save to swatches ─────────────────────────────────────────────────
-  // In gradient mode the save button stores the FULL gradient (not just
-  // the active stop's hex). In solid / none mode it stores the current hex.
-  popover.querySelector('.color-hub-save').addEventListener('click', () => {
-    if (getActiveKind(activeSlot) === 'gradient') {
-      addGradientSwatch(getActiveGradient(activeSlot));
-    } else {
-      addSwatch(hsvToHex(h, s, v));
-    }
+  // There are TWO save buttons: one in the solid-mode preview row, one
+  // inside the gradient editor (replaces the preview row when gradient
+  // mode is active). Both branch on the active kind so either button does
+  // the right thing.
+  popover.querySelectorAll('.color-hub-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (getActiveKind(activeSlot) === 'gradient') {
+        addGradientSwatch(getActiveGradient(activeSlot));
+      } else {
+        addSwatch(hsvToHex(h, s, v));
+      }
+    });
   });
 
   // ── Recent swatches grid ─────────────────────────────────────────────
