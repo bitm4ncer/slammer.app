@@ -6,19 +6,11 @@
 
 ---
 
-## Met images CORS-block on drag-into-canvas
+## ~~Met images CORS-block on drag-into-canvas~~ — fixed
 
-**Symptom**: Met plugin search results display correctly inside the panel (the `<img>` tags load fine — `<img>` doesn't enforce CORS for *display*). But when the user drags a Met image card into the canvas, console shows:
-- `Access to fetch at 'https://images.metmuseum.org/...' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present`
-- `[canvas-view] URL drop failed TypeError: Failed to fetch (canvas-view.js:1038)`
+**Symptom (was)**: Dragging a Met card from the panel onto the canvas produced a CORS rejection on `images.metmuseum.org` (asset CDN, not the JSON API).
 
-**Suspected cause**: `images.metmuseum.org` (the asset CDN, distinct from the `collectionapi.metmuseum.org` JSON API) does not send CORS headers. `canvas-view.js` line ~1038 does a `fetch(url)` to convert the dropped URL into a Blob layer, and that fetch is rejected at the CORS preflight.
-
-**Files involved**: `src/ui/canvas-view.js` (drop handler around L1038), `src/plugins/panels/_shared/drop-zone.js` (likely the source of the dragged URL).
-
-**What was tried**: nothing yet. The earlier Met API fix (commit `5f48941`) addressed the search/objects endpoint, not the image CDN.
-
-**Possible fixes**: (a) route the image fetch through the same CORS proxy used by the API (`https://corsproxy.io/?url=`); (b) try `<img crossOrigin="anonymous">` + canvas drawImage to grab the bytes if the CDN allows that route; (c) make the drop handler accept the URL directly as the layer source so no fetch is needed (but then export would later hit the same CORS wall when rasterising).
+**Fix**: option (a) from the original sketch. `src/ui/canvas-view.js:1119` routes the dropped URL through `fetchImageBlob` from `src/plugins/panels/_shared/cors-proxy.js` — direct fetch first, then a multi-proxy fallback chain (corsproxy.io, wsrv.nl, etc.). Same path the Met JSON API already uses.
 
 ---
 
@@ -42,17 +34,15 @@
 
 ---
 
-## Simplify slider is destructive — can't dial back to original shape
+## ~~Simplify slider is destructive — can't dial back to original shape~~ — fixed (226f17e)
 
-**Symptom**: Dragging the Simplify slider on a vector layer reduces anchor points, but dialing back to a lower tolerance doesn't restore the original sharp corners / square shape. The path data appears to be permanently altered after each slider interaction — the user can't return to the pre-simplified geometry.
+**Symptom (was)**: Dragging the Simplify slider rounded corners as expected, but dialing back to lower tolerance never restored the original sharp shape — each session compounded simplification.
 
-**Suspected cause**: Phase 13d implemented the slider with ephemeral preview (`setVectorPathEphemeral` on drag, `setVectorPath` on release). But the simplification runs Paper.js `path.simplify(tolerance)` which is destructive — it replaces path segments. If the slider is re-simplifying the *already-simplified* path on each drag (instead of always simplifying from the *original* saved path data), each step compounds and the original is lost.
+**Cause**: The slider's pristine-d snapshot lived in the panel-render closure. Each `setVectorPath` commit fired `layer:vectorChanged`, the panel rebuilt with a fresh closure, and the next pointerdown snapshotted from the ALREADY-SIMPLIFIED `d`.
 
-**Files involved**: `src/ui/vector-tool.js` (simplify slider wiring), `src/ui/vector-tools/path-actions.js` (`computeSimplifiedD()`), `src/core/document.js` (`setVectorPathEphemeral` / `setVectorPath`).
+**Fix**: option (a) from the sketch. Pristine `d` now persists in a module-instance Map keyed by `${layerId}:${pathIdx}` at `initVectorTool` scope, so panel rebuilds reuse the same snapshot. Simplify always computes from the pristine — tolerance=0 fully restores. Layer removal evicts.
 
-**What was tried**: Nothing yet.
-
-**Possible fixes**: (a) Store the original (pre-simplify) `d` path string when the slider first engages, always run `simplify(tolerance)` against that original, so dialing back to 0 fully restores it; (b) treat `simplify` as a derived view — the stored path data is always the original, simplification is applied at render time with the tolerance as a param (like a non-destructive effect); (c) at minimum, ensure the ephemeral preview path resets to the committed path on each new drag start.
+**Known follow-up**: a direct anchor-edit between simplify sessions doesn't invalidate the pristine, so the next gesture would discard those edits. Acceptable for now; proper invalidation needs to track non-simplify path mutations.
 
 ---
 
@@ -68,6 +58,8 @@
 
 **Possible fixes**: (a) audit the handle layout init — confirm a 3×3 mesh creates 9 handles at grid intersections (0,0)…(2,2) and connection lines connect each handle only to its 4 cardinal neighbours; (b) check whether handle drag updates flow through the document mutator AND the mesh topology stays canonical (no extra handles sneaking in via repeated effect re-init); (c) verify the overlay reads the same mesh state as the renderer — drift between the two would explain why handles look out of place but the gradient still renders.
 
+**Next investigation step**: add a one-line `console.log({ handles: layer.params.meshHandles })` inside `mesh-gradient-overlay.js`'s render loop and reproduce. Compare the logged grid (rows × cols) against the expected handle count (rows × cols). If extras appear, walk the call sites to find a duplicate-init path. If positions are wrong but counts are right, the drift is between layer-coords and overlay-coords — check the rasteriser pad math.
+
 ---
 
 ## Vector shape preview rectangle missing during creation drag
@@ -82,19 +74,15 @@
 
 **Possible fixes**: (a) Check the shape-drawer's `onMouseMove` / `onDrag` handler — it should create/update a temporary Konva.Rect or Konva.Shape on the overlay layer during the drag, then replace it with the real vector layer on release; (b) verify the active-tool registry is forwarding mousemove events to the shape drawer correctly.
 
+**Next investigation step**: pick the rectangle tool, drop a `console.log('shape-drawer move', { x: e.clientX, y: e.clientY })` inside the shape-drawer's onMove handler (look in `src/ui/vector-tools/shape-drawer.js`). Drag on canvas. If the log fires → preview node creation is broken; if it doesn't → active-tool routing in `src/ui/vector-tools/active-tool.js` isn't forwarding the move. That tells us which side of the wiring to fix.
+
 ---
 
-## Group Selection button visible with <2 layers selected + positioning off
+## ~~Group Selection button visible with <2 layers selected + positioning off~~ — closed (no current code matches the report)
 
-**Symptom**: The "Group selection (Ctrl+G)" button appears in the toolbar area even when fewer than 2 layers are selected (possibly even with 0 or 1). It also has a visual positioning issue — the tooltip/button overlaps other UI elements and looks misplaced (see user screenshot: button floats over the issues counter area).
+**Symptom (reported)**: button appears with <2 layers selected; positioning floated over the issues counter.
 
-**Suspected cause**: The button's visibility condition likely checks for `getSelection().length > 0` instead of `>= 2` (grouping requires at least 2 layers). The positioning issue may be a CSS layout problem — the button might not be properly placed in the toolbar flow, or it's absolutely positioned with incorrect offsets.
-
-**Files involved**: `src/ui/toolbar.js` or `src/ui/layer-panel.js` (group button rendering + visibility logic), `src/style/components.css` (button positioning).
-
-**What was tried**: Nothing yet.
-
-**Possible fixes**: (a) Gate visibility on `getSelection().length >= 2`; (b) fix the button's CSS positioning so it sits inline with other toolbar actions; (c) consider moving the group button into the layer panel header (next to +/trash) rather than a floating position.
+**Status**: visibility logic in `src/ui/layer-panel.js:43-49` already gates `combineBtn.hidden = eligible.length < 2`. Live DOM probe confirms `position: static` with no offset overrides — button sits in normal layer-panel header flow. Whatever state produced the reported screenshot is no longer reproducible against current code. Closing; reopen with a fresh repro if it resurfaces.
 
 ---
 
@@ -110,16 +98,12 @@
 
 **Possible fixes**: (a) Check where `.layer-group-icon` is appended — trace the `createElement` / `appendChild` call for group-type layer icons and verify the parent is the layer card thumb, not a higher container; (b) add a cleanup pass that removes orphaned `.layer-type-icon` nodes outside the layer panel on each render cycle.
 
+**Next investigation step**: static read of `src/ui/layer-panel.js` shows every `.layer-type-icon` element is generated as an inline template-string child of its layer card markup — no rogue `appendChild` to body or footer found. The bug is likely runtime DOM escape (HMR carryover, leftover from a layer creation/deletion path that didn't clean up, or an orphaned reference). Reproduction step: open DevTools, find the stray `.layer-group-icon` in the bottom-right area, then walk up via `el.parentElement` until you hit something recognisable. That identifies the rogue mount point — much faster than continuing static reads.
+
 ---
 
-## Ruler canvas overlaps zoom controls
+## ~~Ruler canvas overlaps zoom controls~~ — fixed (2676712)
 
-**Symptom**: When rulers are enabled (keyboard `R`), the left ruler canvas visually overlaps the bottom-left zoom button bar (+, %, −, fit, fullscreen). The ruler extends too far down and covers the zoom controls, making them hard to click.
+**Symptom (was)**: Left ruler (z-index 15) covered the bottom-left zoom button cluster (z-index 10) when rulers were toggled on.
 
-**Suspected cause**: The left ruler `<canvas>` overlay likely has a height of `100%` or `100vh` without accounting for the footer bar height. It needs to stop short of the footer/zoom-bar area so the two don't overlap.
-
-**Files involved**: `src/ui/snap-rulers.js` (ruler rendering + positioning), `src/style/components.css` (ruler overlay CSS).
-
-**What was tried**: Nothing yet.
-
-**Possible fixes**: (a) Set the left ruler's CSS `bottom` to the footer height (e.g. `bottom: var(--footer-height)` or a fixed px value) so it stops above the zoom bar; (b) add a `z-index` fix so the zoom bar sits above the ruler; (c) clip the ruler canvas height to `calc(100% - footer)` in its container.
+**Fix**: option (a) from the sketch. `.ruler--left` in `src/style/components.css` now stops at `bottom: 56px` (16 px footer-gap + ~28 px button height + 12 px breathing) so the ruler ends above the zoom controls instead of overlapping them.
