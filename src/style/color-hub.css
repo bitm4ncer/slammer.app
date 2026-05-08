@@ -17,7 +17,12 @@
    * surface that fuses cleanly with the footer band beneath it. */
   border: none;
   border-radius: 0;
-  padding: 14px;
+  /* Bottom padding 36 (footer height) + 14 (resting padding) so the
+   * tabs / swatches strip stays clear of the footer band that now
+   * stacks ABOVE the drawer. The drawer is anchored at bottom: 0 to
+   * fuse visually with the footer, but the footer sits in front, so
+   * we reserve the bottom 36 px as dead space behind it. */
+  padding: 14px 14px 50px 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text-primary);
   user-select: none;

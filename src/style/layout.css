@@ -188,6 +188,15 @@ body.panels-collapsed #app {
   justify-content: space-between;
   padding: 0 14px;
   gap: 10px;
+  /* Footer establishes a stacking context that sits BETWEEN the colour
+   * hub popover (z-index 240, behind footer) and the wheel cluster
+   * (z-index 260, above footer). Visual effect: the drawer slides out
+   * from BEHIND the footer band, while the wheel + dot stay punched
+   * out in front. Mirrors a real-world drawer pulled out from under a
+   * shelf — exactly what the closed-state dot-into-footer overlap
+   * already implies. */
+  position: relative;
+  z-index: 245;
 }
 
 .footer-left, .footer-center, .footer-right {
@@ -322,11 +331,11 @@ body.color-hub--dot .color-circle-btn:hover {
   width: 260px;
   height: 260px;
   transform: translate(-50%, 50%);
-  /* Above the colour hub popover (z-index 240) so the dot rides ON TOP
-   * of the popover's top edge — the dot's lower 21 px overlap reads as
-   * the dial sinking INTO the drawer, the same way it sinks into the
-   * footer in closed state. */
-  z-index: 241;
+  /* Above the footer (z-index 245) AND the colour hub popover (z-index
+   * 240). Footer sits between drawer and dial — drawer slides out from
+   * BEHIND the footer band, dial pokes IN FRONT of both, completing the
+   * "drawer under a shelf" illusion. */
+  z-index: 260;
   pointer-events: none; /* children opt back in */
   /* Lifts when the colour drawer opens. We animate `transform` (composited
    * on the GPU) instead of `bottom` because `bottom` transitions are
