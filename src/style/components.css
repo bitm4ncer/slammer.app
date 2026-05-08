@@ -3,7 +3,7 @@
    keeps it out of the Konva stacking context and above all canvas layers. */
 .rotation-readout {
   position: fixed;
-  z-index: 9999;
+  z-index: calc(var(--z-settings) + 1);
   pointer-events: none;
   background: rgba(20, 20, 20, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -169,7 +169,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  z-index: 90;
+  z-index: calc(var(--z-app) + 89);
   opacity: 0;
   transform: translateX(-4px);
   transition: opacity 0.14s ease, transform 0.14s ease;
@@ -397,7 +397,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 80;
+  z-index: calc(var(--z-app) + 79);
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -448,7 +448,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 200;
+  z-index: var(--z-settings-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1177,7 +1177,7 @@
 .shop-backdrop {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.62);
-  z-index: 1500;
+  z-index: var(--z-shop);
   display: flex; align-items: center; justify-content: center;
   padding: 28px;
   animation: shop-fade-in 180ms ease-out;
@@ -1546,7 +1546,7 @@
   border-radius: 3px;
   letter-spacing: 0.08em;
   transition: transform 220ms cubic-bezier(.2,.8,.2,1);
-  z-index: 1;
+  z-index: calc(var(--z-shop) + 1);
   box-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 .shop-card--vector .shop-card-stamp {
@@ -2257,7 +2257,7 @@
   background: var(--surface);
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: calc(var(--z-app) + 4);
 }
 .browsable-tabs-left {
   display: flex;
@@ -2387,7 +2387,7 @@
   gap: 8px;
   position: sticky;
   top: 38px;
-  z-index: 4;
+  z-index: calc(var(--z-app) + 3);
   background: var(--floating-bg, var(--surface-2));
   padding: 10px 0 8px;
   margin: -12px -12px 0; /* cancel panel padding so bg bleeds edge-to-edge */
@@ -2582,7 +2582,7 @@
 /* ---------- Per-card folder picker (portaled) ---------- */
 .browsable-folder-menu {
   position: fixed;
-  z-index: 1500;
+  z-index: calc(var(--z-plugin-window) + 5);
   min-width: 200px;
   background: var(--surface-2);
   border: 1px solid var(--vhs-shadow);
@@ -2745,7 +2745,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  z-index: 1;
+  z-index: calc(var(--z-app) + 1);
 }
 .settings-modal--sidebar .settings-title i {
   color: var(--primary);
@@ -2758,7 +2758,7 @@
   letter-spacing: 0.04em;
   color: var(--text-primary);
 }
-.settings-modal--sidebar .settings-close { z-index: 1; }
+.settings-modal--sidebar .settings-close { z-index: calc(var(--z-app) + 1); }
 
 .settings-body {
   flex: 1;
@@ -3251,7 +3251,7 @@
 /* ─── Rulers ─────────────────────────────────────────────────────────────── */
 .ruler {
   position: absolute;
-  z-index: 15;
+  z-index: calc(var(--z-app) + 14);
   pointer-events: auto;
   cursor: crosshair;
   user-select: none;
@@ -3275,7 +3275,7 @@
   width: 24px;
   height: 24px;
   background: var(--surface-2, #1a1a1a);
-  z-index: 16;
+  z-index: calc(var(--z-app) + 15);
   pointer-events: none;
 }
 
@@ -3288,7 +3288,7 @@
 /* ─── Guidelines ─────────────────────────────────────────────────────────── */
 .guideline {
   position: absolute;
-  z-index: 18;
+  z-index: calc(var(--z-app) + 17);
   pointer-events: auto;
   cursor: grab;
 }
@@ -3314,6 +3314,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 20;
+  z-index: calc(var(--z-app) + 19);
 }
 

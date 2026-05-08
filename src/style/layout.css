@@ -162,7 +162,7 @@ body.panels-collapsed #app {
   left: 50px;
   display: flex;
   gap: 6px;
-  z-index: 10;
+  z-index: calc(var(--z-app) + 9);
 }
 
 /* ---------- Tool sidebar (Photoshop-style) ---------- */
@@ -219,7 +219,7 @@ body.panels-collapsed #app {
   top: calc(50% - 8px);
   transform: translate(-50%, -50%);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  z-index: 50;
+  z-index: calc(var(--z-app) + 49);
   /* Diameter ≈ 1.6 × footer height — 20 % smaller than the previous
    * 72 px dial. Lower portion overlaps the footer; upper protrusion
    * reads as a single piece extending up out of the footer. */
@@ -322,11 +322,11 @@ body.color-hub--dot .color-circle-btn:hover {
   width: 260px;
   height: 260px;
   transform: translate(-50%, 50%);
-  /* Above the colour hub popover (z-index 240) so the dot rides ON TOP
+  /* Above the colour hub popover (z-index calc(var(--z-plugin-window) + 5)) so the dot rides ON TOP
    * of the popover's top edge — the dot's lower 21 px overlap reads as
    * the dial sinking INTO the drawer, the same way it sinks into the
    * footer in closed state. */
-  z-index: 241;
+  z-index: calc(var(--z-plugin-window) + 6);
   pointer-events: none; /* children opt back in */
   /* Lifts when the colour drawer opens. We animate `transform` (composited
    * on the GPU) instead of `bottom` because `bottom` transitions are
@@ -483,7 +483,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   position: fixed;
   bottom: 40px; /* footer is 36 px tall — clears it with 4 px breathing room */
   left: 38.2vw;
-  z-index: 51;
+  z-index: calc(var(--z-app) + 50);
   width: 0;     /* zero-size anchor; children offset themselves */
   height: 0;
   pointer-events: none;
@@ -538,7 +538,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 /* ---------- Assignment flyout ---------- */
 .quick-wheel-assign-flyout {
   position: fixed;
-  z-index: 240;
+  z-index: calc(var(--z-plugin-window) + 5);
   background: var(--surface-2);
   border: 1px solid var(--vhs-shadow);
   border-radius: 6px;
@@ -622,7 +622,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 
 .color-flyout {
   position: fixed;
-  z-index: 220;
+  z-index: calc(var(--z-plugin-window) + 5);
   background: var(--surface-2);
   border: 1px solid var(--vhs-shadow);
   border-radius: 6px;
@@ -823,7 +823,7 @@ body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
   opacity: 0;
   transition: opacity 0.25s, transform 0.25s;
   pointer-events: none;
-  z-index: 100;
+  z-index: var(--z-plugin-window);
   font-size: 12px;
 }
 

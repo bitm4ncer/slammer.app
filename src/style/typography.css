@@ -3,7 +3,7 @@
 .font-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: var(--z-settings-overlay);
   background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
@@ -551,7 +551,7 @@
 /* ---------- Inline canvas text editor (contenteditable div) ---------- */
 .canvas-text-editor {
   position: absolute;
-  z-index: 50;
+  z-index: calc(var(--z-app) + 49);
   background: transparent;
   outline: none;
   padding: 0;

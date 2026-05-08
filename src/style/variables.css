@@ -23,6 +23,13 @@
   --side-panel-w: 340px;
   --tool-sidebar-w: 44px;
   --footer-h: 36px;
+
+  /* Z-index hierarchy */
+  --z-app: 1;
+  --z-plugin-window: 100;
+  --z-shop: 500;
+  --z-settings-overlay: 900;
+  --z-settings: 1000;
 }
 
 @font-face {
