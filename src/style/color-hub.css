@@ -265,6 +265,11 @@
   align-items: center;
   gap: 6px;
 }
+/* Explicit [hidden] override — `display: flex` above wins over the
+ * built-in `[hidden] { display: none }` rule, so the preview row would
+ * stay visible in gradient mode without this. (Same gotcha called out
+ * in CLAUDE.md.) */
+.color-hub-preview-row[hidden] { display: none; }
 .color-hub-preview {
   flex: 1;
   height: 22px;
