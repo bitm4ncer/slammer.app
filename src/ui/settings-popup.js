@@ -49,6 +49,11 @@ const DEFAULTS = {
   canvasGridMajor: 100,
   canvasGridOpacity: 25,
   canvasGridColor: '#ffffff',
+  // Performance — when ON, Konva's pixelRatio is forced to 1 instead of
+  // tracking devicePixelRatio. On a 2x retina display this cuts canvas
+  // pixel work by 4x; visible quality drop is minor on most workflows.
+  // Applied at boot — toggling requires a reload.
+  performanceMode: false,
 };
 
 // Curated accent palette — clicking a swatch sets accent without opening the
@@ -513,6 +518,12 @@ function renderCanvas() {
         </div>
       </div>
 
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Performance</div>
+        ${toggleRowHTML('setPerformanceMode', 'Performance mode', s.performanceMode,
+          'Renders the canvas at 1x device pixels instead of tracking your display\'s pixel ratio. On a 2x retina screen this cuts canvas pixel work by ~4x. Slight quality drop on text edges and tiny vector strokes. Reload the page after toggling for it to take effect.')}
+      </div>
+
     </section>
   `;
 }
@@ -530,6 +541,8 @@ function wireCanvas(root) {
   // Canvas Grid controls
   bindToggle(root, 'setCanvasGridShow', 'canvasGridShow');
   bindToggle(root, 'setCanvasGridSnap', 'canvasGridSnap');
+  // Performance mode — applied at boot via Konva.pixelRatio in main.js.
+  bindToggle(root, 'setPerformanceMode', 'performanceMode');
 
   const minorInput     = root.querySelector('#setCanvasGridMinor');
   const minorReadout   = root.querySelector('#setCanvasGridMinorReadout');

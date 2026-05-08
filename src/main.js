@@ -1,5 +1,6 @@
 // slammer.app — bootstrap.
 
+import Konva from 'konva';
 import './style/variables.css';
 import './style/layout.css';
 import './style/components.css';
@@ -103,6 +104,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     button: document.getElementById('btnSettings'),
     version: '1.0.2',
   });
+  // Apply performance-mode pixelRatio BEFORE any Konva object is created.
+  // Konva reads Konva.pixelRatio at layer/canvas creation; setting it here
+  // means every layer the canvas-view init builds inherits the lower ratio.
+  // Toggling the setting requires a reload to fully apply (existing canvases
+  // keep their original backing-store size).
+  try {
+    if (getSettings().performanceMode) Konva.pixelRatio = 1;
+  } catch (_) { /* legacy build */ }
   initSidePanelSplit();
 
   // Register plugins (order = order shown in Add menus, sort of).
