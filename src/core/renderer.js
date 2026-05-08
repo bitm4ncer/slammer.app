@@ -8,7 +8,6 @@ import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 import { getSelection, onSelectionChange } from '../ui/selection-state.js';
 import { getSettings, onSettingsChange } from '../ui/settings-popup.js';
 import { computeBoxScaleSnap } from '../ui/snap-rulers.js';
-import { runInWorker, isWorkerAvailable } from './effect-worker.js';
 
 function resolveFontMeta(text) {
   if (!text) return null;
@@ -953,23 +952,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           sourceImageData: st.sourceImageData,
           contentRect: getContentRect(layer, st),
         };
-        // Route through Web Worker if the plugin has opted in. The worker
-        // owns the heavy compute — main thread stays free during a knob
-        // drag. Worker accepts the input buffer via transfer (no copy);
-        // result comes back as a fresh ImageData.
-        let r;
-        if (plugin.worker === true && isWorkerAvailable()) {
-          try {
-            r = await runInWorker(eff.pluginId, input, eff.params || {});
-          } catch (workerErr) {
-            console.warn('[plugin worker]', eff.pluginId, workerErr);
-            r = null;
-          }
-          // Fallback to main-thread if worker rejected.
-          if (!r) r = await plugin.process(input, eff.params || {}, ctx);
-        } else {
-          r = await plugin.process(input, eff.params || {}, ctx);
-        }
+        const r = await plugin.process(input, eff.params || {}, ctx);
         out = r || input;
         // First-call detection: if the plugin returned a different ref
         // than the input, it's out-of-place — skip the clone next time.
