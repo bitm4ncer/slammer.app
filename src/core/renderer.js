@@ -1253,6 +1253,45 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     scheduleDraw();
   }
 
+  // Patch an existing layer's Konva nodes + cached state to match the new
+  // model. Used by the doc:loaded diff-based reload path so that undo/redo
+  // doesn't tear down and rebuild every layer (which left the canvas blank
+  // for several frames — visible flicker, see BUGS.md).
+  async function patchLayerNodes(layer, st) {
+    // Group transform + visibility
+    st.group.setAttrs({
+      x: layer.transform.x,
+      y: layer.transform.y,
+      scaleX: layer.transform.scaleX,
+      scaleY: layer.transform.scaleY,
+      rotation: layer.transform.rotation,
+      opacity: layer.opacity,
+      visible: layer.visible,
+    });
+    if (st.image) {
+      st.image.globalCompositeOperation(layer.blendMode);
+    }
+    // Cached rect + vector raster cache may be stale after a transform
+    // or content change.
+    st._cachedRect = null;
+    st._vectorRasterDirty = true;
+    rectGen++;
+
+    // Re-rasterise the source. For image layers, rasterizeSource short-
+    // circuits if st._sourceRef === layer.source (no re-decode); only
+    // the source canvas + getImageData reruns. For text/vector, the
+    // rasterise is the same cost as initial creation.
+    const imgData = await rasterizeSource(layer, st);
+    if (imgData) {
+      st.sourceImageData = imgData;
+      // Effects may have changed (params / order / count). Conservative:
+      // re-run the whole pipeline. The renderer's effect cache lives on
+      // st.steps and is naturally invalidated by dirtyFromIndex = 0.
+      st.dirtyFromIndex = 0;
+      paintLayer(layer, st);
+    }
+  }
+
   function syncZOrder() {
     // Pass 1: top-level layers — their Konva.Groups are direct
     // children of contentLayer, so zIndex is the contiguous index
@@ -1570,21 +1609,36 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         break;
       }
       case 'doc:loaded': {
-        // Tear down all layer state, then rebuild from document.
-        for (const id of Array.from(layerState.keys())) destroyLayerNodes(id);
-        // Parallelise — most of createLayerNodes is awaiting createImageBitmap
-        // (or text/vector rasterise) on a per-layer basis. With 10 image layers
-        // the sequential await chain stacked decode time linearly; Promise.all
-        // bounds it by the slowest single decode.
-        await Promise.all(document.layers.map((layer) =>
-          createLayerNodes(layer).catch((err) =>
-            console.error(`[renderer] failed to create layer nodes for ${layer.id}:`, err))
-        ));
+        // Diff-based reload. Old behaviour was teardown + full rebuild on
+        // EVERY doc:loaded, including undo/redo where 99 % of layers are
+        // identical to the live state — that was the source of the
+        // visible undo flicker (see BUGS.md). Now we keep matching layers
+        // alive and patch in place; only ids that disappeared are destroyed
+        // and only ids that newly appeared get a fresh createLayerNodes.
+        const newLayers = document.layers;
+        const newIds = new Set();
+        for (const l of newLayers) newIds.add(l.id);
+        // Destroy layers that aren't in the new state.
+        for (const id of Array.from(layerState.keys())) {
+          if (!newIds.has(id)) destroyLayerNodes(id);
+        }
+        // Create-or-patch each new layer in parallel — patching is fast
+        // (no image decode if source ref unchanged), creating runs the
+        // existing async path.
+        await Promise.all(newLayers.map(async (layer) => {
+          const existing = layerState.get(layer.id);
+          try {
+            if (!existing) await createLayerNodes(layer);
+            else await patchLayerNodes(layer, existing);
+          } catch (err) {
+            console.error(`[renderer] doc:loaded layer ${layer.id} failed:`, err);
+          }
+        }));
         // Fix-up pass for nested groups: when parent + children resolved out
         // of order, the child may have landed in contentLayer instead of its
         // parent's Konva.Group. Re-parent now that all sts exist. (Mirrors
         // the case 'group:childrenChanged' logic.)
-        for (const layer of document.layers) {
+        for (const layer of newLayers) {
           if (layer.type !== 'group' || !Array.isArray(layer.childIds)) continue;
           const groupSt = layerState.get(layer.id);
           if (!groupSt) continue;
