@@ -102,11 +102,11 @@ function build() {
           <span class="color-hub-slot-chip color-hub-slot-chip--stroke" data-slot-chip="stroke"></span>
         </button>
       </div>
-    </div>
-    <div class="color-hub-mode-row">
-      <button class="color-hub-mode-btn" data-mode="solid"    type="button" title="Solid colour"          aria-label="Solid colour"><i class="fas fa-circle"></i></button>
-      <button class="color-hub-mode-btn color-hub-mode-btn--gradient" data-mode="gradient" type="button" title="Gradient" aria-label="Gradient"><span class="color-hub-mode-gradicon"></span></button>
-      <button class="color-hub-mode-btn" data-mode="none"     type="button" title="Transparent / no fill" aria-label="No fill"><i class="fas fa-ban"></i></button>
+      <div class="color-hub-mode-row" role="tablist" aria-label="Fill mode">
+        <button class="color-hub-mode-btn" data-mode="solid"    type="button" title="Solid colour"          aria-label="Solid colour"><i class="fas fa-circle"></i></button>
+        <button class="color-hub-mode-btn color-hub-mode-btn--gradient" data-mode="gradient" type="button" title="Gradient" aria-label="Gradient"><span class="color-hub-mode-gradicon"></span></button>
+        <button class="color-hub-mode-btn" data-mode="none"     type="button" title="Transparent / no fill" aria-label="No fill"><i class="fas fa-ban"></i></button>
+      </div>
     </div>
     <div class="color-hub-row">
       <div class="color-hub-picker">

@@ -52,10 +52,14 @@
   pointer-events: none;
 }
 
-/* ---------- Fill / Stroke slot toggle (top row) ---------- */
+/* ---------- Fill / Stroke slot toggle (top row) ----------
+ * Slot toggle pill on the LEFT, mode buttons (solid / gradient / none)
+ * on the RIGHT. Single divider line below, no second row. */
 .color-hub-slot-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -404,15 +408,16 @@
   padding: 14px 4px;
 }
 
-/* ---------- Mode row (Solid / Gradient / None) ---------- */
+/* ---------- Mode row (Solid / Gradient / None) ----------
+ * Sits on the RIGHT half of the slot row — paired pill of three buttons,
+ * mirroring the slot pill on the left. */
 .color-hub-mode-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 0 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 10px;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+  padding: 3px;
 }
 .color-hub-mode-btn {
   width: 28px;
