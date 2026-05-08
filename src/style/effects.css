@@ -256,6 +256,72 @@
 }
 .effect-label { letter-spacing: 0.05em; text-transform: uppercase; }
 
+/* ---------- Large knob row (blur etc.) ---------- */
+.effect-slider-row--lg {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 6px;
+}
+.effect-slider-row--lg .effect-label {
+  justify-self: start;
+}
+.effect-slider-row--lg .knob-lg {
+  justify-self: center;
+}
+.effect-slider-row--lg .effect-num-wrap {
+  justify-self: center;
+  width: 72px;
+}
+
+/* ---------- Small knob row (seed, bias, fine-tuning) ---------- */
+.effect-slider-row--sm {
+  grid-template-columns: 72px 24px 48px;
+}
+.knob-sm {
+  outline: none;
+  border-radius: 50%;
+  transition: box-shadow 0.15s ease;
+}
+.knob-sm:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 50%, transparent);
+}
+
+/* ---------- XL knob row (hero — blur radius) ---------- */
+.effect-slider-row--xl {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 6px;
+}
+.effect-slider-row--xl .effect-label {
+  justify-self: start;
+}
+.effect-slider-row--xl .knob-xl {
+  justify-self: center;
+}
+.effect-slider-row--xl .effect-num-wrap {
+  justify-self: center;
+  width: 80px;
+}
+.knob-xl {
+  outline: none;
+  border-radius: 50%;
+  transition: box-shadow 0.15s ease;
+}
+.knob-xl:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 50%, transparent);
+}
+
+/* ---------- Section label (divider heading inside effect panels) ---------- */
+.effect-section-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  font-weight: 600;
+  padding: 4px 0 2px;
+}
+
 /* ---------- Knob ---------- */
 .knob-container {
   outline: none;
@@ -1879,6 +1945,27 @@
   margin-bottom: 2px;
 }
 
+/* Drop Shadow: polar widget + blur knob side by side */
+.drop-shadow-polar-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4px 0;
+}
+.drop-shadow-polar-row .effect-angle-widget {
+  padding: 0;
+}
+.drop-shadow-polar-row .drop-shadow-blur-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.drop-shadow-polar-row .drop-shadow-blur-col .effect-label {
+  font-size: 9px;
+}
+
 /* Drop Shadow panel: tighter color swatch row, normalised right column */
 .drop-shadow-effect .effect-slider-row {
   grid-template-columns: 80px 28px 60px;
@@ -2008,11 +2095,15 @@
 
 /* ---------- Angle + distance widget (Drop Shadow polar mode) ---------- */
 .effect-angle-widget {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 14px;
+  /* Disk on top, the angle + distance numeric inputs stacked underneath
+     so the spatial relationship matches what the user is looking at:
+     they tweak a value in the row, they look up to see where the handle
+     went on the disk. The disk used to sit to the LEFT with the nums
+     column to the right — confusing in narrow side panels. */
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   padding: 6px 4px 10px;
 }
 .effect-angle-disk {
