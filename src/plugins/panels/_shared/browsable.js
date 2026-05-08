@@ -248,7 +248,12 @@ export function createBrowsable({
       return;
     }
 
-    loaderTimeout = setTimeout(showLoader, 500);
+    // Show the spinner almost immediately — 120 ms is the perceptual
+    // threshold below which the user wouldn't have noticed the empty
+    // state anyway, but enough to skip flash for instant cache hits.
+    // Previous 500 ms made the panel look broken on slow proxy loads
+    // (Met / Openverse routinely hit 1-3 s through wsrv.nl).
+    loaderTimeout = setTimeout(showLoader, 120);
 
     let results = [];
     try {

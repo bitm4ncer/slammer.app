@@ -232,6 +232,7 @@
 - [x] **Levels**: rebuilt as a single 3-handle slider (`tripleSlider` helper) — blacks / gamma / whites on one track; numeric LUT identical to old behaviour
 - [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
 - [x] **Drop Shadow: angle control rework** — `createAngleDistanceWidget` (`src/plugins/shared/angle-distance-widget.js`) draws a draggable handle on a circular puck so users set angle + distance in one gesture (Figma/Affinity-style). Live canvas preview while dragging. Cartesian XY mode kept as an alternative tab; the Phase 20 Drop Shadow ships with both. Disk size tuned 108 → 88 px in `653bdc9`.
+- [ ] **Verify Mesh Gradient classification** — the manifest must have `pro: true` AND `pack: 'gradient-pack'` (or whatever the Infinity Gradients pack id resolves to after the rename). Check `src/plugins/premium/mesh-gradient/index.js` or wherever it actually sits — if it's currently under `src/plugins/tools/` (free) it needs to move to `src/plugins/premium/` and the manifest fields updated. Confirm it shows up in the Bitmancer Shop card grid alongside the other Gradient Pack entries. Also confirm the rendering bug (parked in `BUGS.md` under "Mesh Gradient — control points + mesh connections broken") gets fixed before this can be ticked.
 
 ### Cluster C — Footer & canvas chrome
 - [x] Frame button: accent-tinted highlight when frame active + inline `×` close affordance (clears `doc.exportFrame`)
@@ -258,6 +259,32 @@
 - [x] **Layer Export** region pill — visible only when an active layer is selected; defaults filename to the layer's name; pipes through `renderer.rasterizeLayerToBlob`.
 - [x] JPEG-with-transparency auto-mask — for `Layer Export + JPEG + Background: transparent`, the canvas is cropped to the layer's alpha bounding box (no more giant white rectangles).
 
+#### Cluster E v2 — Export popup full rework
+
+> The current popup is a vertical stack of pill rows + a filename input. Functional but charmless and low-information: the user clicks Export blind, with no idea how big the file will be, what it will look like, or whether they cropped the right region. This pass is a full makeover: split layout, live preview, and the QoL features a real export dialog needs.
+
+- [ ] **Two-column layout** — left side: live preview canvas, right side: collapsible setting groups (Region, Format, Quality, Background, Filename, Advanced). Popup grows to accommodate the preview without feeling cramped. Resizable by dragging the bottom-right corner; size persisted under `slammer:window:export`.
+- [ ] **Live export preview** — canvas-rendered thumbnail of the exact bytes that would be written, refreshed debounced (~150 ms) on any setting change. Shows: actual pixel dimensions, scale factor effect, background fill, JPEG/WebP compression artifacts at the chosen quality. Pan + zoom with the same scroll/pinch model as the main canvas; "fit" / "100%" buttons in a mini-footer.
+- [ ] **File size estimate** — encode the preview at the chosen format/quality once after each settings change, display "~ 1.4 MB · 1920 × 1080" below the preview. Uses real encoder, not a heuristic. Long-running encodes show a small spinner and don't block the UI.
+- [ ] **Quality slider always visible** for JPEG + WebP (currently buried). Live updates the preview + size estimate. Default 85, range 1–100. PNG hides the slider but exposes a `Bit depth: 8 / 16` selector when the source has high-bit-depth content.
+- [ ] **Custom dimensions** — under SCALE, add a "Custom" pill that opens W × H inputs with a lock-aspect toggle. Shows resulting scale factor inline. Useful for "export at exactly 2400 px wide for Behance".
+- [ ] **Crop region** — when REGION is "Visible" or a layer, allow the user to drag a crop rectangle directly on the preview to refine the export bounds before encoding. Preset crop ratios (1:1, 4:5, 16:9, 9:16, free).
+- [ ] **Recent presets** — top of the right column shows up to 4 chips of the user's recent export configs (e.g. "PNG · 2× · transparent"). One click loads the whole config. Stored in `slammer:export:recent` (capped at ~12).
+- [ ] **Saved presets** — beyond Recent, a small "+" lets the user name and save the current config as a preset (e.g. "Instagram Square", "Behance Wide", "Print 300 DPI"). Listed under Recent. Editable / deletable.
+- [ ] **Format-specific advanced options** in a collapsed accordion at the bottom:
+  - JPEG: progressive on/off, chroma subsampling (4:4:4 / 4:2:0), strip metadata
+  - WebP: lossless toggle, alpha quality (separate from RGB quality), strip metadata
+  - PNG: bit depth (8/16), interlace toggle, optimise (run a quick zopfli-style pass for smaller files)
+- [ ] **Metadata controls** — common toggles for all formats: include EXIF (camera / DPI / colour profile), strip GPS, set DPI (72 / 150 / 300 / custom). Default: strip GPS, include DPI.
+- [ ] **Copy to clipboard** — secondary action button next to Export: encodes the same output and writes it to the system clipboard via `navigator.clipboard.write` with the chosen MIME type. Useful for paste-into-Slack / Figma / email.
+- [ ] **Drag-out export** — the preview thumbnail is draggable: dragging it out of the popup window onto the desktop / Finder / Explorer triggers a real file save (uses HTML5 `application/octet-stream` drag with the encoded blob). Same trick Figma uses for asset export. Filename comes from the FILENAME field.
+- [ ] **Open after export** — checkbox: after saving, open the file in a new tab (PNG/JPEG/WebP all render natively).
+- [ ] **Filename templates** — small `?` next to the FILENAME input shows tokens: `{project}`, `{layer}`, `{date}`, `{time}`, `{w}`, `{h}`, `{format}`. The default is `{project}` but the user can save a template (e.g. `{project}_{w}x{h}@{date}`) under Saved presets.
+- [ ] **Region picker improvements** — current REGION pills are flat. Convert to a labeled selector with a thumbnail per region (Export Frame thumb, Visible thumb, per-layer mini-thumbs when applicable). Multi-select for batch export hooks into Phase 24 (Multi-Frame Export).
+- [ ] **Background picker rework** — TRANSPARENT / WHITE / BLACK / CUSTOM stay, but CUSTOM opens the new colour picker (Phase 23) instead of a bare colour input. Adds a "Project background" option that uses the project's default background colour.
+- [ ] **Visual makeover** — match the broader product aesthetic shipped in Phase 19 Cluster J (UI animations) + Phase 30 (themes). Subtle bevels on inputs, consistent group-header styling, comfortable spacing, theme-aware colours via `--sl-*` tokens. The popup should feel like a polished surface, not a stack of form rows.
+- [ ] **Keyboard ergonomics** — `Enter` triggers Export, `Esc` closes, `Ctrl+Shift+E` opens the popup directly to the last config without going through any menu.
+
 ### Cluster F — Persistence & undo
 - [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch — **parked in BUGS.md** (renderer rewrite scope; needs its own cluster)
 - [x] Audit: plugin params persistence — every plugin stores state in `effect.params` (snapshotted per `JSON.stringify`); only `displacement` keeps a module-level `_textureCache` Map that's a non-persisted in-memory perf cache (correct). No gaps found.
@@ -270,18 +297,19 @@
 
 ### Cluster H — Vector
 - [x] **Split** button on the path picker (visible only on multi-path vector layers) — turns the layer into N independent vector layers, preserves per-path fill/stroke/shape, copies transform/accent/opacity/blendMode/visible/locked + parent group membership, removes the source. New `doc.splitVectorLayer(id)` mutator emits one `layer:removed` + N `layer:added` so history captures it as a single structural commit.
-- [ ] **Vector panel layout polish** — PATH actions section (Smooth, Reverse, Open, Join, Outline) looks messy as a vertical button stack. Redesign as a compact horizontal pill row or icon-button grid. Simplify slider + COMBINE section should also be visually tightened. Overall: the vector panel should feel as polished as the Typography panel.
+- [x] **Vector panel layout polish** — Path-actions row split: Simplify slider on its own row, action buttons (Smooth / Reverse / Open / Join / Outline) on a dedicated row as a compact pill strip via new `.vector-actions--pills` modifier. Buttons share width evenly (`flex: 1 1 0`) so they read as a single segmented control. COMBINE row gets the same pill treatment.
 
 ### Cluster I — Plugin polish
 - [x] Image plugins (Unsplash / Pexels / Met): sticky search header — search row + tag pills now wrap in a `.browsable-search-header` that uses `display: contents` in landing state (so the centred landing layout is unaffected) and `position: sticky; top: 38px` once the user's first search exits the landing state.
 - [x] fal.ai: progress indicator — a `setRunning(bool)` helper swaps the Run button to a spinner + "Generating…" label, shows a 3 px indeterminate animated progress bar below the actions row, and surfaces queue position when known ("Queued · N ahead…"). Hidden on success / error / cancel.
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
-- [ ] **Image plugin loading spinner** — Unsplash / Pexels / Met show an empty panel while the landing page content loads. Add a centered spinner (reuse the `.is-processing` pattern from effect cards) that disappears once the first batch of images renders.
+- [x] **Image plugin loading spinner** — landing-loader's reveal delay tightened from 500 ms → 120 ms in `_shared/browsable.js`. Below 120 ms = sub-perceptual (no flash for fast cache hits); over 120 ms = the centered spinner (existing `.browsable-landing-loader`) appears so the user sees feedback. Met / Openverse routinely hit 1-3 s through wsrv.nl proxy — the old 500 ms gap made those panels look broken on every open.
+- [ ] **Plugin feed persistence** — closing and reopening a panel plugin should restore the user's exact session state: current search query, active tag/category filter, current page (for paginated APIs), all loaded items in the feed, and scroll position. Persisted under `slammer:plugin:<id>:feed` in localStorage (or IndexedDB if payload is large). On `openPluginWindow(id)` re-open, hydrate the feed from cache before the next API call so the user lands back exactly where they left off — no jarring "fresh search" on every reopen. Applies to Unsplash, Pexels, Met, fal.ai, and any future panel plugins; ideally implemented as a shared helper in `src/plugins/panels/_shared/` so each plugin opts in with a few lines.
 
 ### Cluster J — UI animations & transitions
-- [ ] **Plugin window open/close** — fade + slide-in from bottom on open (~200ms ease-out), slide-down + fade-out on close (~150ms ease-in). Apply to `floating-window.js` so all plugin windows inherit the animation.
+- [x] **Plugin window open/close** — `floating-window.js` open animation tuned (200 ms ease-out, 14 px slide + 0.98 → 1 scale). Close adds an `is-closing` class that runs the inverse keyframe (150 ms ease-in) before `el.remove()` — host re-mount logic still sees the close fire after the node is gone. All floating windows (plugin panels, export popup) inherit.
 - [ ] **Panel collapse/expand** — smooth height transition on Typography, Vector, Effects, and any future collapsible panel. Use `max-height` transition or `grid-template-rows: 0fr → 1fr` for a clean accordion feel (~200ms ease).
-- [ ] **Settings modal overlay** — background overlay (`--modal-backdrop`) fades in slowly (~300ms) when Settings opens. Ensure the overlay sits below the Settings modal content but above everything else.
+- [x] **Settings modal overlay** — `.settings-backdrop` fade-in extended from 160 → 280 ms; `.settings-modal` gets its own `settingsModalRise` keyframe (200 ms ease, 10 px slide + 0.985 → 1 scale) so the surface lands while the world recedes. Cinematic without dragging.
 - [ ] **Z-index hierarchy** — enforce a strict stacking order: Settings modal + overlay (highest) → Shop popup → Plugin windows (in focus order) → rest of the app. Define named z-index layers in `variables.css` (`--z-app`, `--z-plugin-window`, `--z-shop`, `--z-settings-overlay`, `--z-settings`).
 - [ ] **General micro-transitions** — audit remaining abrupt show/hide interactions (dropdowns, tooltips, effect-card expand, add-menu) and add subtle fade/scale transitions where it feels natural. Keep durations short (100–200ms) and respect `prefers-reduced-motion`.
 
@@ -328,12 +356,50 @@
 
 ## PHASE 23 — Color System (full pro) 🆕
 
-- [ ] **Center-footer color circle** — current active colour, click to expand
-- [ ] **Popover**: HSL triangle + hue ring, hex / RGB / HSL inputs, eyedropper
-- [ ] **Swatches palette** — favourites grid
-- [ ] **Named color variables**: user creates `--accent`, `--bg`, etc. Assignable to text colour, vector fill / stroke, gradient stops, Color Overlay tint. Editing the variable propagates to every consumer **live**.
-- [ ] Storage: `slammer:colors:variables` + `slammer:colors:swatches` (localStorage) + project-scoped overrides serialised into `.slammerproj`
-- [ ] API on `window.__slammer.colors` so plugins can read/subscribe
+> Goal: turn the existing color picker into a central hub that owns both colours AND gradients, drives every fill/stroke surface in the app, and feels like a real product. Drag-and-drop is the connective tissue.
+
+### Color hub UI (futuristic, slide-out from the dot)
+
+- [ ] **Color dot in center-footer** = the current active fill colour. Already shipped at this stage; rework so clicking it slides out a futuristic colour-picker popover anchored to the dot (smooth 200ms slide + fade, see Phase 19 Cluster J transitions).
+- [ ] **Stroke ring around the dot** — render the stroke colour as a thin (~3 px) ring around the fill dot. Two-state visual: filled centre = fill colour, ring = stroke colour. Clicking the ring vs the centre opens the picker focused on stroke vs fill.
+- [ ] **Picker layout** — keep the current HSL-triangle-inside-hue-wheel design (already on a nice stage). Add a pill toggle at the top of the popover: `Color | Gradient` so the user can switch between solid colour and gradient editing in the same surface.
+- [ ] **Eyedropper** — re-uses existing Local-EyeDropper API integration; pulls a pixel from the canvas (or any visible page element) into the active fill/stroke slot.
+- [ ] **Hex / HSL readouts + numeric inputs** — already laid out. Add RGB row alongside HSL.
+- [ ] **Opacity slider** — keeps current spot below the wheel.
+- [ ] **Visual polish**: keep dark surfaces, subtle bevels, glow ring on the dot when the popover is open. Match the aesthetic language of the existing radial control cluster.
+
+### Color & Gradient Library (central hub)
+
+- [ ] **Saved swatches strip** inside the popover — user-saved colours + currently used colours from the active project. Drag a colour out of the strip onto any target on the canvas to apply.
+- [ ] **Saved gradients strip** in the gradient mode of the popover — same model as swatches but for gradients. Drag a gradient out to apply.
+- [ ] **Library popup** (full-screen) — extended browser like the existing Gradient Library plugin. Categories: Recent · Favourites · Project palette · Bitmancer presets · User packs. Search + tag filter. Same UX language as the Gradient Library so they feel like sibling features.
+- [ ] **Save / delete** — `+` button in the swatches/gradients strip captures the current colour/gradient. Right-click or drag-to-trash removes.
+- [ ] **Drag-drop apply** — every drop target accepts the same MIME types:
+  - `application/x-slammer-color` (hex/rgba payload)
+  - `application/x-slammer-gradient` (already used by Gradient Library — extend to all gradient pickers)
+  - Drop targets: vector layer (canvas hit-test → fill or stroke based on drop position / modifier key), text layer (→ text colour), every `colorRow` / `gradientStopsRow` input across the app, the dot itself.
+- [ ] **Hover preview** — dragging a colour over a vector/text layer on canvas shows a live preview tint while hovering, commits on drop, reverts on cancel. Same pattern as the existing live font preview from Phase 19 Cluster G.
+
+### Stroke + Fill model
+
+- [ ] **Two-slot active colour state** in `window.__slammer.colors`: `{ fill, stroke }`. Footer dot reflects both (centre = fill, ring = stroke).
+- [ ] **Swap fill/stroke** keyboard shortcut (`X`, matches Affinity/Photoshop) — wired through the new shortcut registry (Phase 21b).
+- [ ] **No-fill / no-stroke** option in the picker — rendered as a slashed circle, like Affinity.
+
+### New layer inheritance
+
+- [ ] **Newly created vector shape, path, or text layer takes the currently active fill + stroke** instead of hardcoded defaults. Pen, pencil, shape primitives, text tool — all read from `window.__slammer.colors` at creation time. So the user picks a colour once, then everything they draw uses it until they change it. Feels like a product.
+- [ ] First-launch defaults stay sensible: black fill, no stroke (current behaviour), so existing projects don't surprise old users.
+
+### Storage & API
+
+- [ ] **Storage layout**:
+  - `slammer:colors:swatches` — array of saved colours (`{ id, hex, alpha, name? }`)
+  - `slammer:colors:gradients` — array of saved gradients (re-uses existing gradient stop format)
+  - `slammer:colors:active` — `{ fill, stroke }` last-used pair, restored on app boot
+  - Project-scoped overrides (palette specific to a `.slammerproj`) serialised into the manifest
+- [ ] **Public API on `window.__slammer.colors`**: `getActive()`, `setActive({ fill, stroke })`, `subscribe(cb)`, `saveSwatch(c)`, `saveGradient(g)`, `applyTo(layerId, slot)` — so plugins (incl. premium) can read/subscribe and panel plugins like the Library can drive it.
+- [ ] **Named color variables** (deferred to a follow-up sub-phase 23b if needed): user creates `--accent`, `--bg`, etc. Assignable to text colour, vector fill / stroke, gradient stops, Color Overlay tint. Editing the variable propagates to every consumer live. Skip in v1 — not on the critical path for the "feels like a product" goal.
 
 ## PHASE 24 — Multi-Frame Export & Versioning 🆕
 
@@ -372,6 +438,9 @@
   - [ ] **Perspective** — 4 corner handles
   - [ ] **Mesh Warp** — N×M grid handles
   - [ ] **Pin Points** — drop pins onto triangulated mesh, drag pins to deform
+- [ ] **Fisheye** — Distort. Global lens distortion projecting the image onto a sphere/hemisphere for the classic 180° wide-angle look. Distinct from Bulge (Bulge is localised with a centre + falloff; Fisheye is a full-frame lens projection). Controls: amount/strength (−100 = pincushion, 0 = flat, +100 = full barrel), zoom (compensate the edge crop), centre offset (shift the optical centre off-frame), edge mode (clamp / wrap / mirror / transparent), aspect lock (square vs match-frame). Sub-modes for projection style: **Equidistant**, **Equisolid**, **Stereographic**, **Orthographic** (the four standard fisheye projections, distinct mathematical mappings producing different edge curvatures). Free effect — could be a premium polish later if the projection picker turns into a real lens-simulator.
+- [ ] **3D** 🟧 PREMIUM (Surface Pack — new) — Stylize. A unified bevel + emboss + 3D-shade effect inspired by Affinity's combined Layer Effects panel: instead of forcing the user to pick "Bevel/Emboss" OR "3D" as separate effects, this single effect blends both worlds. Treats the layer's alpha/luma as a height-field, then runs Phong-ish per-pixel shading. Controls: **Type** (Pillow / Outer Bevel / Inner Bevel / Emboss / Sculpt — the last one being the full 3D mode), Radius (height-field smoothing), Depth (extrusion strength), Soften (post-blur on the lighting result), Profile picker (curve-shaped falloff: linear, S-curve, ridge, custom-drawable), Direction (Azimuth + Elevation set via a circular puck like the existing Drop Shadow widget), Highlight + Shadow colours with separate opacities, Diffuse / Specular / Shininess sliders (active in Sculpt mode), Specular colour, Ambient + colour, multi-light support (1–4 lights, each with its own direction + colour + intensity), Invert toggle, Scale-with-object toggle. Live preview during all knob drags. Works on text, vector and image layers — the height field source adapts (alpha for vector/text, luma+alpha for image).
+- [ ] **Plastic** 🟧 PREMIUM (Surface Pack) — Stylize. Recreates After Effects' CC Plastic look: glossy, sculpted plastic/wax surface generated from the layer's luma or alpha. Sibling to the 3D effect but tuned specifically for the soft, rolled-shoulder, high-spec material aesthetic — works beautifully on text, shapes, and photos. **Algorithm** (height-field bump-shading, not real 3D): (1) build heightmap H from source channel (luma for photos, alpha for clean text/shapes — user-selectable); (2) **heavy separable Gaussian pre-blur on H** — this is THE knob that decides "plastic" vs "crinkled emboss"; (3) per-pixel surface normals from heightmap gradient (Sobel-style); (4) Blinn-Phong shading: ambient + diffuse + tight specular lobe with high shininess exponent (typical 4–256 range); (5) modulate by source alpha so transparency is preserved. **Controls**: Surface Bump source (Self / Other layer) + channel (Luma / Alpha / Red), Smoothness (the pre-blur radius — the most expressive knob), Bump Height (gradient multiplier), Light Direction (azimuth via circular puck), Light Height (elevation 0–90°), Light Intensity, Light Colour, Ambient (0–1), Diffuse (0–1), Specular Highlight (intensity), Highlight Sharpness / Roughness (Phong exponent), Specular Colour (default white, often tinted for stylised plastic). **Performance**: ~300–800 ms on Canvas 2D for a 2000×2000 image — bottleneck is the pre-blur, not the shading. Strategy: downsample heightmap to ≤1024 px (bump tolerates it), cache pre-blurred H, only recompute when Smoothness or Bump source changes. Live light-direction scrubbing via cached H is fast (~5–20 ms re-shade). WebGL fragment-shader path is a future optimisation if the user demands real-time everything (parked under a "WebGL upgrade" note, not in v1). **References**: glfx.js bumpDistortion, three.js `MeshPhongMaterial` bumpMap source, ShaderToy "Phong bump" canonicals (Inigo Quilez). **Effort estimate** (per research): medium difficulty, 1–2 days for a polished v1 in Canvas 2D. **Pack home**: ships the Surface Pack alongside 3D — both are material/lighting effects sharing the same height-field + Phong infrastructure (consider extracting the shared pre-blur + normals math into `src/plugins/premium/_shared/heightfield.js`).
 
 ## PHASE 28 — Bitmancer Library Storefront & Premium Infrastructure 🆕
 
@@ -612,6 +681,7 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 | **Liquid Pack** | Twirl · Ripple · Bulge · **Liquify** (new) | Twirl/Ripple/Bulge shipped Phase 20; Liquify TBD |
 | **Gradient Pack** | Liquid Gradients (rename from Organic Gradient) · Mesh Gradient · Gradient Library | Shipped as "Infinity Gradients"; renaming pack + lead effect |
 | **Mosaic Pack** | Emoji · Photo Mosaic · Pixel Art · LEGO Brick (all new) | New pack — all TBD |
+| **Surface Pack** | 3D · Plastic (both new) | New pack — both TBD; share `_shared/heightfield.js` math (pre-blur + normals + Phong) |
 
 **Existing premium plugins (migrated from free folders, polish pending):**
 - [x] **Datamosh** — moved to `premium/datamosh/`, `pack: 'glitch-pack'`
@@ -667,3 +737,37 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - Whether Background Removal local model is allowed in free fork too (no — too valuable to give away, keep premium even though tech is OSS)
 
 **Prerequisite**: Phase 28 Bitmancer Library Storefront must be live before any F5 item can be sold publicly. Until then, all F5 work is private development against the dev-loader.
+
+### F6 — Collaborative Canvas (v2 idea, exploratory)
+
+**Intent**: turn slammer.app from a single-player editor into a multiplayer canvas. Two flavours of multiplayer, both running on the same realtime layer:
+
+1. **Private co-working** — invite-only sessions. Friends, classes, agencies build moodboards, edit projects, or jam on visuals together in one shared canvas. Cursors with names, live layer edits, presence indicators.
+2. **Public open boards** — large shared canvases where strangers find each other and claim a corner to work in. Think Reddit r/place meets a real image editor. Persistent canvases hosted on Bitmancer-managed public servers, with separate boards for themes / events / community jams.
+
+**Status**: idea / exploration only. No commitment, no architecture decisions — flagged here so it's not lost. v2 territory: not before Phase 30 ships and the v1 product is stable.
+
+**Core technical questions to answer before committing**:
+- Realtime backend choice — CRDT (Yjs / Automerge) over WebSocket, or operational-transform server, or hosted service (Liveblocks, PartyKit, Cloudflare Durable Objects)?
+- Conflict semantics for non-trivial state: layer transforms, vector path edits, effect param sliders, font assets — every mutation must merge sanely under concurrent edits.
+- Asset hosting — collaborative canvases can't ship images as base64 in the doc (too heavy for sync). Need an asset-storage layer (R2 + signed URLs?) so layers reference URLs instead of inlined Blobs.
+- Permission model — host vs editor vs viewer; locked layers; edit history per user.
+- Public-board moderation — open canvases will get vandalised. Need flag/report, soft delete, mod tools, rate limits, region-claim ("you own a 1024×1024 patch for X minutes after last edit").
+- Cost model — collaborative features need a backend, breaking the no-server promise of v1. Public boards might be a Pro/Lifetime perk; private co-working could be a paid add-on or a Pro tier.
+
+**Sub-deliverables** (none committed, all exploratory):
+- [ ] **Realtime spike**: prototype a 2-cursor demo on a single project — share Konva stage state via Yjs over WebSocket. Just to validate the latency + merge story.
+- [ ] **Asset URL layer**: refactor image layers to support URL-source images alongside the existing Blob/data-URL path. Required prerequisite — no point building collab if assets can't sync.
+- [ ] **Presence layer**: cursor + selection broadcast on top of the realtime backend.
+- [ ] **Layer-edit conflict semantics**: define how `setLayerTransform`, `setEffectParams`, vector path edits, and history snapshots merge under concurrent writers.
+- [ ] **Private session MVP**: invite link → join existing project as collaborator. No public boards yet.
+- [ ] **Public-board MVP**: one large canvas (e.g. 8192×8192), region claims, basic moderation. Probably ships as a separate `/boards/<id>` route.
+- [ ] **Asset upload + R2 hosting** for shared sessions.
+- [ ] **Pricing decision**: standalone subscription? Pro-tier perk? Per-board credits?
+
+**Open questions to think about before any of this**:
+- Does collaboration align with the "tool for solo creative slamming" identity, or does it dilute it?
+- Public boards bring real moderation/legal exposure (NSFW content, copyrighted material posted by strangers). Does Bitmancer want to be in that business?
+- Is private co-working a feature people will actually use, or is "share a screenshot of my work" enough? Validate with users before building.
+
+**Prerequisite**: v1 product stable, Phase 28 commerce live (so a pricing model exists), Phase 30 themes shipped (so collaborators can use the same UI). Realistic timeline: 2027+ — exploration only until then.

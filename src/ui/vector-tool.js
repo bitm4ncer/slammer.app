@@ -131,13 +131,17 @@ export function initVectorTool({ document: doc }) {
       <div class="vector-pills" data-host="stroke-join"></div>
     </div>
 
-    <div class="effect-slider-row" data-row="path-actions">
+    <div class="effect-slider-row" data-row="path-simplify">
       <span class="effect-label">Path</span>
-      <div class="vector-actions" data-host="path-actions"></div>
+      <div class="vector-actions" data-host="path-simplify"></div>
+    </div>
+    <div class="effect-slider-row effect-slider-row--actions" data-row="path-actions">
+      <span class="effect-label" aria-hidden="true"></span>
+      <div class="vector-actions vector-actions--pills" data-host="path-actions"></div>
     </div>
     <div class="effect-slider-row" data-row="bool-ops" hidden>
       <span class="effect-label">Combine</span>
-      <div class="vector-actions" data-host="bool-ops"></div>
+      <div class="vector-actions vector-actions--pills" data-host="bool-ops"></div>
     </div>
   `;
 
@@ -186,6 +190,7 @@ export function initVectorTool({ document: doc }) {
   const strokeCapRow      = panel.querySelector('[data-row=stroke-cap]');
   const strokeJoinRow     = panel.querySelector('[data-row=stroke-join]');
   const pathActionsHost   = panel.querySelector('[data-host=path-actions]');
+  const pathSimplifyHost  = panel.querySelector('[data-host=path-simplify]');
   const boolOpsHost       = panel.querySelector('[data-host=bool-ops]');
   const boolOpsRow        = panel.querySelector('[data-row=bool-ops]');
 
@@ -458,6 +463,7 @@ export function initVectorTool({ document: doc }) {
   // setVectorPath/setVectorPaths so history captures one snapshot.
   function renderPathActions(l, p) {
     pathActionsHost.innerHTML = '';
+    pathSimplifyHost.innerHTML = '';
     const isClosed = p?.closed !== false;
 
     // --- Simplify tolerance slider (replaces the old one-shot button) ---
@@ -541,7 +547,9 @@ export function initVectorTool({ document: doc }) {
       }
     });
 
-    pathActionsHost.appendChild(row);
+    // Slider lives in its own row (path-simplify); the action buttons
+    // get a clean compact pill strip on the row below.
+    pathSimplifyHost.appendChild(row);
 
     // --- remaining action buttons ---
     const buttons = [

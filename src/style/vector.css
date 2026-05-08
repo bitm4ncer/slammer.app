@@ -279,6 +279,30 @@
   gap: 4px;
   flex: 1;
 }
+/* Compact pill row — used by Path actions (Smooth / Reverse / Open /
+   Join / Outline) and Combine (boolean ops). Buttons share width
+   evenly so they read as a single segmented control rather than a
+   loose stack of buttons. */
+.vector-actions--pills {
+  gap: 3px;
+}
+.vector-actions--pills .vector-action-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3px 4px;
+  font-size: 9.5px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+/* Hide the empty placeholder label so the pill row sits flush against
+   the panel padding (saves the indent that the .effect-label column
+   would otherwise reserve). */
+.effect-slider-row--actions .effect-label {
+  display: none;
+}
+.effect-slider-row--actions .vector-actions {
+  margin-left: 0;
+}
 .vector-action-btn {
   flex: 1 0 auto;
   min-width: 52px;

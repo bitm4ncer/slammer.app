@@ -70,8 +70,14 @@ export function createFloatingWindow({
     closed = true;
     persistGeometry();
     document.removeEventListener('keydown', onKey);
-    el.remove();
-    closeListeners.forEach((fn) => { try { fn(); } catch {} });
+    // Slide-down + fade-out before removing from DOM. Pure CSS transition;
+    // ~150 ms ease-in matches the open animation. Listeners fire AFTER
+    // the node is gone so any host re-mount logic sees a clean slate.
+    el.classList.add('is-closing');
+    setTimeout(() => {
+      el.remove();
+      closeListeners.forEach((fn) => { try { fn(); } catch {} });
+    }, 150);
   }
 
   function onKey(e) {
