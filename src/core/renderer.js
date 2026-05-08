@@ -496,7 +496,18 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return c.getContext('2d').getImageData(0, 0, W, H);
     }
     if (layer.type === 'text') {
-      return rasterizeText(layer.text, st, layer.effects);
+      const imgData = rasterizeText(layer.text, st, layer.effects);
+      // Compensate the pad: the rasterised canvas is contentSize + pad*2,
+      // with the actual text content drawn at (pad, pad). To keep the
+      // text VISUALLY ANCHORED at layer.transform.x/y (the text's origin)
+      // when an outer-mode effect like Drop Shadow grows the pad mid-edit,
+      // shift the Konva.Image by -pad. Mirrors what the image-layer path
+      // does at line ~495.
+      if (st.image && imgData) {
+        const pad = st.textPad || 0;
+        st.image.position({ x: -pad, y: -pad });
+      }
+      return imgData;
     }
     if (layer.type === 'vector') {
       // Cache the rasterised output. Slider drags on regular pixel effects
