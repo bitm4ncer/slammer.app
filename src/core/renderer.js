@@ -325,6 +325,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   onSettingsChange(() => { _cachedPrimary = null; });
 
   function redrawSelectionOutlines() {
+    // Invalidate cached client rects before reading them. Outlines are
+    // redrawn whenever something MOVED — drag, transform, multi-drag —
+    // so stale `cachedClientRect` returns are exactly the bug we want
+    // to avoid here. Without this bump, callers that update Konva
+    // positions and then call us (canvas-view's manual multi-drag)
+    // would render the dashed rectangles at the PRE-MOVE positions.
+    rectGen++;
     const layer = ensureSelectionOverlay();
     const sel = getSelection();
     const accent = readPrimary();
@@ -491,21 +498,17 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st.naturalSize = { w, h };
       st.imagePad = pad;
       st.imageContentSize = { w, h };
-      if (st.image) st.image.position({ x: -pad, y: -pad });
+      // Position update is deferred to paintLayerSync's commitImagePosition
+      // so the new pad and the new dstCanvas content commit in the same
+      // RAF — otherwise Konva renders the OLD canvas at the NEW position
+      // for a frame and the visible content wobbles during slider drags
+      // (worst case: Drop Shadow distance + blur drags swing pad by 100+ px).
       return c.getContext('2d').getImageData(0, 0, W, H);
     }
     if (layer.type === 'text') {
       const imgData = rasterizeText(layer.text, st, layer.effects);
-      // Compensate the pad: the rasterised canvas is contentSize + pad*2,
-      // with the actual text content drawn at (pad, pad). To keep the
-      // text VISUALLY ANCHORED at layer.transform.x/y (the text's origin)
-      // when an outer-mode effect like Drop Shadow grows the pad mid-edit,
-      // shift the Konva.Image by -pad. Mirrors what the image-layer path
-      // does at line ~495.
-      if (st.image && imgData) {
-        const pad = st.textPad || 0;
-        st.image.position({ x: -pad, y: -pad });
-      }
+      // Position update deferred to paintLayerSync's commitImagePosition
+      // (see image-layer comment above). rasterizeText sets st.textPad.
       return imgData;
     }
     if (layer.type === 'vector') {
@@ -546,19 +549,9 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       //     the layer's transform.x/y point)
       //   • image.position adjusts so canvas-pixel for path-coord lx lands
       //     at world lx, regardless of how the path bounds have shifted
-      //     since creation.
-      //
-      // World position derivation (group.offset = 0):
-      //   pixel(cx) world = group.x + image.x + cx
-      //   canvas pixel for path-coord lx = lx + (pad - pathBounds.x)
-      //   → world(lx) = group.x + image.x + lx + pad - pathBounds.x
-      //   We want world(lx) = lx, so:
-      //   image.x = pathBounds.x - group.x - pad
+      //     since creation. Computed in paintLayerSync's commitImagePosition
+      //     so the new pad commits with the new dstCanvas (no wobble).
       st.group.offset({ x: 0, y: 0 });
-      st.image.position({
-        x: pathBounds.x - layer.transform.x - pad,
-        y: pathBounds.y - layer.transform.y - pad,
-      });
       // Selection rect = path bbox in image-local. Pad sits at canvas-pixel
       // (pad, pad); width/height match the path geometry (no stroke padding).
       st.textPad = pad;
@@ -589,12 +582,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         st.vectorPathBounds = pathBounds;
         st.vectorPad = pad;
         st.group.offset({ x: 0, y: 0 });
-        if (st.image) {
-          st.image.position({
-            x: pathBounds.x - (layer.transform?.x || 0) - pad,
-            y: pathBounds.y - (layer.transform?.y || 0) - pad,
-          });
-        }
+        // Position update deferred to paintLayerSync's commitImagePosition
+        // (same wobble-fix rationale as image / text / vector branches).
         // Hide every direct child's Konva.Group while the composite is
         // active so they don't paint over the group's bitmap.
         for (const cid of (layer.childIds || [])) {
@@ -1081,6 +1070,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
+    // Commit the pad-compensated image position in the SAME RAF as the new
+    // canvas content. rasterizeSource only stashes the new pad on st; if it
+    // also called image.position() eagerly, Konva would render the OLD
+    // dstCanvas at the NEW position for one frame and the visible content
+    // would visibly wobble during slider drags — most painfully on Drop
+    // Shadow (distance + blur swing pad by 100+ px per drag). Doing it here
+    // keeps position and bitmap atomic.
+    commitImagePosition(layer, st);
     if (dimsChanged) {
       // Image dims changed → cached getClientRect for this layer (and any
       // ancestor group) is stale. Bump the generation so the next FX layer
@@ -1116,6 +1113,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
           paintLayer(above, aboveSt);
         }
       }
+    }
+    // Update the patch-equality fingerprints so the next doc:loaded patch
+    // (undo / redo / load) can detect "this layer is identical to what's
+    // on screen" and skip the rasterise + effect rerun. Set AFTER paint so
+    // the keys reflect the visible bitmap, not the model — undoes that
+    // arrive between a mutation and its paint will rerun correctly.
+    {
+      const tt = layer.transform;
+      st._patchContentKey = layerContentKey(layer);
+      st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
     }
     scheduleDraw();
   }
@@ -1279,6 +1286,13 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
     syncZOrder();
     if (document.activeLayerId === layer.id) attachTransformer(group);
+    // Seed the patch-equality keys so the next doc:loaded patch can compare
+    // against this freshly-mounted state instead of treating it as unknown.
+    {
+      const tt = layer.transform;
+      st._patchContentKey = layerContentKey(layer);
+      st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+    }
     return st;
   }
 
@@ -1291,43 +1305,99 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     scheduleDraw();
   }
 
+  // Fingerprint a layer so the doc:loaded handler can decide which work
+  // is actually required for a given snapshot. Three buckets:
+  //   • full hash      — captures everything that affects the rendered
+  //                      output (effects, source ref, text/vector model,
+  //                      locked / parent / child links, transform, props).
+  //                      Equality ⇒ skip the patch entirely.
+  //   • content hash   — same as full but excludes transform + opacity +
+  //                      visible + blendMode. Equality with mismatched
+  //                      full ⇒ ONLY a Konva.Group attr update is needed
+  //                      (no rasterise, no effect rerun).
+  // JSON.stringify on each layer is cheap relative to a single effect
+  // step. Blob `source` doesn't serialise; we tag `sourceRef` separately
+  // so swapping a Blob in still invalidates the cache.
+  function layerContentKey(layer) {
+    return JSON.stringify({
+      type: layer.type,
+      effects: layer.effects,
+      vectorEffects: layer.vectorEffects,
+      text: layer.text,
+      vector: layer.vector,
+      locked: layer.locked,
+      parentGroupId: layer.parentGroupId,
+      childIds: layer.childIds,
+    });
+  }
+
   // Patch an existing layer's Konva nodes + cached state to match the new
   // model. Used by the doc:loaded diff-based reload path so that undo/redo
   // doesn't tear down and rebuild every layer (which left the canvas blank
   // for several frames — visible flicker, see BUGS.md).
   async function patchLayerNodes(layer, st) {
-    // Group transform + visibility
+    // 1. Cheap props compare. If transform / opacity / visible / blendMode
+    //    plus source ref plus content key are all unchanged from what's
+    //    already on screen, this layer is identical to the live state and
+    //    we can skip everything. Common case during undo on a multi-layer
+    //    doc — usually only ONE layer differs between snapshots.
+    //    FX layers source from the composite of layers below, so their
+    //    content key alone can't decide cache hits — always run the heavy
+    //    path for them. paintLayer's repaintFxAbove fan-out would cover
+    //    this transitively, but that path skips when the dirty FX layer
+    //    sits ABOVE the changed layer; here we have no such relationship.
+    const contentKey = layerContentKey(layer);
+    const t = layer.transform;
+    const propsKey = `${t.x}|${t.y}|${t.scaleX}|${t.scaleY}|${t.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+    const sourceUnchanged = st._sourceRef === layer.source
+      || (layer.type !== 'image'); // non-image layers don't use _sourceRef
+    if (layer.type !== 'fx'
+        && st._patchContentKey === contentKey
+        && st._patchPropsKey === propsKey
+        && sourceUnchanged) {
+      // Truly identical — nothing to do.
+      return;
+    }
+
+    // 2. Group transform + visibility — always cheap, always apply.
     st.group.setAttrs({
-      x: layer.transform.x,
-      y: layer.transform.y,
-      scaleX: layer.transform.scaleX,
-      scaleY: layer.transform.scaleY,
-      rotation: layer.transform.rotation,
+      x: t.x,
+      y: t.y,
+      scaleX: t.scaleX,
+      scaleY: t.scaleY,
+      rotation: t.rotation,
       opacity: layer.opacity,
       visible: layer.visible,
     });
     if (st.image) {
       st.image.globalCompositeOperation(layer.blendMode);
     }
-    // Cached rect + vector raster cache may be stale after a transform
-    // or content change.
+
+    // 3. If only transform / opacity / visible / blendMode changed, the
+    //    rendered bitmap is still valid — skip the rasterise + effect
+    //    rerun and just refresh the cached rect generation so selection
+    //    outlines follow the new geometry.
+    if (st._patchContentKey === contentKey && sourceUnchanged) {
+      st._cachedRect = null;
+      rectGen++;
+      st._patchPropsKey = propsKey;
+      return;
+    }
+
+    // 4. Heavy path — content (effects, source, vector paths, text)
+    //    actually changed. Rerun the full rasterise + effect pipeline.
     st._cachedRect = null;
     st._vectorRasterDirty = true;
     rectGen++;
 
-    // Re-rasterise the source. For image layers, rasterizeSource short-
-    // circuits if st._sourceRef === layer.source (no re-decode); only
-    // the source canvas + getImageData reruns. For text/vector, the
-    // rasterise is the same cost as initial creation.
     const imgData = await rasterizeSource(layer, st);
     if (imgData) {
       st.sourceImageData = imgData;
-      // Effects may have changed (params / order / count). Conservative:
-      // re-run the whole pipeline. The renderer's effect cache lives on
-      // st.steps and is naturally invalidated by dirtyFromIndex = 0.
       st.dirtyFromIndex = 0;
       paintLayer(layer, st);
     }
+    st._patchContentKey = contentKey;
+    st._patchPropsKey = propsKey;
   }
 
   function syncZOrder() {
@@ -1361,6 +1431,36 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     st.group.visible(layer.visible);
     st.group.opacity(layer.opacity);
     if (st.image) st.image.globalCompositeOperation(layer.blendMode);
+  }
+
+  // Place the Konva.Image inside its group so the visible content lands at
+  // the layer's transform origin (image / text) or so canvas-pixel-for-path-
+  // coord lx maps to world lx (vector). Called from paintLayerSync after the
+  // new dstCanvas is committed so position + bitmap update atomically and
+  // the content doesn't wobble during pad-changing slider drags.
+  function commitImagePosition(layer, st) {
+    if (!st || !st.image) return;
+    if (layer.type === 'image') {
+      const pad = st.imagePad || 0;
+      st.image.position({ x: -pad, y: -pad });
+      return;
+    }
+    if (layer.type === 'text') {
+      const pad = st.textPad || 0;
+      st.image.position({ x: -pad, y: -pad });
+      return;
+    }
+    // Vector layers — also covers vector-only groups whose composite goes
+    // through the same Konva.Image (rasterizeVectorGroup branch).
+    if ((layer.type === 'vector' || layer.type === 'group')
+        && st.vectorPathBounds && st.vectorPad != null) {
+      const pb = st.vectorPathBounds;
+      const pad = st.vectorPad;
+      st.image.position({
+        x: pb.x - (layer.transform?.x || 0) - pad,
+        y: pb.y - (layer.transform?.y || 0) - pad,
+      });
+    }
   }
 
   function applyTransform(layer) {
@@ -1528,7 +1628,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         break;
       case 'layer:propChanged': {
         const layer = document.findLayer(event.id);
-        if (layer) applyLayerProps(layer);
+        if (layer) {
+          applyLayerProps(layer);
+          // Refresh the patch-equality fingerprint so the next undo can
+          // detect "live state matches the snapshot" and skip the heavy path.
+          const st = layerState.get(layer.id);
+          if (st) {
+            const tt = layer.transform;
+            st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+          }
+        }
         // Re-tint transformer from live --ctx-accent (honours custom-colours toggle).
         if (event.prop === 'accentColor' && document.activeLayerId === event.id && transformer) {
           const st = layerState.get(event.id);
@@ -1551,7 +1660,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       }
       case 'layer:transform': {
         const layer = document.findLayer(event.id);
-        if (layer) applyTransform(layer);
+        if (layer) {
+          applyTransform(layer);
+          const st = layerState.get(layer.id);
+          if (st) {
+            const tt = layer.transform;
+            st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+          }
+        }
         // The layer's group position just changed → invalidate the rect
         // cache before any redraw consumes it. Multi-drag dragend fires
         // setLayerTransform in a loop (one per non-anchor selected layer);

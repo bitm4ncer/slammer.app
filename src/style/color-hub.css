@@ -593,14 +593,23 @@
   border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
-  cursor: pointer;
+  cursor: grab;
   padding: 0;
   transform: translate(-50%, -50%);
   transition: transform 0.1s ease;
+  /* Sit above the bar and outside any pointer-event-blocking layer.
+   * touch-action: none stops the browser's native scroll/zoom from
+   * eating the pointer-move during drag. */
+  touch-action: none;
+  user-select: none;
 }
 .color-hub-gradient-stop.is-active {
   transform: translate(-50%, -50%) scale(1.2);
   box-shadow: 0 0 0 2px var(--ctx-accent);
+}
+.color-hub-gradient-stop.is-dragging,
+.color-hub-gradient-stop:active {
+  cursor: grabbing;
 }
 /* (gradient angle is now a numeric input alongside the track — see
  * .color-hub-gradient-angle-input above) */

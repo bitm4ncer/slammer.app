@@ -431,13 +431,32 @@ function bindEvents(anchorEl) {
   const gradStops    = popover.querySelector('.color-hub-gradient-stops');
   const gradAngleIn  = popover.querySelector('.color-hub-gradient-angle-input');
 
+  // Drag state for gradient stops. While `gradientDragging` is true,
+  // paintGradient() short-circuits its DOM rebuild — otherwise the
+  // handle the user is currently holding gets destroyed on every
+  // setActiveGradient round-trip and the drag snaps back. Same gotcha
+  // as the anchor-overlay drag race in CLAUDE.md.
+  let gradientDragging = false;
+
+  function paintGradientBar(stops) {
+    gradBar.style.background = `linear-gradient(90deg, ${stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+  }
+
   function paintGradient() {
     if (getActiveKind(activeSlot) !== 'gradient') return;
     const g = getActiveGradient(activeSlot);
-    // Bar — show the gradient at 90deg (left → right) for editing clarity,
-    // independent of the actual angle (which is shown via the slider).
-    gradBar.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
-    // Stops
+    // Always keep the bar in sync — it's cheap and doesn't disturb drag.
+    paintGradientBar(g.stops);
+    if (document.activeElement !== gradAngleIn) gradAngleIn.value = String(Math.round(g.angle));
+    // While the user is mid-drag, leave the handles alone — paintGradient
+    // would otherwise tear out the dragging handle and the drag would
+    // snap back. The handle's `style.left` is updated directly in
+    // pointermove until drag end re-runs paintGradient with dragging=false.
+    if (gradientDragging) return;
+    // Stops — draggable. Pointer-down captures the pointer, pointer-move
+    // mutates the handle's left + the bar's gradient inline, pointer-up
+    // commits the final value via setActiveGradient (which triggers the
+    // proper rebuild + sort).
     gradStops.innerHTML = '';
     g.stops.forEach((stop, i) => {
       const handle = document.createElement('button');
@@ -446,17 +465,53 @@ function bindEvents(anchorEl) {
       handle.style.left = `${stop.at * 100}%`;
       handle.style.background = stop.color;
       handle.title = `Stop ${i + 1} — ${stop.color}`;
-      handle.addEventListener('mousedown', (e) => {
+      const dragIdx = i;
+      let dragLocalAt = stop.at;
+      handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        activeStopIdx = i;
-        const next = hexToHsv(stop.color);
-        h = next.h; s = next.s; v = next.v;
-        paint();
-        paintGradient();
+        // Select the stop — sync the picker to its colour.
+        activeStopIdx = dragIdx;
+        const cur = getActiveGradient(activeSlot).stops[dragIdx];
+        if (cur) {
+          const next = hexToHsv(cur.color);
+          h = next.h; s = next.s; v = next.v;
+          paint();
+        }
+        gradientDragging = true;
+        try { handle.setPointerCapture(e.pointerId); } catch {}
+        handle.classList.add('is-dragging');
+      });
+      handle.addEventListener('pointermove', (e) => {
+        if (!gradientDragging) return;
+        const trackR = gradTrack.getBoundingClientRect();
+        dragLocalAt = Math.max(0, Math.min(1, (e.clientX - trackR.left) / trackR.width));
+        // Mutate inline — no setActiveGradient, no rebuild.
+        handle.style.left = `${dragLocalAt * 100}%`;
+        const cur = getActiveGradient(activeSlot);
+        const stops = cur.stops.map((s, j) => j === dragIdx ? { ...s, at: dragLocalAt } : s);
+        paintGradientBar(stops);
+        paintSlotChips();
+      });
+      handle.addEventListener('pointerup', (e) => {
+        if (!gradientDragging) return;
+        gradientDragging = false;
+        try { handle.releasePointerCapture(e.pointerId); } catch {}
+        handle.classList.remove('is-dragging');
+        // Commit the new positions, sorted, so subsequent edits stay sane
+        // (a stop dragged past its neighbour doesn't keep its old index
+        // forever). Track the active stop by REFERENCE so its index
+        // follows the sort.
+        const cur = getActiveGradient(activeSlot);
+        const stops = cur.stops.map((s, j) => j === dragIdx ? { ...s, at: dragLocalAt } : s);
+        const activeStop = stops[activeStopIdx];
+        const sorted = [...stops].sort((a, b) => a.at - b.at);
+        const newIdx = sorted.indexOf(activeStop);
+        if (newIdx >= 0) activeStopIdx = newIdx;
+        setActiveGradient(activeSlot, { ...cur, stops: sorted });
       });
       gradStops.appendChild(handle);
     });
-    if (document.activeElement !== gradAngleIn) gradAngleIn.value = String(Math.round(g.angle));
   }
   gradAngleIn.addEventListener('input', () => {
     const angle = parseFloat(gradAngleIn.value);
