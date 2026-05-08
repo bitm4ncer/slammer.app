@@ -1572,13 +1572,30 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       case 'doc:loaded': {
         // Tear down all layer state, then rebuild from document.
         for (const id of Array.from(layerState.keys())) destroyLayerNodes(id);
+        // Parallelise — most of createLayerNodes is awaiting createImageBitmap
+        // (or text/vector rasterise) on a per-layer basis. With 10 image layers
+        // the sequential await chain stacked decode time linearly; Promise.all
+        // bounds it by the slowest single decode.
+        await Promise.all(document.layers.map((layer) =>
+          createLayerNodes(layer).catch((err) =>
+            console.error(`[renderer] failed to create layer nodes for ${layer.id}:`, err))
+        ));
+        // Fix-up pass for nested groups: when parent + children resolved out
+        // of order, the child may have landed in contentLayer instead of its
+        // parent's Konva.Group. Re-parent now that all sts exist. (Mirrors
+        // the case 'group:childrenChanged' logic.)
         for (const layer of document.layers) {
-          try {
-            await createLayerNodes(layer);
-          } catch (err) {
-            console.error(`[renderer] failed to create layer nodes for ${layer.id}:`, err);
+          if (layer.type !== 'group' || !Array.isArray(layer.childIds)) continue;
+          const groupSt = layerState.get(layer.id);
+          if (!groupSt) continue;
+          for (const cid of layer.childIds) {
+            const childSt = layerState.get(cid);
+            if (childSt && childSt.group && childSt.group.getParent() !== groupSt.group) {
+              childSt.group.moveTo(groupSt.group);
+            }
           }
         }
+        syncZOrder();
         // Apply lock / tool-driven draggability state to the freshly
         // recreated nodes — without this, a reloaded project leaves
         // every layer Konva-draggable until the user flips a tool.
