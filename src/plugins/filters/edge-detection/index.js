@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'border-style',
   category: 'stylize',
+  description: 'Trace contours with sobel edges',
 
   defaultParams() {
     return { strength: 1, threshold: 0, thickness: 1, invert: false, colorMode: 'mono' };
@@ -41,30 +42,40 @@ export default {
             const gy =
               - d[up - 4 + c] - 2 * d[up + c] - d[up + 4 + c]
               + d[down - 4 + c] + 2 * d[down + c] + d[down + 4 + c];
-            const mag = Math.min(255, Math.hypot(gx, gy) * strength);
+            let mag = Math.sqrt(gx * gx + gy * gy) * strength;
+            if (mag > 255) mag = 255;
             mags[(y * w + x) * 3 + c] = mag;
           }
         }
       }
     } else {
-      // Luminance Sobel for mono and sourceTinted.
+      // Luminance Sobel for mono and sourceTinted. Pre-compute luminance
+      // ONCE into a Float32Array — the old version recomputed each pixel's
+      // Y up to 9 times (once per neighbour position in the 3x3 window).
+      // Same hypot replacement as below: Math.sqrt(gx*gx+gy*gy) is ~2x
+      // faster than Math.hypot in V8.
+      const lum = new Float32Array(w * h);
+      for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+        lum[p] = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) * 0.001;
+      }
       for (let y = 1; y < h - 1; y++) {
+        const upRow = (y - 1) * w;
+        const midRow = y * w;
+        const downRow = (y + 1) * w;
         for (let x = 1; x < w - 1; x++) {
-          const base = (y * w + x) * 4;
-          const up = base - w * 4;
-          const down = base + w * 4;
-          const l00 = (d[up - 4] * 299 + d[up - 3] * 587 + d[up - 2] * 114) / 1000;
-          const l01 = (d[up] * 299 + d[up + 1] * 587 + d[up + 2] * 114) / 1000;
-          const l02 = (d[up + 4] * 299 + d[up + 5] * 587 + d[up + 6] * 114) / 1000;
-          const l10 = (d[base - 4] * 299 + d[base - 3] * 587 + d[base - 2] * 114) / 1000;
-          const l12 = (d[base + 4] * 299 + d[base + 5] * 587 + d[base + 6] * 114) / 1000;
-          const l20 = (d[down - 4] * 299 + d[down - 3] * 587 + d[down - 2] * 114) / 1000;
-          const l21 = (d[down] * 299 + d[down + 1] * 587 + d[down + 2] * 114) / 1000;
-          const l22 = (d[down + 4] * 299 + d[down + 5] * 587 + d[down + 6] * 114) / 1000;
+          const l00 = lum[upRow + x - 1];
+          const l01 = lum[upRow + x];
+          const l02 = lum[upRow + x + 1];
+          const l10 = lum[midRow + x - 1];
+          const l12 = lum[midRow + x + 1];
+          const l20 = lum[downRow + x - 1];
+          const l21 = lum[downRow + x];
+          const l22 = lum[downRow + x + 1];
           const gx = -l00 + l02 - 2 * l10 + 2 * l12 - l20 + l22;
           const gy = -l00 - 2 * l01 - l02 + l20 + 2 * l21 + l22;
-          const mag = Math.min(255, Math.hypot(gx, gy) * strength);
-          mags[y * w + x] = mag;
+          let mag = Math.sqrt(gx * gx + gy * gy) * strength;
+          if (mag > 255) mag = 255;
+          mags[midRow + x] = mag;
         }
       }
     }
