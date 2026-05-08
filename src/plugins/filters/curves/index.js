@@ -6,6 +6,8 @@ import { createCurveEditor, buildLut } from './curve-editor.js';
 
 const DEFAULT_PTS = () => [{ x: 0, y: 0 }, { x: 255, y: 255 }];
 
+let _cachedHistogram = null;
+
 export default {
   id: 'curves',
   name: 'Curves',
@@ -13,6 +15,7 @@ export default {
   type: 'filter',
   icon: 'chart-line',
   category: 'color',
+  description: 'Per-channel tone curve editor',
 
   defaultParams() {
     return {
@@ -25,15 +28,40 @@ export default {
   },
 
   process(imageData, params) {
+    const d = imageData.data;
+
+    const histR = new Uint32Array(256);
+    const histG = new Uint32Array(256);
+    const histB = new Uint32Array(256);
+    const histL = new Uint32Array(256);
+    for (let i = 0; i < d.length; i += 4) {
+      histR[d[i]]++;
+      histG[d[i + 1]]++;
+      histB[d[i + 2]]++;
+      histL[Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2])]++;
+    }
+    _cachedHistogram = { master: histL, r: histR, g: histG, b: histB };
+
     const lutR = buildLut(params.r || DEFAULT_PTS());
     const lutG = buildLut(params.g || DEFAULT_PTS());
     const lutB = buildLut(params.b || DEFAULT_PTS());
     const lutM = buildLut(params.master || DEFAULT_PTS());
-    const d = imageData.data;
+    // Compose per-channel + master into a single 256-entry LUT each.
+    // Inner loop drops from `lutM[lutR[d[i]]]` (two dependent lookups,
+    // serialised on the memory subsystem) to `lutRM[d[i]]` (one). Tiny
+    // upfront cost (3 × 256 ops), big inner-loop win at 4 M pixels.
+    const lutRM = new Uint8ClampedArray(256);
+    const lutGM = new Uint8ClampedArray(256);
+    const lutBM = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) {
+      lutRM[v] = lutM[lutR[v]];
+      lutGM[v] = lutM[lutG[v]];
+      lutBM[v] = lutM[lutB[v]];
+    }
     for (let i = 0; i < d.length; i += 4) {
-      d[i]     = lutM[lutR[d[i]]];
-      d[i + 1] = lutM[lutG[d[i + 1]]];
-      d[i + 2] = lutM[lutB[d[i + 2]]];
+      d[i]     = lutRM[d[i]];
+      d[i + 1] = lutGM[d[i + 1]];
+      d[i + 2] = lutBM[d[i + 2]];
     }
     return imageData;
   },
@@ -86,6 +114,7 @@ export default {
         onChange({ [local.active]: pts });
       },
       channelColor: () => channels.find((c) => c.value === local.active)?.color || '#e8e8e8',
+      getHistogram: () => _cachedHistogram?.[local.active] || null,
     });
     root.appendChild(editor.root);
 
