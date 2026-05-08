@@ -11,7 +11,11 @@
   bottom: 36px;
   background: rgba(20, 20, 20, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px 12px 8px 8px;
+  /* Sharp top corners — the dot from the wheel cluster overlaps the
+   * popover's top edge (matching the closed-state relationship between
+   * the dot and the footer). Rounded top corners would peek out from
+   * behind the dot, so we square them off. */
+  border-radius: 0 0 8px 8px;
   padding: 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text-primary);
@@ -19,7 +23,11 @@
   backdrop-filter: blur(14px) saturate(115%);
   -webkit-backdrop-filter: blur(14px) saturate(115%);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
-  width: 480px;
+  /* Width matches the wheel cluster's diameter (260 px) — the drawer
+   * reads as a column extension of the cluster instead of a wider
+   * shelf. Content stacks vertically below. */
+  width: 260px;
+  box-sizing: border-box;
   /* Closed state: off-screen below the footer. is-open class transitions
    * to translateY(0). is-closing reverses. Pattern matches floating-
    * window.js close (commit eb18a14). */
@@ -99,10 +107,17 @@
 }
 
 .color-hub-row {
-  display: grid;
-  grid-template-columns: var(--ring-outer) 1fr;
-  gap: 16px;
-  align-items: start;
+  /* Stacked vertical layout for the 260 px width — picker on top,
+   * inputs + tabs below. The .color-hub-picker sub-element centres
+   * itself horizontally inside the column. */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.color-hub-picker {
+  align-self: center;
+  margin-bottom: 4px;
 }
 
 /* ---------- Picker (hue ring + SV pad) ---------- */

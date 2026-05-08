@@ -103,7 +103,7 @@ function build() {
       <div class="color-hub-picker">
         <div class="color-hub-hue-ring" tabindex="0" aria-label="Hue ring">
           <div class="color-hub-hue-cursor"></div>
-          <canvas class="color-hub-tri" width="${TRI_BOX}" height="${TRI_BOX}" aria-label="Saturation and brightness triangle"></canvas>
+          <canvas class="color-hub-tri" width="${TRI_BOX * (window.devicePixelRatio || 1)}" height="${TRI_BOX * (window.devicePixelRatio || 1)}" style="width:${TRI_BOX}px;height:${TRI_BOX}px" aria-label="Saturation and brightness triangle"></canvas>
           <div class="color-hub-tri-cursor"></div>
         </div>
       </div>
@@ -167,14 +167,18 @@ function position(anchorEl) {
   if (ph > 0) {
     document.documentElement.style.setProperty('--color-hub-h', `${ph}px`);
   }
-  // Trigger the open transition on the next frame so the initial
-  // translateY(110%) registers before transitioning to translateY(0).
+  // Trigger the open transition. Force a synchronous layout read first
+  // so the browser registers the closed (translateY(110%)) state before
+  // we toggle to is-open — without this, the transition skips and the
+  // popover snaps in. Using a forced reflow instead of requestAnimationFrame
+  // because RAF can be throttled / deferred in some environments
+  // (headless preview, off-screen tabs) and we need the open state to
+  // apply reliably on every call.
   if (!popover.classList.contains('is-open')) {
-    requestAnimationFrame(() => {
-      if (!popover) return;
-      popover.classList.add('is-open');
-      document.body.classList.add('color-hub-open');
-    });
+    /* eslint-disable-next-line no-unused-expressions */
+    popover.offsetHeight;
+    popover.classList.add('is-open');
+    document.body.classList.add('color-hub-open');
   }
 }
 
@@ -590,12 +594,18 @@ function paintTriangle(canvas, hueDeg) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, W, H);
 
-  // Triangle vertices in canvas coords (centre = canvas centre).
+  // Triangle vertex coords from triangleVertices() are in CSS-pixel space
+  // (TRI_RADIUS = 70 CSS px). The canvas backing store is W × H DEVICE
+  // pixels — on a 2× display W = 312 even though the CSS-displayed width
+  // is 156. Scale the vertices by `dprScale` so the painted triangle
+  // covers the full backing-store canvas; CSS scales it back down to
+  // the 156 px display size, giving a crisp 2× rendering.
+  const dprScale = W / TRI_BOX;
   const cx = W / 2, cy = H / 2;
   const tri = triangleVertices(hueDeg);
-  const A = [tri.hue[0]   + cx, tri.hue[1]   + cy];
-  const B = [tri.white[0] + cx, tri.white[1] + cy];
-  const C = [tri.black[0] + cx, tri.black[1] + cy];
+  const A = [tri.hue[0]   * dprScale + cx, tri.hue[1]   * dprScale + cy];
+  const B = [tri.white[0] * dprScale + cx, tri.white[1] * dprScale + cy];
+  const C = [tri.black[0] * dprScale + cx, tri.black[1] * dprScale + cy];
 
   const hueRgb = hsvToRgb(hueDeg, 100, 100);
 

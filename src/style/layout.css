@@ -207,13 +207,18 @@ body.panels-collapsed #app {
  * regardless of side-panel split or window resize.
  */
 .color-circle-btn {
-  position: fixed;
-  left: 38.2vw;
-  bottom: 15px;
-  transform: translateX(-50%);
-  /* Lift in lock-step with .quick-wheel when the colour drawer opens —
-     the cluster slides up to make room for the drawer below it. */
-  transition: bottom 240ms cubic-bezier(.2,.7,.2,1), border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  /* Positioned ABSOLUTELY inside .quick-wheel (the dial is a CHILD of the
+   * wheel cluster after boot — see quick-select-wheel.js re-parent step).
+   * Closed-state geometry to match: previous fixed-position rule gave
+   *   dot bottom = vh - 15 px, dot height = 58 px → dot centre y = vh - 44.
+   * Wheel post-transform centre = vh - 36 (the footer top edge), so the
+   * dot centre sits 8 px ABOVE the wheel centre — `top: calc(50% - 8px)`.
+   * Cluster lift is owned by .quick-wheel — the dot moves automatically. */
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 8px);
+  transform: translate(-50%, -50%);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   z-index: 50;
   /* Diameter ≈ 1.6 × footer height — 20 % smaller than the previous
    * 72 px dial. Lower portion overlaps the footer; upper protrusion
@@ -230,11 +235,10 @@ body.panels-collapsed #app {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.18s ease, transform 0.18s ease;
 }
 .color-circle-btn:hover {
   border-color: var(--surface-3);
-  transform: translateX(-50%) scale(1.04);
+  transform: translate(-50%, -50%) scale(1.04);
 }
 /* Stroke ring — sits between the footer-coloured outer border and the
    inner fill swatch. Coloured by the active stroke colour. Click target
@@ -272,11 +276,17 @@ body.color-hub--dot .quick-wheel-controls {
   display: none;
 }
 body.color-hub--dot .color-circle-btn {
-  /* Override the golden-line + size + border treatment with a compact
-   * footer-anchored swatch. 100 px from the left clears the existing
-   * settings / affinity / autosave-dot icons. */
+  /* Dot mode hides the wheel cluster entirely (.quick-wheel display:none
+   * above). The dial itself was re-parented into the wheel at boot, so in
+   * dot mode it's hidden too. Re-attach to body via fixed positioning
+   * isn't possible from CSS alone — for now, dot mode shows nothing and
+   * users must switch back to wheel mode. (TODO: re-parent the dial back
+   * to the footer when colorHubMode === 'dot' so this affordance still
+   * works without the wheel cluster.) */
+  position: fixed;
   left: 110px;
   bottom: 10px;
+  top: auto;
   width: 18px;
   height: 18px;
   padding: 0;
@@ -299,6 +309,11 @@ body.color-hub--dot .color-circle-btn:hover {
  * extension of the footer, not a floating ring.
  */
 .quick-wheel {
+  /* CLUSTER container — owns the fixed positioning and the lift transform.
+   * Children (.quick-wheel-disc + .color-circle-btn moved here at boot
+   * from the footer) are positioned absolutely so the cluster moves them
+   * as a single rigid unit when the colour hub opens. No clip-path here —
+   * that's on .quick-wheel-disc so the dot doesn't get masked. */
   position: fixed;
   left: 38.2vw;
   /* Anchor pushed slightly below the dial centre so the wheel reads as
@@ -309,10 +324,21 @@ body.color-hub--dot .color-circle-btn:hover {
   transform: translate(-50%, 50%);
   z-index: 49;
   pointer-events: none; /* children opt back in */
+  /* Lifts when the colour drawer opens. We animate `transform` (composited
+   * on the GPU) instead of `bottom` because `bottom` transitions are
+   * throttled in unfocused tabs. */
+  transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+}
+.quick-wheel-disc {
+  /* The visible frosted half-disc. Clip-path + backdrop-filter live HERE
+   * (not on .quick-wheel) so the colour dial sibling escapes the half-
+   * circle clip. */
+  position: absolute;
+  inset: 0;
   /* Clip to the half-disc shape itself — the backdrop blur and any
-   * background colour now follow the wheel's outline instead of a
-   * rectangular bbox. Container is 260×260 with the visible disc's
-   * outer radius at 128 px (matches the SVG fill path). */
+   * background colour follow this outline instead of the bbox. Container
+   * is 260×260 with the visible disc's outer radius at 128 px (matches
+   * the SVG fill path). */
   clip-path: path('M 2 130 A 128 128 0 0 1 258 130 Z');
   /* Frosted-glass backdrop — clipped to the half-disc shape above so
    * the blur ONLY appears within the wheel's outline, not the bbox.
@@ -322,36 +348,26 @@ body.color-hub--dot .color-circle-btn:hover {
   backdrop-filter: blur(22px) saturate(120%);
   -webkit-backdrop-filter: blur(22px) saturate(120%);
   background: rgba(0, 0, 0, 0.16);
-  /* Lifts in lock-step with .color-circle-btn when the colour drawer
-     opens — both elements are independently fixed, so the body-class
-     bumps `bottom` on each. The CSS variable is published from
-     color-hub.js after the drawer measures its own height. */
-  transition: bottom 240ms cubic-bezier(.2,.7,.2,1);
+  pointer-events: none;
 }
 
-/* ---------- Drawer-open lift: wheel + dot rise as one cluster ----------
- * The cluster lift is `--color-hub-h + 21 px`. The +21 comes from the
- * dot's natural offset below the wheel's bottom edge (.color-circle-btn
- * `bottom: 15px` vs .quick-wheel `bottom: 36px` = 21 px). At rest the
- * dot sinks 21 px into the footer; when the drawer opens we want the
- * dot's bottom to kiss the drawer's top edge — not penetrate it — so
- * we lift by 21 px MORE than the popover's height. All three cluster
- * elements (wheel, dot, controls) lift by the SAME amount so they
- * read as one rigid unit; the relative dot-vs-wheel offset stays at
- * 21 px throughout the animation.
+/* ---------- Drawer-open lift: wheel cluster (wheel + dot child) rises ----------
+ * The cluster lifts by exactly the popover's height. The dot, now a CHILD
+ * of .quick-wheel, rides along automatically — it doesn't need its own lift
+ * rule. By lifting only --color-hub-h (no +21 px buffer), the dot lands
+ * 21 px INTO the popover top edge, mirroring the closed-state relationship
+ * where the dot sinks 21 px into the footer top edge. The popover's sharp
+ * top corners (set in color-hub.css) keep that overlap clean.
  */
 :root {
   --color-hub-h: 280px;
-  --color-hub-cluster-lift: calc(var(--color-hub-h) + 21px);
+  --color-hub-cluster-lift: var(--color-hub-h);
 }
 body.color-hub-open:not(.color-hub--dot) .quick-wheel {
-  bottom: calc(36px + var(--color-hub-cluster-lift));
-}
-body.color-hub-open:not(.color-hub--dot) .color-circle-btn {
-  bottom: calc(15px + var(--color-hub-cluster-lift));
+  transform: translate(-50%, calc(50% - var(--color-hub-cluster-lift)));
 }
 body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
-  bottom: calc(40px + var(--color-hub-cluster-lift));
+  transform: translateY(calc(0px - var(--color-hub-cluster-lift)));
 }
 .quick-wheel-bg {
   position: absolute;
@@ -464,8 +480,11 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   width: 0;     /* zero-size anchor; children offset themselves */
   height: 0;
   pointer-events: none;
-  /* Lifts with the cluster when the colour drawer opens. */
-  transition: bottom 240ms cubic-bezier(.2,.7,.2,1);
+  /* Lifts with the cluster when the colour drawer opens. We animate
+     `transform` (GPU-composited) rather than `bottom` for the same
+     reason as the wheel — bottom transitions get throttled in
+     background tabs and left the wheel stranded mid-flight. */
+  transition: transform 240ms cubic-bezier(.2,.7,.2,1);
 }
 .quick-wheel-nav-stack {
   position: absolute;

@@ -57,27 +57,43 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
   // ── Wheel container — visual half-disc only. Controls live OUTSIDE so
   //    they aren't clipped by the half-disc clip-path and stay above the
   //    footer line. ────────────────────────────────────────────────────
+  // The wheel acts as a CLUSTER — outer container for the half-disc visual
+  // (`.quick-wheel-disc`) AND the colour dial (`.color-circle-btn`, moved
+  // here from the footer at boot). Both lift in lockstep when the colour
+  // hub opens because they share a single parent transform. The clip-path
+  // and backdrop-filter live on the inner disc so the dot sits OUTSIDE the
+  // half-circle clip and doesn't get masked away.
   const wheel = window.document.createElement('div');
   wheel.className = 'quick-wheel';
   wheel.innerHTML = `
-    <svg class="quick-wheel-bg" viewBox="-130 -130 260 260" aria-hidden="true">
-      <!-- Half-disc shape kept as a transparent hit target so the wheel
-           still receives pointer / wheel events anywhere inside its
-           outline. No fill — the host .quick-wheel's backdrop-filter
-           provides the visible frosted-glass surface. -->
-      <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="transparent" pointer-events="all" />
-      <!-- Rotating spoke rotor + concentric gear rings. The whole group
-           rotates as a unit so the gear marks travel with the slots. -->
-      <g class="quick-wheel-rotor">
-        ${spokes()}
-        <circle cx="0" cy="0" r="118" fill="none" stroke="rgba(255, 255, 255, 0.4)"  stroke-width="2"></circle>
-        <circle cx="0" cy="0" r="62"  fill="none" stroke="rgba(255, 255, 255, 0.18)" stroke-width="1.2"></circle>
-        ${tickMarks()}
-      </g>
-    </svg>
-    <div class="quick-wheel-slot-rotor"></div>
+    <div class="quick-wheel-disc">
+      <svg class="quick-wheel-bg" viewBox="-130 -130 260 260" aria-hidden="true">
+        <!-- Half-disc shape kept as a transparent hit target so the wheel
+             still receives pointer / wheel events anywhere inside its
+             outline. No fill — the host .quick-wheel-disc's backdrop-filter
+             provides the visible frosted-glass surface. -->
+        <path d="M -128 0 A 128 128 0 0 0 128 0 Z" fill="transparent" pointer-events="all" />
+        <!-- Rotating spoke rotor + concentric gear rings. The whole group
+             rotates as a unit so the gear marks travel with the slots. -->
+        <g class="quick-wheel-rotor">
+          ${spokes()}
+          <circle cx="0" cy="0" r="118" fill="none" stroke="rgba(255, 255, 255, 0.4)"  stroke-width="2"></circle>
+          <circle cx="0" cy="0" r="62"  fill="none" stroke="rgba(255, 255, 255, 0.18)" stroke-width="1.2"></circle>
+          ${tickMarks()}
+        </g>
+      </svg>
+      <div class="quick-wheel-slot-rotor"></div>
+    </div>
   `;
   window.document.body.appendChild(wheel);
+  // Re-parent the colour dial into the wheel so the two move as one unit
+  // when the colour hub lift triggers. The dot was authored inside the
+  // footer (HTML grid placement) but we move it here on boot. Idempotent
+  // re-parent so HMR doesn't fail when the dot's already inside the wheel.
+  const dotBtn = window.document.getElementById('btnColorCircle');
+  if (dotBtn && dotBtn.parentElement !== wheel) {
+    wheel.appendChild(dotBtn);
+  }
   const slotRotor = wheel.querySelector('.quick-wheel-slot-rotor');
   const rotor     = wheel.querySelector('.quick-wheel-rotor');
 

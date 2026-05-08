@@ -23,9 +23,24 @@ export function initColorCircle({ buttonEl, swatchEl, strokeRingEl }) {
 
   // Apply body class so the conditional CSS in layout.css can hide the
   // radial wheel + reposition the dial as a small footer-left swatch.
+  // In WHEEL mode the dial lives inside .quick-wheel (re-parented at
+  // boot in quick-select-wheel.js) so it lifts together with the wheel
+  // when the colour hub opens. In DOT mode the wheel is hidden, so we
+  // move the dial back into the footer so it stays visible.
+  const footerHome = buttonEl.parentElement; // captured BEFORE re-parent
   function applyHubMode() {
     const mode = getSettings().colorHubMode === 'dot' ? 'dot' : 'wheel';
     document.body.classList.toggle('color-hub--dot', mode === 'dot');
+    if (mode === 'dot') {
+      if (footerHome && buttonEl.parentElement !== footerHome) {
+        footerHome.appendChild(buttonEl);
+      }
+    } else {
+      const wheel = document.querySelector('.quick-wheel');
+      if (wheel && buttonEl.parentElement !== wheel) {
+        wheel.appendChild(buttonEl);
+      }
+    }
   }
   applyHubMode();
   onSettingsChange((next) => {
