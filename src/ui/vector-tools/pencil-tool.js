@@ -19,6 +19,7 @@ import { DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
+import { buildVectorFillFromActive, buildVectorStrokeFromActive } from '../../core/colors.js';
 
 const SMOOTH_KEY = 'slammer:pencilSmoothness';
 
@@ -35,8 +36,18 @@ function accentColor() {
   return getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c';
 }
 
+// Pencil paths take the active stroke from the colour hub. If the user has
+// stroke kind set to `none`, force solid (a stroke-less pencil path is
+// invisible). Fill follows the active fill — usually the user wants none for
+// freehand drawing, but we honour their choice when they've explicitly set
+// solid / gradient.
 function freshStrokeStyle() {
-  return { ...DEFAULT_VECTOR_STROKE(), type: 'solid', color: accentColor(), width: 2 };
+  const s = buildVectorStrokeFromActive();
+  if (s.type === 'none') return { ...s, type: 'solid' };
+  return s;
+}
+function freshFillStyle() {
+  return buildVectorFillFromActive();
 }
 
 export function attachPencilTool({ stage, document: doc }) {
@@ -143,7 +154,7 @@ export function attachPencilTool({ stage, document: doc }) {
     const newRec = {
       d: newD,
       closed,
-      fill: { type: 'none' },
+      fill: freshFillStyle(),
       stroke: freshStrokeStyle(),
     };
     if (layer && layer.type === 'vector') {

@@ -305,6 +305,7 @@
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
 - [x] **Image plugin loading spinner** — landing-loader's reveal delay tightened from 500 ms → 120 ms in `_shared/browsable.js`. Below 120 ms = sub-perceptual (no flash for fast cache hits); over 120 ms = the centered spinner (existing `.browsable-landing-loader`) appears so the user sees feedback. Met / Openverse routinely hit 1-3 s through wsrv.nl proxy — the old 500 ms gap made those panels look broken on every open.
 - [ ] **Plugin feed persistence** — closing and reopening a panel plugin should restore the user's exact session state: current search query, active tag/category filter, current page (for paginated APIs), all loaded items in the feed, and scroll position. Persisted under `slammer:plugin:<id>:feed` in localStorage (or IndexedDB if payload is large). On `openPluginWindow(id)` re-open, hydrate the feed from cache before the next API call so the user lands back exactly where they left off — no jarring "fresh search" on every reopen. Applies to Unsplash, Pexels, Met, fal.ai, and any future panel plugins; ideally implemented as a shared helper in `src/plugins/panels/_shared/` so each plugin opts in with a few lines.
+- [ ] **Quick-access wheel: plugin icons + colours** — the radial quick-access widget should display each plugin's manifest icon (FontAwesome class) tinted by its pack accent (or a default for free plugins). Currently shows generic placeholders. Read `manifest.icon` + `manifest.pack` (resolve to `PACK_INFO[pack].color` from `shop-popup.js`) when populating wheel slots.
 
 ### Cluster J — UI animations & transitions
 - [x] **Plugin window open/close** — `floating-window.js` open animation tuned (200 ms ease-out, 14 px slide + 0.98 → 1 scale). Close adds an `is-closing` class that runs the inverse keyframe (150 ms ease-in) before `el.remove()` — host re-mount logic still sees the close fire after the node is gone. All floating windows (plugin panels, export popup) inherit.
@@ -362,11 +363,11 @@
 
 - [x] **Color dot in center-footer** — drawer-style popover that slides UP from below the wheel/dot cluster (`body.color-hub-open` adds `bottom: calc(... + var(--color-hub-h) + 8px)` to `.quick-wheel` + `.color-circle-btn` + `.quick-wheel-controls`); drawer fills the new gap above the footer. 240 ms ease-out open, ease-in close. `.is-closing` pattern from `floating-window.js`. Glow halo on the dial while the hub is open.
 - [x] **Stroke ring around the dot** — new `.color-circle-stroke-ring` inset inside the dial; centre `.color-circle-swatch` = fill. Click `event.target` branches: ring opens hub focused on stroke, centre on fill. Hub stays open across slot switches; clicking the OPPOSITE chip in the popover swaps the editing slot live. Hidden in dot-mode (too small to read).
-- [ ] **Picker layout** — keep the current HSL-triangle-inside-hue-wheel design (already on a nice stage). Add a pill toggle at the top of the popover: `Color | Gradient` so the user can switch between solid colour and gradient editing in the same surface.
-- [ ] **Eyedropper** — re-uses existing Local-EyeDropper API integration; pulls a pixel from the canvas (or any visible page element) into the active fill/stroke slot.
-- [ ] **Hex / HSL readouts + numeric inputs** — already laid out. Add RGB row alongside HSL.
-- [ ] **Opacity slider** — keeps current spot below the wheel.
-- [ ] **Visual polish**: keep dark surfaces, subtle bevels, glow ring on the dot when the popover is open. Match the aesthetic language of the existing radial control cluster.
+- [x] **Picker layout** — Solid | Gradient | None segmented mode row replaces the planned `Color | Gradient` pill (third state covers no-fill / no-stroke). Hue ring + HSL triangle stays for solid mode; gradient mode swaps in a stop-track + angle slider; none dims the picker and shows a checker chip.
+- [x] **Eyedropper** — `EyeDropper` API call wired to the eyedropper button in the popover (commits to the active slot via `setActiveSlot`).
+- [x] **Hex / HSL readouts + numeric inputs** — Hex + R/G/B inputs ship in the side column. (HSL numeric inputs deferred; the triangle picker IS HSV-driven, so HSL numerics are nice-to-have not blocking.)
+- [x] **Opacity slider** — per-slot opacity (0-100 %) below the picker. Stored on the active state as `fillOpacity` / `strokeOpacity`; applied to both solid + gradient and propagated to new layers via `buildVectorFillFromActive` / `buildVectorStrokeFromActive`.
+- [x] **Visual polish**: dark surfaces, no border / no radius (drawer fuses with footer band), glow ring on the dot when the popover is open, footer stacks BETWEEN drawer and dial so the drawer reads as "pulled out from under a shelf".
 
 ### Color & Gradient Library (central hub)
 
@@ -384,12 +385,12 @@
 
 - [x] **Two-slot active colour state** — `colors.js` storage migrated to `{ fill, stroke }`. Old string shape transparently wrapped on first read (`fill = oldString`, `stroke = #000000`). New API: `getActiveFill / getActiveStroke / getActiveSlots / setActiveSlot / swapFillStroke`. `getActive()` kept as back-compat for plugins (returns fill string). Exposed via `window.__slammer.colors`.
 - [x] **Swap fill/stroke** keyboard shortcut — `X` wired in `toolbar.js` keymap; calls `colors.swapFillStroke()`. Settings → Shortcuts table updated. Convenience swap button (fa-arrows-rotate) inside the popover's slot toggle row does the same.
-- [ ] **No-fill / no-stroke** option in the picker — rendered as a slashed circle, like Affinity.
+- [x] **No-fill / no-stroke** option in the picker — third button (slashed circle / `fa-ban` icon) in the mode row. When selected, the picker dims, the slot chip + dial swatch / ring render a checker pattern, and `buildVectorFillFromActive` / `buildVectorStrokeFromActive` emit `{ type: 'none' }` for new layers.
 
 ### New layer inheritance
 
-- [ ] **Newly created vector shape, path, or text layer takes the currently active fill + stroke** instead of hardcoded defaults. Pen, pencil, shape primitives, text tool — all read from `window.__slammer.colors` at creation time. So the user picks a colour once, then everything they draw uses it until they change it. Feels like a product.
-- [ ] First-launch defaults stay sensible: black fill, no stroke (current behaviour), so existing projects don't surprise old users.
+- [x] **Newly created vector shape, path, or text layer takes the currently active fill + stroke** — shape-drawer.js (rect / ellipse / polygon / star / line), pen-tool.js, pencil-tool.js, and `addText()` in toolbar.js all read the active state at creation time via `buildVectorFillFromActive` / `buildVectorStrokeFromActive` (or `getActiveFill` for text, which only handles solid colour). Stroke width is carried through. Line tool stays special-cased: forces fill: none + a visible solid stroke even when active stroke kind is none.
+- [x] First-launch defaults stay sensible: green fill (`#8aff8c`) + black stroke (`#000000`) ship as the seed values in `colors.js`. Existing projects keep their stored choices via the silent migration.
 
 ### Storage & API
 
@@ -518,6 +519,7 @@
 - [ ] Drag asset-pack item from Library onto canvas → adds image / SVG / texture layer (depends on item type)
 - [ ] Background update check on app boot: silently fetch latest version metadata, prompt user only when a meaningful update is available
 - [ ] Search + tag filtering across the catalog (catalog metadata served by Worker, cached client-side)
+- [ ] **FX vs Plugins distinction on shop cards** — currently the shop popup mixes Effects (filters/tools) and panel Plugins in one grid with the same chrome. Use the existing `.shop-card-stamp` element on each card to tag the kind: `EFFECT` for `type === 'filter' \| 'tool'`, `PLUGIN` for `type === 'panel'`. Stamp colour matches the pack accent for effects, neutral for plugins. Filter pills at the top of the shop popup gain matching `Effects` / `Plugins` toggles so the user can scope the grid to one kind. Wire-up in `src/ui/shop-popup.js` (`renderCard()` + the `PLUGIN_PALETTE` / `PACK_INFO` data layer).
 
 ### Asset-pack format
 - [ ] Spec: `.zip` containing `manifest.json` (id / name / version / type / contents) + asset files
@@ -710,6 +712,8 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - [ ] **Halftone (raster)** — real screenprint dot pattern with DPI + angle + dot-shape (distinct from vector Halftone, distinct from Dither's halftone mode). Goes into Raster Pack alongside Dither.
 - [ ] **ASCII** 🟦 PREMIUM (Raster Pack) — converts image to ASCII art. Grid of cells, each cell's average luminance mapped to a character from a density ramp. Controls: cell size, font size, character set (preset + custom), foreground/background colour mode (original colour / monochrome / custom), contrast, invert. Preset character sets: Standard (` .:-=+*#%@`), Blocks (`░▒▓█`), Braille, Minimal, Digits, Katakana. Custom character set input field lets users type their own ramp. Output rendered onto canvas via fillText at cell positions — stays raster, not a text layer. Goes into Raster Pack alongside Dither + Halftone.
 - [ ] **Instagram Importer** plugin — login-free public profile scraping or oEmbed-based, pulls user's own posts as image layers
+- [ ] **Social Media Templates** plugin (panel type) — browseable library of social-media frame templates (Instagram square / story / reel cover, TikTok, Twitter card, LinkedIn banner, YouTube thumb, Pinterest pin, etc.). Each template = a `.slammerproj` snapshot with placeholder layers + a frame at the platform's exact px dimensions. Drag-and-drop a template onto the canvas to instantiate it as a new project (or as new layers in the current project). Categories: Instagram · TikTok · Twitter / X · LinkedIn · YouTube · Pinterest · General. Search + tag filter. Stored under `src/plugins/premium/social-templates/` with `pack: 'templates-pack'` (new pack — could grow with brand-kit / poster / lookbook templates later).
+- [ ] **Monolab-inspired effects audit** (research-derived candidates) — the iOS app monolab.app ships 140+ "concept-based" filters; several are gaps in our catalog and resonate with the slammer.app aesthetic. Candidates to slot into Phase 27 free / Surface Pack / Glitch Pack as appropriate: **Local Threshold / Adaptive Threshold** (Sauvola/Niblack — superior to global threshold for Y2K xerox aesthetic, complements Dither/Halftone), **Moiré Drift** (interference-pattern overlay; pairs with Halftone), **Engraving / Lines** (directional line-screen / hatching, vector-friendly, fits SVG export), **Trace Tone / Relief** (auto-vectorisation: raster → Paper.js path contours by luminance bands — leverages existing vector layer infrastructure), **Edge Halo** (structural haloing, distinct from edge-detection outline), **Vector Field Warp** (field-driven displacement; distinct from Twirl/Ripple/Bulge radial primitives), **Fragment Field / Multi-Exposure Shards** (between RGB Shift and Datamosh tonally), **Echo Grid** (grid-quantised replication, complements Halftone/Stipple on a discrete lattice), **Residual Self / Long-Exposure Ghost** (luminance-based ghosting/decay overlay). To be triaged + scoped per effect when the maintainer prioritises.
 - [ ] **Background Removal** plugin (client-side) — runs on local model (e.g. ONNX U²-Net or BiRefNet via WebGPU/WASM). Available as both standalone plugin AND as a per-layer effect.
 - [ ] **AI Inpainting** plugin — fal.ai-backed (BYO key), masked region → AI fill
 - [ ] **Soft Face Filter** effect — lightweight skin-smoothing / colour-balancing for portraits
@@ -738,7 +742,7 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - [ ] Stipple polish — preview overlay during edit, denser jitter modes, layout previews
 - [ ] Halftone (vector) polish — gradient direction handles on canvas
 - [ ] Liquid Gradients overhaul (currently "Organic Gradient") — rename + restructure + new capabilities:
-  1. **Rename** — `Organic Gradient` → `Liquid Gradients` everywhere (id, display name, manifest, shop card, PACK_INFO). Pack rename: `infinity-gradients` → `gradient-pack`.
+  1. **Rename + new icon** — `Organic Gradient` → `Liquid Gradients` everywhere (id, display name, manifest, shop card, PACK_INFO). Pack rename: `infinity-gradients` → `gradient-pack`. The existing icon (currently `fa-droplet` or similar) reads as a generic colour icon; swap to something more evocative of liquid/flow — candidates: `fa-water`, `fa-wave-square`, a custom inline SVG of a flowing wave. Pick during implementation.
   2. **Gradient Library integration** — if the user owns the Gradient Library plugin, show a "Browse presets…" button that opens the library and lets the user pick a gradient to use as the colour source. Falls back to the built-in stops editor if library isn't owned.
   3. **Play/Pause animation** — replace the current on/off toggle with a play/pause button. Pausing freezes the animation at its current time offset (keeps the visual state). Stopping/disabling should NOT reset to start — the frozen frame is the feature.
   4. **Remove Mix knob** — redundant now that we have global per-effect opacity/mix slider.

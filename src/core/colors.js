@@ -46,6 +46,8 @@ const DEFAULT_ACTIVE = {
   fillKind: 'solid',
   strokeKind: 'solid',
   strokeWidth: DEFAULT_STROKE_WIDTH,
+  fillOpacity: 1,
+  strokeOpacity: 1,
   fillGradient: DEFAULT_GRADIENT(),
   strokeGradient: DEFAULT_GRADIENT(),
 };
@@ -102,6 +104,8 @@ function ensureLoaded() {
         fillKind:       isKind(raw.fillKind)       ? raw.fillKind   : 'solid',
         strokeKind:     isKind(raw.strokeKind)     ? raw.strokeKind : 'solid',
         strokeWidth:    Number.isFinite(raw.strokeWidth) ? Math.max(0, raw.strokeWidth) : DEFAULT_STROKE_WIDTH,
+        fillOpacity:    Number.isFinite(raw.fillOpacity)   ? clamp01(raw.fillOpacity)   : 1,
+        strokeOpacity:  Number.isFinite(raw.strokeOpacity) ? clamp01(raw.strokeOpacity) : 1,
         fillGradient:   isGradient(raw.fillGradient)   ? raw.fillGradient   : DEFAULT_GRADIENT(),
         strokeGradient: isGradient(raw.strokeGradient) ? raw.strokeGradient : DEFAULT_GRADIENT(),
       };
@@ -125,6 +129,7 @@ function isValidVar(v) {
 }
 
 function isHex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 function isKind(v) { return v === 'solid' || v === 'none' || v === 'gradient'; }
 function isGradient(g) {
   return g && typeof g === 'object'
@@ -208,6 +213,22 @@ export function setActiveKind(slot, kind) {
   emit('active');
 }
 
+// ---------- Opacity ----------
+export function getActiveOpacity(slot) {
+  ensureLoaded();
+  return slot === 'stroke' ? _active.strokeOpacity : _active.fillOpacity;
+}
+export function setActiveOpacity(slot, opacity) {
+  ensureLoaded();
+  if (!Number.isFinite(opacity)) return;
+  const next = clamp01(opacity);
+  const key = slot === 'stroke' ? 'strokeOpacity' : 'fillOpacity';
+  if (_active[key] === next) return;
+  _active = { ..._active, [key]: next };
+  writeJSON(LS_ACTIVE, _active);
+  emit('active');
+}
+
 // ---------- Stroke width ----------
 export function getActiveStrokeWidth() { ensureLoaded(); return _active.strokeWidth; }
 export function setActiveStrokeWidth(w) {
@@ -250,16 +271,17 @@ export function buildVectorFillFromActive() {
       angle: _active.fillGradient.angle,
       from: { x: 0, y: 0 },
       to: { x: 1, y: 0 },
+      opacity: _active.fillOpacity,
     };
   }
-  return { type: 'solid', color: _active.fill, opacity: 1 };
+  return { type: 'solid', color: _active.fill, opacity: _active.fillOpacity };
 }
 export function buildVectorStrokeFromActive() {
   ensureLoaded();
   const base = {
     width: _active.strokeWidth,
     align: 'center', cap: 'butt', join: 'miter',
-    dash: [], alongPath: false, opacity: 1,
+    dash: [], alongPath: false, opacity: _active.strokeOpacity,
   };
   if (_active.strokeKind === 'none')   return { ...base, type: 'none', color: _active.stroke };
   if (_active.strokeKind === 'gradient') {

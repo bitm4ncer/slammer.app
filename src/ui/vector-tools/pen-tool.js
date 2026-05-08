@@ -24,11 +24,22 @@ import { DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool, onToolChange } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
+import { buildVectorFillFromActive, buildVectorStrokeFromActive } from '../../core/colors.js';
 
-// Default style for a freshly-created Pen path: stroke only, accent colour.
+// Default style for a freshly-created Pen path: pulls from the colour hub's
+// active stroke. The pen's natural state is "outline-only" so a fresh path
+// gets fill: none unless the user has explicitly set a fill kind. Falls back
+// to a visible solid stroke if active stroke kind is `none` (a stroke-less
+// pen path would be invisible).
 function freshStrokeStyle() {
-  const accent = getComputedStyle(window.document.documentElement).getPropertyValue('--primary').trim() || '#8aff8c';
-  return { ...DEFAULT_VECTOR_STROKE(), type: 'solid', color: accent, width: 2 };
+  const s = buildVectorStrokeFromActive();
+  if (s.type === 'none') return { ...s, type: 'solid' };
+  return s;
+}
+function freshFillStyle() {
+  // Pen path traditionally has no fill — but if the user has explicitly
+  // selected a solid or gradient fill, honour it. None is the default.
+  return buildVectorFillFromActive();
 }
 
 function accentColor() {
@@ -180,7 +191,7 @@ export function attachPenTool({ stage, document: doc }) {
         const newRec = {
           d: '',
           closed: false,
-          fill: { type: 'none' },
+          fill: freshFillStyle(),
           stroke: freshStrokeStyle(),
         };
         const next = layer.vector.paths.slice();

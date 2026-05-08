@@ -15,6 +15,7 @@ import {
   getSwatches, addSwatch, removeSwatch, onSwatchesChange,
   getActiveKind, setActiveKind,
   getActiveStrokeWidth, setActiveStrokeWidth,
+  getActiveOpacity, setActiveOpacity,
   getActiveGradient, setActiveGradient,
 } from '../core/colors.js';
 
@@ -151,6 +152,11 @@ function build() {
             <label class="color-hub-input-label">B</label>
             <input class="color-hub-input color-hub-b" type="number" min="0" max="255" />
           </span>
+        </div>
+        <div class="color-hub-opacity-row">
+          <label class="color-hub-input-label">ALPHA</label>
+          <input class="color-hub-opacity" type="range" min="0" max="100" step="1" />
+          <input class="color-hub-opacity-num color-hub-input" type="number" min="0" max="100" step="1" />
         </div>
         <div class="color-hub-stroke-row" hidden>
           <label class="color-hub-input-label">STROKE</label>
@@ -363,6 +369,26 @@ function bindEvents(anchorEl) {
     });
   });
 
+  // ── Opacity slider + numeric input (per slot) ────────────────────────
+  const opSlider = popover.querySelector('.color-hub-opacity');
+  const opNum    = popover.querySelector('.color-hub-opacity-num');
+  function paintOpacity() {
+    const pct = Math.round(getActiveOpacity(activeSlot) * 100);
+    if (document.activeElement !== opSlider) opSlider.value = String(pct);
+    if (document.activeElement !== opNum)    opNum.value    = String(pct);
+  }
+  opSlider.addEventListener('input', () => {
+    setActiveOpacity(activeSlot, parseFloat(opSlider.value) / 100);
+    paintOpacity();
+  });
+  opNum.addEventListener('input', () => {
+    const v = parseFloat(opNum.value);
+    if (Number.isFinite(v)) {
+      setActiveOpacity(activeSlot, v / 100);
+      paintOpacity();
+    }
+  });
+
   // ── Stroke width slider + numeric input ──────────────────────────────
   const swSlider = popover.querySelector('.color-hub-stroke-width');
   const swNum    = popover.querySelector('.color-hub-stroke-width-num');
@@ -453,6 +479,7 @@ function bindEvents(anchorEl) {
     paintMode();
     paintGradient();
     paintStrokeWidth();
+    paintOpacity();
   };
 
   // ── Slot toggle (Fill | Stroke) ────────────────────────────────────
@@ -475,6 +502,7 @@ function bindEvents(anchorEl) {
   paintMode();
   paintGradient();
   paintStrokeWidth();
+  paintOpacity();
 
   // ── Hue ring drag ────────────────────────────────────────────────────
   function hueFromEvent(e) {
@@ -642,6 +670,7 @@ function bindEvents(anchorEl) {
     paintMode();
     paintGradient();
     paintStrokeWidth();
+    paintOpacity();
   }));
 }
 

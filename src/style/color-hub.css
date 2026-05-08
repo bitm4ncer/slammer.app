@@ -457,7 +457,8 @@
   background-size: 8px 8px !important;
 }
 
-/* ---------- Stroke width row ---------- */
+/* ---------- Opacity / Stroke-width rows (share styling) ---------- */
+.color-hub-opacity-row,
 .color-hub-stroke-row {
   display: flex;
   align-items: center;
@@ -465,8 +466,40 @@
   margin-top: 6px;
 }
 .color-hub-stroke-row[hidden] { display: none; }
+.color-hub-opacity,
 .color-hub-stroke-width {
   flex: 1;
+}
+.color-hub-opacity-num,
+.color-hub-stroke-width-num {
+  width: 48px;
+  flex: 0 0 48px;
+  text-align: right;
+}
+.color-hub-opacity {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  margin: 0;
+}
+.color-hub-opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+}
+.color-hub-opacity::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  border: none;
+  cursor: pointer;
+}
+.color-hub-stroke-width {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
@@ -477,8 +510,7 @@
 }
 .color-hub-stroke-width::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: var(--text-primary);
   cursor: pointer;
@@ -489,11 +521,6 @@
   background: var(--text-primary);
   border: none;
   cursor: pointer;
-}
-.color-hub-stroke-width-num {
-  width: 48px;
-  flex: 0 0 48px;
-  text-align: right;
 }
 
 /* ---------- Gradient editor ---------- */
