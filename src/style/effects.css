@@ -43,7 +43,7 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  z-index: calc(var(--z-app) + 89);
+  z-index: 90;
   background: var(--surface-2);
   border-radius: 4px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
@@ -55,7 +55,7 @@
 }
 .layer-blend-menu--portaled {
   position: fixed;
-  z-index: calc(var(--z-plugin-window) + 10);
+  z-index: 250;
 }
 .layer-blend-option {
   padding: 5px 10px;
@@ -470,7 +470,7 @@
   pointer-events: auto;
   user-select: none;
   white-space: nowrap;
-  z-index: calc(var(--z-app) + 4);
+  z-index: 5;
 }
 .export-frame-info[hidden] { display: none; }
 .export-frame-info .ef-w,
@@ -557,7 +557,7 @@
   transform: scale(0.8);
   transition: opacity 0.12s ease, transform 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   padding: 0;
-  z-index: calc(var(--z-app) + 1);
+  z-index: 2;
 }
 .palette-swatch:hover .palette-remove {
   opacity: 1;
@@ -676,7 +676,7 @@
 /* Portaled to document.body so it can escape effect-card overflow:hidden. */
 .custom-dropdown-menu--portaled {
   position: fixed;
-  z-index: calc(var(--z-plugin-window) + 10);
+  z-index: 250;
 }
 
 .custom-dropdown-group {
@@ -964,7 +964,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-settings-overlay);
+  z-index: 500;
   animation: pbFadeIn 0.18s ease;
 }
 @keyframes pbFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1451,7 +1451,7 @@
   position: sticky;
   top: 0;
   background: var(--surface-2);
-  z-index: calc(var(--z-app) + 1);
+  z-index: 2;
 }
 .project-browser-list-row {
   display: grid;
@@ -1540,7 +1540,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: calc(var(--z-settings-overlay) + 1);
+  z-index: 600;
   animation: pbFadeIn 0.14s ease;
 }
 .confirm-modal {

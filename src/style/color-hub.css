@@ -5,7 +5,7 @@
 
 .color-hub {
   position: fixed;
-  z-index: calc(var(--z-plugin-window) + 5);
+  z-index: 240;
   /* Anchor flush to the viewport bottom — the popover extends OVER the
    * footer's vertical band when open, so its dark surface meets the
    * canvas with no visible 36 px gap below. The wheel cluster lifts to
@@ -196,7 +196,7 @@
 /* Children stack ABOVE the conic-ring pseudo. */
 .color-hub-tri,
 .color-hub-hue-cursor,
-.color-hub-tri-cursor { z-index: calc(var(--z-app) + 1); }
+.color-hub-tri-cursor { z-index: 1; }
 .color-hub-hue-ring:focus-visible {
   outline: 2px solid var(--ctx-accent);
   outline-offset: 2px;
