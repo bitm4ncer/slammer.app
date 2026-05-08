@@ -104,13 +104,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     button: document.getElementById('btnSettings'),
     version: '1.0.2',
   });
-  // Apply performance-mode pixelRatio BEFORE any Konva object is created.
-  // Konva reads Konva.pixelRatio at layer/canvas creation; setting it here
-  // means every layer the canvas-view init builds inherits the lower ratio.
-  // Toggling the setting requires a reload to fully apply (existing canvases
-  // keep their original backing-store size).
+  // Konva.pixelRatio policy — applied BEFORE any Konva object is created.
+  //   • 1x display (Windows / desktop monitors): pixelRatio = 1. No-op.
+  //   • 2x retina (most Macs, iPads): pixelRatio = 2. Sharp UI, default.
+  //   • 3x+ devices (HDPI phones, 5K monitors): CAPPED at 2 — the visual
+  //     difference between 2x and 3x is sub-perceptual but the perf cost
+  //     scales with the square, so 3x is ~55% more pixel work than 2x for
+  //     no real gain. This matches what Figma / Photopea / Procreate do
+  //     implicitly. Saves the 3x-display user from a slideshow.
+  //   • Performance mode setting (Canvas tab) forces pixelRatio = 1 across
+  //     the board for users who hit perf limits even at 2x — escape hatch
+  //     for the slow-Mac + heavy-project case.
+  // Toggling the setting requires a reload to fully apply (existing
+  // canvases keep their original backing-store size).
   try {
-    if (getSettings().performanceMode) Konva.pixelRatio = 1;
+    const settings = getSettings();
+    const dpr = window.devicePixelRatio || 1;
+    Konva.pixelRatio = settings.performanceMode ? 1 : Math.min(dpr, 2);
   } catch (_) { /* legacy build */ }
   initSidePanelSplit();
 
@@ -261,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initColorCircle({
     buttonEl: document.getElementById('btnColorCircle'),
     swatchEl: document.getElementById('colorCircleSwatch'),
+    strokeRingEl: document.getElementById('colorCircleStrokeRing'),
   });
   initQuickSelectWheel({
     document: doc,

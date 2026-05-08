@@ -49,10 +49,11 @@ const DEFAULTS = {
   canvasGridMajor: 100,
   canvasGridOpacity: 25,
   canvasGridColor: '#ffffff',
-  // Performance — when ON, Konva's pixelRatio is forced to 1 instead of
-  // tracking devicePixelRatio. On a 2x retina display this cuts canvas
-  // pixel work by 4x; visible quality drop is minor on most workflows.
-  // Applied at boot — toggling requires a reload.
+  // Performance — escape hatch. Default OFF means Konva.pixelRatio tracks
+  // devicePixelRatio CAPPED AT 2 (matches Figma / Photopea / Procreate
+  // implicit policy: sharp on retina, auto-protection against the cost
+  // jump on 3x mobile / 5K monitors). Flip ON to force pixelRatio = 1
+  // for users hitting perf limits even at 2x. Applied at boot.
   performanceMode: false,
 };
 
@@ -521,7 +522,7 @@ function renderCanvas() {
       <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Performance</div>
         ${toggleRowHTML('setPerformanceMode', 'Performance mode', s.performanceMode,
-          'Renders the canvas at 1x device pixels instead of tracking your display\'s pixel ratio. On a 2x retina screen this cuts canvas pixel work by ~4x. Slight quality drop on text edges and tiny vector strokes. Reload the page after toggling for it to take effect.')}
+          'Forces the canvas to render at 1x device pixels. By default slammer caps at 2x — sharp on retina, automatic protection against the 3x cost on HDPI mobile / 5K monitors. Flip this on if you hit slowdowns even at 2x (heavy projects on slower Macs). Slight softness on selection handles and rulers. Reload after toggling.')}
       </div>
 
     </section>
@@ -699,6 +700,8 @@ function renderShortcuts() {
               ['R', 'Rectangle (cycle shape primitives)'],
               ['T', 'Add text layer'],
               ['I', 'Add image layer'],
+              ['C', 'Toggle Colour Hub'],
+              ['X', 'Swap fill ↔ stroke colour'],
             ])}
             ${shortcutSection('Canvas', [
               ['Mouse-wheel', 'Pan or zoom — Settings → Workflow → Canvas navigation chooses the default'],
