@@ -3266,7 +3266,12 @@
   top: 0;
   left: 0;
   width: 24px;
-  bottom: 0;
+  /* Stop above the bottom-left zoom controls (.zoom-controls at
+   * bottom: 16px, ~28 px tall) so the ruler doesn't sit on top of them
+   * — z-index of the ruler is 15 vs zoom-controls 10, so without this
+   * buffer the ruler swallows the +/-/% buttons. 56 px = 16 px footer
+   * gap + ~28 px button height + 12 px breathing room. */
+  bottom: 56px;
 }
 .ruler-corner {
   position: absolute;
