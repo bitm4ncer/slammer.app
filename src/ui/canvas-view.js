@@ -597,6 +597,32 @@ export function initCanvasView({ container, document, onImageDropped }) {
         e.preventDefault();
       }
     }
+    // Phase 19 cluster A — arrow keys nudge the selected layer(s) by 1 px;
+    // Shift+arrow = 10 px. Skips inputs / text editing so it doesn't fight
+    // the user typing in a numeric field. Modifier keys (Ctrl/Alt/Meta)
+    // exclude this handler so they don't conflict with platform shortcuts
+    // or future canvas-pan bindings.
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      if (isEditingText()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const sel = getSelection();
+      const ids = sel.size ? [...sel] : (document.activeLayerId ? [document.activeLayerId] : []);
+      if (!ids.length) return;
+      const step = e.shiftKey ? 10 : 1;
+      let dx = 0, dy = 0;
+      if (e.key === 'ArrowLeft')  dx = -step;
+      if (e.key === 'ArrowRight') dx = +step;
+      if (e.key === 'ArrowUp')    dy = -step;
+      if (e.key === 'ArrowDown')  dy = +step;
+      for (const id of ids) {
+        const layer = document.findLayer(id);
+        if (!layer) continue;
+        const tx = (layer.transform?.x || 0) + dx;
+        const ty = (layer.transform?.y || 0) + dy;
+        document.setLayerTransform(id, { x: tx, y: ty });
+      }
+      e.preventDefault();
+    }
   });
   window.addEventListener('keyup', (e) => {
     if (e.code === 'Space') {
