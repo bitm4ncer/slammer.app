@@ -873,6 +873,24 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     return Math.max(0, w);
   }
 
+  // Plugin in-placeness detection. Roughly half of slammer's plugins are
+  // "out-of-place" (bulge, ripple, twirl, displacement, rgb-shift,
+  // drop-shadow, …) — they ALLOCATE a new ImageData and return it without
+  // touching the input. The other half mutate the input ImageData in
+  // place (hue, posterize, brightness, grain, dithering, pixelsort, …).
+  //
+  // The pipeline used to clone the previous step ALWAYS so an in-place
+  // plugin couldn't corrupt the cached step. For out-of-place plugins
+  // that's a wasted ~16 MB copy at 2k canvas. Across a 5-effect stack
+  // it's ~10 ms of pure GC churn per pipeline run — wall-time noise
+  // during a knob drag (60 Hz) but a real ~600 ms/s of cloning.
+  //
+  // Heuristic: the first call to a plugin is always clone-protected;
+  // we observe whether the plugin returned a different ref than the
+  // input (= out-of-place) and remember that for the rest of the
+  // session. Plugins don't change in-placeness at runtime in practice.
+  const _outOfPlacePlugins = new Set();
+
   async function applyEffectsPipeline(layer, st) {
     if (!st.sourceImageData) return null;
     const { effects } = layer;
@@ -903,7 +921,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         st.steps[i] = prev;
         continue;
       }
-      const input = cloneImageData(prev);
+      // Skip the defensive clone if we've already observed this plugin to
+      // be out-of-place. First call always clones. Plugin manifests can
+      // also opt-in via `outOfPlace: true` to skip from the very first run.
+      const skipClone = _outOfPlacePlugins.has(eff.pluginId) || plugin.outOfPlace === true;
+      const input = skipClone ? prev : cloneImageData(prev);
       let out = prev;
       document._emitEffectProcessing(layer.id, eff.id, 'start');
       try {
@@ -921,6 +943,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         };
         const r = await plugin.process(input, eff.params || {}, ctx);
         out = r || input;
+        // First-call detection: if the plugin returned a different ref
+        // than the input, it's out-of-place — skip the clone next time.
+        if (!skipClone && plugin.outOfPlace === undefined && out !== input) {
+          _outOfPlacePlugins.add(eff.pluginId);
+        }
         // Per-slot dry/wet — lerp between the slot's input and the plugin's output.
         const mix = eff.mix ?? 1;
         if (mix < 1 && out !== prev) {
