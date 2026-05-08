@@ -1714,6 +1714,16 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   //   • Commit     → write the new transform into the doc model (history,
   //                  autosave, layer:transform listeners).
   let liveFxRaf = null;
+  let liveFxLastRun = 0;
+  // Throttle the live FX recompute during a drag. A heavy FX layer (drop-
+  // shadow with spread, dithering, big blur) costs 50-150 ms per recompute;
+  // running it every dragmove tick (60+ Hz) keeps the main thread saturated
+  // and the drag feels stuck. Cap at ~12 Hz — the FX preview lags by ~80 ms
+  // behind the dragged layer (sub-perceptual when the user is focused on
+  // the position handle), and the final dragend triggers a fresh repaint
+  // via repaintFxAbove (separate code path) so the released frame is sharp.
+  // Procreate / Affinity / Photoshop all do this.
+  const LIVE_FX_MIN_INTERVAL = 80;
   function scheduleLiveFxRecompute(draggedLayerId) {
     if (liveFxRaf) return;
     // FX layers below the dragged layer don't see it in their below-composite,
@@ -1728,8 +1738,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       }
       if (!hasFxAbove) return;
     }
-    liveFxRaf = requestAnimationFrame(() => {
+    const since = performance.now() - liveFxLastRun;
+    const fire = () => {
       liveFxRaf = null;
+      liveFxLastRun = performance.now();
       const layers = document.layers;
       for (let i = 0; i < layers.length; i++) {
         const l = layers[i];
@@ -1740,7 +1752,21 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         st.dirtyFromIndex = 0;
         paintLayer(l, st);
       }
-    });
+    };
+    if (since >= LIVE_FX_MIN_INTERVAL) {
+      liveFxRaf = requestAnimationFrame(fire);
+    } else {
+      // Too soon — defer to the throttle window. Mark liveFxRaf as a non-zero
+      // sentinel so re-entrant calls don't pile up.
+      const wait = LIVE_FX_MIN_INTERVAL - since;
+      liveFxRaf = setTimeout(() => {
+        liveFxRaf = null;
+        // After the throttle wait elapses, schedule a real RAF — by then any
+        // queued dragmove has updated the live group positions, and the FX
+        // preview will be at most one frame behind the user's cursor.
+        scheduleLiveFxRecompute(draggedLayerId);
+      }, wait);
+    }
   }
 
   // Track which underlying layer is currently being dragged/transformed so we can
