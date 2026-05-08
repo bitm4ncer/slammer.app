@@ -86,13 +86,11 @@ function build() {
   popover.innerHTML = `
     <div class="color-hub-slot-row">
       <div class="color-hub-slot-toggle" role="tablist" aria-label="Editing colour slot">
-        <button class="color-hub-slot ${activeSlot === 'fill' ? 'is-active' : ''}" data-slot="fill" type="button" role="tab">
-          <span class="color-hub-slot-chip" data-slot-chip="fill"></span>
-          <span class="color-hub-slot-label">Fill</span>
+        <button class="color-hub-slot color-hub-slot--fill ${activeSlot === 'fill' ? 'is-active' : ''}" data-slot="fill" type="button" role="tab" title="Fill" aria-label="Fill">
+          <span class="color-hub-slot-chip color-hub-slot-chip--fill" data-slot-chip="fill"></span>
         </button>
-        <button class="color-hub-slot ${activeSlot === 'stroke' ? 'is-active' : ''}" data-slot="stroke" type="button" role="tab">
-          <span class="color-hub-slot-chip" data-slot-chip="stroke"></span>
-          <span class="color-hub-slot-label">Stroke</span>
+        <button class="color-hub-slot color-hub-slot--stroke ${activeSlot === 'stroke' ? 'is-active' : ''}" data-slot="stroke" type="button" role="tab" title="Stroke" aria-label="Stroke">
+          <span class="color-hub-slot-chip color-hub-slot-chip--stroke" data-slot-chip="stroke"></span>
         </button>
         <button class="color-hub-slot-swap" type="button" title="Swap fill ↔ stroke (X)" aria-label="Swap fill and stroke">
           <i class="fas fa-arrows-rotate"></i>
@@ -244,8 +242,10 @@ function bindEvents(anchorEl) {
   function paintSlotChips() {
     const fillChip = popover.querySelector('[data-slot-chip="fill"]');
     const strokeChip = popover.querySelector('[data-slot-chip="stroke"]');
+    // Fill chip is a solid disc — paint via background. Stroke chip is a
+    // ring (transparent core, thick border) — paint via border-color.
     if (fillChip)   fillChip.style.background = getActiveFill();
-    if (strokeChip) strokeChip.style.background = getActiveStroke();
+    if (strokeChip) strokeChip.style.borderColor = getActiveStroke();
     popover.querySelectorAll('.color-hub-slot').forEach((b) => {
       b.classList.toggle('is-active', b.dataset.slot === activeSlot);
     });

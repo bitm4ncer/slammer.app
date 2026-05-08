@@ -322,7 +322,11 @@ body.color-hub--dot .color-circle-btn:hover {
   width: 260px;
   height: 260px;
   transform: translate(-50%, 50%);
-  z-index: 49;
+  /* Above the colour hub popover (z-index 240) so the dot rides ON TOP
+   * of the popover's top edge — the dot's lower 21 px overlap reads as
+   * the dial sinking INTO the drawer, the same way it sinks into the
+   * footer in closed state. */
+  z-index: 241;
   pointer-events: none; /* children opt back in */
   /* Lifts when the colour drawer opens. We animate `transform` (composited
    * on the GPU) instead of `bottom` because `bottom` transitions are

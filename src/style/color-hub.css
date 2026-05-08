@@ -63,17 +63,16 @@
   padding: 3px;
 }
 .color-hub-slot {
+  /* Icon-only tab — the chip IS the icon (solid disc for fill, ring for
+   * stroke). No text label; tooltip carries the name. */
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   background: transparent;
   border: none;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 10px 4px 6px;
+  padding: 5px 8px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.14s, color 0.14s;
@@ -87,8 +86,22 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
+  box-sizing: border-box;
+}
+/* Fill: solid filled disc — background paints the active fill colour. */
+.color-hub-slot-chip--fill {
   background: var(--primary);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+/* Stroke: hollow ring — transparent core, thick border paints the active
+ * stroke colour. Inner dark inset keeps the ring readable on light
+ * stroke colours. */
+.color-hub-slot-chip--stroke {
+  background: transparent;
+  border: 4px solid var(--primary);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 .color-hub-slot-swap {
   margin-left: 6px;
