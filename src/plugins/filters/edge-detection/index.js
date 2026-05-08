@@ -80,75 +80,47 @@ export default {
       }
     }
 
-    // ---------- Pass 2: threshold, dilate, write ----------
-    const r = thickness - 1; // dilation radius: 1→0, 2→1, 3→2
-
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const base = (y * w + x) * 4;
-
-        if (perChannel) {
-          for (let c = 0; c < 3; c++) {
-            let mag = mags[(y * w + x) * 3 + c];
-            if (mag < threshold) mag = 0;
-            // Dilation
-            if (r > 0 && mag === 0) {
-              let maxVal = 0;
-              for (let dy = -r; dy <= r; dy++) {
-                const ny = y + dy;
-                if (ny < 0 || ny >= h) continue;
-                for (let dx = -r; dx <= r; dx++) {
-                  const nx = x + dx;
-                  if (nx < 0 || nx >= w) continue;
-                  const v = mags[(ny * w + nx) * 3 + c];
-                  if (v > maxVal) maxVal = v;
-                }
-              }
-              mag = maxVal;
-            }
-            d[base + c] = invert ? (255 - mag) : mag;
-          }
-        } else if (colorMode === 'sourceTinted') {
-          let mag = mags[y * w + x];
-          if (mag < threshold) mag = 0;
-          if (r > 0 && mag === 0) {
-            let maxVal = 0;
-            for (let dy = -r; dy <= r; dy++) {
-              const ny = y + dy;
-              if (ny < 0 || ny >= h) continue;
-              for (let dx = -r; dx <= r; dx++) {
-                const nx = x + dx;
-                if (nx < 0 || nx >= w) continue;
-                const v = mags[ny * w + nx];
-                if (v > maxVal) maxVal = v;
-              }
-            }
-            mag = maxVal;
-          }
-          d[base + 3] = mag; // alpha = edge magnitude
-          // RGB stays source
-        } else {
-          // mono
-          let mag = mags[y * w + x];
-          if (mag < threshold) mag = 0;
-          if (r > 0 && mag === 0) {
-            let maxVal = 0;
-            for (let dy = -r; dy <= r; dy++) {
-              const ny = y + dy;
-              if (ny < 0 || ny >= h) continue;
-              for (let dx = -r; dx <= r; dx++) {
-                const nx = x + dx;
-                if (nx < 0 || nx >= w) continue;
-                const v = mags[ny * w + nx];
-                if (v > maxVal) maxVal = v;
-              }
-            }
-            mag = maxVal;
-          }
-          const out = invert ? (255 - mag) : mag;
-          d[base] = out;
-          d[base + 1] = out;
-          d[base + 2] = out;
+    // ---------- Pass 2: threshold + (optional) dilate ----------
+    // Threshold zaps weak pixels. Dilation then thickens edges into
+    // adjacent zeroed pixels. The old version did a 5x5 max-scan inline
+    // for EVERY zeroed pixel — O(W·H·r²). Same anti-pattern we fixed in
+    // drop-shadow (commit 2862287). Use a separable sliding-max deque
+    // (O(W·H) regardless of r) and merge: keep original where non-zero,
+    // use dilated where zero.
+    const r = thickness - 1;
+    if (perChannel) {
+      // Process each channel independently. Mags layout is RGBRGB...
+      // — extract a channel into a tight buffer, threshold + dilate,
+      // then write back interleaved at the end.
+      const chanBuf = new Uint8ClampedArray(w * h);
+      for (let c = 0; c < 3; c++) {
+        for (let i = 0; i < w * h; i++) chanBuf[i] = mags[i * 3 + c];
+        thresholdMagsInPlace(chanBuf, threshold);
+        if (r > 0) {
+          const dilated = dilateMax(chanBuf, w, h, r);
+          for (let i = 0; i < w * h; i++) if (chanBuf[i] === 0) chanBuf[i] = dilated[i];
+        }
+        // Write back to imageData[c]
+        for (let i = 0; i < w * h; i++) {
+          const v = chanBuf[i];
+          d[i * 4 + c] = invert ? (255 - v) : v;
+        }
+      }
+    } else {
+      thresholdMagsInPlace(mags, threshold);
+      if (r > 0) {
+        const dilated = dilateMax(mags, w, h, r);
+        for (let i = 0; i < w * h; i++) if (mags[i] === 0) mags[i] = dilated[i];
+      }
+      if (colorMode === 'sourceTinted') {
+        for (let i = 0; i < w * h; i++) d[i * 4 + 3] = mags[i];
+      } else {
+        // mono
+        for (let i = 0; i < w * h; i++) {
+          const out = invert ? (255 - mags[i]) : mags[i];
+          d[i * 4]     = out;
+          d[i * 4 + 1] = out;
+          d[i * 4 + 2] = out;
         }
       }
     }
@@ -187,3 +159,67 @@ export default {
     return root;
   },
 };
+
+// ---------------------------------------------------------------------------
+// Helpers — same sliding-max-deque pattern as drop-shadow's dilateAlpha
+// (van Herk-Gil-Werman). Replaces the old O(W·H·r²) inner-loop scan with
+// O(W·H) total work, independent of r.
+// ---------------------------------------------------------------------------
+
+function thresholdMagsInPlace(mags, threshold) {
+  if (threshold <= 0) return;
+  for (let i = 0; i < mags.length; i++) if (mags[i] < threshold) mags[i] = 0;
+}
+
+function dilateMax(src, w, h, r) {
+  const tmp = new Uint8ClampedArray(w * h);
+  const out = new Uint8ClampedArray(w * h);
+  const deqMax = Math.max(w, h);
+  const deq = new Int32Array(deqMax);
+
+  // Horizontal pass
+  for (let y = 0; y < h; y++) {
+    const rowOff = y * w;
+    let head = 0, tail = 0;
+    const preLimit = r < w ? r : w;
+    for (let i = 0; i < preLimit; i++) {
+      const v = src[rowOff + i];
+      while (head < tail && src[rowOff + deq[tail - 1]] <= v) tail--;
+      deq[tail++] = i;
+    }
+    for (let x = 0; x < w; x++) {
+      const xr = x + r;
+      if (xr < w) {
+        const v = src[rowOff + xr];
+        while (head < tail && src[rowOff + deq[tail - 1]] <= v) tail--;
+        deq[tail++] = xr;
+      }
+      const xl = x - r;
+      while (head < tail && deq[head] < xl) head++;
+      tmp[rowOff + x] = src[rowOff + deq[head]];
+    }
+  }
+
+  // Vertical pass
+  for (let x = 0; x < w; x++) {
+    let head = 0, tail = 0;
+    const preLimit = r < h ? r : h;
+    for (let i = 0; i < preLimit; i++) {
+      const v = tmp[i * w + x];
+      while (head < tail && tmp[deq[tail - 1] * w + x] <= v) tail--;
+      deq[tail++] = i;
+    }
+    for (let y = 0; y < h; y++) {
+      const yr = y + r;
+      if (yr < h) {
+        const v = tmp[yr * w + x];
+        while (head < tail && tmp[deq[tail - 1] * w + x] <= v) tail--;
+        deq[tail++] = yr;
+      }
+      const yl = y - r;
+      while (head < tail && deq[head] < yl) head++;
+      out[y * w + x] = tmp[deq[head] * w + x];
+    }
+  }
+  return out;
+}
