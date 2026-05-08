@@ -6,7 +6,7 @@ import { findFont } from '../ui/typography/font-sources.js';
 import { rasterizeVectorLayer, rasterizeVectorGroup, translatePathD, computePadForEffects } from './vector-renderer.js';
 import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 import { getSelection, onSelectionChange } from '../ui/selection-state.js';
-import { getSettings } from '../ui/settings-popup.js';
+import { getSettings, onSettingsChange } from '../ui/settings-popup.js';
 import { computeBoxScaleSnap } from '../ui/snap-rulers.js';
 
 function resolveFontMeta(text) {
@@ -311,11 +311,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     stage.add(selectionOverlayLayer);
     return selectionOverlayLayer;
   }
+  // Cache the --primary CSS variable lookup. getComputedStyle is a known
+  // layout/style flush — calling it every dragmove tick (which is when
+  // redrawSelectionOutlines fires for multi-select) is wasteful. Invalidate
+  // only when the user changes the accent in Settings.
+  let _cachedPrimary = null;
+  function readPrimary() {
+    if (_cachedPrimary !== null) return _cachedPrimary;
+    _cachedPrimary = getComputedStyle(window.document.documentElement)
+      .getPropertyValue('--primary').trim() || '#8aff8c';
+    return _cachedPrimary;
+  }
+  onSettingsChange(() => { _cachedPrimary = null; });
+
   function redrawSelectionOutlines() {
     const layer = ensureSelectionOverlay();
     const sel = getSelection();
-    const accent = getComputedStyle(window.document.documentElement)
-      .getPropertyValue('--primary').trim() || '#8aff8c';
+    const accent = readPrimary();
     // Build the set of layers we want to outline:
     //   • Every selected layer (multi-select primary outlines).
     //   • Every descendant of any selected group (subdued "part of
