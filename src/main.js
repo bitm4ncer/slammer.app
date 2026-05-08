@@ -47,6 +47,7 @@ import posterizePlugin from './plugins/filters/posterize/index.js';
 import rgbShiftPlugin from './plugins/filters/rgb-shift/index.js';
 import dropShadowPlugin from './plugins/filters/drop-shadow/index.js';
 import solarizePlugin from './plugins/filters/solarize/index.js';
+import edgeDetectionPlugin from './plugins/filters/edge-detection/index.js';
 // datamosh, jpeg-compression, dithering, twirl, ripple, bulge moved to
 // src/plugins/premium/ — loaded in dev via premium-loader.js, served via
 // Bitmancer Library shop in prod.
@@ -134,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rgbShiftPlugin,
     dropShadowPlugin,
     solarizePlugin,
+    edgeDetectionPlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
     twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,
