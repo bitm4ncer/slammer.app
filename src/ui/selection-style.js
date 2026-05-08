@@ -114,17 +114,22 @@ export function getEffectiveStyle() {
         strokeGradient: stroke.type === 'gradient' ? gradientFromVectorFill(stroke) : getActiveGradient('stroke'),
       };
     }
-    // Text layer — only solid color is supported by the rasteriser today.
+    // Text layer. Fill comes from the layer's text.color; stroke falls
+    // back to the ACTIVE state so the user can navigate the stroke
+    // controls and set defaults for the next vector layer they create.
+    // (The rasteriser doesn't honour text stroke yet — writes to stroke
+    // are a no-op on the text itself, but they still update the active
+    // state via applySlot* in the apply helpers.)
     return {
       source: 'layer',
       layerId: layer.id,
       fillKind: 'solid',
-      strokeKind: 'none',
+      strokeKind: getActiveKind('stroke'),
       fill: layer.text?.color || '#ffffff',
-      stroke: '#000000',
+      stroke: getActiveStroke(),
       fillOpacity: 1,
-      strokeOpacity: 1,
-      strokeWidth: 0,
+      strokeOpacity: getActiveOpacity('stroke'),
+      strokeWidth: getActiveStrokeWidth(),
       fillGradient: getActiveGradient('fill'),
       strokeGradient: getActiveGradient('stroke'),
     };
