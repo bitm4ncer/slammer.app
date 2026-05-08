@@ -104,19 +104,29 @@
     0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 .color-hub-slot-swap {
-  margin-left: 6px;
+  /* Sits BETWEEN the fill and stroke chips — small and unobtrusive,
+   * the way Adobe / Figma place the swap arrow. */
+  margin: 0 2px;
   background: transparent;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  transition: color 0.14s, background 0.14s;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  opacity: 0.7;
+  transition: color 0.14s, background 0.14s, opacity 0.14s, transform 0.14s;
 }
 .color-hub-slot-swap:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 .color-hub-row {

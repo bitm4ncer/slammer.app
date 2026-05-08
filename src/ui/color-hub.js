@@ -89,11 +89,11 @@ function build() {
         <button class="color-hub-slot color-hub-slot--fill ${activeSlot === 'fill' ? 'is-active' : ''}" data-slot="fill" type="button" role="tab" title="Fill" aria-label="Fill">
           <span class="color-hub-slot-chip color-hub-slot-chip--fill" data-slot-chip="fill"></span>
         </button>
-        <button class="color-hub-slot color-hub-slot--stroke ${activeSlot === 'stroke' ? 'is-active' : ''}" data-slot="stroke" type="button" role="tab" title="Stroke" aria-label="Stroke">
-          <span class="color-hub-slot-chip color-hub-slot-chip--stroke" data-slot-chip="stroke"></span>
-        </button>
         <button class="color-hub-slot-swap" type="button" title="Swap fill ↔ stroke (X)" aria-label="Swap fill and stroke">
           <i class="fas fa-arrows-rotate"></i>
+        </button>
+        <button class="color-hub-slot color-hub-slot--stroke ${activeSlot === 'stroke' ? 'is-active' : ''}" data-slot="stroke" type="button" role="tab" title="Stroke" aria-label="Stroke">
+          <span class="color-hub-slot-chip color-hub-slot-chip--stroke" data-slot-chip="stroke"></span>
         </button>
       </div>
     </div>
