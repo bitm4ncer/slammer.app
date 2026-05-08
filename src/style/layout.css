@@ -356,16 +356,19 @@ body.color-hub--dot .color-circle-btn:hover {
 }
 
 /* ---------- Drawer-open lift: wheel cluster (wheel + dot child) rises ----------
- * The cluster lifts by exactly the popover's height. The dot, now a CHILD
- * of .quick-wheel, rides along automatically — it doesn't need its own lift
- * rule. By lifting only --color-hub-h (no +21 px buffer), the dot lands
- * 21 px INTO the popover top edge, mirroring the closed-state relationship
- * where the dot sinks 21 px into the footer top edge. The popover's sharp
- * top corners (set in color-hub.css) keep that overlap clean.
+ * Popover anchor changed to bottom: 0 (flush with viewport bottom, OVER
+ * the footer band). Cluster's idle anchor is bottom: 36 (sitting on the
+ * footer top edge). For the wheel cut line to meet the popover top edge:
+ *   wheel cut from vh   = 36 + lift
+ *   popover top from vh = popover_h
+ *   →  lift = popover_h - 36
+ * The dot, now a CHILD of .quick-wheel, rides along automatically and
+ * lands 21 px INTO the popover top edge — mirroring the closed-state
+ * dot-into-footer overlap.
  */
 :root {
   --color-hub-h: 280px;
-  --color-hub-cluster-lift: var(--color-hub-h);
+  --color-hub-cluster-lift: calc(var(--color-hub-h) - 36px);
 }
 body.color-hub-open:not(.color-hub--dot) .quick-wheel {
   transform: translate(-50%, calc(50% - var(--color-hub-cluster-lift)));

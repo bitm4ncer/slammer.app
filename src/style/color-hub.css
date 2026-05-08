@@ -6,16 +6,17 @@
 .color-hub {
   position: fixed;
   z-index: 240;
-  /* Anchor: bottom = footer height (36 px). Centred on dial's golden
-   * line via translateX(-50%). JS sets `left` per dial position. */
-  bottom: 36px;
+  /* Anchor flush to the viewport bottom — the popover extends OVER the
+   * footer's vertical band when open, so its dark surface meets the
+   * canvas with no visible 36 px gap below. The wheel cluster lifts to
+   * sit ON TOP of the popover and the dot pokes 21 px into the drawer
+   * top edge. */
+  bottom: 0;
   background: rgba(20, 20, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  /* Sharp top corners — the dot from the wheel cluster overlaps the
-   * popover's top edge (matching the closed-state relationship between
-   * the dot and the footer). Rounded top corners would peek out from
-   * behind the dot, so we square them off. */
-  border-radius: 0 0 8px 8px;
+  /* No border / no rounded corners — the popover reads as a flat dark
+   * surface that fuses cleanly with the footer band beneath it. */
+  border: none;
+  border-radius: 0;
   padding: 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text-primary);
