@@ -646,6 +646,14 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       const dial = document.getElementById('btnColorCircle');
       if (dial) toggleColorHub(dial);
     }
+    else if (key === 'x') {
+      // X — swap fill ↔ stroke colours (Affinity / Photoshop convention).
+      // Synchronous import via static reference at top of file would be
+      // ideal, but the toolbar already imports many modules; lazy-load
+      // here keeps bundle clean for users who never press X.
+      e.preventDefault();
+      import('../core/colors.js').then(({ swapFillStroke }) => swapFillStroke());
+    }
     else if (key === 'r') {
       e.preventDefault();
       // R cycles through shapes if pressed repeatedly while a shape is active.

@@ -218,8 +218,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // actually need, behind a small façade (no direct closures from this scope).
   // Phase 23 — colour core API surface for plugins.
   const colorsApi = await import('./core/colors.js').then((m) => ({
-    getActive:           m.getActive,
-    setActive:           m.setActive,
+    getActive:           m.getActive,            // back-compat — returns fill hex
+    setActive:           m.setActive,            // back-compat — writes fill slot
+    getActiveFill:       m.getActiveFill,
+    getActiveStroke:     m.getActiveStroke,
+    getActiveSlots:      m.getActiveSlots,
+    setActiveFill:       m.setActiveFill,
+    setActiveStroke:     m.setActiveStroke,
+    setActiveSlot:       m.setActiveSlot,
+    swapFillStroke:      m.swapFillStroke,
     onActiveChange:      m.onActiveChange,
     getVariables:        m.getVariables,
     setVariable:         m.setVariable,

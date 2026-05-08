@@ -21,7 +21,12 @@ const LS_ACTIVE     = 'slammer:colors:active';
 const LS_VARIABLES  = 'slammer:colors:variables';
 const LS_SWATCHES   = 'slammer:colors:swatches';
 
-const DEFAULT_ACTIVE    = '#8aff8c';
+// Active colour is now a TWO-SLOT model: { fill, stroke }. Old shape was a
+// bare hex string; ensureLoaded() migrates string → { fill: <string>,
+// stroke: '#000000' } silently on first read.
+const DEFAULT_FILL      = '#8aff8c';
+const DEFAULT_STROKE    = '#000000';
+const DEFAULT_ACTIVE    = { fill: DEFAULT_FILL, stroke: DEFAULT_STROKE };
 const DEFAULT_VARIABLES = [];
 const DEFAULT_SWATCHES  = [];
 
@@ -60,9 +65,19 @@ function writeJSON(key, value) {
 
 function ensureLoaded() {
   if (_active === null) {
-    _active = readJSON(LS_ACTIVE, DEFAULT_ACTIVE);
-    if (typeof _active !== 'string' || !/^#[0-9a-f]{6}$/i.test(_active)) {
-      _active = DEFAULT_ACTIVE;
+    const raw = readJSON(LS_ACTIVE, DEFAULT_ACTIVE);
+    if (typeof raw === 'string' && /^#[0-9a-f]{6}$/i.test(raw)) {
+      // Legacy shape — wrap and re-write so subsequent reads see the new
+      // shape. Stroke defaults to black for projects predating two-slot.
+      _active = { fill: raw.toLowerCase(), stroke: DEFAULT_STROKE };
+      writeJSON(LS_ACTIVE, _active);
+    } else if (raw && typeof raw === 'object') {
+      _active = {
+        fill:   isHex(raw.fill)   ? raw.fill.toLowerCase()   : DEFAULT_FILL,
+        stroke: isHex(raw.stroke) ? raw.stroke.toLowerCase() : DEFAULT_STROKE,
+      };
+    } else {
+      _active = { ...DEFAULT_ACTIVE };
     }
   }
   if (_variables === null) {
@@ -80,6 +95,8 @@ function isValidVar(v) {
          typeof v.value === 'string' && /^#[0-9a-f]{6}$/i.test(v.value);
 }
 
+function isHex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+
 function emit(slot) {
   for (const fn of listeners[slot]) {
     try { fn(); } catch (e) { console.error('[colors] listener threw', e); }
@@ -87,20 +104,45 @@ function emit(slot) {
 }
 
 // ---------------------------------------------------------------------------
-// Active colour
+// Active colour — two-slot { fill, stroke } model
 // ---------------------------------------------------------------------------
 
+// Back-compat: getActive() returns the FILL hex string. Old callers (color-
+// hub.js' current build, plugins) reading "the active colour" still get a
+// sensible scalar. New callers should prefer getActiveFill / getActiveStroke
+// / getActiveSlots.
 export function getActive() {
   ensureLoaded();
-  return _active;
+  return _active.fill;
 }
 
-export function setActive(hex) {
+export function getActiveFill()   { ensureLoaded(); return _active.fill; }
+export function getActiveStroke() { ensureLoaded(); return _active.stroke; }
+export function getActiveSlots()  { ensureLoaded(); return { fill: _active.fill, stroke: _active.stroke }; }
+
+// setActive(hex) writes the FILL slot — back-compat with the legacy
+// single-slot API. Use setActiveStroke / setActiveSlot for stroke writes.
+export function setActive(hex) { setActiveSlot('fill', hex); }
+export function setActiveFill(hex)   { setActiveSlot('fill',   hex); }
+export function setActiveStroke(hex) { setActiveSlot('stroke', hex); }
+
+export function setActiveSlot(slot, hex) {
   ensureLoaded();
-  if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return;
+  if (slot !== 'fill' && slot !== 'stroke') return;
+  if (!isHex(hex)) return;
   const next = hex.toLowerCase();
-  if (next === _active) return;
-  _active = next;
+  if (_active[slot] === next) return;
+  _active = { ..._active, [slot]: next };
+  writeJSON(LS_ACTIVE, _active);
+  emit('active');
+}
+
+// Swap fill ↔ stroke. X-key shortcut + picker swap arrow both call this.
+// Single emit so subscribers see one round-trip, not two.
+export function swapFillStroke() {
+  ensureLoaded();
+  if (_active.fill === _active.stroke) return;
+  _active = { fill: _active.stroke, stroke: _active.fill };
   writeJSON(LS_ACTIVE, _active);
   emit('active');
 }

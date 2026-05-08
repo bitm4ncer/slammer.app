@@ -114,8 +114,11 @@
         </div>
       </div>
       <div class="footer-center">
-        <button class="color-circle-btn" id="btnColorCircle" title="Active colour" aria-label="Active colour">
-          <span class="color-circle-swatch" id="colorCircleSwatch"></span>
+        <button class="color-circle-btn" id="btnColorCircle" title="Active fill (centre) + stroke (ring)" aria-label="Active fill and stroke colours">
+          <!-- Two click zones: ring → opens hub on stroke, centre → fill.
+               JS routes the click via event.target. -->
+          <span class="color-circle-stroke-ring" id="colorCircleStrokeRing" title="Stroke colour" aria-label="Stroke colour"></span>
+          <span class="color-circle-swatch" id="colorCircleSwatch" title="Fill colour" aria-label="Fill colour"></span>
         </button>
       </div>
       <div class="footer-right">

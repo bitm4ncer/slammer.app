@@ -1,25 +1,107 @@
-/* Color Hub popover — Phase 23b. Floats above the dial when open. */
+/* Color Hub popover — Phase 23b drawer. Slides UP from below the wheel /
+ * dot cluster when open; the cluster simultaneously lifts (see layout.css
+ * body.color-hub-open rule) so the drawer sits in the gap between cluster
+ * and footer. */
 
 .color-hub {
   position: fixed;
   z-index: 240;
+  /* Anchor: bottom = footer height (36 px). Centred on dial's golden
+   * line via translateX(-50%). JS sets `left` per dial position. */
+  bottom: 36px;
   background: rgba(20, 20, 20, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 12px 12px 8px 8px;
   padding: 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text-primary);
   user-select: none;
   backdrop-filter: blur(14px) saturate(115%);
   -webkit-backdrop-filter: blur(14px) saturate(115%);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
-  width: 360px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  width: 480px;
+  /* Closed state: off-screen below the footer. is-open class transitions
+   * to translateY(0). is-closing reverses. Pattern matches floating-
+   * window.js close (commit eb18a14). */
+  transform: translate(-50%, calc(100% + 64px));
+  opacity: 0;
+  transition: transform 240ms cubic-bezier(.2,.7,.2,1), opacity 200ms ease;
+  will-change: transform, opacity;
+}
+.color-hub.is-open {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+.color-hub.is-closing {
+  transform: translate(-50%, calc(100% + 64px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Fill / Stroke slot toggle (top row) ---------- */
+.color-hub-slot-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.color-hub-slot-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+  padding: 3px;
+}
+.color-hub-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.color-hub-slot:hover { color: var(--text-primary); }
+.color-hub-slot.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+.color-hub-slot-chip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.color-hub-slot-swap {
+  margin-left: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  transition: color 0.14s, background 0.14s;
+}
+.color-hub-slot-swap:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .color-hub-row {
   display: grid;
   grid-template-columns: var(--ring-outer) 1fr;
-  gap: 12px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -36,6 +118,18 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  /* NO mask, NO conic background here — both moved to ::before below.
+   * CSS mask inherits to descendants, so painting the conic + mask on
+   * the wrapper element clipped the centred triangle canvas as well.
+   * Pseudo carries the visual; children stay unmasked. */
+  cursor: pointer;
+  outline: none;
+}
+.color-hub-hue-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
   background: conic-gradient(
     from 0deg,
     hsl(0, 100%, 50%),
@@ -46,8 +140,6 @@
     hsl(300, 100%, 50%),
     hsl(360, 100%, 50%)
   );
-  /* Punch out the centre with a radial gradient mask so the ring is an
-   * annulus, not a full disc. */
   -webkit-mask: radial-gradient(
     circle,
     transparent calc(var(--ring-inner) / 2),
@@ -58,10 +150,14 @@
     transparent calc(var(--ring-inner) / 2),
     #000 calc(var(--ring-inner) / 2 + 1px)
   );
-  cursor: pointer;
-  outline: none;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 0;
 }
+/* Children stack ABOVE the conic-ring pseudo. */
+.color-hub-tri,
+.color-hub-hue-cursor,
+.color-hub-tri-cursor { z-index: 1; }
 .color-hub-hue-ring:focus-visible {
   outline: 2px solid var(--ctx-accent);
   outline-offset: 2px;

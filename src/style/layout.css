@@ -207,6 +207,9 @@ body.panels-collapsed #app {
   left: 38.2vw;
   bottom: 15px;
   transform: translateX(-50%);
+  /* Lift in lock-step with .quick-wheel when the colour drawer opens —
+     the cluster slides up to make room for the drawer below it. */
+  transition: bottom 240ms cubic-bezier(.2,.7,.2,1), border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
   z-index: 50;
   /* Diameter ≈ 1.6 × footer height — 20 % smaller than the previous
    * 72 px dial. Lower portion overlaps the footer; upper protrusion
@@ -218,7 +221,7 @@ body.panels-collapsed #app {
    * fuse into one piece. No outer outline, no drop shadow. */
   border: 6px solid var(--surface-2);
   background: var(--surface);
-  padding: 4px;
+  padding: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -229,11 +232,31 @@ body.panels-collapsed #app {
   border-color: var(--surface-3);
   transform: translateX(-50%) scale(1.04);
 }
+/* Stroke ring — sits between the footer-coloured outer border and the
+   inner fill swatch. Coloured by the active stroke colour. Click target
+   in its own right; clicks on the ring open the hub focused on stroke. */
+.color-circle-stroke-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid var(--primary);
+  box-sizing: border-box;
+  pointer-events: auto;
+  transition: border-color 0.12s ease;
+}
 .color-circle-swatch {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 4px;            /* tucked inside the stroke ring */
   border-radius: 50%;
   background: var(--primary);
+  pointer-events: auto;
+  transition: background 0.12s ease;
+}
+/* Glow + accent halo while the colour hub is open — replaces the visual
+   "is this dial active?" cue without extra JS. */
+body.color-hub-open .color-circle-btn {
+  border-color: color-mix(in srgb, var(--ctx-accent) 35%, var(--surface-2));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 30%, transparent);
 }
 
 /* ---------- Dot mode (Settings → Workflow → Color hub → Dot) ----------
@@ -252,10 +275,16 @@ body.color-hub--dot .color-circle-btn {
   bottom: 10px;
   width: 18px;
   height: 18px;
-  padding: 2px;
+  padding: 0;
   border-width: 2px;
   transform: none;
 }
+/* In dot mode the ring would be invisibly thin (18 px - 4 px border -
+   8 px ring = 6 px swatch). Hide the ring entirely so the dot shows
+   only the fill colour — stroke editing still accessible by opening
+   the hub and switching to the stroke tab. */
+body.color-hub--dot .color-circle-stroke-ring { display: none; }
+body.color-hub--dot .color-circle-swatch { inset: 0; }
 body.color-hub--dot .color-circle-btn:hover {
   transform: scale(1.12);
 }
@@ -289,6 +318,25 @@ body.color-hub--dot .color-circle-btn:hover {
   backdrop-filter: blur(22px) saturate(120%);
   -webkit-backdrop-filter: blur(22px) saturate(120%);
   background: rgba(0, 0, 0, 0.16);
+  /* Lifts in lock-step with .color-circle-btn when the colour drawer
+     opens — both elements are independently fixed, so the body-class
+     bumps `bottom` on each. The CSS variable is published from
+     color-hub.js after the drawer measures its own height. */
+  transition: bottom 240ms cubic-bezier(.2,.7,.2,1);
+}
+
+/* ---------- Drawer-open lift: wheel + dot rise as one cluster ---------- */
+:root { --color-hub-h: 280px; }
+body.color-hub-open:not(.color-hub--dot) .quick-wheel {
+  bottom: calc(36px + var(--color-hub-h) + 8px);
+}
+body.color-hub-open:not(.color-hub--dot) .color-circle-btn {
+  bottom: calc(15px + var(--color-hub-h) + 8px);
+}
+/* Quick-wheel-controls sit at bottom: 40 px around the dial. Lift them
+   too so the entire cluster moves as one unit. */
+body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
+  bottom: calc(40px + var(--color-hub-h) + 8px);
 }
 .quick-wheel-bg {
   position: absolute;
@@ -401,6 +449,8 @@ body.color-hub--dot .color-circle-btn:hover {
   width: 0;     /* zero-size anchor; children offset themselves */
   height: 0;
   pointer-events: none;
+  /* Lifts with the cluster when the colour drawer opens. */
+  transition: bottom 240ms cubic-bezier(.2,.7,.2,1);
 }
 .quick-wheel-nav-stack {
   position: absolute;

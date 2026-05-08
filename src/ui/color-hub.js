@@ -11,7 +11,7 @@
 // Keyboard: ESC closes. Click-outside closes (anchor is exempt).
 
 import {
-  getActive, setActive, onActiveChange,
+  getActiveFill, getActiveStroke, getActiveSlots, setActiveSlot, onActiveChange,
   getSwatches, addSwatch, removeSwatch, onSwatchesChange,
 } from '../core/colors.js';
 
@@ -22,16 +22,31 @@ const TRI_BOX     = RING_INNER * 2;  // canvas size for the triangle
 
 let popover = null;
 let unsubs = [];
+let activeSlot = 'fill';     // which slot the picker writes to: 'fill' | 'stroke'
+let setSlotImpl = null;       // function exposed by bindEvents so the dial can switch slots while the hub stays open
 
 export function isColorHubOpen() { return !!popover; }
 
-export function toggleColorHub(anchorEl) {
-  if (popover) { closeColorHub(); return; }
-  openColorHub(anchorEl);
+export function toggleColorHub(anchorEl, slot = 'fill') {
+  if (popover) {
+    // Hub already open: if the user clicks a different slot zone, switch
+    // focus instead of closing. Same-slot click closes (toggle).
+    if (slot !== activeSlot && setSlotImpl) {
+      setSlotImpl(slot);
+      return;
+    }
+    closeColorHub();
+    return;
+  }
+  openColorHub(anchorEl, slot);
 }
 
-export function openColorHub(anchorEl) {
-  if (popover) return;
+export function openColorHub(anchorEl, slot = 'fill') {
+  if (popover) {
+    if (slot !== activeSlot && setSlotImpl) setSlotImpl(slot);
+    return;
+  }
+  activeSlot = (slot === 'stroke') ? 'stroke' : 'fill';
   build();
   bindEvents(anchorEl);
   position(anchorEl);
@@ -42,9 +57,20 @@ export function openColorHub(anchorEl) {
 export function closeColorHub() {
   for (const u of unsubs) { try { u(); } catch {} }
   unsubs = [];
-  if (popover) { popover.remove(); popover = null; }
+  setSlotImpl = null;
+  // Drawer-style close — slide-out + body class drop, DOM removal after
+  // the transition finishes (240 ms). Same pattern as floating-window.js'
+  // is-closing animation.
+  const node = popover;
+  popover = null;
   document.removeEventListener('keydown', onKey);
   window.removeEventListener('mousedown', onOutside, { capture: true });
+  document.body.classList.remove('color-hub-open');
+  document.documentElement.style.removeProperty('--color-hub-h');
+  if (node) {
+    node.classList.add('is-closing');
+    setTimeout(() => { try { node.remove(); } catch {} }, 240);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +84,21 @@ function build() {
   popover.style.setProperty('--ring-inner', `${RING_INNER * 2}px`);
   popover.style.setProperty('--tri-box',    `${TRI_BOX}px`);
   popover.innerHTML = `
+    <div class="color-hub-slot-row">
+      <div class="color-hub-slot-toggle" role="tablist" aria-label="Editing colour slot">
+        <button class="color-hub-slot ${activeSlot === 'fill' ? 'is-active' : ''}" data-slot="fill" type="button" role="tab">
+          <span class="color-hub-slot-chip" data-slot-chip="fill"></span>
+          <span class="color-hub-slot-label">Fill</span>
+        </button>
+        <button class="color-hub-slot ${activeSlot === 'stroke' ? 'is-active' : ''}" data-slot="stroke" type="button" role="tab">
+          <span class="color-hub-slot-chip" data-slot-chip="stroke"></span>
+          <span class="color-hub-slot-label">Stroke</span>
+        </button>
+        <button class="color-hub-slot-swap" type="button" title="Swap fill ↔ stroke (X)" aria-label="Swap fill and stroke">
+          <i class="fas fa-arrows-rotate"></i>
+        </button>
+      </div>
+    </div>
     <div class="color-hub-row">
       <div class="color-hub-picker">
         <div class="color-hub-hue-ring" tabindex="0" aria-label="Hue ring">
@@ -107,20 +148,34 @@ function build() {
 }
 
 // ---------------------------------------------------------------------------
-// Position above the anchor (dial). Falls back below if there isn't room.
+// Drawer positioning — popover slides UP from below the wheel/dot cluster
+// and sits in the gap between the cluster and the footer. CSS owns the
+// fixed bottom anchor, transition and translateY transform; JS sets the
+// horizontal centre line (matching the dial's golden-section anchor) and
+// publishes the popover's measured height so the cluster's lift can match.
 // ---------------------------------------------------------------------------
 
 function position(anchorEl) {
   if (!popover) return;
   const r = anchorEl.getBoundingClientRect();
-  const pw = popover.offsetWidth;
+  // Centre the popover horizontally on the dial's centre. CSS owns
+  // bottom + transform; JS sets left.
+  popover.style.left = `${Math.round(r.left + r.width / 2)}px`;
+  // Publish the measured height so the cluster lift CSS rule can use it.
+  // 8 px breathing gap between the popover top and the lifted cluster.
   const ph = popover.offsetHeight;
-  let left = r.left + r.width / 2 - pw / 2;
-  let top = r.top - ph - 14;
-  left = Math.max(8, Math.min(window.innerWidth - pw - 8, left));
-  if (top < 8) top = r.bottom + 14;
-  popover.style.left = `${Math.round(left)}px`;
-  popover.style.top  = `${Math.round(top)}px`;
+  if (ph > 0) {
+    document.documentElement.style.setProperty('--color-hub-h', `${ph}px`);
+  }
+  // Trigger the open transition on the next frame so the initial
+  // translateY(110%) registers before transitioning to translateY(0).
+  if (!popover.classList.contains('is-open')) {
+    requestAnimationFrame(() => {
+      if (!popover) return;
+      popover.classList.add('is-open');
+      document.body.classList.add('color-hub-open');
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -139,8 +194,13 @@ function bindEvents(anchorEl) {
   const bEl      = popover.querySelector('.color-hub-b');
   const swatchesEl = popover.querySelector('.color-hub-swatches');
 
-  // Local HSV state — updated by interactions; reflected to active colour.
-  let { h, s, v } = hexToHsv(getActive());
+  // Local HSV state — mirrors whichever slot is currently active.
+  // Switching slots re-syncs from that slot's hex.
+  let { h, s, v } = hexToHsv(activeColor());
+
+  function activeColor() {
+    return activeSlot === 'stroke' ? getActiveStroke() : getActiveFill();
+  }
 
   // Cache the triangle bitmap — repaint only when hue changes.
   let lastTriHue = null;
@@ -173,11 +233,49 @@ function bindEvents(anchorEl) {
   }
 
   function commit() {
-    setActive(hsvToHex(h, s, v));
+    setActiveSlot(activeSlot, hsvToHex(h, s, v));
     paint();
   }
 
+  function paintSlotChips() {
+    const fillChip = popover.querySelector('[data-slot-chip="fill"]');
+    const strokeChip = popover.querySelector('[data-slot-chip="stroke"]');
+    if (fillChip)   fillChip.style.background = getActiveFill();
+    if (strokeChip) strokeChip.style.background = getActiveStroke();
+    popover.querySelectorAll('.color-hub-slot').forEach((b) => {
+      b.classList.toggle('is-active', b.dataset.slot === activeSlot);
+    });
+  }
+
+  // Expose a setter so toggleColorHub() / openColorHub() can change the
+  // focused slot while the popover stays open.
+  setSlotImpl = (slot) => {
+    if (slot !== 'fill' && slot !== 'stroke') return;
+    if (slot === activeSlot) return;
+    activeSlot = slot;
+    const next = hexToHsv(activeColor());
+    h = next.h; s = next.s; v = next.v;
+    paint();
+    paintSlotChips();
+  };
+
+  // ── Slot toggle (Fill | Stroke) ────────────────────────────────────
+  popover.querySelectorAll('.color-hub-slot').forEach((tab) => {
+    tab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const slot = tab.dataset.slot;
+      if (slot === activeSlot) return;
+      setSlotImpl(slot);
+    });
+  });
+  // Swap arrow — convenience shortcut for X.
+  popover.querySelector('.color-hub-slot-swap')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    import('../core/colors.js').then(({ swapFillStroke }) => swapFillStroke());
+  });
+
   paint();
+  paintSlotChips();
 
   // ── Hue ring drag ────────────────────────────────────────────────────
   function hueFromEvent(e) {
@@ -330,14 +428,18 @@ function bindEvents(anchorEl) {
   document.addEventListener('keydown', onKey);
   window.addEventListener('mousedown', onOutside, { capture: true });
 
-  // ── Sync if active colour changes from elsewhere (e.g. another UI) ───
+  // ── Sync if active colours change from elsewhere (e.g. X swap, Save
+  // button, plugin write). Repaints the slot chips both for fill and
+  // stroke; resyncs the local HSV from the CURRENT slot's value.
   unsubs.push(onActiveChange(() => {
-    // Only adopt if the change didn't originate inside the hub.
     const cur = hsvToHex(h, s, v);
-    if (cur === getActive()) return;
-    const next = hexToHsv(getActive());
-    h = next.h; s = next.s; v = next.v;
-    paint();
+    const target = activeColor();
+    if (cur !== target) {
+      const next = hexToHsv(target);
+      h = next.h; s = next.s; v = next.v;
+      paint();
+    }
+    paintSlotChips();
   }));
 }
 
