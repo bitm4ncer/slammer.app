@@ -1,6 +1,6 @@
 // Shared DOM helpers for plugin UIs.
 
-import { createKnob } from './knob.js';
+import { createKnob, createKnobSm, createKnobLg, createKnobXl } from './knob.js';
 import { createNumericInput } from './numeric-input.js';
 
 /**
@@ -85,6 +85,119 @@ export function sliderRow({ label, min, max, step = 1, value, defaultValue, onCh
   row.appendChild(numWrap);
 
   return row;
+}
+
+export function sliderRowLg({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix, snapWithShift = 0 }) {
+  const row = document.createElement('label');
+  row.className = 'effect-slider-row effect-slider-row--lg';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'effect-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const knob = createKnobLg({
+    size: 64,
+    min, max, step,
+    value,
+    defaultValue: defaultValue !== undefined ? defaultValue : value,
+    snapWithShift,
+    onChange: (v) => {
+      numWrap.setValue(format ? format(v) : v);
+      onChange(format ? format(v) : v);
+    },
+  });
+  row.appendChild(knob);
+
+  const numWrap = createNumericInput({
+    min, max, step,
+    value: format ? format(value) : value,
+    suffix,
+    onChange: (v) => {
+      knob.setValue(v);
+      onChange(v);
+    },
+  });
+  row.appendChild(numWrap);
+
+  return row;
+}
+
+export function sliderRowSm({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix, snapWithShift = 0 }) {
+  const row = document.createElement('label');
+  row.className = 'effect-slider-row effect-slider-row--sm';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'effect-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const knob = createKnobSm({
+    min, max, step,
+    value,
+    defaultValue: defaultValue !== undefined ? defaultValue : value,
+    snapWithShift,
+    onChange: (v) => {
+      numWrap.setValue(format ? format(v) : v);
+      onChange(format ? format(v) : v);
+    },
+  });
+  row.appendChild(knob);
+
+  const numWrap = createNumericInput({
+    min, max, step,
+    value: format ? format(value) : value,
+    suffix,
+    onChange: (v) => {
+      knob.setValue(v);
+      onChange(v);
+    },
+  });
+  row.appendChild(numWrap);
+
+  return row;
+}
+
+export function sliderRowXl({ label, min, max, step = 1, value, defaultValue, onChange, format, suffix, snapWithShift = 0 }) {
+  const row = document.createElement('label');
+  row.className = 'effect-slider-row effect-slider-row--xl';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'effect-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const knob = createKnobXl({
+    min, max, step,
+    value,
+    defaultValue: defaultValue !== undefined ? defaultValue : value,
+    snapWithShift,
+    onChange: (v) => {
+      numWrap.setValue(format ? format(v) : v);
+      onChange(format ? format(v) : v);
+    },
+  });
+  row.appendChild(knob);
+
+  const numWrap = createNumericInput({
+    min, max, step,
+    value: format ? format(value) : value,
+    suffix,
+    onChange: (v) => {
+      knob.setValue(v);
+      onChange(v);
+    },
+  });
+  row.appendChild(numWrap);
+
+  return row;
+}
+
+export function section(title) {
+  const el = document.createElement('div');
+  el.className = 'effect-section-label';
+  el.textContent = title;
+  return el;
 }
 
 export function pillGroup({ label, options, value, onChange, variant }) {
@@ -422,6 +535,23 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
     bar.style.background = _stopsToCss(local.stops);
   }
 
+  // RAF-coalesce onChange. The native <input type="color"> fires `input`
+  // events at 60+ Hz while the user drags in the colour picker; same for
+  // the position-drag handle. Each direct onChange triggered the entire
+  // doc.setEffectParams → renderer pipeline run synchronously, which on
+  // a heavy stack made the picker feel laggy ("Farbe ändern ruckelt"). We
+  // coalesce so the pipeline sees at most one update per frame with the
+  // latest value. The visual updates (handle colour, bar gradient) stay
+  // synchronous so the user gets immediate feedback.
+  let _onChangeRaf = null;
+  function scheduleOnChange() {
+    if (_onChangeRaf) return;
+    _onChangeRaf = requestAnimationFrame(() => {
+      _onChangeRaf = null;
+      onChange(local.stops.slice());
+    });
+  }
+
   function placeHandle(idx) {
     const stop = local.stops[idx];
     const h = document.createElement('div');
@@ -437,7 +567,8 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
     h.appendChild(colorInp);
     colorInp.addEventListener('input', (e) => {
       local.stops[idx] = { ...local.stops[idx], color: e.target.value };
-      onChange(local.stops.slice());
+      // High-freq native colour-picker events — throttle the pipeline run.
+      scheduleOnChange();
       h.style.background = e.target.value;
       refreshBar();
     });
@@ -455,7 +586,7 @@ export function gradientStopsRow({ label, stops: initialStops, onChange }) {
       local.stops[idx] = { ...local.stops[idx], at };
       h.style.left = `${at * 100}%`;
       h.title = `${local.stops[idx].color} @ ${(at * 100).toFixed(0)}%`;
-      onChange(local.stops.slice());
+      scheduleOnChange();
       refreshBar();
     };
     const onUp = () => {
