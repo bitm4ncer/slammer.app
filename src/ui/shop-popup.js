@@ -411,7 +411,7 @@ function renderLede() {
 /* ----- Grid view ----- */
 function renderGrid() {
   const grouped = pluginsByPack();
-  const order = ['glitch-pack', 'raster-pack', 'dots-pack', 'liquid-pack', 'misc'];
+  const order = ['glitch-pack', 'raster-pack', 'dots-pack', 'infinity-gradients', 'liquid-pack', 'misc'];
   const sections = order
     .filter((p) => grouped[p]?.length)
     .map((p, idx) => renderPackSection(p, grouped[p], idx))
