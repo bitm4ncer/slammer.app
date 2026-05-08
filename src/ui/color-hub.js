@@ -132,6 +132,7 @@ function build() {
             <div class="color-hub-gradient-stops"></div>
           </div>
           <input class="color-hub-gradient-angle-input color-hub-input" type="number" min="0" max="360" step="1" title="Gradient angle" aria-label="Gradient angle" />
+          <button class="color-hub-icon-btn color-hub-eyedropper" title="Eyedropper — picks a colour into the selected stop" aria-label="Eyedropper"><i class="fas fa-eye-dropper"></i></button>
           <button class="color-hub-icon-btn color-hub-save" title="Save gradient" aria-label="Save gradient"><i class="fas fa-bookmark"></i></button>
         </div>
         <div class="color-hub-input-row">
@@ -373,12 +374,15 @@ function bindEvents(anchorEl) {
   });
 
   // Live-update the small gradient icon inside the gradient mode button
-  // so it always reflects the active slot's current gradient.
+  // so it always reflects the active slot's current gradient. We pin the
+  // angle to 90° (left → right) so the tiny 14 px swatch always reads
+  // cleanly — using the real angle on a tiny rounded box produces a
+  // diagonal corner wedge that looks like a UI bug.
   function paintModeIcons() {
     const gradIcon = popover.querySelector('.color-hub-mode-gradicon');
     if (!gradIcon) return;
     const g = getActiveGradient(activeSlot);
-    gradIcon.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+    gradIcon.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
   }
 
   // ── Opacity slider + numeric input (per slot) ────────────────────────
@@ -607,18 +611,24 @@ function bindEvents(anchorEl) {
   [rEl, gEl, bEl].forEach((el) => el.addEventListener('input', readRgbAndCommit));
 
   // ── Eyedropper (Chromium native) ────────────────────────────────────
-  popover.querySelector('.color-hub-eyedropper').addEventListener('click', async () => {
-    if (typeof window.EyeDropper === 'undefined') {
-      flashStatus('Eyedropper requires a Chromium browser');
-      return;
-    }
-    try {
-      const ed = new window.EyeDropper();
-      const result = await ed.open();
-      const next = hexToHsv(result.sRGBHex);
-      h = next.h; s = next.s; v = next.v;
-      commit();
-    } catch { /* user cancelled */ }
+  // Two buttons — one in the solid preview row, one in the gradient
+  // editor. Both fire the same flow: in solid mode the picked colour
+  // becomes the slot's main colour; in gradient mode it becomes the
+  // SELECTED stop's colour (commit() branches on kind).
+  popover.querySelectorAll('.color-hub-eyedropper').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (typeof window.EyeDropper === 'undefined') {
+        flashStatus('Eyedropper requires a Chromium browser');
+        return;
+      }
+      try {
+        const ed = new window.EyeDropper();
+        const result = await ed.open();
+        const next = hexToHsv(result.sRGBHex);
+        h = next.h; s = next.s; v = next.v;
+        commit();
+      } catch { /* user cancelled */ }
+    });
   });
 
   // ── Save to swatches ─────────────────────────────────────────────────
