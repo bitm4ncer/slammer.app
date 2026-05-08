@@ -17,6 +17,7 @@ import {
   getActiveStrokeWidth, setActiveStrokeWidth,
   getActiveOpacity, setActiveOpacity,
   getActiveGradient, setActiveGradient,
+  getGradientSwatches, addGradientSwatch, removeGradientSwatch, onGradientSwatchesChange,
 } from '../core/colors.js';
 
 const RING_OUTER  = 96;       // px — outer radius of the hue ring
@@ -104,7 +105,7 @@ function build() {
     </div>
     <div class="color-hub-mode-row">
       <button class="color-hub-mode-btn" data-mode="solid"    type="button" title="Solid colour"          aria-label="Solid colour"><i class="fas fa-circle"></i></button>
-      <button class="color-hub-mode-btn" data-mode="gradient" type="button" title="Gradient"              aria-label="Gradient"><i class="fas fa-bars-staggered"></i></button>
+      <button class="color-hub-mode-btn color-hub-mode-btn--gradient" data-mode="gradient" type="button" title="Gradient" aria-label="Gradient"><span class="color-hub-mode-gradicon"></span></button>
       <button class="color-hub-mode-btn" data-mode="none"     type="button" title="Transparent / no fill" aria-label="No fill"><i class="fas fa-ban"></i></button>
     </div>
     <div class="color-hub-row">
@@ -114,19 +115,20 @@ function build() {
           <canvas class="color-hub-tri" width="${TRI_BOX * (window.devicePixelRatio || 1)}" height="${TRI_BOX * (window.devicePixelRatio || 1)}" style="width:${TRI_BOX}px;height:${TRI_BOX}px" aria-label="Saturation and brightness triangle"></canvas>
           <div class="color-hub-tri-cursor"></div>
         </div>
-        <!-- Gradient editor — shown when active slot's kind === 'gradient'.
-             Track + draggable stops + angle slider. Clicking a stop selects
-             it; the hue ring above then writes to that stop. -->
-        <div class="color-hub-gradient" hidden>
-          <div class="color-hub-gradient-track" aria-label="Gradient stops">
-            <div class="color-hub-gradient-bar"></div>
-            <div class="color-hub-gradient-stops"></div>
-          </div>
-          <div class="color-hub-gradient-angle">
-            <label class="color-hub-input-label">ANGLE</label>
-            <input class="color-hub-gradient-angle-input" type="range" min="0" max="360" step="1" />
-            <span class="color-hub-gradient-angle-readout">0°</span>
-          </div>
+      </div>
+      <!-- Gradient editor — shown when active slot's kind === 'gradient'.
+           Sits BELOW the hue ring + triangle so the picker stays available
+           for editing the SELECTED stop's colour. Track + draggable stops
+           + angle slider. -->
+      <div class="color-hub-gradient" hidden>
+        <div class="color-hub-gradient-track" aria-label="Gradient stops">
+          <div class="color-hub-gradient-bar"></div>
+          <div class="color-hub-gradient-stops"></div>
+        </div>
+        <div class="color-hub-gradient-angle">
+          <label class="color-hub-input-label">ANGLE</label>
+          <input class="color-hub-gradient-angle-input" type="range" min="0" max="360" step="1" />
+          <span class="color-hub-gradient-angle-readout">0°</span>
         </div>
       </div>
       <div class="color-hub-side">
@@ -341,15 +343,17 @@ function bindEvents(anchorEl) {
   function paintMode() {
     const kind = getActiveKind(activeSlot);
     modeBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.mode === kind));
-    // Toggle picker visibility — show triangle ring for solid, gradient
-    // editor for gradient, dim everything for none.
-    const ring     = popover.querySelector('.color-hub-hue-ring');
+    // Picker visibility:
+    //   solid    → ring + triangle visible
+    //   gradient → ring + triangle visible (drives the SELECTED stop's
+    //              colour) AND gradient editor shown below them
+    //   none     → ring + triangle dimmed (color-hub--none class), no editor
     const gradient = popover.querySelector('.color-hub-gradient');
     const isGrad = kind === 'gradient';
     const isNone = kind === 'none';
-    ring.style.display     = isGrad ? 'none' : '';
-    gradient.hidden        = !isGrad;
+    gradient.hidden = !isGrad;
     popover.classList.toggle('color-hub--none', isNone);
+    popover.classList.toggle('color-hub--gradient', isGrad);
     // Stroke-width row visible only when active slot === stroke and not none.
     const sw = popover.querySelector('.color-hub-stroke-row');
     sw.hidden = !(activeSlot === 'stroke' && kind !== 'none');
@@ -361,6 +365,8 @@ function bindEvents(anchorEl) {
       setActiveKind(activeSlot, kind);
       paintMode();
       paintGradient();
+      paintSwatches();
+      paintModeIcons();
       // Re-sync the picker to whatever colour the new mode exposes.
       const next = hexToHsv(activeColor());
       h = next.h; s = next.s; v = next.v;
@@ -368,6 +374,15 @@ function bindEvents(anchorEl) {
       paintSlotChips();
     });
   });
+
+  // Live-update the small gradient icon inside the gradient mode button
+  // so it always reflects the active slot's current gradient.
+  function paintModeIcons() {
+    const gradIcon = popover.querySelector('.color-hub-mode-gradicon');
+    if (!gradIcon) return;
+    const g = getActiveGradient(activeSlot);
+    gradIcon.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+  }
 
   // ── Opacity slider + numeric input (per slot) ────────────────────────
   const opSlider = popover.querySelector('.color-hub-opacity');
@@ -480,6 +495,8 @@ function bindEvents(anchorEl) {
     paintGradient();
     paintStrokeWidth();
     paintOpacity();
+    paintModeIcons();
+    paintSwatches();
   };
 
   // ── Slot toggle (Fill | Stroke) ────────────────────────────────────
@@ -503,6 +520,7 @@ function bindEvents(anchorEl) {
   paintGradient();
   paintStrokeWidth();
   paintOpacity();
+  paintModeIcons();
 
   // ── Hue ring drag ────────────────────────────────────────────────────
   function hueFromEvent(e) {
@@ -609,19 +627,55 @@ function bindEvents(anchorEl) {
   });
 
   // ── Save to swatches ─────────────────────────────────────────────────
+  // In gradient mode the save button stores the FULL gradient (not just
+  // the active stop's hex). In solid / none mode it stores the current hex.
   popover.querySelector('.color-hub-save').addEventListener('click', () => {
-    addSwatch(hsvToHex(h, s, v));
+    if (getActiveKind(activeSlot) === 'gradient') {
+      addGradientSwatch(getActiveGradient(activeSlot));
+    } else {
+      addSwatch(hsvToHex(h, s, v));
+    }
   });
 
   // ── Recent swatches grid ─────────────────────────────────────────────
+  // Renders BOTH gradient swatches (when in gradient mode) AND hex
+  // swatches. Gradient mode prepends saved gradients above the hex grid.
   function paintSwatches() {
     swatchesEl.innerHTML = '';
-    const list = getSwatches();
-    if (!list.length) {
+    const inGradient = getActiveKind(activeSlot) === 'gradient';
+    const gradList = inGradient ? getGradientSwatches() : [];
+    const hexList  = getSwatches();
+    if (!gradList.length && !hexList.length) {
       swatchesEl.innerHTML = '<div class="color-hub-empty">No saved swatches yet</div>';
       return;
     }
-    for (const hex of list.slice(0, 24)) {
+    // Gradients first (when applicable) — wider swatches so the gradient
+    // direction reads at a glance.
+    for (const g of gradList.slice(0, 12)) {
+      const btn = document.createElement('button');
+      btn.className = 'color-hub-swatch color-hub-swatch--gradient';
+      btn.type = 'button';
+      btn.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+      btn.title = `Gradient · ${g.angle}°`;
+      btn.addEventListener('click', () => {
+        setActiveGradient(activeSlot, {
+          type: g.type, angle: g.angle,
+          stops: g.stops.map((s) => ({ ...s })),
+        });
+        activeStopIdx = 0;
+        const next = hexToHsv(g.stops[0].color);
+        h = next.h; s = next.s; v = next.v;
+        paint();
+        paintGradient();
+        paintSlotChips();
+      });
+      btn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        removeGradientSwatch(g);
+      });
+      swatchesEl.appendChild(btn);
+    }
+    for (const hex of hexList.slice(0, 24)) {
       const btn = document.createElement('button');
       btn.className = 'color-hub-swatch';
       btn.type = 'button';
@@ -641,6 +695,7 @@ function bindEvents(anchorEl) {
   }
   paintSwatches();
   unsubs.push(onSwatchesChange(paintSwatches));
+  unsubs.push(onGradientSwatchesChange(paintSwatches));
 
   // ── Tab switching ────────────────────────────────────────────────────
   popover.querySelectorAll('.color-hub-tab').forEach((tab) => {
@@ -671,6 +726,7 @@ function bindEvents(anchorEl) {
     paintGradient();
     paintStrokeWidth();
     paintOpacity();
+    paintModeIcons();
   }));
 }
 

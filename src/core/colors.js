@@ -20,6 +20,7 @@
 const LS_ACTIVE     = 'slammer:colors:active';
 const LS_VARIABLES  = 'slammer:colors:variables';
 const LS_SWATCHES   = 'slammer:colors:swatches';
+const LS_GRADIENTS  = 'slammer:colors:gradients';
 
 // Active colour — TWO-SLOT model with kind + gradient + stroke-width
 // extension fields. Legacy shapes:
@@ -60,12 +61,14 @@ const listeners = {
   active:    new Set(),
   variables: new Set(),
   swatches:  new Set(),
+  gradients: new Set(),
 };
 
 // Live state — initialised from localStorage on first access.
 let _active    = null;
 let _variables = null;
 let _swatches  = null;
+let _gradients = null;
 
 // Project override applies when a project is loaded with its own variables.
 // Layered on top of the GLOBAL variables; getVariables() returns the merged
@@ -120,6 +123,10 @@ function ensureLoaded() {
   if (_swatches === null) {
     const raw = readJSON(LS_SWATCHES, DEFAULT_SWATCHES);
     _swatches = Array.isArray(raw) ? raw.filter((x) => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x)) : [];
+  }
+  if (_gradients === null) {
+    const raw = readJSON(LS_GRADIENTS, []);
+    _gradients = Array.isArray(raw) ? raw.filter(isGradient) : [];
   }
 }
 
@@ -393,6 +400,47 @@ export function removeSwatch(hex) {
 export function onSwatchesChange(fn) {
   listeners.swatches.add(fn);
   return () => listeners.swatches.delete(fn);
+}
+
+// ---------- Saved gradients (favourites) ----------
+function gradientKey(g) {
+  // Cheap structural-equality key for de-dup. Order-sensitive on stops.
+  return `${g.type}|${g.angle}|${g.stops.map((s) => `${s.at}@${s.color}`).join(',')}`;
+}
+
+export function getGradientSwatches() {
+  ensureLoaded();
+  return _gradients.slice();
+}
+export function addGradientSwatch(gradient) {
+  ensureLoaded();
+  if (!isGradient(gradient)) return;
+  const next = {
+    type: gradient.type,
+    angle: gradient.angle,
+    stops: gradient.stops.map((s) => ({ at: s.at, color: s.color.toLowerCase() })),
+  };
+  const key = gradientKey(next);
+  // Move to front if already present (most-recent-first).
+  const existing = _gradients.findIndex((g) => gradientKey(g) === key);
+  if (existing >= 0) _gradients.splice(existing, 1);
+  _gradients.unshift(next);
+  if (_gradients.length > 32) _gradients.length = 32;
+  writeJSON(LS_GRADIENTS, _gradients);
+  emit('gradients');
+}
+export function removeGradientSwatch(gradient) {
+  ensureLoaded();
+  const key = gradientKey(gradient);
+  const idx = _gradients.findIndex((g) => gradientKey(g) === key);
+  if (idx < 0) return;
+  _gradients.splice(idx, 1);
+  writeJSON(LS_GRADIENTS, _gradients);
+  emit('gradients');
+}
+export function onGradientSwatchesChange(fn) {
+  listeners.gradients.add(fn);
+  return () => listeners.gradients.delete(fn);
 }
 
 // ---------------------------------------------------------------------------

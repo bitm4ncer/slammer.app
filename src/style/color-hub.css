@@ -389,6 +389,12 @@
   transform: scale(1.1);
   border-color: var(--ctx-accent);
 }
+/* Gradient swatches span 2 columns so the gradient direction reads. */
+.color-hub-swatch--gradient {
+  grid-column: span 2;
+  aspect-ratio: 2;
+  border-radius: 3px;
+}
 .color-hub-empty,
 .color-hub-vars-placeholder {
   font-size: 10px;
@@ -431,6 +437,17 @@
   color: var(--ctx-accent);
   background: rgba(255, 255, 255, 0.10);
   border-color: rgba(255, 255, 255, 0.14);
+}
+/* Gradient mode button — its icon is a real mini gradient swatch, not a
+ * font-awesome glyph. Inline-set background by paintModeIcons() to mirror
+ * the active slot's current gradient. */
+.color-hub-mode-gradicon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  background: linear-gradient(90deg, #000 0%, #fff 100%);
 }
 
 /* When the active slot's kind is 'none', dim the picker so the
@@ -527,9 +544,9 @@
 .color-hub-gradient {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: var(--ring-outer);
-  margin: 16px auto 8px;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 4px;
 }
 .color-hub-gradient[hidden] { display: none; }
 .color-hub-gradient-track {
