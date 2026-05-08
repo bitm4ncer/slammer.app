@@ -498,7 +498,32 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return rasterizeText(layer.text, st, layer.effects);
     }
     if (layer.type === 'vector') {
-      const { imageData, naturalSize, pathBounds, pad } = rasterizeVectorLayer(layer);
+      // Cache the rasterised output. Slider drags on regular pixel effects
+      // re-call rasterizeSource even when the pad hasn't changed → fresh
+      // canvas alloc + path stroke + getImageData each tick. Cache key:
+      // (paths array ref, vectorEffects array ref, pad, dirty flag). The
+      // dirty flag is set by event handlers when paths mutate in place
+      // (setVectorPath uses Object.assign, so the array ref doesn't change).
+      const padNow = computePadForEffects(layer.effects);
+      const cache = st._vectorRasterCache;
+      let result;
+      if (cache
+          && !st._vectorRasterDirty
+          && cache.pathsRef === layer.vector.paths
+          && cache.vectorEffectsRef === layer.vectorEffects
+          && cache.pad === padNow) {
+        result = cache.result;
+      } else {
+        result = rasterizeVectorLayer(layer);
+        st._vectorRasterCache = {
+          pathsRef: layer.vector.paths,
+          vectorEffectsRef: layer.vectorEffects,
+          pad: padNow,
+          result,
+        };
+        st._vectorRasterDirty = false;
+      }
+      const { imageData, naturalSize, pathBounds, pad } = result;
       st.naturalSize = naturalSize;
       st.vectorPathBounds = pathBounds;
       st.vectorPad = pad;
@@ -1482,6 +1507,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (!layer) break;
         const st = layerState.get(targetId);
         if (!st) break;
+        // The cache in rasterizeSource keys on paths array reference, but
+        // setVectorPath mutates path objects in place — so any vector-changed
+        // event must flag the cache stale.
+        st._vectorRasterDirty = true;
         const imgData = await rasterizeSource(layer, st);
         if (imgData) {
           st.sourceImageData = imgData;
