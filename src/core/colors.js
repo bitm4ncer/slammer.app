@@ -21,12 +21,34 @@ const LS_ACTIVE     = 'slammer:colors:active';
 const LS_VARIABLES  = 'slammer:colors:variables';
 const LS_SWATCHES   = 'slammer:colors:swatches';
 
-// Active colour is now a TWO-SLOT model: { fill, stroke }. Old shape was a
-// bare hex string; ensureLoaded() migrates string → { fill: <string>,
-// stroke: '#000000' } silently on first read.
-const DEFAULT_FILL      = '#8aff8c';
-const DEFAULT_STROKE    = '#000000';
-const DEFAULT_ACTIVE    = { fill: DEFAULT_FILL, stroke: DEFAULT_STROKE };
+// Active colour — TWO-SLOT model with kind + gradient + stroke-width
+// extension fields. Legacy shapes:
+//   '#8aff8c'                              (Phase 23a — single colour)
+//   { fill: '#8aff8c', stroke: '#000000' } (Phase 23b — two-slot solid)
+// Current shape (Phase 23c):
+//   {
+//     fill, stroke,                        // hex strings — back-compat scalar
+//     fillKind, strokeKind,                // 'solid' | 'none' | 'gradient'
+//     strokeWidth,                         // px (number)
+//     fillGradient, strokeGradient,        // { type:'linear', angle, stops:[{at,color}] }
+//   }
+// ensureLoaded() migrates any older shape silently on first read.
+const DEFAULT_FILL          = '#8aff8c';
+const DEFAULT_STROKE        = '#000000';
+const DEFAULT_STROKE_WIDTH  = 2;
+const DEFAULT_GRADIENT      = () => ({
+  type: 'linear', angle: 90,
+  stops: [{ at: 0, color: '#000000' }, { at: 1, color: '#ffffff' }],
+});
+const DEFAULT_ACTIVE = {
+  fill: DEFAULT_FILL,
+  stroke: DEFAULT_STROKE,
+  fillKind: 'solid',
+  strokeKind: 'solid',
+  strokeWidth: DEFAULT_STROKE_WIDTH,
+  fillGradient: DEFAULT_GRADIENT(),
+  strokeGradient: DEFAULT_GRADIENT(),
+};
 const DEFAULT_VARIABLES = [];
 const DEFAULT_SWATCHES  = [];
 
@@ -67,14 +89,21 @@ function ensureLoaded() {
   if (_active === null) {
     const raw = readJSON(LS_ACTIVE, DEFAULT_ACTIVE);
     if (typeof raw === 'string' && /^#[0-9a-f]{6}$/i.test(raw)) {
-      // Legacy shape — wrap and re-write so subsequent reads see the new
-      // shape. Stroke defaults to black for projects predating two-slot.
-      _active = { fill: raw.toLowerCase(), stroke: DEFAULT_STROKE };
+      // Legacy 23a — bare hex.
+      _active = {
+        ...DEFAULT_ACTIVE,
+        fill: raw.toLowerCase(),
+      };
       writeJSON(LS_ACTIVE, _active);
     } else if (raw && typeof raw === 'object') {
       _active = {
-        fill:   isHex(raw.fill)   ? raw.fill.toLowerCase()   : DEFAULT_FILL,
-        stroke: isHex(raw.stroke) ? raw.stroke.toLowerCase() : DEFAULT_STROKE,
+        fill:           isHex(raw.fill)   ? raw.fill.toLowerCase()   : DEFAULT_FILL,
+        stroke:         isHex(raw.stroke) ? raw.stroke.toLowerCase() : DEFAULT_STROKE,
+        fillKind:       isKind(raw.fillKind)       ? raw.fillKind   : 'solid',
+        strokeKind:     isKind(raw.strokeKind)     ? raw.strokeKind : 'solid',
+        strokeWidth:    Number.isFinite(raw.strokeWidth) ? Math.max(0, raw.strokeWidth) : DEFAULT_STROKE_WIDTH,
+        fillGradient:   isGradient(raw.fillGradient)   ? raw.fillGradient   : DEFAULT_GRADIENT(),
+        strokeGradient: isGradient(raw.strokeGradient) ? raw.strokeGradient : DEFAULT_GRADIENT(),
       };
     } else {
       _active = { ...DEFAULT_ACTIVE };
@@ -96,6 +125,14 @@ function isValidVar(v) {
 }
 
 function isHex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+function isKind(v) { return v === 'solid' || v === 'none' || v === 'gradient'; }
+function isGradient(g) {
+  return g && typeof g === 'object'
+    && (g.type === 'linear' || g.type === 'radial')
+    && Number.isFinite(g.angle)
+    && Array.isArray(g.stops) && g.stops.length >= 2
+    && g.stops.every((s) => Number.isFinite(s.at) && isHex(s.color));
+}
 
 function emit(slot) {
   for (const fn of listeners[slot]) {
@@ -138,13 +175,103 @@ export function setActiveSlot(slot, hex) {
 }
 
 // Swap fill ↔ stroke. X-key shortcut + picker swap arrow both call this.
-// Single emit so subscribers see one round-trip, not two.
+// Single emit so subscribers see one round-trip, not two. Swaps the
+// COMPLETE slot (color + kind + gradient) so the swap is intuitive: a
+// red stroke becomes a red fill, including its kind/gradient.
 export function swapFillStroke() {
   ensureLoaded();
-  if (_active.fill === _active.stroke) return;
-  _active = { fill: _active.stroke, stroke: _active.fill };
+  _active = {
+    ..._active,
+    fill:           _active.stroke,
+    stroke:         _active.fill,
+    fillKind:       _active.strokeKind,
+    strokeKind:     _active.fillKind,
+    fillGradient:   _active.strokeGradient,
+    strokeGradient: _active.fillGradient,
+  };
   writeJSON(LS_ACTIVE, _active);
   emit('active');
+}
+
+// ---------- Kind (solid / none / gradient) ----------
+export function getActiveKind(slot) {
+  ensureLoaded();
+  return slot === 'stroke' ? _active.strokeKind : _active.fillKind;
+}
+export function setActiveKind(slot, kind) {
+  ensureLoaded();
+  if (!isKind(kind)) return;
+  const key = slot === 'stroke' ? 'strokeKind' : 'fillKind';
+  if (_active[key] === kind) return;
+  _active = { ..._active, [key]: kind };
+  writeJSON(LS_ACTIVE, _active);
+  emit('active');
+}
+
+// ---------- Stroke width ----------
+export function getActiveStrokeWidth() { ensureLoaded(); return _active.strokeWidth; }
+export function setActiveStrokeWidth(w) {
+  ensureLoaded();
+  if (!Number.isFinite(w)) return;
+  const next = Math.max(0, Math.min(200, w));
+  if (_active.strokeWidth === next) return;
+  _active = { ..._active, strokeWidth: next };
+  writeJSON(LS_ACTIVE, _active);
+  emit('active');
+}
+
+// ---------- Gradient ----------
+export function getActiveGradient(slot) {
+  ensureLoaded();
+  return slot === 'stroke' ? _active.strokeGradient : _active.fillGradient;
+}
+export function setActiveGradient(slot, gradient) {
+  ensureLoaded();
+  if (!isGradient(gradient)) return;
+  const key = slot === 'stroke' ? 'strokeGradient' : 'fillGradient';
+  _active = { ..._active, [key]: gradient };
+  writeJSON(LS_ACTIVE, _active);
+  emit('active');
+}
+
+// Build a vector-layer-shaped fill/stroke object from the active slot.
+// Used by shape-drawer / text creation so new layers inherit the active
+// styling end-to-end (kind, color or gradient stops, opacity).
+export function buildVectorFillFromActive() {
+  ensureLoaded();
+  if (_active.fillKind === 'none') return { type: 'none' };
+  if (_active.fillKind === 'gradient') {
+    return {
+      type: 'gradient',
+      gradientType: _active.fillGradient.type,
+      stops: _active.fillGradient.stops.map((s) => ({ ...s })),
+      // from/to filled per-path by the renderer using path bounds; angle
+      // stored alongside as a hint for the editor.
+      angle: _active.fillGradient.angle,
+      from: { x: 0, y: 0 },
+      to: { x: 1, y: 0 },
+    };
+  }
+  return { type: 'solid', color: _active.fill, opacity: 1 };
+}
+export function buildVectorStrokeFromActive() {
+  ensureLoaded();
+  const base = {
+    width: _active.strokeWidth,
+    align: 'center', cap: 'butt', join: 'miter',
+    dash: [], alongPath: false, opacity: 1,
+  };
+  if (_active.strokeKind === 'none')   return { ...base, type: 'none', color: _active.stroke };
+  if (_active.strokeKind === 'gradient') {
+    return {
+      ...base, type: 'gradient',
+      gradientType: _active.strokeGradient.type,
+      stops: _active.strokeGradient.stops.map((s) => ({ ...s })),
+      angle: _active.strokeGradient.angle,
+      from: { x: 0, y: 0 }, to: { x: 1, y: 0 },
+    };
+  }
+  return { ...base, type: 'solid', color: _active.stroke };
 }
 
 export function onActiveChange(fn) {

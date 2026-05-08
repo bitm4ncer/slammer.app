@@ -398,6 +398,178 @@
   padding: 14px 4px;
 }
 
+/* ---------- Mode row (Solid / Gradient / None) ---------- */
+.color-hub-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 10px;
+}
+.color-hub-mode-btn {
+  width: 28px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  padding: 0;
+}
+.color-hub-mode-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+.color-hub-mode-btn.is-active {
+  color: var(--ctx-accent);
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* When the active slot's kind is 'none', dim the picker so the
+ * "transparent" choice is visually obvious. The mode-row button stays
+ * fully bright so the user can tap back to solid / gradient. */
+.color-hub--none .color-hub-picker { opacity: 0.35; pointer-events: none; }
+.color-hub--none .color-hub-preview-row,
+.color-hub--none .color-hub-input-row { opacity: 0.5; }
+
+/* Slot chips with kind === 'none': render a checker pattern so the
+ * empty/transparent slot is unmistakable at a glance. */
+.color-hub-slot-chip.is-none {
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.18) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.18) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.18) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.18) 75%) !important;
+  background-size: 6px 6px !important;
+  background-position: 0 0, 0 3px, 3px -3px, -3px 0 !important;
+}
+.color-circle-stroke-ring.is-none,
+.color-circle-swatch.is-none {
+  background: repeating-conic-gradient(rgba(255,255,255,0.18) 0% 25%, transparent 0% 50%) !important;
+  background-size: 8px 8px !important;
+}
+
+/* ---------- Stroke width row ---------- */
+.color-hub-stroke-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.color-hub-stroke-row[hidden] { display: none; }
+.color-hub-stroke-width {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  margin: 0;
+}
+.color-hub-stroke-width::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+}
+.color-hub-stroke-width::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  border: none;
+  cursor: pointer;
+}
+.color-hub-stroke-width-num {
+  width: 48px;
+  flex: 0 0 48px;
+  text-align: right;
+}
+
+/* ---------- Gradient editor ---------- */
+.color-hub-gradient {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: var(--ring-outer);
+  margin: 16px auto 8px;
+}
+.color-hub-gradient[hidden] { display: none; }
+.color-hub-gradient-track {
+  position: relative;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: visible;
+}
+.color-hub-gradient-bar {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+}
+.color-hub-gradient-stops {
+  position: absolute;
+  inset: 0;
+}
+.color-hub-gradient-stop {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s ease;
+}
+.color-hub-gradient-stop.is-active {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 0 0 2px var(--ctx-accent);
+}
+.color-hub-gradient-angle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.color-hub-gradient-angle-input {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  margin: 0;
+}
+.color-hub-gradient-angle-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+}
+.color-hub-gradient-angle-readout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* ---------- Toast (eyedropper unavailability hint) ---------- */
 .color-hub-toast {
   position: absolute;

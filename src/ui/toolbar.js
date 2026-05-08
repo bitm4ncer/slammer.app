@@ -11,6 +11,7 @@ import { translatePathD } from '../core/vector-renderer.js';
 import {
   getSelection, getSelectionArray, setSelection, selectOnly, clearSelection,
 } from './selection-state.js';
+import { getActiveFill, getActiveKind } from '../core/colors.js';
 
 // Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
 const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
@@ -128,8 +129,13 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   // it into a wrapping text box at any time via Ctrl+Shift+drag on a handle
   // (handled in the renderer's transformer wiring).
   function addText() {
+    // New text inherits the active fill colour from the colour hub.
+    // The text rasteriser only honours a single solid `color` — gradient
+    // / no-fill text isn't supported yet, so we fall back to white when
+    // the active fill kind isn't 'solid'.
+    const fillColor = getActiveKind('fill') === 'solid' ? getActiveFill() : '#FFFFFF';
     const layer = doc.addTextLayer({
-      text: { value: 'Typo', mode: 'text', boxWidth: 600 },
+      text: { value: 'Typo', mode: 'text', boxWidth: 600, color: fillColor },
     });
     // Ensure the default Google font (Inter) is loaded so the first paint
     // renders in the correct face — otherwise the canvas falls back to

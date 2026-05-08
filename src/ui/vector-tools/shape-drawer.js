@@ -11,6 +11,7 @@
 import { DEFAULT_VECTOR_FILL, DEFAULT_VECTOR_STROKE } from '../../core/layer.js';
 import { getTool } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
+import { buildVectorFillFromActive, buildVectorStrokeFromActive } from '../../core/colors.js';
 
 let active = null;
 
@@ -41,16 +42,22 @@ export function attachShapeDrawer({ stage, document: doc, getStageScale }) {
     // Create the layer up-front with a placeholder path; we update on every move.
     const d = buildPathD(active);
     const shapeMeta = makeShapeMeta(active);
+    // New shapes inherit the active fill / stroke / stroke-width from the
+    // colour hub (Phase 23c). The line tool is a special case: even if the
+    // user has fill turned ON, a line has no enclosed area, so we force
+    // fill: none. Lines also force stroke: solid (must be visible).
+    const activeFill = buildVectorFillFromActive();
+    const activeStroke = buildVectorStrokeFromActive();
     const layer = doc.addVectorLayer({
       name: niceName(kind),
       vector: {
         paths: [{
           d, closed: kind !== 'line',
           shape: shapeMeta,
-          fill: kind === 'line' ? { type: 'none' } : DEFAULT_VECTOR_FILL(),
-          stroke: kind === 'line'
-            ? { ...DEFAULT_VECTOR_STROKE(), type: 'solid' }
-            : DEFAULT_VECTOR_STROKE(),
+          fill: kind === 'line' ? { type: 'none' } : activeFill,
+          stroke: kind === 'line' && activeStroke.type === 'none'
+            ? { ...activeStroke, type: 'solid' }
+            : activeStroke,
         }],
       },
     });
