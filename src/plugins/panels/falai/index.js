@@ -19,6 +19,7 @@ import { renderForm } from './form-renderer.js';
 import { runModel, extractImageUrls, isConfigured, FalConfigError, getBalance } from './fal-client.js';
 import { listFavorites, addFavorite, removeFavorite, isFavorited } from '../../../io/plugin-store.js';
 import { openSettings, onSettingsChange } from '../../../ui/settings-popup.js';
+import * as feedStore from '../_shared/plugin-feed-store.js';
 import './falai.css';
 
 const PLUGIN_ID = 'falai';
@@ -95,9 +96,45 @@ export default {
     let selectedId = null;
     let favoriteIds = new Set();
 
+    // ---------- Hydrate from previous session ----------
+    // Form-renderer values per model are intentionally NOT persisted — they're
+    // owned by form-renderer.js and the storage cost (per-model schema) isn't
+    // justified for v1. Generated image URLs aren't either; they may be
+    // signed with TTLs that would 404 the next day. The 'recent' strip uses
+    // its own per-model localStorage (RECENT_KEY_PREFIX above) and is unrelated.
+    const restored = feedStore.load(PLUGIN_ID);
+    if (restored) {
+      if (typeof restored.category === 'string') {
+        category = restored.category;
+        filterGroup.querySelectorAll('.effect-pill').forEach((b) => {
+          b.classList.toggle('active', (b.dataset.v || '') === category);
+        });
+      }
+      if (typeof restored.query === 'string' && restored.query) {
+        query = restored.query;
+        searchInput.value = restored.query;
+      }
+      if (restored.favOnly === true) {
+        favOnly = true;
+        favToggle.setAttribute('aria-pressed', 'true');
+        favToggle.classList.add('active');
+      }
+      if (typeof restored.selectedId === 'string') {
+        selectedId = restored.selectedId;
+      }
+    }
+
     refreshFavorites();
     renderList();
     renderFeatured();
+
+    // Persist filter + selection on window close.
+    ctx.onClose?.(() => {
+      feedStore.save(PLUGIN_ID, { category, query, favOnly, selectedId });
+    });
+    // The restored-selectedId → selectModel() call lives below, after the
+    // `let currentForm` / `let currentAborter` declarations — calling it here
+    // would hit a TDZ on those bindings inside renderDetail.
 
     // ---------- Balance chip ----------
     // Always rendered with a placeholder ("—") so the topbar doesn't reflow
@@ -223,6 +260,13 @@ export default {
 
     let currentForm = null;
     let currentAborter = null;
+
+    // If a previously-selected model was hydrated above, open its detail pane
+    // now that renderDetail's closure bindings (currentForm / currentAborter)
+    // are initialised.
+    if (selectedId && findModel(selectedId)) {
+      selectModel(selectedId);
+    }
 
     function renderDetail(model) {
       // Tear down previous form's drag-target listeners by replacing the node.

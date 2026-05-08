@@ -8,6 +8,7 @@ import {
 } from '../../../io/plugin-store.js';
 import { showConfirm } from '../../../ui/confirm-prompt.js';
 import { fetchImageBlob } from './cors-proxy.js';
+import * as feedStore from './plugin-feed-store.js';
 
 export function createBrowsable({
   pluginId,
@@ -166,6 +167,7 @@ export function createBrowsable({
   const favEmptyEl = container.querySelector('[data-empty="favorites"]');
 
   function selectTab(name) {
+    activeTab = name;
     tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
     panels.forEach((p) => p.toggleAttribute('hidden', p.dataset.tab !== name));
     if (name === 'favorites') refreshFavorites();
@@ -178,6 +180,10 @@ export function createBrowsable({
   let currentPage = 0;
   let hasMore = false;
   let searching = false;
+  // Mirror of items currently rendered into the search grid — captured for
+  // session-state persistence (DOM-only state can't survive close → reopen).
+  const loadedItems = [];
+  let activeTab = 'search';
 
   async function loadPage({ append }) {
     if (searching) return;
@@ -206,6 +212,7 @@ export function createBrowsable({
       }
       for (const item of mapped) {
         appendToColumns(searchGrid, renderCard(item, 'search'));
+        loadedItems.push(item);
       }
     } catch (err) {
       if (!append) {
@@ -232,6 +239,7 @@ export function createBrowsable({
     lastQuery = q;
     currentPage = 0;
     hasMore = true;
+    loadedItems.length = 0;
     await loadPage({ append: false });
   }
   searchBtn.addEventListener('click', runSearch);
@@ -301,6 +309,17 @@ export function createBrowsable({
     if (entries[0]?.isIntersecting) loadPage({ append: true });
   }, { root: scrollRoot, rootMargin: '400px 0px' });
   io.observe(sentinel);
+
+  // Capture scrollTop continuously — the floating-window's onClose listeners
+  // fire AFTER el.remove(), at which point reading scrollRoot.scrollTop is
+  // unreliable on a detached node. Tracking on every scroll keeps the value
+  // available for the close-time persistence snapshot.
+  let lastScrollTop = 0;
+  if (scrollRoot) {
+    scrollRoot.addEventListener('scroll', () => {
+      lastScrollTop = scrollRoot.scrollTop;
+    }, { passive: true });
+  }
 
   // ---------- Favorites ----------
   async function refreshFavorites() {
@@ -651,8 +670,72 @@ export function createBrowsable({
   });
   updateColKnobUI();
 
-  // Kick off curated preview feed immediately.
-  loadCurated();
+  // ---------- Hydrate from previous session ----------
+  // If the user had an active search + a populated grid the last time they
+  // closed this plugin window, restore it verbatim so reopening doesn't feel
+  // like a fresh search every time.
+  const restored = feedStore.load(pluginId);
+  let didRestore = false;
+  if (restored && Array.isArray(restored.items) && restored.items.length) {
+    try {
+      if (typeof restored.query === 'string') {
+        searchInput.value = restored.query;
+        lastQuery = restored.query;
+      }
+      if (typeof restored.page === 'number') currentPage = restored.page;
+      if (typeof restored.hasMore === 'boolean') hasMore = restored.hasMore;
+
+      // Drop the landing layout — we have content to show.
+      searchPanel.style.opacity = '1';
+      searchPanel.classList.remove('browsable-landing');
+
+      resetColumns(searchGrid);
+      for (const item of restored.items) {
+        appendToColumns(searchGrid, renderCard(item, 'search'));
+        loadedItems.push(item);
+      }
+
+      if (restored.activeTab && restored.activeTab !== 'search') {
+        selectTab(restored.activeTab);
+      }
+
+      // Scroll restoration after layout settles — two RAFs because images
+      // contribute to layout asynchronously and the column heights aren't
+      // final on the first frame.
+      if (typeof restored.scrollTop === 'number' && scrollRoot) {
+        const target = restored.scrollTop;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollRoot.scrollTop = target;
+            lastScrollTop = target;
+          });
+        });
+      }
+
+      didRestore = true;
+    } catch (err) {
+      console.warn(`[browsable:${pluginId}] hydrate failed`, err);
+    }
+  }
+
+  if (!didRestore) {
+    // No cached state — kick off curated preview feed as before.
+    loadCurated();
+  }
+
+  // Persist on window close. Listeners fire after el.remove(), so we work
+  // exclusively from JS-side mirrors (loadedItems, lastScrollTop) — never
+  // touch the DOM here.
+  ctx.onClose?.(() => {
+    feedStore.save(pluginId, {
+      query: lastQuery,
+      page: currentPage,
+      hasMore,
+      activeTab,
+      items: loadedItems,
+      scrollTop: lastScrollTop,
+    });
+  });
 
   return {
     selectTab,

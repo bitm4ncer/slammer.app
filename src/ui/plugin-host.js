@@ -44,8 +44,15 @@ export function openPluginWindow(pluginId) {
     }
   });
 
+  // Per-render ctx that exposes the window's onClose hook + pluginId without
+  // mutating the global __slammer object. Plugins use ctx.onClose(fn) to
+  // register a cleanup/save listener tied to THIS window's lifecycle.
+  const renderCtx = Object.create(ctx);
+  renderCtx.pluginId = pluginId;
+  renderCtx.onClose = (fn) => handle.onClose(fn);
+
   try {
-    plugin.renderUI(handle.body, ctx);
+    plugin.renderUI(handle.body, renderCtx);
   } catch (err) {
     console.error(`[plugin "${pluginId}"] renderUI threw`, err);
     handle.body.innerHTML = `<div style="padding:20px;color:var(--text-secondary);font-size:11px">Plugin failed to load: ${escapeHtml(err.message || String(err))}</div>`;
