@@ -391,18 +391,25 @@ export function initSnapRulers({ stage, container, document: doc, getSettings, c
   cornerDiv.className = 'ruler-corner';
   container.appendChild(cornerDiv);
 
+  // Reserve room at the bottom-left of the canvas-area for the floating
+  // .zoom-controls (16 px gap + 22 px button + 38 px breathing). Without
+  // this, the explicit pixel height set on leftRulerCanvas overrides the
+  // CSS `bottom` property and the ruler reaches the canvas-area floor.
+  const LEFT_BOTTOM_OFFSET = 76;
+
   function resizeRulers() {
     const dpr = window.devicePixelRatio || 1;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
+    const leftH = Math.max(0, ch - LEFT_BOTTOM_OFFSET);
     topRulerCanvas.width  = cw * dpr;
     topRulerCanvas.height = RULER_SIZE * dpr;
     topRulerCanvas.style.width  = cw + 'px';
     topRulerCanvas.style.height = RULER_SIZE + 'px';
     leftRulerCanvas.width  = RULER_SIZE * dpr;
-    leftRulerCanvas.height = ch * dpr;
+    leftRulerCanvas.height = leftH * dpr;
     leftRulerCanvas.style.width  = RULER_SIZE + 'px';
-    leftRulerCanvas.style.height = ch + 'px';
+    leftRulerCanvas.style.height = leftH + 'px';
   }
 
   function updateRulers() {
