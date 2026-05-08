@@ -425,6 +425,14 @@ export function rasterizeVectorGroup(group, findLayer) {
   return rasterizeVectorLayer(synth);
 }
 
+// Per-effect-instance cache for processPaths results. Output depends ONLY
+// on (input paths ref, params, plugin id). When the user drags a slider
+// on a DIFFERENT effect in the same layer's chain, every step BEFORE the
+// edited one hits this cache (input paths haven't changed) and every step
+// AFTER the edited one runs fresh. Slots are keyed by eff.id which is
+// stable for the lifetime of the slot.
+const _vectorEffectCache = new Map();
+
 // Apply the layer's vector-effect chain to a paths list. Each enabled
 // vector-filter plugin's processPaths() runs in order, taking the previous
 // step's paths and returning a new array. Errors from a plugin skip that
@@ -440,8 +448,26 @@ export function applyVectorEffects(paths, layer) {
     const plugin = getPlugin(eff.pluginId);
     if (!plugin || plugin.type !== 'vector-filter' || typeof plugin.processPaths !== 'function') continue;
     try {
-      const next = plugin.processPaths(cur, eff.params || plugin.defaultParams(), { paper, layer });
-      if (Array.isArray(next)) cur = next;
+      const params = eff.params || plugin.defaultParams();
+      const paramsKey = JSON.stringify(params);
+      const cached = _vectorEffectCache.get(eff.id);
+      if (cached
+          && cached.inputRef === cur
+          && cached.paramsKey === paramsKey
+          && cached.pluginId === eff.pluginId) {
+        cur = cached.result;
+        continue;
+      }
+      const next = plugin.processPaths(cur, params, { paper, layer });
+      if (Array.isArray(next)) {
+        _vectorEffectCache.set(eff.id, {
+          inputRef: cur,
+          paramsKey,
+          pluginId: eff.pluginId,
+          result: next,
+        });
+        cur = next;
+      }
     } catch (e) {
       console.warn(`[vector-effect ${eff.pluginId}] processPaths threw — skipping`, e);
     }
