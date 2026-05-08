@@ -1123,6 +1123,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const tt = layer.transform;
       st._patchContentKey = layerContentKey(layer);
       st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+      st._renderedSourceKey = layerSourceKey(layer);
+      st._renderedEffectKeys = effectStepKeys(layer.effects);
     }
     scheduleDraw();
   }
@@ -1292,6 +1294,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       const tt = layer.transform;
       st._patchContentKey = layerContentKey(layer);
       st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+      st._renderedSourceKey = layerSourceKey(layer);
+      st._renderedEffectKeys = effectStepKeys(layer.effects);
     }
     return st;
   }
@@ -1329,6 +1333,40 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       parentGroupId: layer.parentGroupId,
       childIds: layer.childIds,
     });
+  }
+
+  // Source-only fingerprint — everything that affects the layer's
+  // rasterised SOURCE bitmap, but NOT its effect chain. Used by the
+  // diff-based patch to decide whether `rasterizeSource` can be skipped
+  // (its result reused from `st.sourceImageData`) or must rerun.
+  function layerSourceKey(layer) {
+    return JSON.stringify({
+      type: layer.type,
+      text: layer.text,
+      vector: layer.vector,
+      childIds: layer.childIds,
+      // Effect pad budget is part of the source canvas dimensions for
+      // image / text / vector / vector-only-group layers — bake the
+      // computed pad into the key so a pad-changing effect param edit
+      // (e.g. blur radius up) invalidates the source bitmap.
+      _padEffects: layer.effects?.map((e) => ({ id: e.pluginId, p: e.params })) || null,
+    });
+  }
+
+  // Per-effect cache keys — one per slot, used by the patch's
+  // first-divergence walk to set dirtyFromIndex precisely instead of
+  // always 0. Capturing pluginId + enabled + params + mix matches what
+  // applyEffectsPipeline reads when it re-runs a step.
+  function effectStepKey(eff) {
+    return JSON.stringify({
+      id: eff.pluginId,
+      e: eff.enabled,
+      p: eff.params,
+      m: eff.mix,
+    });
+  }
+  function effectStepKeys(effects) {
+    return (effects || []).map(effectStepKey);
   }
 
   // Patch an existing layer's Konva nodes + cached state to match the new
@@ -1384,20 +1422,52 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       return;
     }
 
-    // 4. Heavy path — content (effects, source, vector paths, text)
-    //    actually changed. Rerun the full rasterise + effect pipeline.
+    // 4. Smart-diff path. Even when the content key differs, large parts
+    //    of the work may be reusable:
+    //      • If the SOURCE inputs (text/vector/childIds + effect pad
+    //        budget) match what's cached, reuse `st.sourceImageData` and
+    //        skip the rasterise.
+    //      • If only effects[k..] changed, set `dirtyFromIndex = k` so
+    //        applyEffectsPipeline's per-step cache reuses the prefix
+    //        instead of starting from scratch.
+    //    Common case during undo: the user changed ONE param on ONE
+    //    effect; only steps from that index onward need to rerun.
     st._cachedRect = null;
-    st._vectorRasterDirty = true;
     rectGen++;
 
-    const imgData = await rasterizeSource(layer, st);
-    if (imgData) {
-      st.sourceImageData = imgData;
-      st.dirtyFromIndex = 0;
+    const newSourceKey = layerSourceKey(layer);
+    const newEffectKeys = effectStepKeys(layer.effects);
+    const sourceCanReuse = sourceUnchanged
+      && st.sourceImageData
+      && st._renderedSourceKey === newSourceKey
+      && layer.type !== 'fx'; // FX layers always re-source from below
+
+    let imgData = null;
+    if (!sourceCanReuse && layer.type !== 'fx') {
+      st._vectorRasterDirty = true;
+      imgData = await rasterizeSource(layer, st);
+      if (imgData) st.sourceImageData = imgData;
+    }
+
+    if (st.sourceImageData) {
+      // First divergent effect index — drives dirtyFromIndex.
+      let firstDiff = 0;
+      const oldKeys = st._renderedEffectKeys || [];
+      const minLen = Math.min(oldKeys.length, newEffectKeys.length);
+      while (firstDiff < minLen && oldKeys[firstDiff] === newEffectKeys[firstDiff]) firstDiff++;
+      // If the source had to be rebuilt OR the effect list shrank,
+      // fall back to a full pipeline rerun — the cached steps[] beyond
+      // firstDiff may reference the old source.
+      const fullRerun = !sourceCanReuse
+        || newEffectKeys.length < oldKeys.length;
+      const startFrom = fullRerun ? 0 : firstDiff;
+      st.dirtyFromIndex = startFrom;
       paintLayer(layer, st);
     }
     st._patchContentKey = contentKey;
     st._patchPropsKey = propsKey;
+    st._renderedSourceKey = newSourceKey;
+    st._renderedEffectKeys = newEffectKeys;
   }
 
   function syncZOrder() {
