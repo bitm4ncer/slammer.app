@@ -269,12 +269,11 @@ body.panels-collapsed #app {
   pointer-events: auto;
   transition: background 0.12s ease;
 }
-/* Glow + accent halo while the colour hub is open — replaces the visual
-   "is this dial active?" cue without extra JS. */
-body.color-hub-open .color-circle-btn {
-  border-color: color-mix(in srgb, var(--ctx-accent) 35%, var(--surface-2));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctx-accent) 30%, transparent);
-}
+/* Hub-open state used to tint the dial's border with --ctx-accent (the
+ * selected layer's accent colour). Removed on user feedback — the
+ * coloured halo competed with the actual fill / stroke colours the dial
+ * is now meant to show. The dial's content (fill swatch + stroke ring)
+ * is enough of a focus signal. */
 
 /* ---------- Dot mode (Settings → Workflow → Color hub → Dot) ----------
  * Collapses the radial UI to a single small swatch in the footer-left.
@@ -817,28 +816,44 @@ body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
   color: var(--ctx-accent);
 }
 
-/* ---------- Notification ---------- */
+/* ---------- Notification ----------
+   Lives INSIDE .canvas-area (position: relative parent) so it anchors to
+   the canvas viewport, not the page — stays clear of the footer / color
+   hub regardless of footer height. Slides in from the right at the
+   bottom-right corner. No accent border (house rule: depth from real
+   shadows + insets, not emissive light).
+   Uses @keyframes instead of CSS transitions so the slide-in plays
+   deterministically each time .show is added — no FLIP-paint timing
+   gotchas, no HMR cascade quirks. */
+@keyframes notif-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 .notification {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  max-width: min(420px, calc(100% - 32px));
   background: var(--surface-2);
   color: var(--text-primary);
-  padding: 10px 18px;
-  border-radius: 4px;
-  border: 1px solid var(--primary);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  padding: 9px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--vhs-shadow);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
   opacity: 0;
-  transition: opacity 0.25s, transform 0.25s;
   pointer-events: none;
-  z-index: 100;
+  z-index: 60;
   font-size: 12px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .notification.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  animation: notif-slide-in 0.24s ease both;
 }
 
 .slammer-logo-footer {

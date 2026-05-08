@@ -7,40 +7,41 @@
 // (.color-circle-stroke-ring) shows the stroke. Click the ring → hub opens
 // focused on stroke; click the centre → focused on fill.
 
-import { getActiveFill, getActiveStroke, getActiveKind, getActiveGradient, onActiveChange } from '../core/colors.js';
+import { onActiveChange } from '../core/colors.js';
 import { getSettings, onSettingsChange } from './settings-popup.js';
 import { toggleColorHub, openColorHub } from './color-hub.js';
+import { getEffectiveStyle, onEffectiveStyleChange } from './selection-style.js';
 
 export function initColorCircle({ buttonEl, swatchEl, strokeRingEl }) {
   if (!buttonEl || !swatchEl) return;
 
   function paint() {
-    // Fill swatch — solid colour, gradient swatch, or transparent
-    // checker pattern (`.is-none`) depending on kind.
-    const fillKind = getActiveKind('fill');
-    swatchEl.classList.toggle('is-none', fillKind === 'none');
-    if (fillKind === 'gradient') {
-      const g = getActiveGradient('fill');
-      swatchEl.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
-    } else if (fillKind !== 'none') {
-      swatchEl.style.background = getActiveFill();
+    // Reads the EFFECTIVE style — selected layer's fill/stroke if any,
+    // active state otherwise. Illustrator-style: switching layers swaps
+    // the dial colours immediately.
+    const style = getEffectiveStyle();
+    swatchEl.classList.toggle('is-none', style.fillKind === 'none');
+    if (style.fillKind === 'gradient') {
+      const g = style.fillGradient;
+      swatchEl.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+    } else if (style.fillKind !== 'none') {
+      swatchEl.style.background = style.fill;
     }
     if (strokeRingEl) {
-      const strokeKind = getActiveKind('stroke');
-      strokeRingEl.classList.toggle('is-none', strokeKind === 'none');
-      if (strokeKind === 'gradient') {
-        const g = getActiveGradient('stroke');
-        // Use border-image for the ring stroke colour.
-        strokeRingEl.style.borderImage = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
+      strokeRingEl.classList.toggle('is-none', style.strokeKind === 'none');
+      if (style.strokeKind === 'gradient') {
+        const g = style.strokeGradient;
+        strokeRingEl.style.borderImage = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
         strokeRingEl.style.borderImageSlice = '1';
       } else {
         strokeRingEl.style.borderImage = '';
-        strokeRingEl.style.borderColor = getActiveStroke();
+        strokeRingEl.style.borderColor = style.stroke;
       }
     }
   }
   paint();
-  onActiveChange(paint);
+  onEffectiveStyleChange(paint);
+  onActiveChange(paint);   // belt + braces; effective-style covers both
 
   // Apply body class so the conditional CSS in layout.css can hide the
   // radial wheel + reposition the dial as a small footer-left swatch.

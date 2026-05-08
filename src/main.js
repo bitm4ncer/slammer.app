@@ -8,6 +8,7 @@ import './style/effects.css';
 import './style/typography.css';
 import './style/vector.css';
 import './style/color-hub.css';
+import './style/effect-library.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';
@@ -93,6 +94,7 @@ import { initLayerStackAdd } from './ui/layer-stack-add.js';
 import { initDocumentSizePopup } from './ui/document-size-popup.js';
 import { initColorCircle } from './ui/color-circle.js';
 import { initQuickSelectWheel } from './ui/quick-select-wheel.js';
+import { attachSelectionStyle } from './ui/selection-style.js';
 import { initAlignmentControls } from './ui/alignment-controls.js';
 import { openExportPopup } from './ui/export-popup.js';
 import { initSidebarPlugins } from './ui/sidebar-plugins.js';
@@ -281,6 +283,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     view,
     button: document.getElementById('btnDocSize'),
   });
+  // Wire the colour-hub ↔ selected-layer plumbing BEFORE the dial /
+  // quick-select-wheel mount so their first paint sees the resolver.
+  attachSelectionStyle(doc);
   initColorCircle({
     buttonEl: document.getElementById('btnColorCircle'),
     swatchEl: document.getElementById('colorCircleSwatch'),

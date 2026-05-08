@@ -19,6 +19,11 @@ import {
   getActiveGradient, setActiveGradient,
   getGradientSwatches, addGradientSwatch, removeGradientSwatch, onGradientSwatchesChange,
 } from '../core/colors.js';
+import {
+  getEffectiveStyle, onEffectiveStyleChange,
+  applySlotColor, applySlotKind, applySlotGradient,
+  applySlotOpacity, applyStrokeWidth,
+} from './selection-style.js';
 
 const RING_OUTER  = 96;       // px — outer radius of the hue ring
 const RING_INNER  = 78;       // px — inner radius (where the triangle starts)
@@ -158,7 +163,7 @@ function build() {
           <input class="color-hub-opacity" type="range" min="0" max="100" step="1" />
           <input class="color-hub-opacity-num color-hub-input" type="number" min="0" max="100" step="1" />
         </div>
-        <div class="color-hub-stroke-row" hidden>
+        <div class="color-hub-stroke-row">
           <label class="color-hub-input-label">STROKE</label>
           <input class="color-hub-stroke-width" type="range" min="0" max="40" step="0.5" />
           <input class="color-hub-stroke-width-num color-hub-input" type="number" min="0" max="200" step="0.5" />
@@ -244,15 +249,17 @@ function bindEvents(anchorEl) {
   let { h, s, v } = hexToHsv(activeColor());
 
   function activeColor() {
-    // In gradient mode the picker drives the SELECTED stop's colour; in
-    // solid mode it drives the slot's main colour. 'none' kind has no
-    // visible colour but we still keep the picker showing the last solid
-    // value so toggling back to solid feels continuous.
-    if (getActiveKind(activeSlot) === 'gradient') {
-      const g = getActiveGradient(activeSlot);
+    // Source of truth = the effective style (selected layer if any,
+    // active state otherwise). In gradient mode the picker drives the
+    // SELECTED stop's colour; in solid mode it drives the slot's main
+    // colour.
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
+    if (kind === 'gradient') {
+      const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
       return g.stops[activeStopIdx]?.color || g.stops[0].color;
     }
-    return activeSlot === 'stroke' ? getActiveStroke() : getActiveFill();
+    return activeSlot === 'stroke' ? style.stroke : style.fill;
   }
 
   // Cache the triangle bitmap — repaint only when hue changes.
@@ -287,15 +294,21 @@ function bindEvents(anchorEl) {
 
   function commit() {
     const hex = hsvToHex(h, s, v);
-    if (getActiveKind(activeSlot) === 'gradient') {
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
+    if (kind === 'gradient') {
       // Write to the selected gradient stop, keep the rest intact.
-      const g = getActiveGradient(activeSlot);
+      // applySlotGradient fans out to selected layers + active state.
+      const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
       const stops = g.stops.map((stop, i) => (
         i === activeStopIdx ? { ...stop, color: hex } : stop
       ));
-      setActiveGradient(activeSlot, { ...g, stops });
+      applySlotGradient(activeSlot, { ...g, stops });
     } else {
-      setActiveSlot(activeSlot, hex);
+      // Solid (or none — committing a colour while in `none` does nothing
+      // visible but we still update active state so toggling back to solid
+      // shows the most recent colour).
+      applySlotColor(activeSlot, hex);
     }
     paint();
   }
@@ -303,32 +316,27 @@ function bindEvents(anchorEl) {
   function paintSlotChips() {
     const fillChip = popover.querySelector('[data-slot-chip="fill"]');
     const strokeChip = popover.querySelector('[data-slot-chip="stroke"]');
-    // Chip rendering depends on the slot's KIND:
-    //  - solid    → coloured (fill: bg, stroke: border)
-    //  - gradient → linear-gradient swatch
-    //  - none     → checker-board so transparency is obvious
-    const fillKind   = getActiveKind('fill');
-    const strokeKind = getActiveKind('stroke');
+    const style = getEffectiveStyle();
     if (fillChip) {
-      fillChip.classList.toggle('is-none', fillKind === 'none');
-      if (fillKind === 'gradient') {
-        const g = getActiveGradient('fill');
-        fillChip.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
-      } else if (fillKind === 'none') {
+      fillChip.classList.toggle('is-none', style.fillKind === 'none');
+      if (style.fillKind === 'gradient') {
+        const g = style.fillGradient;
+        fillChip.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+      } else if (style.fillKind === 'none') {
         fillChip.style.background = '';
       } else {
-        fillChip.style.background = getActiveFill();
+        fillChip.style.background = style.fill;
       }
     }
     if (strokeChip) {
-      strokeChip.classList.toggle('is-none', strokeKind === 'none');
-      if (strokeKind === 'gradient') {
-        const g = getActiveGradient('stroke');
-        strokeChip.style.borderImage = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
+      strokeChip.classList.toggle('is-none', style.strokeKind === 'none');
+      if (style.strokeKind === 'gradient') {
+        const g = style.strokeGradient;
+        strokeChip.style.borderImage = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
         strokeChip.style.borderImageSlice = '1';
       } else {
         strokeChip.style.borderImage = '';
-        strokeChip.style.borderColor = getActiveStroke();
+        strokeChip.style.borderColor = style.stroke;
       }
     }
     popover.querySelectorAll('.color-hub-slot').forEach((b) => {
@@ -339,7 +347,8 @@ function bindEvents(anchorEl) {
   // ── Mode buttons (solid / gradient / none) — per active slot ─────────
   const modeBtns = popover.querySelectorAll('.color-hub-mode-btn');
   function paintMode() {
-    const kind = getActiveKind(activeSlot);
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
     modeBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.mode === kind));
     // Solid / gradient mode swap which row sits in the side column's top
     // slot — the preview row OR the gradient editor. Same height so the
@@ -352,15 +361,16 @@ function bindEvents(anchorEl) {
     gradient.hidden   = !isGrad;
     popover.classList.toggle('color-hub--none', isNone);
     popover.classList.toggle('color-hub--gradient', isGrad);
-    // Stroke-width row visible only when active slot === stroke and not none.
-    const sw = popover.querySelector('.color-hub-stroke-row');
-    sw.hidden = !(activeSlot === 'stroke' && kind !== 'none');
+    // Stroke-width row stays visible always — Illustrator-style. Lets
+    // the user tune stroke width without first switching slots, and
+    // mirrors the alpha row's always-on chrome.
   }
   modeBtns.forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const kind = btn.dataset.mode;
-      setActiveKind(activeSlot, kind);
+      // applySlotKind fans out to selected layers + active state.
+      applySlotKind(activeSlot, kind);
       paintMode();
       paintGradient();
       paintSwatches();
@@ -381,7 +391,8 @@ function bindEvents(anchorEl) {
   function paintModeIcons() {
     const gradIcon = popover.querySelector('.color-hub-mode-gradicon');
     if (!gradIcon) return;
-    const g = getActiveGradient(activeSlot);
+    const style = getEffectiveStyle();
+    const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
     gradIcon.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
   }
 
@@ -389,38 +400,41 @@ function bindEvents(anchorEl) {
   const opSlider = popover.querySelector('.color-hub-opacity');
   const opNum    = popover.querySelector('.color-hub-opacity-num');
   function paintOpacity() {
-    const pct = Math.round(getActiveOpacity(activeSlot) * 100);
+    const style = getEffectiveStyle();
+    const pct = Math.round((activeSlot === 'stroke' ? style.strokeOpacity : style.fillOpacity) * 100);
     if (document.activeElement !== opSlider) opSlider.value = String(pct);
     if (document.activeElement !== opNum)    opNum.value    = String(pct);
   }
   opSlider.addEventListener('input', () => {
-    setActiveOpacity(activeSlot, parseFloat(opSlider.value) / 100);
+    applySlotOpacity(activeSlot, parseFloat(opSlider.value) / 100);
     paintOpacity();
   });
   opNum.addEventListener('input', () => {
     const v = parseFloat(opNum.value);
     if (Number.isFinite(v)) {
-      setActiveOpacity(activeSlot, v / 100);
+      applySlotOpacity(activeSlot, v / 100);
       paintOpacity();
     }
   });
 
   // ── Stroke width slider + numeric input ──────────────────────────────
+  // Always visible (Illustrator-style). Reads from the effective style
+  // so it shows the SELECTED layer's stroke width when applicable.
   const swSlider = popover.querySelector('.color-hub-stroke-width');
   const swNum    = popover.querySelector('.color-hub-stroke-width-num');
   function paintStrokeWidth() {
-    const w = getActiveStrokeWidth();
+    const w = getEffectiveStyle().strokeWidth;
     if (document.activeElement !== swSlider) swSlider.value = String(Math.min(40, w));
     if (document.activeElement !== swNum)    swNum.value    = String(w);
   }
   swSlider.addEventListener('input', () => {
-    setActiveStrokeWidth(parseFloat(swSlider.value));
+    applyStrokeWidth(parseFloat(swSlider.value));
     paintStrokeWidth();
   });
   swNum.addEventListener('input', () => {
     const v = parseFloat(swNum.value);
     if (Number.isFinite(v)) {
-      setActiveStrokeWidth(v);
+      applyStrokeWidth(v);
       paintStrokeWidth();
     }
   });
@@ -443,8 +457,10 @@ function bindEvents(anchorEl) {
   }
 
   function paintGradient() {
-    if (getActiveKind(activeSlot) !== 'gradient') return;
-    const g = getActiveGradient(activeSlot);
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
+    if (kind !== 'gradient') return;
+    const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
     // Always keep the bar in sync — it's cheap and doesn't disturb drag.
     paintGradientBar(g.stops);
     if (document.activeElement !== gradAngleIn) gradAngleIn.value = String(Math.round(g.angle));
@@ -488,7 +504,7 @@ function bindEvents(anchorEl) {
         dragLocalAt = Math.max(0, Math.min(1, (e.clientX - trackR.left) / trackR.width));
         // Mutate inline — no setActiveGradient, no rebuild.
         handle.style.left = `${dragLocalAt * 100}%`;
-        const cur = getActiveGradient(activeSlot);
+        const cur = (activeSlot === 'stroke' ? getEffectiveStyle().strokeGradient : getEffectiveStyle().fillGradient);
         const stops = cur.stops.map((s, j) => j === dragIdx ? { ...s, at: dragLocalAt } : s);
         paintGradientBar(stops);
         paintSlotChips();
@@ -502,13 +518,13 @@ function bindEvents(anchorEl) {
         // (a stop dragged past its neighbour doesn't keep its old index
         // forever). Track the active stop by REFERENCE so its index
         // follows the sort.
-        const cur = getActiveGradient(activeSlot);
+        const cur = (activeSlot === 'stroke' ? getEffectiveStyle().strokeGradient : getEffectiveStyle().fillGradient);
         const stops = cur.stops.map((s, j) => j === dragIdx ? { ...s, at: dragLocalAt } : s);
         const activeStop = stops[activeStopIdx];
         const sorted = [...stops].sort((a, b) => a.at - b.at);
         const newIdx = sorted.indexOf(activeStop);
         if (newIdx >= 0) activeStopIdx = newIdx;
-        setActiveGradient(activeSlot, { ...cur, stops: sorted });
+        applySlotGradient(activeSlot, { ...cur, stops: sorted });
       });
       gradStops.appendChild(handle);
     });
@@ -516,20 +532,23 @@ function bindEvents(anchorEl) {
   gradAngleIn.addEventListener('input', () => {
     const angle = parseFloat(gradAngleIn.value);
     if (!Number.isFinite(angle)) return;
-    const g = getActiveGradient(activeSlot);
-    setActiveGradient(activeSlot, { ...g, angle });
+    const style = getEffectiveStyle();
+    const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
+    applySlotGradient(activeSlot, { ...g, angle });
     paintGradient();
     paintSlotChips();
   });
   // Click on the track itself adds a new stop at that position.
   gradTrack.addEventListener('dblclick', (e) => {
-    if (getActiveKind(activeSlot) !== 'gradient') return;
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
+    if (kind !== 'gradient') return;
     const r = gradTrack.getBoundingClientRect();
     const at = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-    const g = getActiveGradient(activeSlot);
+    const g = activeSlot === 'stroke' ? style.strokeGradient : style.fillGradient;
     const stops = [...g.stops, { at, color: hsvToHex(h, s, v) }].sort((a, b) => a.at - b.at);
     activeStopIdx = stops.findIndex(s => s.at === at);
-    setActiveGradient(activeSlot, { ...g, stops });
+    applySlotGradient(activeSlot, { ...g, stops });
     paintGradient();
     paintSlotChips();
   });
@@ -777,7 +796,11 @@ function bindEvents(anchorEl) {
   // ── Sync if active colours change from elsewhere (e.g. X swap, Save
   // button, plugin write). Repaints the slot chips both for fill and
   // stroke; resyncs the local HSV from the CURRENT slot's value.
-  unsubs.push(onActiveChange(() => {
+  // Subscribe to the SAME stream that the dial uses — fires when active
+  // state OR selection change. Re-syncs HSV from the new effective colour
+  // so swapping selected layers updates the picker immediately.
+  unsubs.push(onEffectiveStyleChange(() => {
+    activeStopIdx = 0;          // selection swap may invalidate the stop index
     const cur = hsvToHex(h, s, v);
     const target = activeColor();
     if (cur !== target) {

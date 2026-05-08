@@ -791,3 +791,54 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - Is private co-working a feature people will actually use, or is "share a screenshot of my work" enough? Validate with users before building.
 
 **Prerequisite**: v1 product stable, Phase 28 commerce live (so a pricing model exists), Phase 30 themes shipped (so collaborators can use the same UI). Realistic timeline: 2027+ — exploration only until then.
+
+### F7 — Tutorial Recorder (in-app screen + mic capture)
+
+**Intent**: lower the friction for users to record their workflow and post it to social media. Tutorials, before/after reels, glitch-process clips, behind-the-scenes — all from inside slammer, no third-party recorder needed. **The strategic angle is distribution**: the easier it is to record, the more user-generated tutorial content lands on YouTube / TikTok / Twitter, and that content is the discovery channel for slammer.app's tribe (per STRATEGY.md "discover tools through YouTube tutorials, not LinkedIn"). Every recording shipped is a free billboard.
+
+**Stack**: pure browser APIs, no native plugin, no server. Target browsers: Chrome / Edge / Firefox desktop. Safari macOS works for `getDisplayMedia` since 13.1 — usable. Mobile Safari has no `getDisplayMedia` — out of scope.
+
+- `navigator.mediaDevices.getDisplayMedia()` — user picks tab / window / full screen via browser dialog (no way around this dialog, it's a permission gate).
+- `navigator.mediaDevices.getUserMedia({ audio: true })` — mic source.
+- Web Audio API (`AudioContext` + `MediaStreamAudioSourceNode` + `MediaStreamAudioDestinationNode`) — mix mic + tab audio (where Chrome supports tab audio in `getDisplayMedia`) into one track.
+- `MediaRecorder` — encodes the combined video + audio stream to WebM (VP9 + Opus by default).
+- Output Blob → download or save into the Library (Phase 25) as a recording asset.
+
+#### v1 — Basic recorder (~1–2 days)
+
+- [ ] **Record button** in the footer (or in a dedicated quick-access slot) — small red dot, tooltip "Record screen". Click → opens browser source picker. Selecting a source starts the recording, button turns into a stop indicator with live elapsed time.
+- [ ] **Mic toggle** in the recording control: on by default if the user grants mic permission, off if they decline. Mic level meter (3-bar visual) shows live audio while recording.
+- [ ] **Pause / Resume** — `MediaRecorder.pause()` / `.resume()`.
+- [ ] **Stop → Save dialog**: "Save as WebM" download or "Add to Library" (Phase 25). Default filename: `slammer-{project}-{YYYY-MM-DD-HHMM}.webm`.
+- [ ] **Permission persistence** — once user grants mic + screen, store the preference so subsequent recordings don't need re-grant within the same session (browser handles this anyway, but we acknowledge it in UI copy).
+- [ ] **Settings → Workflow → Recorder** sub-section: default mic source pick, default output format (WebM only in v1), record-cursor toggle (browser handles cursor capture).
+
+#### v2 — Polished recorder (~3–4 extra days)
+
+- [ ] **Webcam picture-in-picture** — overlay a small webcam feed in a draggable corner of the recorded canvas. Implemented via a separate `getUserMedia({ video: true })` stream composited onto an OffscreenCanvas, fed back into MediaRecorder via `canvas.captureStream()`. Toggle on/off mid-recording.
+- [ ] **Trim before save** — after stop, show the recorded WebM in a small preview popup with start/end handles to trim. Trim happens client-side via `MediaSource` or by re-encoding the trimmed range with MediaRecorder.
+- [ ] **Cursor highlight overlay** — optional yellow ring around the cursor to make tutorials clearer. Compositing layer on the canvas, disabled outside recording mode.
+- [ ] **Click-zoom** — when a click happens, briefly zoom-pulse the area for emphasis (optional, off by default). Useful for short-form vertical-video tutorials.
+- [ ] **Multi-take stitching** — record several takes and concatenate them into one WebM via segmented MediaRecorder.
+
+#### v3 — Pro recorder (defer to demand, ~5–10 days)
+
+- [ ] **MP4 export via ffmpeg.wasm** — for users who want native social-media compatibility without re-encoding elsewhere. Bundle is ~25 MB so this is probably opt-in via a "MP4 transcode (one-time download)" prompt, not a default load.
+- [ ] **Vertical-format crop** — pre-crop the recording to 9:16 / 1:1 while recording so the output is ready for IG Reels / TikTok without post-processing.
+- [ ] **Annotation overlay** — type text / draw arrows directly during pause-frame for educational call-outs. Composited onto the video before encoding.
+- [ ] **One-click share** — direct intent-based share to Twitter / LinkedIn (URLs only) or copy-to-clipboard for paste into TikTok / YouTube uploaders.
+
+#### Strategic notes
+
+- **Free, not premium.** This is a distribution multiplier; gating it behind a paywall defeats the purpose. Lives in the free app forever.
+- **Embed in Bitmancer Shop** (post-Phase 28): premium pack pages can link to a Tutorial Recorder demo of using the pack's effects. Self-recorded by maintainer, takes minutes. Lowers friction for premium purchases.
+- **Tribe alignment** — STRATEGY.md says the audience "discovers tools through YouTube tutorials, not LinkedIn". The recorder turns every user into a potential micro-tutorial creator without forcing them to learn OBS / ScreenPal / QuickTime.
+- **No telemetry attached** — the recording stays local, no tracking, no upload. Users export when they choose.
+
+**Pricing**: free, in core app. No Pro gate.
+
+**Prerequisite**: nothing — can ship anytime after v1 is stable. Could ship before Phase 30 themes if the maintainer wants the distribution lever sooner.
+
+**Open questions**:
+- Should recordings auto-save into the Library (Phase 25) as a side-effect, so users find their recordings later? Probably yes.
+- Should the recorder be limited to recording the slammer canvas tab only, or full-screen too? Full-screen unlocks "screen + camera face-cam" tutorials but increases the footprint of the feature. Default to full freedom (browser dialog already lets the user choose).
