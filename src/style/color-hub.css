@@ -58,7 +58,7 @@
 .color-hub-slot-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
   padding: 3px;
