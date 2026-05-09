@@ -21,14 +21,13 @@ export default {
 
   defaultParams() {
     return {
-      strength:   60,                // -100..100; +barrel, -pincushion, 0 identity
+      strength:  -100,               // -100..100; +barrel, -pincushion, 0 identity
       zoom:        0,                // -100..100; + = zoom in, - = zoom out
       centerX:    50,                // 0..100% of content rect
       centerY:    50,                // 0..100%
       projection: 'orthographic',    // 'equidistant' | 'equisolid' | 'stereographic' | 'orthographic'
       edgeMode:   'transparent',     // 'clamp' | 'wrap' | 'mirror' | 'transparent'
       aspect:     'square',          // 'square' (min(w,h)/2) | 'frame' (diag/2)
-      mix:        100,               // 0..100% blend with original
     };
   },
 
@@ -45,11 +44,11 @@ export default {
     const projection = params.projection ?? 'orthographic';
     const edgeMode   = params.edgeMode   ?? 'transparent';
     const aspect     = params.aspect     ?? 'square';
-    const mix        = clamp(params.mix ?? 100, 0, 100) / 100;
 
-    // Short-circuit: nothing to do.
+    // Short-circuit: nothing to do. Per-slot dry/wet is handled by the
+    // renderer's global mix slider above every expanded effect — no need
+    // for a plugin-local mix knob.
     if (Math.abs(strength) < 1e-6 && Math.abs(zoom) < 1e-6) return imageData;
-    if (mix < 1e-6) return imageData;
 
     const out = new ImageData(W, H);
     const dst = out.data;
@@ -103,18 +102,10 @@ export default {
         }
 
         const px = sample(src, W, H, sx, sy);
-        if (mix >= 1) {
-          dst[di]     = px[0];
-          dst[di + 1] = px[1];
-          dst[di + 2] = px[2];
-          dst[di + 3] = px[3];
-        } else {
-          const inv = 1 - mix;
-          dst[di]     = (px[0] * mix + src[di]     * inv) | 0;
-          dst[di + 1] = (px[1] * mix + src[di + 1] * inv) | 0;
-          dst[di + 2] = (px[2] * mix + src[di + 2] * inv) | 0;
-          dst[di + 3] = (px[3] * mix + src[di + 3] * inv) | 0;
-        }
+        dst[di]     = px[0];
+        dst[di + 1] = px[1];
+        dst[di + 2] = px[2];
+        dst[di + 3] = px[3];
       }
     }
 
@@ -142,7 +133,7 @@ export default {
 
       root.appendChild(sliderRowLg({
         label: 'Strength', min: -100, max: 100, step: 1,
-        value: local.strength, defaultValue: 60,
+        value: local.strength, defaultValue: -100,
         onChange: (v) => { local.strength = v; onChange({ strength: v }); },
       }));
 
@@ -184,12 +175,6 @@ export default {
         ],
         value: local.edgeMode,
         onChange: (v) => { local.edgeMode = v; onChange({ edgeMode: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Mix', min: 0, max: 100, step: 1,
-        value: local.mix, defaultValue: 100, suffix: '%',
-        onChange: (v) => { local.mix = v; onChange({ mix: v }); },
       }));
     }
 
