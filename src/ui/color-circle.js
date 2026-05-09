@@ -31,23 +31,22 @@ export function initColorCircle({ buttonEl, swatchEl, strokeRingEl }) {
       strokeRingEl.classList.toggle('is-none', style.strokeKind === 'none');
       strokeRingEl.classList.toggle('is-gradient', style.strokeKind === 'gradient');
       if (style.strokeKind === 'gradient') {
-        // CSS gradients on circular borders are a chrome quirk minefield
-        // (border-image ignores border-radius; mask + background works
-        // but only on the spec-compliant code path). SVG with
-        // <circle stroke="url(#grad)"> is bulletproof — the stroke
-        // follows the circle exactly. Inject an inline SVG once per
-        // gradient change.
+        // SVG circle with stroke="url(#linearGradient)" — bulletproof
+        // gradient ring that follows the circular geometry exactly. CSS
+        // mask + background was unreliable (browser quirks); border-image
+        // ignores border-radius. SVG always works.
+        // Sizing: viewBox 100 maps to the element's ~46 px width. A 4 px
+        // ring at the outer edge means stroke-width = 4/46*100 ≈ 8.7,
+        // and the circle radius = 50 - sw/2 ≈ 46. We use sw=9 r=45.5 so
+        // the visible ring sits cleanly at the dial's outer edge.
         const g = style.strokeGradient;
-        const stops = g.stops.map((s, i) => `<stop offset="${s.at*100}%" stop-color="${s.color}"/>`).join('');
-        // Linear gradient at angle 90° (left → right) so the swatch
-        // mirrors the gradient track in the popover (which also uses
-        // a fixed 90° preview, ignoring the actual rendering angle).
+        const stops = g.stops.map((s) => `<stop offset="${s.at*100}%" stop-color="${s.color}"/>`).join('');
         strokeRingEl.innerHTML = `
-          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;border-radius:50%;display:block;">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;">
             <defs>
               <linearGradient id="colorCircleGrad" x1="0%" y1="50%" x2="100%" y2="50%">${stops}</linearGradient>
             </defs>
-            <circle cx="50" cy="50" r="42" fill="none" stroke="url(#colorCircleGrad)" stroke-width="16"/>
+            <circle cx="50" cy="50" r="45.5" fill="none" stroke="url(#colorCircleGrad)" stroke-width="9"/>
           </svg>
         `;
         strokeRingEl.style.borderColor = 'transparent';

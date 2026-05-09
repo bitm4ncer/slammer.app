@@ -261,11 +261,13 @@ body.panels-collapsed #app {
   pointer-events: auto;
   transition: border-color 0.12s ease;
 }
-/* Gradient stroke renders via inline SVG (color-circle.js) — the CSS
- * mask approach was unreliable across browsers. Just keep the ring
- * box transparent so the SVG circle paints cleanly. */
+/* Gradient stroke renders via inline SVG (color-circle.js). Zero out
+ * the border so the SVG fills the full padding-box (otherwise the
+ * 4 px transparent border still takes space and shrinks the SVG to a
+ * smaller inner box). */
 .color-circle-stroke-ring.is-gradient {
   background: transparent;
+  border-width: 0;
 }
 .color-circle-swatch {
   position: absolute;

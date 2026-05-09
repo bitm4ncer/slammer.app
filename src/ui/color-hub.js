@@ -332,14 +332,25 @@ function bindEvents(anchorEl) {
       strokeChip.classList.toggle('is-none', style.strokeKind === 'none');
       strokeChip.classList.toggle('is-gradient', style.strokeKind === 'gradient');
       if (style.strokeKind === 'gradient') {
-        // border-image doesn't follow border-radius — same chrome quirk
-        // we hit on the dial. Background + radial-gradient mask renders
-        // a clean circular gradient ring instead.
+        // Same SVG approach as the dial's stroke ring — guaranteed
+        // circular gradient stroke. Chip is 16x16; SVG viewBox 100 means
+        // sw=20 r=40 gives a ~3 px ring at the outer edge (matches the
+        // solid-mode 4 px border roughly).
         const g = style.strokeGradient;
+        const stops = g.stops.map((s) => `<stop offset="${s.at*100}%" stop-color="${s.color}"/>`).join('');
+        strokeChip.innerHTML = `
+          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;">
+            <defs>
+              <linearGradient id="colorChipGrad" x1="0%" y1="50%" x2="100%" y2="50%">${stops}</linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="url(#colorChipGrad)" stroke-width="20"/>
+          </svg>
+        `;
         strokeChip.style.borderImage = '';
         strokeChip.style.borderColor = 'transparent';
-        strokeChip.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+        strokeChip.style.background = '';
       } else {
+        strokeChip.innerHTML = '';
         strokeChip.style.borderImage = '';
         strokeChip.style.background = '';
         strokeChip.style.borderColor = style.stroke;
