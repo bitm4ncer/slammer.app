@@ -261,6 +261,14 @@ body.panels-collapsed #app {
   pointer-events: auto;
   transition: border-color 0.12s ease;
 }
+/* Gradient stroke variant — paint the gradient on the whole disc and
+ * mask out the centre so only the outer 4 px reads as a ring. Works
+ * around the border-image-doesn't-follow-border-radius CSS quirk that
+ * made gradient stroke rings render as rectangles. */
+.color-circle-stroke-ring.is-gradient {
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 4px));
+          mask: radial-gradient(circle, transparent calc(50% - 5px), #000 calc(50% - 4px));
+}
 .color-circle-swatch {
   position: absolute;
   inset: 4px;            /* tucked inside the stroke ring */

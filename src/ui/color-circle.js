@@ -29,12 +29,22 @@ export function initColorCircle({ buttonEl, swatchEl, strokeRingEl }) {
     }
     if (strokeRingEl) {
       strokeRingEl.classList.toggle('is-none', style.strokeKind === 'none');
+      strokeRingEl.classList.toggle('is-gradient', style.strokeKind === 'gradient');
       if (style.strokeKind === 'gradient') {
+        // border-image doesn't follow border-radius — gradient borders
+        // render rectangular even on a circular element. Use background
+        // + radial-gradient mask instead: paint the gradient on the
+        // whole disc, then mask out everything except the outer 4 px ring.
+        // The border itself becomes transparent so it doesn't fight the
+        // mask edge.
         const g = style.strokeGradient;
-        strokeRingEl.style.borderImage = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
-        strokeRingEl.style.borderImageSlice = '1';
-      } else {
         strokeRingEl.style.borderImage = '';
+        strokeRingEl.style.borderColor = 'transparent';
+        strokeRingEl.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+      } else {
+        // Solid stroke — back to border. Clear the gradient mask paint.
+        strokeRingEl.style.borderImage = '';
+        strokeRingEl.style.background = '';
         strokeRingEl.style.borderColor = style.stroke;
       }
     }
