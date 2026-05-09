@@ -202,6 +202,22 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'PHONG.SHININESS',
   },
+  '3d-bevel': {
+    c: '#C8C0B8',                                     // warm pewter — sculpted-metal feel
+    ink: '#0e0e10',
+    // Diagonal raking light + subtle stepped facets read as a chiselled
+    // bevel face. Two layered linear-gradients give the lit-edge / shadow-edge
+    // pair without a smooth transition.
+    pattern: `linear-gradient(135deg,
+                rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.12) 35%,
+                transparent 50%, rgba(14,14,16,0.18) 65%, rgba(14,14,16,0.50) 100%),
+              repeating-linear-gradient(135deg,
+                rgba(14,14,16,0.10) 0 2px, transparent 2px 14px)`,
+    size: 'auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'BEVEL.PILLOW',
+  },
 };
 
 /* =========================================================================
@@ -228,9 +244,9 @@ const PACK_INFO = {
     label: 'Liquid Pack',
     rule: 'Reality bent. Twist, ripple, pinch, bulge — distortion you can drag a slider for.',
   },
-  'surface-pack': {
-    label: 'Surface Pack',
-    rule: 'Heightfield-driven materials. Plastic, foil, chrome — glossy, iridescent, reflective surfaces shaded from a bump map.',
+  '3d-pack': {
+    label: '3D Pack',
+    rule: 'Volumetric surfaces from flat pixels. Plastic and Bevel sculpt the layer into a lit, three-dimensional object — bump-shaded with diffuse + specular Phong, no real geometry needed.',
   },
 };
 
@@ -253,6 +269,10 @@ function variantFor(packId, items) {
   }
   if (packId === 'dots-pack') {
     // Two halves
+    return ids.map(() => 'shop-card--half');
+  }
+  if (packId === '3d-pack') {
+    // Two halves — Plastic + 3D Bevel as a paired specimen.
     return ids.map(() => 'shop-card--half');
   }
   return ids.map(() => '');
