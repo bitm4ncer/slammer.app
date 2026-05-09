@@ -202,6 +202,24 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'PHONG.SHININESS',
   },
+  'holographic-foil': {
+    c: '#FFB6FF',                                     // hot pink-magenta — peak holo card
+    ink: '#0e0e10',
+    // Conic-gradient rainbow + diagonal glints + sparkle dots stack to read
+    // as iridescent foil. Background colour shows through the soft gaps so
+    // the card still feels like a printed sticker, not a screen LCD.
+    pattern: `conic-gradient(from 215deg at 50% 50%,
+                rgba(255,180,255,0.55), rgba(120,220,255,0.55), rgba(255,240,140,0.55),
+                rgba(180,255,200,0.55), rgba(255,140,200,0.55), rgba(255,180,255,0.55)),
+              repeating-linear-gradient(135deg,
+                rgba(255,255,255,0.18) 0 1px, transparent 1px 8px),
+              radial-gradient(circle at 22% 28%, rgba(255,255,255,0.45) 0 1.4px, transparent 2px),
+              radial-gradient(circle at 78% 64%, rgba(255,255,255,0.35) 0 1.2px, transparent 2px)`,
+    size: 'auto, auto, 14px 14px, 22px 22px',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'IRIDESCENCE.LUT',
+  },
   '3d-bevel': {
     c: '#C8C0B8',                                     // warm pewter — sculpted-metal feel
     ink: '#0e0e10',
@@ -246,7 +264,7 @@ const PACK_INFO = {
   },
   '3d-pack': {
     label: '3D Pack',
-    rule: 'Volumetric surfaces from flat pixels. Plastic and Bevel sculpt the layer into a lit, three-dimensional object — bump-shaded with diffuse + specular Phong, no real geometry needed.',
+    rule: 'Heightfield-driven materials. Plastic, holographic foil, sculpted bevel — flat pixels become lit, three-dimensional surfaces shaded from a smoothed bump map.',
   },
 };
 
@@ -272,8 +290,9 @@ function variantFor(packId, items) {
     return ids.map(() => 'shop-card--half');
   }
   if (packId === '3d-pack') {
-    // Two halves — Plastic + 3D Bevel as a paired specimen.
-    return ids.map(() => 'shop-card--half');
+    // Plastic as the lead specimen (hero), Foil + Bevel paired underneath
+    // as halves. Mirrors the glitch-pack rhythm.
+    return ids.map((id) => (id === 'plastic' ? 'shop-card--hero' : 'shop-card--half'));
   }
   return ids.map(() => '');
 }
