@@ -497,7 +497,7 @@ function bindEvents(anchorEl) {
       handle.className = 'color-hub-gradient-stop' + (i === activeStopIdx ? ' is-active' : '');
       handle.style.left = `${stop.at * 100}%`;
       handle.style.background = stop.color;
-      handle.title = `Stop ${i + 1} — ${stop.color}`;
+      handle.title = `Stop ${i + 1} — ${stop.color}\nDrag to move · Right-click / Delete to remove`;
       const dragIdx = i;
       let dragLocalAt = stop.at;
       let dragMoved = false;
@@ -544,6 +544,17 @@ function bindEvents(anchorEl) {
         gradientDragging = false;
         try { handle.releasePointerCapture(e.pointerId); } catch {}
         handle.classList.remove('is-dragging');
+        // Drag-off-track removal — Photoshop / Illustrator convention.
+        // If the user dragged the stop more than 24 px above OR below the
+        // track during the drag, treat as "remove this stop". Need at
+        // least 3 stops to allow removal (a gradient needs 2 endpoints).
+        const trackR = gradTrack.getBoundingClientRect();
+        const verticalDelta = Math.min(
+          Math.abs(e.clientY - trackR.top),
+          Math.abs(e.clientY - trackR.bottom),
+        );
+        const draggedAway = e.clientY < trackR.top - 24 || e.clientY > trackR.bottom + 24;
+        if (draggedAway && removeStop(dragIdx)) return;
         // PURE CLICK (no drag) — just selected the stop, nothing to
         // commit. Skip the applySlotGradient round-trip so we don't fire
         // a no-op write that re-runs the listener chain.
@@ -560,8 +571,34 @@ function bindEvents(anchorEl) {
         if (newIdx >= 0) activeStopIdx = newIdx;
         applySlotGradient(activeSlot, { ...cur, stops: sorted });
       });
+      // Right-click → remove stop. Matches the existing right-click-to-
+      // remove convention on swatches. Needs minimum 2 stops to leave a
+      // valid gradient.
+      handle.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeStop(dragIdx);
+      });
       gradStops.appendChild(handle);
     });
+  }
+
+  // Remove a gradient stop by index. Enforces a minimum of 2 stops (a
+  // gradient with fewer than 2 stops has nothing to interpolate). Returns
+  // true if removed, false otherwise (caller can short-circuit a fallback
+  // commit when removal already wrote).
+  function removeStop(idx) {
+    const cur = activeSlot === 'stroke' ? getEffectiveStyle().strokeGradient : getEffectiveStyle().fillGradient;
+    if (!cur || cur.stops.length <= 2) {
+      flashStatus('Gradient needs at least 2 stops');
+      return false;
+    }
+    const stops = cur.stops.filter((_, j) => j !== idx);
+    // Keep activeStopIdx valid — clamp to last available index.
+    if (activeStopIdx >= stops.length) activeStopIdx = stops.length - 1;
+    else if (activeStopIdx > idx)      activeStopIdx -= 1;
+    applySlotGradient(activeSlot, { ...cur, stops });
+    return true;
   }
   gradAngleIn.addEventListener('input', () => {
     const angle = parseFloat(gradAngleIn.value);
@@ -826,6 +863,25 @@ function bindEvents(anchorEl) {
   // ── Outside / escape close ───────────────────────────────────────────
   document.addEventListener('keydown', onKey);
   window.addEventListener('mousedown', onOutside, { capture: true });
+
+  // ── Delete / Backspace removes the active gradient stop ──────────────
+  // Only fires when (a) the popover is open, (b) the focused element
+  // isn't a text / number input (otherwise we'd hijack the user's
+  // editing keystrokes), and (c) the active slot is in gradient mode.
+  function onDeleteStop(e) {
+    if (!popover) return;
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const style = getEffectiveStyle();
+    const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
+    if (kind !== 'gradient') return;
+    e.preventDefault();
+    e.stopPropagation();
+    removeStop(activeStopIdx);
+  }
+  document.addEventListener('keydown', onDeleteStop);
+  unsubs.push(() => document.removeEventListener('keydown', onDeleteStop));
 
   // ── Sync if active colours change from elsewhere (e.g. X swap, Save
   // button, plugin write). Repaints the slot chips both for fill and
