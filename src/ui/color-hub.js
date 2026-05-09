@@ -500,6 +500,7 @@ function bindEvents(anchorEl) {
       handle.title = `Stop ${i + 1} — ${stop.color}`;
       const dragIdx = i;
       let dragLocalAt = stop.at;
+      let dragMoved = false;
       handle.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -511,14 +512,26 @@ function bindEvents(anchorEl) {
           h = next.h; s = next.s; v = next.v;
           paint();
         }
+        // Toggle .is-active inline on every stop handle so the visual
+        // selection updates immediately — paintGradient short-circuits
+        // while gradientDragging is true so it can't do this for us.
+        gradStops.querySelectorAll('.color-hub-gradient-stop').forEach((h2, j) => {
+          h2.classList.toggle('is-active', j === dragIdx);
+        });
         gradientDragging = true;
+        dragMoved = false;
         try { handle.setPointerCapture(e.pointerId); } catch {}
         handle.classList.add('is-dragging');
       });
       handle.addEventListener('pointermove', (e) => {
         if (!gradientDragging) return;
         const trackR = gradTrack.getBoundingClientRect();
-        dragLocalAt = Math.max(0, Math.min(1, (e.clientX - trackR.left) / trackR.width));
+        const at = Math.max(0, Math.min(1, (e.clientX - trackR.left) / trackR.width));
+        // Treat sub-pixel movement as a click — only flip dragMoved if the
+        // pointer actually moved by more than 1 px equivalent in track
+        // space (avoids spurious commits from a noisy mousedown).
+        if (Math.abs(at - dragLocalAt) > 0.001) dragMoved = true;
+        dragLocalAt = at;
         // Mutate inline — no setActiveGradient, no rebuild.
         handle.style.left = `${dragLocalAt * 100}%`;
         const cur = (activeSlot === 'stroke' ? getEffectiveStyle().strokeGradient : getEffectiveStyle().fillGradient);
@@ -531,6 +544,10 @@ function bindEvents(anchorEl) {
         gradientDragging = false;
         try { handle.releasePointerCapture(e.pointerId); } catch {}
         handle.classList.remove('is-dragging');
+        // PURE CLICK (no drag) — just selected the stop, nothing to
+        // commit. Skip the applySlotGradient round-trip so we don't fire
+        // a no-op write that re-runs the listener chain.
+        if (!dragMoved) return;
         // Commit the new positions, sorted, so subsequent edits stay sane
         // (a stop dragged past its neighbour doesn't keep its old index
         // forever). Track the active stop by REFERENCE so its index
@@ -817,7 +834,14 @@ function bindEvents(anchorEl) {
   // state OR selection change. Re-syncs HSV from the new effective colour
   // so swapping selected layers updates the picker immediately.
   unsubs.push(onEffectiveStyleChange(() => {
-    activeStopIdx = 0;          // selection swap may invalidate the stop index
+    // Only clamp activeStopIdx when it's actually out of bounds (e.g. a
+    // selection swap to a layer with fewer stops). Resetting to 0 on
+    // every effective-style change broke stop selection — clicking
+    // stop[N] caused a write → onEffectiveStyleChange → reset to 0 →
+    // user's click was lost.
+    const styleNow = getEffectiveStyle();
+    const gNow = activeSlot === 'stroke' ? styleNow.strokeGradient : styleNow.fillGradient;
+    if (gNow && !gNow.stops[activeStopIdx]) activeStopIdx = 0;
     const cur = hsvToHex(h, s, v);
     const target = activeColor();
     if (cur !== target) {
