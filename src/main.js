@@ -50,6 +50,7 @@ import dropShadowPlugin from './plugins/filters/drop-shadow/index.js';
 import solarizePlugin from './plugins/filters/solarize/index.js';
 import edgeDetectionPlugin from './plugins/filters/edge-detection/index.js';
 import blackWhitePlugin from './plugins/filters/black-white/index.js';
+import fisheyePlugin from './plugins/filters/fisheye/index.js';
 // datamosh, jpeg-compression, dithering, twirl, ripple, bulge moved to
 // src/plugins/premium/ — loaded in dev via premium-loader.js, served via
 // Bitmancer Library shop in prod.
@@ -140,6 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     solarizePlugin,
     edgeDetectionPlugin,
     blackWhitePlugin,
+    fisheyePlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
     twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,
