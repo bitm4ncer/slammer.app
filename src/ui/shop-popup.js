@@ -188,6 +188,20 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'SPHERIZE.+50',
   },
+  'plastic': {
+    c: '#E8D8FF',                                     // pearl-violet — glossy plastic sheen
+    ink: '#0e0e10',
+    // Concentric soft highlights + a subtle horizontal banding read as a
+    // moulded plastic surface caught in raking light.
+    pattern: `radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.65) 0%, transparent 38%),
+              radial-gradient(ellipse at 70% 78%, rgba(14,14,16,0.30) 0%, transparent 45%),
+              repeating-linear-gradient(0deg,
+                rgba(255,255,255,0.10) 0 1px, transparent 1px 8px)`,
+    size: 'auto, auto, auto',
+    blend: 'normal',
+    opacity: 1,
+    mark: 'PHONG.SHININESS',
+  },
 };
 
 /* =========================================================================
@@ -213,6 +227,10 @@ const PACK_INFO = {
   'liquid-pack': {
     label: 'Liquid Pack',
     rule: 'Reality bent. Twist, ripple, pinch, bulge — distortion you can drag a slider for.',
+  },
+  'surface-pack': {
+    label: 'Surface Pack',
+    rule: 'Heightfield-driven materials. Plastic, foil, chrome — glossy, iridescent, reflective surfaces shaded from a bump map.',
   },
 };
 
