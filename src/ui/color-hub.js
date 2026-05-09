@@ -330,12 +330,18 @@ function bindEvents(anchorEl) {
     }
     if (strokeChip) {
       strokeChip.classList.toggle('is-none', style.strokeKind === 'none');
+      strokeChip.classList.toggle('is-gradient', style.strokeKind === 'gradient');
       if (style.strokeKind === 'gradient') {
+        // border-image doesn't follow border-radius — same chrome quirk
+        // we hit on the dial. Background + radial-gradient mask renders
+        // a clean circular gradient ring instead.
         const g = style.strokeGradient;
-        strokeChip.style.borderImage = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')}) 1`;
-        strokeChip.style.borderImageSlice = '1';
+        strokeChip.style.borderImage = '';
+        strokeChip.style.borderColor = 'transparent';
+        strokeChip.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
       } else {
         strokeChip.style.borderImage = '';
+        strokeChip.style.background = '';
         strokeChip.style.borderColor = style.stroke;
       }
     }

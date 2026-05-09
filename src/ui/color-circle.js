@@ -31,19 +31,30 @@ export function initColorCircle({ buttonEl, swatchEl, strokeRingEl }) {
       strokeRingEl.classList.toggle('is-none', style.strokeKind === 'none');
       strokeRingEl.classList.toggle('is-gradient', style.strokeKind === 'gradient');
       if (style.strokeKind === 'gradient') {
-        // border-image doesn't follow border-radius — gradient borders
-        // render rectangular even on a circular element. Use background
-        // + radial-gradient mask instead: paint the gradient on the
-        // whole disc, then mask out everything except the outer 4 px ring.
-        // The border itself becomes transparent so it doesn't fight the
-        // mask edge.
+        // CSS gradients on circular borders are a chrome quirk minefield
+        // (border-image ignores border-radius; mask + background works
+        // but only on the spec-compliant code path). SVG with
+        // <circle stroke="url(#grad)"> is bulletproof — the stroke
+        // follows the circle exactly. Inject an inline SVG once per
+        // gradient change.
         const g = style.strokeGradient;
-        strokeRingEl.style.borderImage = '';
+        const stops = g.stops.map((s, i) => `<stop offset="${s.at*100}%" stop-color="${s.color}"/>`).join('');
+        // Linear gradient at angle 90° (left → right) so the swatch
+        // mirrors the gradient track in the popover (which also uses
+        // a fixed 90° preview, ignoring the actual rendering angle).
+        strokeRingEl.innerHTML = `
+          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;border-radius:50%;display:block;">
+            <defs>
+              <linearGradient id="colorCircleGrad" x1="0%" y1="50%" x2="100%" y2="50%">${stops}</linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="url(#colorCircleGrad)" stroke-width="16"/>
+          </svg>
+        `;
         strokeRingEl.style.borderColor = 'transparent';
-        strokeRingEl.style.background = `linear-gradient(90deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
+        strokeRingEl.style.background = '';
       } else {
-        // Solid stroke — back to border. Clear the gradient mask paint.
-        strokeRingEl.style.borderImage = '';
+        // Solid stroke — back to border. Clear any SVG injection.
+        strokeRingEl.innerHTML = '';
         strokeRingEl.style.background = '';
         strokeRingEl.style.borderColor = style.stroke;
       }

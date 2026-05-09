@@ -113,6 +113,15 @@
     inset 0 0 0 1px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(0, 0, 0, 0.4);
 }
+/* Gradient stroke chip — paint the gradient on the whole 16 px disc and
+ * mask out the inner 4 px so only the outer ring reads, mirroring the
+ * dial's stroke ring trick. Box-shadow is dropped (the inset would
+ * stripe through the masked area). */
+.color-hub-slot-chip--stroke.is-gradient {
+  box-shadow: none;
+  -webkit-mask: radial-gradient(circle, transparent 4px, #000 5px);
+          mask: radial-gradient(circle, transparent 4px, #000 5px);
+}
 .color-hub-slot-swap {
   /* Sits BETWEEN the fill and stroke chips — small and unobtrusive,
    * the way Adobe / Figma place the swap arrow. */
