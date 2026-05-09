@@ -1234,6 +1234,53 @@ export function initCanvasView({ container, document, onImageDropped }) {
   container.addEventListener('drop', async (e) => {
     e.preventDefault();
     container.classList.remove('drag-over');
+
+    // ── Gradient drop (from Gradient Library card or any gradient picker) —
+    // hit-test the drop point and apply to the topmost vector layer's fill.
+    // Falls back to the active vector layer when nothing is hit (e.g. drop
+    // onto canvas background while a vector is selected).
+    const gradPayload = e.dataTransfer?.getData('application/x-slammer-gradient');
+    if (gradPayload) {
+      try {
+        const stops = JSON.parse(gradPayload);
+        if (Array.isArray(stops) && stops.length >= 2) {
+          // Hit-test in stage coords — getIntersection takes screen pixels.
+          const hit = stage.getIntersection({ x: e.clientX, y: e.clientY });
+          let layer = null;
+          if (hit) {
+            // Walk up the Konva tree until we find a node carrying a layer id.
+            let node = hit;
+            while (node && !layer) {
+              const id = node.id?.() || node._slammerLayerId;
+              if (id) layer = document.findLayer(id);
+              node = node.parent;
+            }
+          }
+          // Fall back to the active layer when nothing was hit (e.g. dropped
+          // on the empty canvas background while a vector is selected).
+          if (!layer) layer = document.activeLayer;
+          if (layer?.type === 'vector' && layer.vector?.paths?.length) {
+            const pathIdx = 0;
+            const cur = layer.vector.paths[pathIdx].fill || {};
+            document.setVectorFill(layer.id, pathIdx, {
+              ...cur,
+              type: 'gradient',
+              gradientType: cur.gradientType || 'linear',
+              stops: stops.map((s) => ({ at: s.at, color: s.color })),
+              from: cur.from || { x: 0, y: 0.5 },
+              to:   cur.to   || { x: 1, y: 0.5 },
+            });
+            window.__slammer?.notify?.('Applied gradient to fill');
+          } else {
+            window.__slammer?.notify?.('Drop a gradient on a vector layer to fill it', { kind: 'warn' });
+          }
+        }
+      } catch (err) {
+        console.warn('[canvas-view] gradient drop failed', err);
+      }
+      return;
+    }
+
     const files = Array.from(e.dataTransfer?.files || []);
     if (!files.length) {
       // No file — try a URL drop (e.g. a Pexels / Unsplash card dragged from
