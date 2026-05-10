@@ -4,7 +4,7 @@
 
 import { getPlugin, listPlugins } from '../plugins/registry.js';
 import { openPluginWindow } from './plugin-host.js';
-import { openPluginManager } from './plugin-manager-popup.js';
+import { openPluginBrowser } from './plugin-browser.js';
 
 const PIN_KEY = 'slammer:pinnedPlugins';
 
@@ -57,7 +57,7 @@ export function initSidebarPlugins() {
     }
   }
 
-  btnManager.addEventListener('click', () => openPluginManager());
+  btnManager.addEventListener('click', () => openPluginBrowser());
   window.addEventListener('pluginPinsChanged', render);
 
   // Re-render once registries finish loading (plugins register synchronously in

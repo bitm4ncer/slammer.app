@@ -9,6 +9,7 @@ import './style/typography.css';
 import './style/vector.css';
 import './style/color-hub.css';
 import './style/effect-library.css';
+import './style/plugin-browser.css';
 
 import { createDocument } from './core/document.js';
 import { createRenderer } from './core/renderer.js';

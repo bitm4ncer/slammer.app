@@ -598,37 +598,21 @@ function renderPlugins() {
     <section class="settings-tab-panel" data-tab="plugins" hidden>
       <header class="settings-panel-head">
         <span class="settings-panel-eyebrow">Plugins</span>
-        <h2 class="settings-panel-title">Bring your own keys</h2>
-        <p class="settings-panel-desc">Each provider's API key lives only in this browser's localStorage. slammer.app never proxies them.</p>
+        <h2 class="settings-panel-title">Manage plugins from the browser</h2>
+        <p class="settings-panel-desc">Add API keys, pin to sidebar, and discover new plugins in one place.</p>
       </header>
 
       <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Image search</div>
-        ${apiKeyRowHTML('setUnsplashKey', 'Unsplash · Access Key', s.unsplashAccessKey,
-          'unsplash.com/oauth/applications', 'Use the Access Key — not Application ID or Secret.')}
-        ${apiKeyRowHTML('setPexelsKey', 'Pexels · API Key', s.pexelsApiKey,
-          'pexels.com/api/', '')}
+        <button class="settings-apply" id="pmOpenBrowser" type="button">
+          <i class="fas fa-puzzle-piece"></i> Open Plugin Browser
+        </button>
       </div>
 
       <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Museums</div>
-        ${apiKeyRowHTML('setSmithsonianKey', 'Smithsonian · API Key', s.smithsonianApiKey,
-          'api.data.gov/signup/', 'Sign up at <strong>api.data.gov/signup/</strong> — same key works for Smithsonian, NASA, NPS. 1k req/hour. 5M+ open-access items.')}
-        ${apiKeyRowHTML('setEuropeanaKey', 'Europeana · API Key', s.europeanaApiKey,
-          'pro.europeana.eu/get-api', 'Free instant signup. 50M+ items aggregated from 4000+ European institutions.')}
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Generative</div>
-        ${apiKeyRowHTML('setFalaiKey', 'fal.ai · API Key', s.falaiApiKey,
-          'fal.ai/dashboard/keys', 'Format like <code>id:secret</code>. Calls the fal client directly from your browser.')}
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>CORS proxy</div>
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Advanced</div>
         <div class="settings-row settings-row--stack">
           <div class="settings-rowlabelblock">
-            <label class="settings-rowlabel" for="setCorsProxy">Custom proxy URL</label>
+            <label class="settings-rowlabel" for="setCorsProxy">Custom CORS proxy URL</label>
             <span class="settings-rowhint">Used <strong>before</strong> the public proxy chain for plugins that fetch from CORS-blocked CDNs (Met, Wikimedia, …). Bare URL gets <code>?url=&lt;encoded&gt;</code> appended; template with <code>{url}</code> placeholder is substituted directly. See <code>infra/cors-proxy-worker/README.md</code> for a Cloudflare Worker you can deploy in 10 min.</span>
           </div>
           <input type="text" id="setCorsProxy" class="settings-text-input" autocomplete="off"
@@ -636,26 +620,22 @@ function renderPlugins() {
                  value="${escapeAttr(s.corsProxyUrl)}" />
         </div>
       </div>
-
-      <div class="settings-group settings-group--placeholder">
-        <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
-        <ul class="settings-roadmap-list">
-          <li><span class="settings-roadmap-key">Rijksmuseum</span><span class="settings-roadmap-desc">Legacy API shut down Jan 2026. New Linked-Art flow needs 3-hop resolve per object — deferred until a batched search-with-images workaround lands.</span></li>
-          <li><span class="settings-roadmap-key">MoMA</span><span class="settings-roadmap-desc">Catalog ingestion (CSV-only — no live API) — Phase 26.</span></li>
-          <li><span class="settings-roadmap-key">Plugin sandbox</span><span class="settings-roadmap-desc">iframe / Worker isolation + capability permissions — Feature F4.</span></li>
-        </ul>
-      </div>
     </section>
   `;
 }
 
 function wirePlugins(root) {
-  bindKeyInput(root.querySelector('#setUnsplashKey'), 'unsplashAccessKey');
-  bindKeyInput(root.querySelector('#setPexelsKey'), 'pexelsApiKey');
-  bindKeyInput(root.querySelector('#setFalaiKey'), 'falaiApiKey');
-  bindKeyInput(root.querySelector('#setSmithsonianKey'), 'smithsonianApiKey');
-  bindKeyInput(root.querySelector('#setEuropeanaKey'), 'europeanaApiKey');
   bindKeyInput(root.querySelector('#setCorsProxy'), 'corsProxyUrl');
+  const browserBtn = root.querySelector('#pmOpenBrowser');
+  if (browserBtn) {
+    browserBtn.addEventListener('click', async () => {
+      // Close the settings popup first, then open the browser.
+      const backdrop = root.closest('.settings-backdrop');
+      backdrop?.querySelector('[data-act=close]')?.click();
+      const mod = await import('./plugin-browser.js');
+      mod.openPluginBrowser();
+    });
+  }
 }
 
 function renderShortcuts() {
@@ -824,7 +804,7 @@ function toggleRowHTML(id, label, checked, hint) {
   `;
 }
 
-function apiKeyRowHTML(id, label, value, helpUrl, hint) {
+export function apiKeyRowHTML(id, label, value, helpUrl, hint) {
   return `
     <div class="settings-row settings-row--stack">
       <div class="settings-rowlabelblock">
@@ -868,6 +848,6 @@ function bindKeyInput(el, settingKey) {
   });
 }
 
-function escapeAttr(s) {
+export function escapeAttr(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }

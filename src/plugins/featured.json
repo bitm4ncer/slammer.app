@@ -1,0 +1,9 @@
+{
+  "slots": [
+    {
+      "pluginId": "falai",
+      "tagline": "Run state-of-the-art AI models directly on any layer.",
+      "accentOverride": null
+    }
+  ]
+}
