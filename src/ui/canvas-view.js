@@ -1235,44 +1235,80 @@ export function initCanvasView({ container, document, onImageDropped }) {
     e.preventDefault();
     container.classList.remove('drag-over');
 
-    // ── Gradient drop (from Gradient Library card or any gradient picker) —
-    // hit-test the drop point and apply to the topmost vector layer's fill.
-    // Falls back to the active vector layer when nothing is hit (e.g. drop
-    // onto canvas background while a vector is selected).
+    // ── Hit-test helper for swatch drops — walks the Konva tree to the
+    // topmost layer at (clientX, clientY), or falls back to the active
+    // layer when the drop missed (e.g. canvas background).
+    const hitLayer = () => {
+      const hit = stage.getIntersection({ x: e.clientX, y: e.clientY });
+      let layer = null;
+      if (hit) {
+        let node = hit;
+        while (node && !layer) {
+          const id = node.id?.() || node._slammerLayerId;
+          if (id) layer = document.findLayer(id);
+          node = node.parent;
+        }
+      }
+      return layer || document.activeLayer;
+    };
+    const slot = e.shiftKey ? 'stroke' : 'fill';
+
+    // ── Solid colour drop (from colour hub Recent strip) ────────────────
+    // Plain drop = fill, Shift+drop = stroke.
+    const colorPayload = e.dataTransfer?.getData('application/x-slammer-color');
+    if (colorPayload && /^#[0-9a-f]{6}$/i.test(colorPayload)) {
+      const layer = hitLayer();
+      if (layer?.type === 'vector' && layer.vector?.paths?.length) {
+        layer.vector.paths.forEach((p, idx) => {
+          const cur = slot === 'fill' ? p.fill : p.stroke;
+          if (cur?.type === 'gradient') return; // don't clobber gradient slots
+          const next = { ...(cur || {}), type: 'solid', color: colorPayload.toLowerCase(), opacity: cur?.opacity ?? 1 };
+          if (slot === 'fill') document.setVectorFill(layer.id, idx, next);
+          else                 document.setVectorStroke(layer.id, idx, next);
+        });
+        window.__slammer?.notify?.(`${colorPayload.toUpperCase()} → ${slot}`);
+      } else if (layer?.type === 'text' && slot === 'fill') {
+        document.setTextProp(layer.id, 'color', colorPayload.toLowerCase());
+        window.__slammer?.notify?.(`${colorPayload.toUpperCase()} → text colour`);
+      } else {
+        window.__slammer?.notify?.('Drop a colour on a vector or text layer', { kind: 'warn' });
+      }
+      return;
+    }
+
+    // ── Gradient drop (from Gradient Library card OR colour hub
+    // gradient swatches). Accepts two payload shapes:
+    //   • Array of stops (legacy Gradient Library): `[{at,color},...]`
+    //   • Full gradient (colour hub): `{type, angle, stops}`
+    // Plain drop = fill, Shift+drop = stroke.
     const gradPayload = e.dataTransfer?.getData('application/x-slammer-gradient');
     if (gradPayload) {
       try {
-        const stops = JSON.parse(gradPayload);
+        const parsed = JSON.parse(gradPayload);
+        const stops = Array.isArray(parsed) ? parsed : parsed.stops;
+        const angle = Array.isArray(parsed) ? 90 : (Number.isFinite(parsed.angle) ? parsed.angle : 90);
+        const gradType = (parsed && parsed.type === 'radial') ? 'radial' : 'linear';
         if (Array.isArray(stops) && stops.length >= 2) {
-          // Hit-test in stage coords — getIntersection takes screen pixels.
-          const hit = stage.getIntersection({ x: e.clientX, y: e.clientY });
-          let layer = null;
-          if (hit) {
-            // Walk up the Konva tree until we find a node carrying a layer id.
-            let node = hit;
-            while (node && !layer) {
-              const id = node.id?.() || node._slammerLayerId;
-              if (id) layer = document.findLayer(id);
-              node = node.parent;
-            }
-          }
-          // Fall back to the active layer when nothing was hit (e.g. dropped
-          // on the empty canvas background while a vector is selected).
-          if (!layer) layer = document.activeLayer;
+          const layer = hitLayer();
           if (layer?.type === 'vector' && layer.vector?.paths?.length) {
-            const pathIdx = 0;
-            const cur = layer.vector.paths[pathIdx].fill || {};
-            document.setVectorFill(layer.id, pathIdx, {
-              ...cur,
-              type: 'gradient',
-              gradientType: cur.gradientType || 'linear',
-              stops: stops.map((s) => ({ at: s.at, color: s.color })),
-              from: cur.from || { x: 0, y: 0.5 },
-              to:   cur.to   || { x: 1, y: 0.5 },
+            layer.vector.paths.forEach((p, idx) => {
+              const cur = slot === 'fill' ? p.fill : p.stroke;
+              const next = {
+                ...(cur || {}),
+                type: 'gradient',
+                gradientType: gradType,
+                angle,
+                stops: stops.map((s) => ({ at: s.at, color: s.color })),
+                from: cur?.from || { x: 0, y: 0.5 },
+                to:   cur?.to   || { x: 1, y: 0.5 },
+                opacity: cur?.opacity ?? 1,
+              };
+              if (slot === 'fill') document.setVectorFill(layer.id, idx, next);
+              else                 document.setVectorStroke(layer.id, idx, next);
             });
-            window.__slammer?.notify?.('Applied gradient to fill');
+            window.__slammer?.notify?.(`Gradient → ${slot}`);
           } else {
-            window.__slammer?.notify?.('Drop a gradient on a vector layer to fill it', { kind: 'warn' });
+            window.__slammer?.notify?.('Drop a gradient on a vector layer', { kind: 'warn' });
           }
         }
       } catch (err) {

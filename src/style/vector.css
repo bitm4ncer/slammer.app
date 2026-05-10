@@ -460,6 +460,16 @@
   outline-offset: -2px;
 }
 
+/* ---------- Colour-drop hover state (Phase 23 drag-drop) ----------
+ * Lights up while a colour or gradient swatch from the colour hub is
+ * dragged over the row. Drop applies the colour to fill (Shift = stroke).
+ */
+.layer-item--drop-target {
+  outline: 2px dashed var(--ctx-accent, var(--primary));
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 8%, transparent);
+}
+
 /* ---------- Layer-panel tree (Phase C) ---------- */
 
 /* Combine button — same size as the existing add button. */
@@ -495,7 +505,6 @@
   margin-right: 2px;
 }
 .layer-chevron:hover { color: var(--primary); }
-.layer-group-icon { opacity: 0.85; }
 .layer-item--group .layer-meta { padding-left: 2px; }
 
 /* Children container — indents nested rows + draws a left bracket connector. */

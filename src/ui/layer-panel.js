@@ -7,6 +7,8 @@ import { createNumericInput } from '../plugins/shared/numeric-input.js';
 import { BLEND_MODES } from '../core/layer.js';
 import { translatePathD } from '../core/vector-renderer.js';
 import { setDraggingLayer } from './drag-state.js';
+import { applyColorToLayer, applyGradientToLayer } from './selection-style.js';
+import { showNotification } from './notifications.js';
 import {
   getSelection, getSelectionArray, setSelection, selectOnly, toggleInSelection, selectRange, onSelectionChange,
 } from './selection-state.js';
@@ -179,7 +181,6 @@ export function initLayerPanel({ container, document, renderer }) {
             <i class="fas fa-chevron-${chev}"></i>
           </button>
           ${swatchMarkup}
-          <i class="fas fa-folder${layer.expanded === false ? '' : '-open'} layer-type-icon layer-group-icon"></i>
           <div class="layer-meta">
             <div class="layer-name" title="${escape(layer.name)}" tabindex="0">${escape(layer.name)}</div>
             <div class="layer-blend-opacity-row">
@@ -324,6 +325,42 @@ export function initLayerPanel({ container, document, renderer }) {
         // dragstart, and drop-zone gates on dataTransfer.types so a stale id
         // can't get misinterpreted as a layer drop during a later file drop.
         setDraggingLayer(id);
+      });
+
+      // ── Colour / gradient drop target ────────────────────────────────
+      // Accept `application/x-slammer-color` (hex string) and
+      // `application/x-slammer-gradient` (JSON gradient blob) from the
+      // colour hub's swatches. Plain drop = fill, Shift+drop = stroke.
+      // Ignore other MIMEs (file drops, layer reorder, etc.).
+      row.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer) return;
+        const types = e.dataTransfer.types || [];
+        if (types.includes('application/x-slammer-color') ||
+            types.includes('application/x-slammer-gradient')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          row.classList.add('layer-item--drop-target');
+        }
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('layer-item--drop-target'));
+      row.addEventListener('drop', (e) => {
+        if (!e.dataTransfer) return;
+        row.classList.remove('layer-item--drop-target');
+        const slot = e.shiftKey ? 'stroke' : 'fill';
+        const hex = e.dataTransfer.getData('application/x-slammer-color');
+        const gradJson = e.dataTransfer.getData('application/x-slammer-gradient');
+        if (gradJson) {
+          e.preventDefault();
+          try {
+            const g = JSON.parse(gradJson);
+            const ok = applyGradientToLayer(id, g, slot);
+            if (ok) showNotification(`Gradient → ${slot} on ${layer.name}`);
+          } catch {}
+        } else if (hex) {
+          e.preventDefault();
+          const ok = applyColorToLayer(id, hex, slot);
+          if (ok) showNotification(`${hex.toUpperCase()} → ${slot} on ${layer.name}`);
+        }
       });
 
       row.addEventListener('click', (e) => {

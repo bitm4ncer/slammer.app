@@ -280,6 +280,71 @@ export function applyStrokeWidth(width) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Drop-target helpers — apply a colour OR gradient directly to a SPECIFIC
+// layer (NOT the selection). Used by drag-drop sources (the colour hub's
+// swatches strip, the Gradient Library plugin) so the user can drop a
+// swatch onto any layer card / canvas hit + have it land regardless of
+// the current selection.
+//
+//   slot = 'fill' | 'stroke' (default 'fill')
+//   For text layers: only fill is honoured. Drops to stroke no-op (text
+//   rasteriser doesn't render strokes — see roadmap Phase 23).
+// ---------------------------------------------------------------------------
+
+export function applyColorToLayer(layerId, hex, slot = 'fill') {
+  if (!_doc || !layerId || !isHex(hex)) return false;
+  const layer = _doc.findLayer(layerId);
+  if (!layer) return false;
+  if (layer.type === 'vector') {
+    const paths = layer.vector?.paths || [];
+    paths.forEach((p, idx) => {
+      const cur = slot === 'fill' ? p.fill : p.stroke;
+      // Preserve gradient kind if the slot was already a gradient (the
+      // dropped solid then becomes the active stop's colour). For solid
+      // / none kinds, flip to solid + write the colour.
+      const next = cur?.type === 'gradient'
+        ? { ...cur } // gradient stops untouched — caller can use applyGradientToLayer for stop edits
+        : { ...(cur || {}), type: 'solid', color: hex.toLowerCase(), opacity: cur?.opacity ?? 1 };
+      if (cur?.type === 'gradient') return; // skip — drop a gradient swatch instead
+      if (slot === 'fill') _doc.setVectorFill(layer.id, idx, next);
+      else                 _doc.setVectorStroke(layer.id, idx, next);
+    });
+    return true;
+  }
+  if (layer.type === 'text' && slot === 'fill') {
+    _doc.setTextProp(layer.id, 'color', hex.toLowerCase());
+    return true;
+  }
+  return false;
+}
+
+function isHex(v) {
+  return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+}
+
+export function applyGradientToLayer(layerId, gradient, slot = 'fill') {
+  if (!_doc || !layerId || !gradient) return false;
+  const layer = _doc.findLayer(layerId);
+  if (!layer || layer.type !== 'vector') return false;
+  const paths = layer.vector?.paths || [];
+  paths.forEach((p, idx) => {
+    const cur = slot === 'fill' ? p.fill : p.stroke;
+    const next = {
+      ...(cur || {}),
+      type: 'gradient',
+      gradientType: gradient.type || 'linear',
+      angle: Number.isFinite(gradient.angle) ? gradient.angle : 90,
+      stops: (gradient.stops || []).map((s) => ({ at: s.at, color: s.color })),
+      from: { x: 0, y: 0 }, to: { x: 1, y: 0 },
+      opacity: cur?.opacity ?? 1,
+    };
+    if (slot === 'fill') _doc.setVectorFill(layer.id, idx, next);
+    else                 _doc.setVectorStroke(layer.id, idx, next);
+  });
+  return true;
+}
+
 export function applySwap() {
   // Use colors.js's own swap to update active state.
   // For selected layers, swap their fill ↔ stroke as well.

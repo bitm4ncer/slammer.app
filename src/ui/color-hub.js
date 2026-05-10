@@ -810,7 +810,14 @@ function bindEvents(anchorEl) {
       btn.className = 'color-hub-swatch color-hub-swatch--gradient';
       btn.type = 'button';
       btn.style.background = `linear-gradient(${g.angle}deg, ${g.stops.map(s => `${s.color} ${s.at*100}%`).join(', ')})`;
-      btn.title = `Gradient · ${g.angle}°`;
+      btn.title = `Gradient · ${g.angle}° — drag onto a layer to apply (Shift = stroke)`;
+      btn.draggable = true;
+      btn.addEventListener('dragstart', (e) => {
+        if (!e.dataTransfer) return;
+        e.dataTransfer.setData('application/x-slammer-gradient', JSON.stringify(g));
+        e.dataTransfer.setData('text/plain', `gradient(${g.angle}°)`);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
       btn.addEventListener('click', () => {
         setActiveGradient(activeSlot, {
           type: g.type, angle: g.angle,
@@ -834,7 +841,14 @@ function bindEvents(anchorEl) {
       btn.className = 'color-hub-swatch';
       btn.type = 'button';
       btn.style.background = hex;
-      btn.title = hex.toUpperCase();
+      btn.title = `${hex.toUpperCase()} — drag onto a layer to apply (Shift = stroke)`;
+      btn.draggable = true;
+      btn.addEventListener('dragstart', (e) => {
+        if (!e.dataTransfer) return;
+        e.dataTransfer.setData('application/x-slammer-color', hex);
+        e.dataTransfer.setData('text/plain', hex.toUpperCase());
+        e.dataTransfer.effectAllowed = 'copy';
+      });
       btn.addEventListener('click', () => {
         const next = hexToHsv(hex);
         h = next.h; s = next.s; v = next.v;
