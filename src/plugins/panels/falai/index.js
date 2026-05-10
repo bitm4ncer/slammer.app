@@ -346,8 +346,6 @@ export default {
         status.dataset.kind = kind;
       }
 
-      cancelBtn.addEventListener('click', () => currentAborter?.abort());
-
       function setRunning(running) {
         runBtn.disabled = running;
         cancelBtn.hidden = !running;
@@ -359,6 +357,34 @@ export default {
         }
       }
 
+      // Hydrate from the global active-generations registry — if a job for
+      // this model is still running (window was closed mid-generation and
+      // re-opened), pick up its state and re-bind the cancel button so the
+      // user can still abort. Subscriber lives until the next renderDetail
+      // call replaces the detail pane (which detaches the listener via the
+      // unsub stored on detailEl).
+      if (detailEl._unsubGen) { try { detailEl._unsubGen(); } catch {} detailEl._unsubGen = null; }
+      let activeJobForThisModel = null;
+      const unsub = ctx.activeGenerations?.subscribe?.((all) => {
+        const job = all.find((j) => j.pluginId === PLUGIN_ID && j.modelId === model.id);
+        activeJobForThisModel = job || null;
+        if (job) {
+          setRunning(true);
+          setStatus(job.message || 'Working…');
+        } else {
+          // Only flip back to not-running if WE flipped it on. Don't clobber
+          // the static "Done — N layers added." message after the job ends.
+          if (runBtn.disabled) setRunning(false);
+        }
+      });
+      if (typeof unsub === 'function') detailEl._unsubGen = unsub;
+
+      cancelBtn.addEventListener('click', () => {
+        // Cancel the live job for this model regardless of which DOM mount
+        // started it — the abort callback was registered when the job started.
+        activeJobForThisModel?.abort?.();
+      });
+
       runBtn.addEventListener('click', async () => {
         cta.hidden = isConfigured();
         if (!isConfigured()) { openSettings('apikeys'); return; }
@@ -366,68 +392,121 @@ export default {
         const missing = form.getRequiredMissing();
         if (missing.length) { setStatus(`Missing: ${missing.join(', ')}`, 'warn'); return; }
 
+        // Read every form value UPFRONT, while the form's DOM is still
+        // alive — once we kick off the detached run, the user might close
+        // this window and tear down the form. Capturing values now means
+        // the in-flight job carries its inputs without holding any DOM ref.
         setRunning(true);
-        currentAborter = new AbortController();
+        setStatus('Preparing input…');
+        let input;
         try {
-          setStatus('Preparing input…');
-          const input = await form.getValues();
-          setStatus('Submitting…');
-          const finalInput = typeof model.prepareInput === 'function' ? model.prepareInput(input) : input;
-          // prepareInput may return __endpoint to override the model endpoint
-          // (e.g. switching from txt2img to img2img based on whether an image was provided).
-          const endpointOverride = finalInput.__endpoint;
-          if (endpointOverride) delete finalInput.__endpoint;
-          const usedModelId = endpointOverride || model.endpoint || model.id;
-          console.info('[fal.ai] →', usedModelId, finalInput);
-          const result = await runModel({
-            modelId: usedModelId,
-            input: finalInput,
-            signal: currentAborter.signal,
-            onQueueUpdate: (update) => {
-              const pos = update.queue_position;
-              const s = update.status === 'IN_QUEUE'
-                ? `Queued${pos != null ? ` · ${pos} ahead` : ''}…`
-                : update.status === 'IN_PROGRESS' ? 'Generating…'
-                : (update.status?.toLowerCase() || 'Working') + '…';
-              setStatus(s);
-            },
-          });
-
-          const urls = extractImageUrls(result, model.outputPath || 'images[].url');
-          if (!urls.length) {
-            // Surface the raw response only when something went wrong so a
-            // silent schema change is debuggable without spamming the console
-            // on every successful generation.
-            console.error('[fal.ai] empty result for', usedModelId, result);
-            const data = result?.data ?? result;
-            const shape = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
-            throw new Error(`No images in response (got: { ${shape} }). See console for full payload.`);
-          }
-
-          const promptSnippet = (input.prompt || '').slice(0, 28);
-          for (let i = 0; i < urls.length; i++) {
-            const name = `${model.name}${promptSnippet ? ` · ${promptSnippet}` : ''}${urls.length > 1 ? ` ${i + 1}` : ''}`;
-            await ctx.importImage(urls[i], name);
-          }
-          pushRecent(model.id, urls);
-          renderRecent(model.id, recent);
-          setStatus(`Done — ${urls.length} layer${urls.length > 1 ? 's' : ''} added.`, 'ok');
-          refreshBalance();
+          input = await form.getValues();
         } catch (err) {
-          if (err.name === 'AbortError') {
-            setStatus('Cancelled.', 'warn');
-          } else if (err instanceof FalConfigError) {
-            cta.hidden = false;
-            setStatus(err.message, 'warn');
-          } else {
-            console.error('[fal.ai]', err);
-            setStatus(`Failed: ${err.message || err}`, 'error');
-          }
-        } finally {
+          setStatus(`Failed to read form: ${err.message || err}`, 'error');
           setRunning(false);
-          currentAborter = null;
+          return;
         }
+        const finalInput = typeof model.prepareInput === 'function' ? model.prepareInput(input) : input;
+        // prepareInput may return __endpoint to override the model endpoint
+        // (e.g. switching from txt2img to img2img based on whether an image was provided).
+        const endpointOverride = finalInput.__endpoint;
+        if (endpointOverride) delete finalInput.__endpoint;
+        const usedModelId = endpointOverride || model.endpoint || model.id;
+
+        // Register the job in the cross-plugin registry. The aborter lives
+        // here, not on a DOM-bound closure — closing the window does NOT
+        // cancel; only an explicit Cancel click does.
+        const aborter = new AbortController();
+        const jobId = ctx.activeGenerations.start({
+          pluginId: PLUGIN_ID,
+          modelId: model.id,
+          modelName: model.name,
+          label: model.name,
+          abort: () => aborter.abort(),
+        });
+        ctx.activeGenerations.update(jobId, { status: 'starting', message: 'Submitting…' });
+        setStatus('Submitting…');
+
+        // Detached run — survives window close. Captures only the values
+        // it needs (no form, no DOM nodes other than the safe-to-write ones
+        // via the local closures, which become no-ops on detached nodes).
+        runDetached({ jobId, aborter, usedModelId, finalInput, input, model });
       });
+    }
+
+    // Async generation that is intentionally NOT awaited by the click
+    // handler. It keeps running even after the plugin window closes and
+    // its detail-pane DOM is gone. Result lands as a layer via the global
+    // window.__slammer.importImage — works whether the originating window
+    // is open or not.
+    async function runDetached({ jobId, aborter, usedModelId, finalInput, input, model }) {
+      try {
+        console.info('[fal.ai] →', usedModelId, finalInput);
+        const result = await runModel({
+          modelId: usedModelId,
+          input: finalInput,
+          signal: aborter.signal,
+          onQueueUpdate: (update) => {
+            const pos = update.queue_position;
+            const isQueued = update.status === 'IN_QUEUE';
+            ctx.activeGenerations.update(jobId, {
+              status: isQueued ? 'queued' : 'running',
+              queuePos: pos != null ? pos : null,
+              message: isQueued
+                ? (pos != null ? `Queued · ${pos} ahead…` : 'Queued…')
+                : update.status === 'IN_PROGRESS'
+                  ? 'Generating…'
+                  : (update.status?.toLowerCase() || 'Working') + '…',
+            });
+          },
+        });
+
+        const urls = extractImageUrls(result, model.outputPath || 'images[].url');
+        if (!urls.length) {
+          console.error('[fal.ai] empty result for', usedModelId, result);
+          const data = result?.data ?? result;
+          const shape = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
+          throw new Error(`No images in response (got: { ${shape} }). See console for full payload.`);
+        }
+
+        const promptSnippet = (input.prompt || '').slice(0, 28);
+        for (let i = 0; i < urls.length; i++) {
+          const name = `${model.name}${promptSnippet ? ` · ${promptSnippet}` : ''}${urls.length > 1 ? ` ${i + 1}` : ''}`;
+          // Use the global facade — works even if our window is closed.
+          await window.__slammer.importImage(urls[i], name);
+        }
+        pushRecent(model.id, urls);
+        ctx.activeGenerations.update(jobId, { status: 'done' });
+        // Notify globally — the plugin window may be gone.
+        ctx.notify(`fal.ai · ${model.name} done — ${urls.length} layer${urls.length > 1 ? 's' : ''} added`);
+        // If the detail pane is still mounted, refresh the recent strip and
+        // status text. Calls are no-ops on detached nodes, so safe either way.
+        const recentEl = detailEl?.querySelector?.('.falai-recent');
+        if (recentEl) renderRecent(model.id, recentEl);
+        const statusEl = detailEl?.querySelector?.('.plugin-status');
+        if (statusEl && !statusEl.isConnected === false) {
+          statusEl.hidden = false;
+          statusEl.textContent = `Done — ${urls.length} layer${urls.length > 1 ? 's' : ''} added.`;
+          statusEl.dataset.kind = 'ok';
+        }
+        refreshBalance();
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          ctx.activeGenerations.update(jobId, { status: 'cancelled' });
+          ctx.notify(`fal.ai · ${model.name} cancelled`);
+        } else if (err instanceof FalConfigError) {
+          ctx.activeGenerations.update(jobId, { status: 'error', message: err.message });
+          ctx.notify(`fal.ai config error: ${err.message}`);
+        } else {
+          console.error('[fal.ai]', err);
+          ctx.activeGenerations.update(jobId, { status: 'error', message: err.message || String(err) });
+          ctx.notify(`fal.ai · ${model.name} failed: ${err.message || err}`);
+        }
+      } finally {
+        // Drop the job from the registry so the footer chip clears. Do this
+        // last so subscribers see the terminal state before the row vanishes.
+        ctx.activeGenerations.end(jobId);
+      }
     }
 
     async function toggleFavorite(model) {

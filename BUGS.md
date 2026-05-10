@@ -6,9 +6,9 @@
 
 ---
 
-## fal.ai generation aborts (or result is lost) when the plugin window is closed mid-generation
+## ~~fal.ai generation aborts (or result is lost) when the plugin window is closed mid-generation~~ — fixed
 
-**Symptom**: Starting a fal.ai generation, then closing the plugin window before the model finishes, leaves the user with no result. Either the underlying request is cancelled by the plugin's own teardown logic, or the request continues but the success handler tries to write into a DOM that no longer exists, so the generated image silently never lands as a layer. Either way the work + the user's wait is wasted.
+**Symptom (was)**: Starting a fal.ai generation, then closing the plugin window before the model finished, lost the result — the request was cancelled by the plugin's own teardown logic, or the success handler tried to write into a DOM that no longer existed and silently dropped the layer.
 
 **Suspected cause**: The fal.ai plugin's `renderUI(container, ctx)` likely owns the in-flight request (Promise stored on a closure variable inside the renderUI scope). When `floating-window.js` calls `el.remove()` on close, that closure is GC'd along with the DOM. Any AbortController referenced by it may fire (cancel), and even if the `await fal.subscribe(...)` promise resolves, the success handler tries to call `notify()` / `importImage()` against captured references that may be stale or whose UI side-effects target removed nodes.
 
@@ -26,6 +26,14 @@
 **Possible fixes**: (a) hoist the request lifecycle out of `renderUI` and into a plugin-level module state, with the plugin's `renderUI` reading from that state on each mount; (b) add a `window.__slammer.activeGenerations: Map<pluginId, { promise, abort, status, queuePos }>` shared façade so multiple plugins (current fal.ai, future Replicate / Inpainting / Background-Removal jobs) all benefit from the same "keep running on close" guarantee; (c) wire a footer chip that subscribes to the Map and renders one row per active generation across all plugins; (d) audit the close path in `floating-window.js` to confirm no `abort()` is fired implicitly on `el.remove()`.
 
 **Generalise**: this should be the rule for ALL panel plugins that kick off async work (fal.ai today; future AI-Inpainting, Background-Removal, anything queueing on remote APIs). The active-generations Map and footer chip should serve all of them, not be fal.ai-specific. Document the pattern in `src/plugins/plugin-contract.md` so new plugins follow it from day one.
+
+**Fix**: shipped per the original spec (a + b + c + d) plus hydration on re-open.
+
+- New `src/ui/active-generations.js` owns a `Map<jobId, JobRecord>` with `start / update / end / list / get / subscribe` exported as `window.__slammer.activeGenerations`. JobRecord carries `pluginId`, `modelId?`, `modelName?`, `abort()`, `status`, `queuePos`, `message`, `startedAt`. The same module mounts a footer chip (`.active-gen-chip` in `.footer-right`) that subscribes to the registry, stays hidden when empty, summarises a single job with its current status text + queue position, or shows a `×N` count when multiple jobs run. Click → reopens the originating plugin's window via `openPluginWindow`.
+- `src/plugins/panels/falai/index.js` refactored: form values are read upfront (while the form's DOM is still alive), then a detached `runDetached(...)` IIFE executes the model run with its own AbortController. Result lands via `window.__slammer.importImage` (the global facade, NOT a closure ref). The success path also calls `ctx.notify` so the user sees a notification regardless of which window they're looking at. The detail pane subscribes to the registry on every render — when a job exists for the currently-selected model, the run-button disables and the cancel-button shows, even on a fresh window mount. Cancel-button asks the registry for the live job and calls its `abort()`, so it works whether the job started in this DOM mount or an earlier one.
+- `src/plugins/plugin-contract.md` documents the pattern under "Async work — generations that survive window close" with the canonical capture-input-upfront / detached-IIFE / hydrate-on-mount template.
+
+**Verified**: full lifecycle simulated — start → queued (chip shows "Queued · 3 ahead…") → running (chip shows "Generating…") → resolve writes a layer via global importImage → end (chip hides). Cancel path calls the AbortController. Multi-job summary shows ×N badge. Hydration test: open fal.ai, select model, externally start a job for that model — run-button disabled, cancel-button visible, status shows live message; on end the button re-enables. No console errors throughout.
 
 ---
 

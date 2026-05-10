@@ -112,6 +112,7 @@ import { openShop } from './ui/shop-popup.js';
 import { initSnapRulers } from './ui/snap-rulers.js';
 import { initCanvasGrid } from './ui/canvas-grid.js';
 import { initTransformInspector } from './ui/transform-inspector.js';
+import * as activeGenerations from './ui/active-generations.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -286,7 +287,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw err;
       }
     },
+    // Cross-plugin async-job registry. Any panel plugin that kicks off
+    // long-running work routes it through this so closing the plugin
+    // window doesn't cancel; the result lands as a layer regardless of
+    // whether the originating window is open. See active-generations.js
+    // and src/plugins/plugin-contract.md.
+    activeGenerations: {
+      start:     activeGenerations.start,
+      update:    activeGenerations.update,
+      end:       activeGenerations.end,
+      list:      activeGenerations.list,
+      get:       activeGenerations.get,
+      subscribe: activeGenerations.subscribe,
+    },
   };
+  activeGenerations.initFooterChip();
   initSidebarPlugins();
 
   // ---------- Bitmancer Shop button ----------

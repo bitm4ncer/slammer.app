@@ -79,6 +79,20 @@ The shared module `src/plugins/shared/ui-helpers.js` provides `sliderRow`,
 to keep visual consistency across plugins. Each helper takes an `onChange`
 callback and wires range/number/select inputs together.
 
+### Do NOT add a per-effect Mix / Opacity knob
+
+The effect-stack provides a **slot-level dry/wet slider** on every effect
+card automatically. The renderer's `applyEffectsPipeline()` lerps between
+the plugin's pure output and the previous step's input via `eff.mix`
+(see `src/core/renderer.js`, the `mix < 1` branch around line ~963). Adding
+a separate `mix` / `opacity` param inside `defaultParams()` and a Mix slider
+inside `renderUI()` is **redundant and inconsistent** — it gives the user
+two competing controls that do the same thing.
+
+Effects must produce their **fully-wet output** in `process()`. The slot
+mix handles dry/wet for you. If you find yourself adding a `mix` param,
+stop and remove it.
+
 ## Registering a plugin
 
 Plugins are imported and registered in `src/main.js`:
@@ -91,6 +105,101 @@ registerPlugin(myPlugin);
 
 Once registered, the plugin appears in the matching "Add Tool" / "Add Filter"
 menu in the side panel.
+
+## Async work — generations that survive window close
+
+Panel plugins that kick off long-running async work (today: fal.ai;
+future: inpainting, background-removal, any queued-API plugin) MUST
+route the job through `window.__slammer.activeGenerations` instead of
+holding the in-flight Promise / AbortController on a `renderUI` closure.
+Closing the plugin window is NOT a cancel signal — only an explicit
+Cancel click is. The result lands as a layer regardless of whether the
+originating window is still open.
+
+### The contract
+
+```js
+// 1. CAPTURE input values BEFORE detaching. Forms live inside renderUI's
+//    DOM; once the user closes the window, the form is gone. Read the
+//    values upfront in the click handler, then start the detached run.
+const input = await form.getValues();
+
+// 2. Register the job. The aborter lives here, not on a closure.
+const aborter = new AbortController();
+const jobId = ctx.activeGenerations.start({
+  pluginId: 'my-plugin',
+  modelId:  'some-model-id',     // optional; lets renderUI hydrate the
+  modelName: 'Some Model',       // matching detail pane on re-open
+  label:    'Some Model',
+  abort:    () => aborter.abort(),
+});
+
+// 3. Detached IIFE — survives window close. Closes use NEVER cancel.
+(async () => {
+  try {
+    const result = await someApi.run({
+      input, signal: aborter.signal,
+      onProgress: (u) => ctx.activeGenerations.update(jobId, {
+        status: u.queued ? 'queued' : 'running',
+        queuePos: u.queuePosition ?? null,
+        message:  u.message,
+      }),
+    });
+    // Write the result via the GLOBAL facade — not via renderUI closures.
+    await window.__slammer.importImage(result.imageUrl, 'My output');
+    ctx.notify('Done.');
+  } catch (err) {
+    if (err.name === 'AbortError') ctx.notify('Cancelled.');
+    else ctx.notify(`Failed: ${err.message}`);
+  } finally {
+    ctx.activeGenerations.end(jobId);
+  }
+})();
+```
+
+### Hydration on re-open
+
+When the user re-opens the plugin mid-generation, `renderUI` runs against
+a fresh container. To resume showing the spinner and let the user cancel,
+subscribe to the registry inside `renderUI` (or its detail-pane builder)
+and look up jobs by `pluginId` (and `modelId` if applicable):
+
+```js
+const unsub = ctx.activeGenerations.subscribe((all) => {
+  const job = all.find((j) => j.pluginId === MY_PLUGIN_ID && j.modelId === currentModel);
+  if (job) {
+    setRunning(true);
+    setStatus(job.message || 'Working…');
+  } else {
+    setRunning(false);
+  }
+});
+// Tear the subscriber down when the detail pane is replaced. Stash it
+// somewhere your re-render path can find — typical pattern is to store
+// it on a DOM node (`detailEl._unsubGen = unsub`) and re-call it before
+// rebuilding.
+```
+
+### Cancel button
+
+The cancel button does NOT remember its own aborter — it asks the
+registry for the current live job and calls its `abort()`. That way the
+button works whether the job started in this DOM mount or an earlier one
+that's since been torn down.
+
+```js
+cancelBtn.addEventListener('click', () => {
+  const live = ctx.activeGenerations.list(MY_PLUGIN_ID)[0];
+  live?.abort?.();
+});
+```
+
+### Footer chip
+
+The footer renders a single chip that summarises every active job across
+plugins. It auto-shows when the registry is non-empty and clicks-through
+to re-open the originating plugin window. No per-plugin work needed —
+just `start` / `update` / `end` correctly and the chip handles itself.
 
 ## Future: Generator type (REAKTOR2 / Vector)
 
