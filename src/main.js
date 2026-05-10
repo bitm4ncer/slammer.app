@@ -51,6 +51,8 @@ import solarizePlugin from './plugins/filters/solarize/index.js';
 import edgeDetectionPlugin from './plugins/filters/edge-detection/index.js';
 import blackWhitePlugin from './plugins/filters/black-white/index.js';
 import fisheyePlugin from './plugins/filters/fisheye/index.js';
+import plasticPlugin from './plugins/filters/plastic/index.js';
+import holographicFoilPlugin from './plugins/filters/holographic-foil/index.js';
 // datamosh, jpeg-compression, dithering, twirl, ripple, bulge moved to
 // src/plugins/premium/ — loaded in dev via premium-loader.js, served via
 // Bitmancer Library shop in prod.
@@ -142,6 +144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     edgeDetectionPlugin,
     blackWhitePlugin,
     fisheyePlugin,
+    plasticPlugin,
+    holographicFoilPlugin,
     // Vector-only plugins.
     zigzagVPlugin, turbulenceVPlugin, roughenVPlugin, puckerVPlugin,
     twistVPlugin, offsetVPlugin, booleanVPlugin, repeaterVPlugin,

@@ -188,54 +188,6 @@ const PLUGIN_PALETTE = {
     opacity: 1,
     mark: 'SPHERIZE.+50',
   },
-  'plastic': {
-    c: '#E8D8FF',                                     // pearl-violet — glossy plastic sheen
-    ink: '#0e0e10',
-    // Concentric soft highlights + a subtle horizontal banding read as a
-    // moulded plastic surface caught in raking light.
-    pattern: `radial-gradient(ellipse at 35% 28%, rgba(255,255,255,0.65) 0%, transparent 38%),
-              radial-gradient(ellipse at 70% 78%, rgba(14,14,16,0.30) 0%, transparent 45%),
-              repeating-linear-gradient(0deg,
-                rgba(255,255,255,0.10) 0 1px, transparent 1px 8px)`,
-    size: 'auto, auto, auto',
-    blend: 'normal',
-    opacity: 1,
-    mark: 'PHONG.SHININESS',
-  },
-  'holographic-foil': {
-    c: '#FFB6FF',                                     // hot pink-magenta — peak holo card
-    ink: '#0e0e10',
-    // Conic-gradient rainbow + diagonal glints + sparkle dots stack to read
-    // as iridescent foil. Background colour shows through the soft gaps so
-    // the card still feels like a printed sticker, not a screen LCD.
-    pattern: `conic-gradient(from 215deg at 50% 50%,
-                rgba(255,180,255,0.55), rgba(120,220,255,0.55), rgba(255,240,140,0.55),
-                rgba(180,255,200,0.55), rgba(255,140,200,0.55), rgba(255,180,255,0.55)),
-              repeating-linear-gradient(135deg,
-                rgba(255,255,255,0.18) 0 1px, transparent 1px 8px),
-              radial-gradient(circle at 22% 28%, rgba(255,255,255,0.45) 0 1.4px, transparent 2px),
-              radial-gradient(circle at 78% 64%, rgba(255,255,255,0.35) 0 1.2px, transparent 2px)`,
-    size: 'auto, auto, 14px 14px, 22px 22px',
-    blend: 'normal',
-    opacity: 1,
-    mark: 'IRIDESCENCE.LUT',
-  },
-  '3d-bevel': {
-    c: '#C8C0B8',                                     // warm pewter — sculpted-metal feel
-    ink: '#0e0e10',
-    // Diagonal raking light + subtle stepped facets read as a chiselled
-    // bevel face. Two layered linear-gradients give the lit-edge / shadow-edge
-    // pair without a smooth transition.
-    pattern: `linear-gradient(135deg,
-                rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.12) 35%,
-                transparent 50%, rgba(14,14,16,0.18) 65%, rgba(14,14,16,0.50) 100%),
-              repeating-linear-gradient(135deg,
-                rgba(14,14,16,0.10) 0 2px, transparent 2px 14px)`,
-    size: 'auto, auto',
-    blend: 'normal',
-    opacity: 1,
-    mark: 'BEVEL.PILLOW',
-  },
 };
 
 /* =========================================================================
@@ -262,10 +214,6 @@ const PACK_INFO = {
     label: 'Liquid Pack',
     rule: 'Reality bent. Twist, ripple, pinch, bulge — distortion you can drag a slider for.',
   },
-  '3d-pack': {
-    label: '3D Pack',
-    rule: 'Heightfield-driven materials. Plastic, holographic foil, sculpted bevel — flat pixels become lit, three-dimensional surfaces shaded from a smoothed bump map.',
-  },
 };
 
 /* =========================================================================
@@ -288,11 +236,6 @@ function variantFor(packId, items) {
   if (packId === 'dots-pack') {
     // Two halves
     return ids.map(() => 'shop-card--half');
-  }
-  if (packId === '3d-pack') {
-    // Plastic as the lead specimen (hero), Foil + Bevel paired underneath
-    // as halves. Mirrors the glitch-pack rhythm.
-    return ids.map((id) => (id === 'plastic' ? 'shop-card--hero' : 'shop-card--half'));
   }
   return ids.map(() => '');
 }
