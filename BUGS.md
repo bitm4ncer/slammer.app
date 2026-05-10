@@ -6,6 +6,29 @@
 
 ---
 
+## fal.ai generation aborts (or result is lost) when the plugin window is closed mid-generation
+
+**Symptom**: Starting a fal.ai generation, then closing the plugin window before the model finishes, leaves the user with no result. Either the underlying request is cancelled by the plugin's own teardown logic, or the request continues but the success handler tries to write into a DOM that no longer exists, so the generated image silently never lands as a layer. Either way the work + the user's wait is wasted.
+
+**Suspected cause**: The fal.ai plugin's `renderUI(container, ctx)` likely owns the in-flight request (Promise stored on a closure variable inside the renderUI scope). When `floating-window.js` calls `el.remove()` on close, that closure is GC'd along with the DOM. Any AbortController referenced by it may fire (cancel), and even if the `await fal.subscribe(...)` promise resolves, the success handler tries to call `notify()` / `importImage()` against captured references that may be stale or whose UI side-effects target removed nodes.
+
+**What needs to happen**:
+1. **Generation survives window close** — the request keeps running on app-level state, not panel-DOM state. Move in-flight Promise + AbortController to a module-level (or `window.__slammer.activeGenerations` Map keyed by plugin id) so closing the window doesn't tear them down.
+2. **Result lands regardless of window state** — when the request resolves, call `window.__slammer.importImage(blob, { name })` directly. That works whether the plugin window is open or closed; the layer simply appears on canvas + in the Layer Stack.
+3. **Background indicator while generation runs** — small chip / dot in the footer (or near the Plugins sidebar entry for fal.ai) showing "Generating… (1/3)" with the queue position if known. Click → re-opens the fal.ai window so the user can see live progress + cancel.
+4. **Re-opening the window during a live generation** — the plugin's `renderUI` should hydrate from the active-generations Map and resume showing the spinner / progress / queue position, not start a fresh empty UI. The existing `setRunning(true)` helper from Phase 16 polish already handles the visual; it just needs to be called from a hydration step on open.
+5. **Cancel on demand** — only if the user explicitly clicks Cancel. Closing the window is NOT a cancel signal.
+
+**Files involved**: `src/plugins/panels/falai/index.js` (request lifecycle, AbortController, result handling), `src/ui/plugin-host.js` (`openPluginWindow` — extend to hydrate in-flight state), `src/ui/floating-window.js` (close lifecycle — verify it doesn't cascade-abort plugin in-flight Promises), `src/main.js` (`window.__slammer` façade may grow an `activeGenerations` Map exposed to the plugin).
+
+**What was tried**: Nothing yet.
+
+**Possible fixes**: (a) hoist the request lifecycle out of `renderUI` and into a plugin-level module state, with the plugin's `renderUI` reading from that state on each mount; (b) add a `window.__slammer.activeGenerations: Map<pluginId, { promise, abort, status, queuePos }>` shared façade so multiple plugins (current fal.ai, future Replicate / Inpainting / Background-Removal jobs) all benefit from the same "keep running on close" guarantee; (c) wire a footer chip that subscribes to the Map and renders one row per active generation across all plugins; (d) audit the close path in `floating-window.js` to confirm no `abort()` is fired implicitly on `el.remove()`.
+
+**Generalise**: this should be the rule for ALL panel plugins that kick off async work (fal.ai today; future AI-Inpainting, Background-Removal, anything queueing on remote APIs). The active-generations Map and footer chip should serve all of them, not be fal.ai-specific. Document the pattern in `src/plugins/plugin-contract.md` so new plugins follow it from day one.
+
+---
+
 ## Vector stroke pads from top-left, not centred
 
 **Symptom**: A rectangle vector layer with a thick stroke (e.g. 34 px) doesn't expand the visual outwards equally on all sides — the visible outline appears to push the rect down + right, and the selection bbox shifts with it. Expected behaviour: with `DEFAULT_VECTOR_STROKE.align = 'center'` (the default), half the stroke width should sit inside the path and half outside, so the visual bbox grows symmetrically around the original path bounds.
@@ -63,31 +86,24 @@
 
 ---
 
-## Halftone Raster — adds an unwanted border and Mono mode inverts polarity
+## ~~Halftone Raster — adds an unwanted border and Mono mode inverts polarity~~ — fixed
 
-**Symptom (a)**: Applying the Halftone Raster effect (premium) draws a visible frame/border around the source image's bounding box that shouldn't be there. **Symptom (b)**: In Mono mode, the dot/anti-dot polarity is inverted — dark areas show light dots instead of dark dots (or vice versa).
+**Symptom (was, a)**: Applying the Halftone Raster effect drew a visible frame/border around the source's bounding box. **(b)**: Mono mode polarity was inverted — dark areas showed light dots, bright areas showed dark dots.
 
-**Suspected cause (a)**: Likely the effect is rendering across the FULL padded canvas including the pad margin, instead of clipping to the source alpha. The pad area becomes a solid-colour rectangle of dots → reads as a border. **(b)**: Polarity bug in the Mono branch — the threshold compare is flipped, so luminance > T outputs ink where it should output paper (or the inverse).
+**Fix**: both per the original sketch. In `src/plugins/premium/halftone-raster/index.js`:
 
-**Files involved**: `src/plugins/premium/halftone-raster/index.js` or wherever the raster Halftone is registered (check `src/plugins/premium/` — folder may be named `halftone-raster` / `halftone-print` / similar).
+- (a) All three render paths (`renderScreenMono`, `renderScreensRGB`, `renderScreensCMYK`) now write `out[o + 3] = src[o + 3]` (or `paper.a/255 * src[o + 3]` for CMYK) instead of `255` blindly. Pad-area pixels with source alpha 0 stay transparent — no more rectangle.
+- (b) `renderScreenMono` builds the per-pixel coverage map as `1 - luma` instead of `luma` directly. Halftone convention: dark source = more ink coverage (large dots), bright source = less ink. RGB and CMYK already invert correctly via channel-to-coverage mapping (CMYK explicitly: `c = 1 - r`).
 
-**What was tried**: Nothing yet.
-
-**Possible fixes**: (a) Modulate the output alpha by the source alpha so transparent pad pixels stay transparent; (b) flip the Mono threshold compare or invert the output value before writing.
+Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bright body): pad average alpha 0, body 255, dark-source area output luma 71 vs bright-source 178 → polarity correct.
 
 ---
 
-## Quick-access wheel arrows scroll the wrong direction
+## ~~Quick-access wheel arrows scroll the wrong direction~~ — fixed
 
-**Symptom**: The up/down arrows on the quick-access (radial) wheel scroll the wheel in the inverted direction. Clicking up should rotate the wheel so the next item appears at the top — instead it moves the opposite way.
+**Symptom (was)**: The up/down arrows on the quick-access (radial) wheel scrolled the wheel in the inverted direction. Clicking up sent it backwards instead of advancing.
 
-**Suspected cause**: Sign error in the rotation delta. The arrow handler probably does `rotation += step` where it should be `rotation -= step` (or vice versa). Trivial 1-line flip.
-
-**Files involved**: `src/ui/quick-wheel.js` or wherever the radial menu lives (search for `quick-wheel` / `radial-menu` / `effect-wheel`).
-
-**What was tried**: Nothing yet.
-
-**Possible fixes**: (a) Flip the sign on both arrow buttons; (b) verify direction matches scroll-wheel cycling on the same widget so they're consistent.
+**Fix**: option (a). Both arrow handlers in `src/ui/quick-select-wheel.js:261-262` had their `rotateBy()` signs swapped — UP now calls `rotateBy(+1)`, DOWN calls `rotateBy(-1)`. Verified live: clicking UP rotates the slot rotor from 0° → +45°; clicking DOWN twice nets -45°. Scroll-wheel direction stays consistent (deltaY > 0 still advances the wheel).
 
 ---
 
@@ -130,6 +146,8 @@
 **What was tried**: Nothing yet — needs DevTools `getBoundingClientRect` snapshots before/after the click to identify which container is moving.
 
 **Possible fixes**: (a) ensure the footer is `position: fixed` (or anchored via grid `grid-row: bottom`) so it can't reflow with canvas content; (b) audit any `:has()` selectors or container-query hooks that might react to canvas size changes; (c) if a window-resize handler is the trigger, debounce or gate it so a transient effect-rerender doesn't propagate to layout.
+
+**Status (2026-05-10)**: needs-repro. Diagnostic ran a synthetic image layer with Drop Shadow (distance 30, blur 20), captured `.app-footer.getBoundingClientRect().top` + `.side-panel` height + canvas-area bottom + viewport height, toggled `knockout` via `setEffectParams` OFF→ON→OFF, and re-captured. All values stayed identical (footer.top=867, footerH=36, sidePanel top=48, canvas bottom=867 across all three states). No `:has()` selectors exist anywhere in `src/style/`. `--footer-h` is a static `36px` token and isn't mutated at runtime. The footer is grid-area-anchored, not flow-positioned. The reflow described in the report doesn't reproduce against the current build — likely fixed by an unrelated layout/Konva commit since the report was filed.
 
 ---
 
@@ -218,6 +236,8 @@
 **Possible fixes**: (a) Check the shape-drawer's `onMouseMove` / `onDrag` handler — it should create/update a temporary Konva.Rect or Konva.Shape on the overlay layer during the drag, then replace it with the real vector layer on release; (b) verify the active-tool registry is forwarding mousemove events to the shape drawer correctly.
 
 **Next investigation step**: pick the rectangle tool, drop a `console.log('shape-drawer move', { x: e.clientX, y: e.clientY })` inside the shape-drawer's onMove handler (look in `src/ui/vector-tools/shape-drawer.js`). Drag on canvas. If the log fires → preview node creation is broken; if it doesn't → active-tool routing in `src/ui/vector-tools/active-tool.js` isn't forwarding the move. That tells us which side of the wiring to fix.
+
+**Status (2026-05-10)**: needs-repro. Synthetic test ran a 30-step drag emulation (`setVectorPath` + `setLayerTransform` per step at ~16 ms intervals) — `dstCanvas` grew step-by-step (61×61 → 94×94 → … → 221×221) and `_paintVersion` incremented 2 → 7 in lockstep, so the renderer IS rasterising every frame and committing pad-aware sizes. The `layer:vectorChanged` path through `rasterizeSource` → `paintLayer` → `schedulePaint` works as designed under back-to-back updates. If the visible canvas still doesn't show a live preview, the symptom likely lives in Konva stage redraw scheduling, not in the document-event chain — repro with the rectangle tool against the current build before reopening.
 
 ---
 

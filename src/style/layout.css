@@ -459,6 +459,15 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .quick-wheel-slot:hover {
   color: #fff;
 }
+/* Pack-accent tint: filled slots whose plugin manifest carries a
+ * PLUGIN_PALETTE entry get its flag colour applied to the icon. Hover
+ * boosts to full white so the accent reads as identity, not as state. */
+.quick-wheel-slot.has-accent {
+  color: var(--slot-accent);
+}
+.quick-wheel-slot.has-accent:hover {
+  color: #fff;
+}
 .quick-wheel-slot.is-empty {
   opacity: 0.4;
   font-size: 14px;

@@ -20,6 +20,7 @@
 
 import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
 import { openPluginWindow } from './plugin-host.js';
+import { PLUGIN_PALETTE } from './shop-popup.js';
 
 const STORAGE_KEY    = 'slammer:quick-wheel-slots';
 const SLOT_COUNT     = 8;
@@ -177,12 +178,27 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
       const slot = slots[i];
       const plugin = slot ? getPlugin(slot.effectId) : null;
       const labelText = slot ? (plugin?.name || slot.effectId) : 'Empty';
-      const iconName = slot?.icon || 'plus';
+      // Prefer the live manifest's icon over the saved slot icon — keeps a
+      // plugin's wheel slot in sync if the manifest's icon ever changes.
+      const iconName = plugin?.icon || slot?.icon || 'plus';
       el.classList.toggle('is-filled', !!slot);
       el.classList.toggle('is-empty',  !slot);
       el.classList.toggle('is-assigning', !!assignMode);
       el.querySelector('i').className = `fas fa-${iconName}`;
       el.querySelector('.quick-wheel-slot-label').textContent = labelText;
+      // Pack-accent tint: read the plugin's flag colour from PLUGIN_PALETTE
+      // (defined per-plugin in shop-popup.js for premium specimens). Free
+      // plugins fall back to the default white slot colour. The CSS rule
+      // .quick-wheel-slot.has-accent { color: var(--slot-accent); } picks
+      // it up; see layout.css.
+      const accent = plugin && PLUGIN_PALETTE[plugin.id]?.c;
+      if (accent) {
+        el.style.setProperty('--slot-accent', accent);
+        el.classList.add('has-accent');
+      } else {
+        el.style.removeProperty('--slot-accent');
+        el.classList.remove('has-accent');
+      }
     }
   }
 
@@ -258,8 +274,8 @@ export function initQuickSelectWheel({ document: doc, anchorEl }) {
     setTimeout(() => rotor.classList.remove(ROTATE_RIPPLE), 480);
   }
 
-  controls.querySelector('.quick-wheel-nav--up')  .addEventListener('click', (e) => { e.stopPropagation(); rotateBy(-1); });
-  controls.querySelector('.quick-wheel-nav--down').addEventListener('click', (e) => { e.stopPropagation(); rotateBy(+1); });
+  controls.querySelector('.quick-wheel-nav--up')  .addEventListener('click', (e) => { e.stopPropagation(); rotateBy(+1); });
+  controls.querySelector('.quick-wheel-nav--down').addEventListener('click', (e) => { e.stopPropagation(); rotateBy(-1); });
   controls.querySelector('.quick-wheel-config')   .addEventListener('click', (e) => { e.stopPropagation(); openAssignFlyout(null); });
 
   // Scroll-wheel rotates the wheel — fires when hovering the colour dial

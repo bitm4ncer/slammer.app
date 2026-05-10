@@ -29,7 +29,7 @@ let viewState = { mode: 'grid', selectedId: null };
 //
 // Order matters in the value of --plugin-pattern: layered patterns are
 // comma-separated and Vite passes them through as plain CSS strings.
-const PLUGIN_PALETTE = {
+export const PLUGIN_PALETTE = {
   'datamosh': {
     c: '#FF2E63',
     ink: '#0e0e10',
