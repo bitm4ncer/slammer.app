@@ -29,7 +29,6 @@ const DEFAULTS = {
   pexelsApiKey: '',
   falaiApiKey: '',
   smithsonianApiKey: '',
-  rijksmuseumApiKey: '',
   // Custom CORS proxy (production deploy of the Cloudflare Worker in
   // infra/cors-proxy-worker/). When set, used BEFORE any public proxy
   // for plugins that fetch from CORS-blocked CDNs (Met, Wikimedia, …).
@@ -614,8 +613,6 @@ function renderPlugins() {
         <div class="settings-group-head"><span class="settings-group-tick"></span>Museums</div>
         ${apiKeyRowHTML('setSmithsonianKey', 'Smithsonian · API Key', s.smithsonianApiKey,
           'api.data.gov/signup/', 'Sign up at <strong>api.data.gov/signup/</strong> — same key works for Smithsonian, NASA, NPS. 1k req/hour. 5M+ open-access items.')}
-        ${apiKeyRowHTML('setRijksmuseumKey', 'Rijksmuseum · API Key', s.rijksmuseumApiKey,
-          'rijksmuseum.nl/en/rijksstudio', 'Create a free Rijksstudio account → Profile → Advanced settings → API. ~10k req/day. 800k+ objects.')}
       </div>
 
       <div class="settings-group">
@@ -640,6 +637,7 @@ function renderPlugins() {
       <div class="settings-group settings-group--placeholder">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Coming soon</div>
         <ul class="settings-roadmap-list">
+          <li><span class="settings-roadmap-key">Rijksmuseum</span><span class="settings-roadmap-desc">Legacy API shut down Jan 2026. New Linked-Art flow needs 3-hop resolve per object — deferred until a batched search-with-images workaround lands.</span></li>
           <li><span class="settings-roadmap-key">MoMA</span><span class="settings-roadmap-desc">Catalog ingestion (CSV-only — no live API) — Phase 26.</span></li>
           <li><span class="settings-roadmap-key">Plugin sandbox</span><span class="settings-roadmap-desc">iframe / Worker isolation + capability permissions — Feature F4.</span></li>
         </ul>
@@ -653,7 +651,6 @@ function wirePlugins(root) {
   bindKeyInput(root.querySelector('#setPexelsKey'), 'pexelsApiKey');
   bindKeyInput(root.querySelector('#setFalaiKey'), 'falaiApiKey');
   bindKeyInput(root.querySelector('#setSmithsonianKey'), 'smithsonianApiKey');
-  bindKeyInput(root.querySelector('#setRijksmuseumKey'), 'rijksmuseumApiKey');
   bindKeyInput(root.querySelector('#setCorsProxy'), 'corsProxyUrl');
 }
 
