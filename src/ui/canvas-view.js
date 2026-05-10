@@ -1261,8 +1261,16 @@ export function initCanvasView({ container, document, onImageDropped }) {
       if (layer?.type === 'vector' && layer.vector?.paths?.length) {
         layer.vector.paths.forEach((p, idx) => {
           const cur = slot === 'fill' ? p.fill : p.stroke;
-          if (cur?.type === 'gradient') return; // don't clobber gradient slots
+          // Replace whatever was there — solid / gradient / none — with a
+          // fresh solid carrying the dropped colour. Preserves opacity +
+          // (for stroke) width / cap / join etc. Strips gradient fields
+          // so they don't linger.
           const next = { ...(cur || {}), type: 'solid', color: colorPayload.toLowerCase(), opacity: cur?.opacity ?? 1 };
+          delete next.gradientType;
+          delete next.stops;
+          delete next.from;
+          delete next.to;
+          delete next.angle;
           if (slot === 'fill') document.setVectorFill(layer.id, idx, next);
           else                 document.setVectorStroke(layer.id, idx, next);
         });

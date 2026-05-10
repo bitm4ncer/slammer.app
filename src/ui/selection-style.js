@@ -300,13 +300,22 @@ export function applyColorToLayer(layerId, hex, slot = 'fill') {
     const paths = layer.vector?.paths || [];
     paths.forEach((p, idx) => {
       const cur = slot === 'fill' ? p.fill : p.stroke;
-      // Preserve gradient kind if the slot was already a gradient (the
-      // dropped solid then becomes the active stop's colour). For solid
-      // / none kinds, flip to solid + write the colour.
-      const next = cur?.type === 'gradient'
-        ? { ...cur } // gradient stops untouched — caller can use applyGradientToLayer for stop edits
-        : { ...(cur || {}), type: 'solid', color: hex.toLowerCase(), opacity: cur?.opacity ?? 1 };
-      if (cur?.type === 'gradient') return; // skip — drop a gradient swatch instead
+      // Drop = explicit "use this colour" intent. Replace whatever was
+      // there (solid, gradient, or none) with a fresh solid. Preserve
+      // opacity so the user doesn't lose alpha settings on the swap.
+      // (Stroke also preserves width / cap / join / etc.)
+      const next = {
+        ...(cur || {}),
+        type: 'solid',
+        color: hex.toLowerCase(),
+        opacity: cur?.opacity ?? 1,
+      };
+      // Strip gradient-specific fields so they don't linger in the model.
+      delete next.gradientType;
+      delete next.stops;
+      delete next.from;
+      delete next.to;
+      delete next.angle;
       if (slot === 'fill') _doc.setVectorFill(layer.id, idx, next);
       else                 _doc.setVectorStroke(layer.id, idx, next);
     });
