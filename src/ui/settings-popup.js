@@ -29,6 +29,7 @@ const DEFAULTS = {
   pexelsApiKey: '',
   falaiApiKey: '',
   smithsonianApiKey: '',
+  europeanaApiKey: '',
   // Custom CORS proxy (production deploy of the Cloudflare Worker in
   // infra/cors-proxy-worker/). When set, used BEFORE any public proxy
   // for plugins that fetch from CORS-blocked CDNs (Met, Wikimedia, …).
@@ -613,6 +614,8 @@ function renderPlugins() {
         <div class="settings-group-head"><span class="settings-group-tick"></span>Museums</div>
         ${apiKeyRowHTML('setSmithsonianKey', 'Smithsonian · API Key', s.smithsonianApiKey,
           'api.data.gov/signup/', 'Sign up at <strong>api.data.gov/signup/</strong> — same key works for Smithsonian, NASA, NPS. 1k req/hour. 5M+ open-access items.')}
+        ${apiKeyRowHTML('setEuropeanaKey', 'Europeana · API Key', s.europeanaApiKey,
+          'pro.europeana.eu/get-api', 'Free instant signup. 50M+ items aggregated from 4000+ European institutions.')}
       </div>
 
       <div class="settings-group">
@@ -651,6 +654,7 @@ function wirePlugins(root) {
   bindKeyInput(root.querySelector('#setPexelsKey'), 'pexelsApiKey');
   bindKeyInput(root.querySelector('#setFalaiKey'), 'falaiApiKey');
   bindKeyInput(root.querySelector('#setSmithsonianKey'), 'smithsonianApiKey');
+  bindKeyInput(root.querySelector('#setEuropeanaKey'), 'europeanaApiKey');
   bindKeyInput(root.querySelector('#setCorsProxy'), 'corsProxyUrl');
 }
 

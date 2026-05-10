@@ -87,6 +87,10 @@ import openversePlugin from './plugins/panels/openverse/index.js';
 import metPlugin from './plugins/panels/met/index.js';
 import vamPlugin from './plugins/panels/vam/index.js';
 import smithsonianPlugin from './plugins/panels/smithsonian/index.js';
+import europeanaPlugin from './plugins/panels/europeana/index.js';
+import smkPlugin from './plugins/panels/smk/index.js';
+import clevelandPlugin from './plugins/panels/cleveland/index.js';
+import nasaPlugin from './plugins/panels/nasa/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
 import { exportVisibleAsPng } from './io/export-png.js';
@@ -157,6 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Plugin Manager list.
     falaiPlugin, unsplashPlugin, pexelsPlugin, openversePlugin, metPlugin,
     vamPlugin, smithsonianPlugin,
+    europeanaPlugin, smkPlugin, clevelandPlugin, nasaPlugin,
   ].forEach(registerPlugin);
 
   // Local-only: discover premium plugins under src/plugins/premium/ if
