@@ -18,6 +18,7 @@ import {
   getActiveOpacity, setActiveOpacity,
   getActiveGradient, setActiveGradient,
   getGradientSwatches, addGradientSwatch, removeGradientSwatch, onGradientSwatchesChange,
+  getVariables, setVariable, removeVariable, renameVariable, onVariablesChange,
 } from '../core/colors.js';
 import {
   getEffectiveStyle, onEffectiveStyleChange,
@@ -176,7 +177,11 @@ function build() {
           <div class="color-hub-swatches"></div>
         </div>
         <div class="color-hub-tab-panel" data-tab="vars" hidden>
-          <div class="color-hub-vars-placeholder">Variables manager — Phase 23c.</div>
+          <div class="color-hub-vars-list"></div>
+          <div class="color-hub-vars-add-row">
+            <input class="color-hub-input color-hub-vars-name" type="text" placeholder="--name" maxlength="48" spellcheck="false" />
+            <button class="color-hub-icon-btn color-hub-vars-add" type="button" title="Save current colour as a variable">+</button>
+          </div>
         </div>
       </div>
     </div>
@@ -864,6 +869,91 @@ function bindEvents(anchorEl) {
   paintSwatches();
   unsubs.push(onSwatchesChange(paintSwatches));
   unsubs.push(onGradientSwatchesChange(paintSwatches));
+
+  // ── Variables tab — list + add + rename + delete ────────────────────
+  // Each variable is `{ name: '--brand', value: '#ff8800' }`. List rows
+  // render as a coloured swatch + name (click to rename) + value
+  // (click to apply to active slot). Drag the swatch to apply the
+  // resolved hex via the same drop receivers the Recent strip uses.
+  // Right-click removes. Add row at the bottom captures the current
+  // picker colour under the typed name (auto-prefixes `--` if missing,
+  // so the user can type `brand` and get `--brand`).
+  const varsListEl = popover.querySelector('.color-hub-vars-list');
+  const varsNameInput = popover.querySelector('.color-hub-vars-name');
+  const varsAddBtn = popover.querySelector('.color-hub-vars-add');
+
+  function paintVariables() {
+    if (!varsListEl) return;
+    varsListEl.innerHTML = '';
+    const vars = getVariables();
+    if (!vars.length) {
+      varsListEl.innerHTML = '<div class="color-hub-empty">No variables yet — pick a colour, type a name below, hit +</div>';
+      return;
+    }
+    for (const entry of vars) {
+      // Local aliases so the row's listeners don't accidentally collide
+      // with the outer-scope `v` (HSV.value, not the variable object).
+      const varName  = entry.name;
+      const varValue = entry.value;
+      const row = document.createElement('div');
+      row.className = 'color-hub-var-row';
+      row.innerHTML = `
+        <button class="color-hub-var-swatch" type="button" title="${varName} = ${varValue.toUpperCase()} — click to apply, drag onto a layer, right-click to remove" style="background:${varValue}" draggable="true"></button>
+        <input class="color-hub-input color-hub-var-name" type="text" value="${varName}" spellcheck="false" />
+        <span class="color-hub-var-hex">${varValue.toUpperCase()}</span>
+      `;
+      const swatch = row.querySelector('.color-hub-var-swatch');
+      const nameInput = row.querySelector('.color-hub-var-name');
+      // Click swatch → apply to active slot (resolves the variable to its
+      // current hex, syncs the picker HSV state, commits).
+      swatch.addEventListener('click', () => {
+        const t = hexToHsv(varValue);
+        h = t.h; s = t.s; v = t.v;
+        commit();
+      });
+      // Drag → uses the same x-slammer-color receivers as the Recent strip.
+      swatch.addEventListener('dragstart', (e) => {
+        if (!e.dataTransfer) return;
+        e.dataTransfer.setData('application/x-slammer-color', varValue);
+        e.dataTransfer.setData('text/plain', `${varName} (${varValue.toUpperCase()})`);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+      swatch.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        removeVariable(varName);
+      });
+      nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+        else if (e.key === 'Escape') { nameInput.value = varName; nameInput.blur(); }
+      });
+      nameInput.addEventListener('blur', () => {
+        let next = nameInput.value.trim();
+        if (!next) { nameInput.value = varName; return; }
+        if (!next.startsWith('--')) next = '--' + next.replace(/^-+/, '');
+        if (next === varName) return;
+        renameVariable(varName, next);
+      });
+      varsListEl.appendChild(row);
+    }
+  }
+
+  // Add row — captures the current picker colour under the typed name.
+  varsAddBtn.addEventListener('click', () => {
+    let name = (varsNameInput.value || '').trim();
+    if (!name) { varsNameInput.focus(); return; }
+    if (!name.startsWith('--')) name = '--' + name.replace(/^-+/, '');
+    const hex = hsvToHex(h, s, v);
+    setVariable(name, hex);
+    varsNameInput.value = '';
+    // Auto-switch to the Variables tab so the user sees their addition.
+    popover.querySelector('.color-hub-tab[data-tab="vars"]').click();
+  });
+  varsNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); varsAddBtn.click(); }
+  });
+
+  paintVariables();
+  unsubs.push(onVariablesChange(paintVariables));
 
   // ── Tab switching ────────────────────────────────────────────────────
   popover.querySelectorAll('.color-hub-tab').forEach((tab) => {
