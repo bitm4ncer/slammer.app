@@ -537,9 +537,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         };
         st._vectorRasterDirty = false;
       }
-      const { imageData, naturalSize, pathBounds, pad } = result;
+      const { imageData, naturalSize, pathBounds, paintedBounds, pad } = result;
       st.naturalSize = naturalSize;
       st.vectorPathBounds = pathBounds;
+      // paintedBounds includes stroke spill; image positioning uses it so
+      // the canvas's left edge sits at world (paintedBounds.x - pad), where
+      // the leftmost stroke pixel actually lives. Falls back to pathBounds
+      // for old code paths that haven't been updated.
+      st.vectorPaintedBounds = paintedBounds || pathBounds;
       st.vectorPad = pad;
       // Vector layer model:
       //   • layer.transform.x/y = the layer's anchor point in world (set ONCE
@@ -577,9 +582,10 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       // Mixed-type group: fall through to the empty-placeholder branch
       // and render via Konva nesting (child Konva.Groups visible).
       if (document.isVectorOnlyGroup(layer.id) && (layer.vectorEffects || []).length) {
-        const { imageData, naturalSize, pathBounds, pad } = rasterizeVectorGroup(layer, document.findLayer);
+        const { imageData, naturalSize, pathBounds, paintedBounds, pad } = rasterizeVectorGroup(layer, document.findLayer);
         st.naturalSize = naturalSize;
         st.vectorPathBounds = pathBounds;
+        st.vectorPaintedBounds = paintedBounds || pathBounds;
         st.vectorPad = pad;
         st.group.offset({ x: 0, y: 0 });
         // Position update deferred to paintLayerSync's commitImagePosition
@@ -1222,12 +1228,27 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
 
     // For text + vector layers, expose a tight content rect so the
     // Transformer's selection handles wrap the actual content — not the
-    // padded canvas (which exists so blur / displacement etc. don't clip).
+    // padded canvas (which exists so blur / displacement etc. don't clip)
+    // and not the stroke spill (which sits OUTSIDE the path).
     if (layer.type === 'text' || layer.type === 'vector') {
       image.getSelfRect = function () {
         const pad = st.textPad || 0;
         const cs = st.textContentSize;
         if (cs && cs.w > 0 && cs.h > 0) {
+          // Vector layers: the image was positioned using paintedBounds
+          // (stroke-aware), so the path itself sits at offset
+          // (pathBounds.x - paintedBounds.x, ...) inside the image, NOT
+          // at (pad, pad). Without this adjustment the selection
+          // handles would pull to the LEFT by stroke-width / 2.
+          const pb = st.vectorPathBounds;
+          const pbp = st.vectorPaintedBounds;
+          if (layer.type === 'vector' && pb && pbp) {
+            return {
+              x: pad + (pb.x - pbp.x),
+              y: pad + (pb.y - pbp.y),
+              width: cs.w, height: cs.h,
+            };
+          }
           return { x: pad, y: pad, width: cs.w, height: cs.h };
         }
         // Fallback: use the full image while the first paint hasn't happened.
@@ -1522,9 +1543,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     }
     // Vector layers — also covers vector-only groups whose composite goes
     // through the same Konva.Image (rasterizeVectorGroup branch).
+    // Use paintedBounds (stroke-aware) — pathBounds would offset the image
+    // so the stroke pixels appear shifted by stroke-width / 2.
     if ((layer.type === 'vector' || layer.type === 'group')
-        && st.vectorPathBounds && st.vectorPad != null) {
-      const pb = st.vectorPathBounds;
+        && (st.vectorPaintedBounds || st.vectorPathBounds) && st.vectorPad != null) {
+      const pb = st.vectorPaintedBounds || st.vectorPathBounds;
       const pad = st.vectorPad;
       st.image.position({
         x: pb.x - (layer.transform?.x || 0) - pad,
@@ -1545,8 +1568,8 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // would shift the visible path by the transform delta. Recompute
     // here so e.g. setLayerTransform(...) on a freshly-pencilled layer
     // doesn't make the path jump.
-    if (layer.type === 'vector' && st.vectorPathBounds && st.vectorPad != null) {
-      const pb = st.vectorPathBounds;
+    if (layer.type === 'vector' && (st.vectorPaintedBounds || st.vectorPathBounds) && st.vectorPad != null) {
+      const pb = st.vectorPaintedBounds || st.vectorPathBounds;
       const pad = st.vectorPad;
       st.image.position({
         x: pb.x - layer.transform.x - pad,
@@ -1785,6 +1808,23 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
         if (imgData) {
           st.sourceImageData = imgData;
           st.dirtyFromIndex = 0;
+          // Update image position EAGERLY so a stroke-width change immediately
+          // re-anchors the image to the new paintedBounds. paintLayerSync's
+          // commitImagePosition runs the same logic later in the same RAF for
+          // the dstCanvas swap, but doing it here too means the visual stays
+          // tight to the path's true bounds even on the off-frames where the
+          // pipeline schedule slips a tick. See BUGS.md "Vector stroke pads
+          // from top-left" — the stroke would otherwise drift right + down
+          // by stroke-width / 2 until the next paint cycle.
+          if ((layer.type === 'vector' || layer.type === 'group')
+              && (st.vectorPaintedBounds || st.vectorPathBounds) && st.vectorPad != null) {
+            const pb = st.vectorPaintedBounds || st.vectorPathBounds;
+            const pad = st.vectorPad;
+            st.image.position({
+              x: pb.x - (layer.transform?.x || 0) - pad,
+              y: pb.y - (layer.transform?.y || 0) - pad,
+            });
+          }
           paintLayer(layer, st);
           repaintFxAbove(targetId);
         }

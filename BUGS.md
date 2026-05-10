@@ -29,17 +29,17 @@
 
 ---
 
-## Vector stroke pads from top-left, not centred
+## ~~Vector stroke pads from top-left, not centred~~ — fixed
 
-**Symptom**: A rectangle vector layer with a thick stroke (e.g. 34 px) doesn't expand the visual outwards equally on all sides — the visible outline appears to push the rect down + right, and the selection bbox shifts with it. Expected behaviour: with `DEFAULT_VECTOR_STROKE.align = 'center'` (the default), half the stroke width should sit inside the path and half outside, so the visual bbox grows symmetrically around the original path bounds.
+**Symptom (was)**: A rectangle vector layer with a thick stroke (e.g. 34 px) didn't expand the visual outwards equally on all sides — the visible outline appeared to push the rect down + right, and the selection bbox shifted with it.
 
-**Suspected cause**: The renderer's pad / `image.position` math computes `pathBounds` from the path d-string only and doesn't account for the current stroke width. As stroke width grows, the rendered stroke spills past the cached `pathBounds` in one direction (top-left), so the rasterised image is offset by the stroke spill on the bottom-right side instead of being centred. The fixed 16 px pad heuristic doesn't scale with stroke width either.
+**Cause**: The rasteriser correctly computed stroke-aware bounds (`computeBounds` includes `align`-aware spill), but only returned `pathBounds` (no stroke) to the renderer. The renderer's `image.position` formula used `pathBounds.x` to anchor the Konva.Image — so the canvas's left edge landed at `pathBounds.x - pad`, while the rasterised stroke pixel actually sat at `pathBounds.x - strokeWidth/2 - pad`. Result: the entire image (path + stroke) shifted right + down by `strokeWidth/2`.
 
-**Files involved**: `src/core/vector-renderer.js` (look for `pad`, `pathBounds`, `image.position` formula `image.x = pathBounds.x - layer.transform.x - pad`), `src/core/layer.js` (`DEFAULT_VECTOR_STROKE`), `src/ui/vector-tools/anchor-overlay.js` (anchor positions read `layer.transform.x/y` and must stay in sync with whatever fix lands).
+**Fix** (commits below): the rasteriser now returns BOTH `pathBounds` (for selection handles via `getSelfRect`) AND `paintedBounds` (path + stroke spill). The renderer uses `paintedBounds.x` for `image.position`, so the canvas's left edge sits at the leftmost stroke pixel's true world coord. `getSelfRect` adds `(pathBounds.x - paintedBounds.x)` to `pad` so the selection handles still hug the path tightly inside the now-larger image. The vectorChanged handler also commits the position eagerly (mirroring `paintLayerSync`'s commit) so a stroke-width change re-anchors the image immediately, even on RAF off-frames.
 
-**What was tried**: Nothing yet — symptom observed via screenshot only.
+**Files**: `src/core/vector-renderer.js` (rasterise returns `paintedBounds`), `src/core/renderer.js` (`commitImagePosition` + `applyTransform` + `getSelfRect` + vectorChanged handler all use `vectorPaintedBounds`).
 
-**Possible fixes**: (a) inflate `pathBounds` by `strokeWidth / 2` on all sides before computing `image.position`, so the rasterised image canvas grows symmetrically when stroke width changes; (b) make `pad` derive from `Math.max(16, strokeWidth)` (or similar) so the rasteriser canvas always has room for the stroke spill; (c) honour `stroke.align` properly — for `inside` no inflation, for `outside` inflate by full `strokeWidth`, for `center` inflate by `strokeWidth / 2`. Whatever lands must keep `layer.transform.x/y` stable (per the Phase 13 top-left-origin contract in CLAUDE.md) so anchor overlay coords don't drift.
+**Verified live**: a path at world (100, 100) → (200, 200) stays anchored at world (100, 100) as the stroke width is changed from 0 → 40 → 80 px. `paintedBounds` correctly grows by `strokeWidth/2` on every side; `image.position` shifts by exactly the matching delta.
 
 ---
 

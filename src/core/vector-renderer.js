@@ -477,7 +477,18 @@ export function applyVectorEffects(paths, layer) {
 
 // Main entry: rasterise an entire vector layer to ImageData.
 //   layer.vector.paths → series of SVG d-strings + fill/stroke specs
-//   Returns { imageData, naturalSize, pathBounds, pad }
+//   Returns { imageData, naturalSize, pathBounds, paintedBounds, pad }
+//
+//   • pathBounds   — pure path geometry bbox (NO stroke). Selection
+//                    handles + getSelfRect use this so handles hug the
+//                    path tightly, not the stroke spill.
+//   • paintedBounds — bbox INCLUDING stroke spill. The renderer positions
+//                    the rasterised image using this so the canvas's left
+//                    edge lands at world (paintedBounds.x - pad) — which
+//                    is where the stroke's leftmost pixel actually is. If
+//                    we used pathBounds for positioning, the stroke would
+//                    appear shifted by stroke-width / 2 to the right + down
+//                    (BUGS.md "Vector stroke pads from top-left").
 export function rasterizeVectorLayer(layer) {
   ensureProject();
   const sourcePaths = (layer.vector && layer.vector.paths) || [];
@@ -490,7 +501,8 @@ export function rasterizeVectorLayer(layer) {
   const empty = () => ({
     imageData: new ImageData(1, 1),
     naturalSize: { w: 1, h: 1 },
-    pathBounds: { x: 0, y: 0, width: 1, height: 1 },
+    pathBounds:    { x: 0, y: 0, width: 1, height: 1 },
+    paintedBounds: { x: 0, y: 0, width: 1, height: 1 },
     pad,
   });
   if (!recs.length) return empty();
@@ -571,6 +583,7 @@ export function rasterizeVectorLayer(layer) {
     imageData,
     naturalSize: { w, h },
     pathBounds,
+    paintedBounds: { x: b.x, y: b.y, width: b.width, height: b.height },
     pad,
   };
 }
