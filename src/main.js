@@ -85,6 +85,9 @@ import pexelsPlugin from './plugins/panels/pexels/index.js';
 // handles the 429 wall on non-standard widths.
 import openversePlugin from './plugins/panels/openverse/index.js';
 import metPlugin from './plugins/panels/met/index.js';
+import vamPlugin from './plugins/panels/vam/index.js';
+import smithsonianPlugin from './plugins/panels/smithsonian/index.js';
+import rijksmuseumPlugin from './plugins/panels/rijksmuseum/index.js';
 import falaiPlugin from './plugins/panels/falai/index.js';
 
 import { exportVisibleAsPng } from './io/export-png.js';
@@ -154,6 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Panel plugins (Phase 16). fal.ai pinned first so it leads the
     // Plugin Manager list.
     falaiPlugin, unsplashPlugin, pexelsPlugin, openversePlugin, metPlugin,
+    vamPlugin, smithsonianPlugin, rijksmuseumPlugin,
   ].forEach(registerPlugin);
 
   // Local-only: discover premium plugins under src/plugins/premium/ if
