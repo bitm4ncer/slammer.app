@@ -613,9 +613,9 @@ function renderPlugins() {
       <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Museums</div>
         ${apiKeyRowHTML('setSmithsonianKey', 'Smithsonian · API Key', s.smithsonianApiKey,
-          'edan.si.edu', 'Free, no usage limit. 5M+ open-access items across the Smithsonian.')}
+          'api.data.gov/signup/', 'Sign up at <strong>api.data.gov/signup/</strong> — same key works for Smithsonian, NASA, NPS. 1k req/hour. 5M+ open-access items.')}
         ${apiKeyRowHTML('setRijksmuseumKey', 'Rijksmuseum · API Key', s.rijksmuseumApiKey,
-          'data.rijksmuseum.nl', '~10k requests/day on the free tier. 800k+ objects from Amsterdam.')}
+          'rijksmuseum.nl/en/rijksstudio', 'Create a free Rijksstudio account → Profile → Advanced settings → API. ~10k req/day. 800k+ objects.')}
       </div>
 
       <div class="settings-group">
