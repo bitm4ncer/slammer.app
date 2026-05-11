@@ -51,32 +51,30 @@
 
 ---
 
-## Undo / Redo — only 1 step back, several action types not captured
+## ~~Undo / Redo — only 1 step back, several action types not captured~~ — fixed
 
-**Symptom**: Pressing Ctrl+Z repeatedly goes back at most 1 step instead of the expected 80 (capacity in `src/core/history.js`). Some actions don't enter history at all — vector path edits, layer renames, lock toggles likely lost. Even small actions (1 px nudge) feel inconsistently undoable.
+**Symptom (was)**: Ctrl+Z repeatedly went back at most 1 step instead of the expected 80 (capacity in `src/core/history.js`). Vector path edits, layer renames, lock toggles, paint-flag changes — all silently lost.
 
-**Root cause** (after code audit of `src/core/history.js`):
+**Root cause**: three compounding holes in `src/core/history.js`:
+1. `statesLookEqual` only compared a hand-picked subset of layer fields (transform / effects / text). It ignored `vector` path data, `name`, `locked`, `parentGroupId`, `childIds`, `frame`, etc. So post-mutation snapshots looked "equal" and `commit()` returned early without logging.
+2. The `STRUCTURAL_EVENTS` / `PROP_EVENTS` whitelists drifted as new event types landed elsewhere (Phase-23 colour hub, vector tools, etc.) — anything not in either set bypassed history entirely.
+3. Capacity of 80 was tight relative to user expectation of "always undoable."
 
-1. **`statesLookEqual` is incomplete** (L97-118). It compares `transform`, `effects`, `text` per layer — but NOT `vector` (path data), `name`, `locked`, `parentGroupId`, `childIds`, `frame`. So when the user edits a vector anchor, renames a layer, or locks a layer, the post-mutation snapshot looks "equal" by this comparison → `commit()` returns early at L58 → no history entry. The user clicks Undo, nothing reverts because nothing was logged.
-2. **`doc:loaded` wipes the past stack** (L122-130: `past.length = 0; past.push(snapshot());`). If `doc.load(...)` is called unexpectedly anywhere in the codebase (autosave restore, a plugin doing a state reset, HMR quirk), the entire history is deleted and the user starts fresh at 1 entry. `canUndo()` returns `past.length >= 2` so 1 entry = no undo possible.
-3. **`STRUCTURAL_EVENTS` / `PROP_EVENTS` whitelist is incomplete**. Only events in those Sets trigger commits. New event types added since (e.g. anything emitted by Phase-23 colour-picker, theme switch, vector tool) silently bypass history. Any action that fires only an unlisted event will not be recorded.
+**Fix** (single commit): closed the holes in `src/core/history.js` as a quick fix ahead of the planned command-pattern History v2 (roadmap.md → Phase 19 Cluster F).
+- `statesLookEqual` replaced with `deepEq(a, b)` over the WHOLE snapshot. New fields automatically participate. Microseconds even on 50-layer docs — the previous "scalar-first" optimisation was premature.
+- Event handling inverted: every emitted doc event now triggers a debounced commit UNLESS it appears in an explicit `IGNORE_EVENTS` set (`layer:active`, `effect:processing`, the `*Ephemeral` ones, `layer:vectorActivePath`, `doc:guidelines`). New event types default to "in history" — the safe default.
+- Capacity bumped 80 → 200.
+- `doc:loaded` handler kept as-is: undo / redo are short-circuited by the existing `applying` guard at the top of the subscribe handler; user-initiated loads (project open, `.slammerproj` import, autosave hydrate at boot) intentionally wipe past[] because that's the new baseline. New `withSuspended(fn)` exit hatch on the history API for future callers that need to load doc state without disturbing the stack.
 
-**Files involved**: `src/core/history.js` (statesLookEqual L97, doc:loaded handler L122, event sets L11-25), every event emit site in `src/core/document.js` (audit which fire which event names — must align with PROP_EVENTS / STRUCTURAL_EVENTS).
+**Files**: `src/core/history.js` (full rewrite of the subscribe handler + duplicate check), `src/main.js` (exposes `history` on `window.__slammer` for diagnostics).
 
-**What was tried**: Code audit only — no changes yet.
+**Verified live** (commit `5d8d0e9`):
+- Layer add → commit, transform nudge → commit, layer rename → commit, lock toggle → commit, vector path edit → commit. All four previously-silent mutations now land in history (past grew by 1 per mutation).
+- 25 sequential undos all returned `ok=true`; layer transform walked back step-by-step; eventually the layer's existence walked back past the `addVectorLayer` event (layer destroyed — correct).
+- After `location.reload()`: past=1 (autosave hydrate = baseline), one edit pushes past=2, first undo restores x=100 → 50. The reload-then-first-undo regression target is closed.
+- Redo path symmetric: pop from future, push to past, doc.load with `applying=true`. Verified by single forward step after undo chain.
 
-**Recommended quick fix** (before the bigger architectural overhaul, see roadmap "History v2"):
-- Extend `statesLookEqual` to compare every persisted layer field. Easier alternative: replace the whole function with a structural deepEq on `a.layers` + `a.name` + `a.exportFrame` + `a.guidelines`. The current cheap-scalar-first design is a perf premature-optimisation; deepEq runs in microseconds even on 50-layer projects.
-- Audit every event emitted by `document.js` and ensure it's in either STRUCTURAL_EVENTS or PROP_EVENTS. Better: invert the guard — fire scheduleCommit on ANY event NOT in an explicit IGNORE set (e.g. `layer:active`, `effect:processing`).
-- Defend `doc:loaded` from accidental triggers: only reset the past stack on EXPLICIT user-initiated loads (project open, file import). Internal state transitions (autosave restore, undo/redo itself) should set `applying = true` so this branch doesn't wipe history.
-- Bump `capacity` from 80 → 200 as a stop-gap until History v2 lands.
-
-**Verification after fix**:
-- 1 px arrow nudge on an image layer → undo restores. Repeat 50 times → 50 undos work.
-- Edit a vector path anchor → undo restores the previous path.
-- Rename a layer → undo restores old name.
-- Reload page → first undo still works (no spurious doc:loaded wipe).
-- Open a `.slammerproj` → that DOES wipe history (correct).
+History v2 (command pattern, see roadmap Phase 19 Cluster F) is the longer-term replacement — this commit is the quick fix that closes the actively-broken user surface.
 
 ---
 

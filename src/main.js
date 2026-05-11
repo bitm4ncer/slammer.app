@@ -451,6 +451,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---------- History (undo/redo) ----------
   const history = createHistory(doc);
+  // Expose on the __slammer debug surface so dev-tools probes + future
+  // diagnostics can read stack depth + drive undo/redo without poking
+  // through closures. Same shape rationale as `doc` / `renderer` / `view`.
+  if (window.__slammer) window.__slammer.history = history;
   const undoBtns = document.querySelectorAll('.tb-undo');
   const redoBtns = document.querySelectorAll('.tb-redo');
   history.subscribe(({ canUndo, canRedo }) => {
