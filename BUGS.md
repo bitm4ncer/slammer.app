@@ -252,21 +252,26 @@ Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bri
 
 ---
 
-## ~~Mesh Gradient — control points + mesh connections broken~~ — fixed (cannot reproduce 2026-05-11)
+## ~~Mesh Gradient — control points + mesh connections broken~~ — fixed (2026-05-11)
 
-**Symptom (was)**: On-canvas overlay showed control points scattered across the rectangle with criss-crossing dashed connection lines; a 4×4 mesh's 16 handles didn't form a 4×4 lattice; dragging didn't behave predictably.
+**Symptom (was)**: After applying Mesh Gradient, moving any of the on-canvas control handles had NO visible effect on the gradient. The handles moved in the overlay (correctly stored under `params.points[i].x/y`) but the rendered gradient was unchanged — only handle COLOUR changes propagated to the canvas.
 
-**Status**: cannot reproduce against the current code (`src/plugins/premium/mesh-gradient/index.js` v1.0.0 + `src/ui/mesh-gradient-overlay.js` post-Phase-20). All three suspected causes (a/b/c) ruled out by live diagnostic.
+**Original report blamed**: handle layout init / connection-line topology / overlay-vs-renderer state drift. None of those reproduce — the overlay paints a clean N×M lattice with the correct cardinal connections, and renderUI's `effect:propChanged` correctly invalidates the effect cache + reruns `applyEffectsPipeline`. The Konva stage shows exactly one `.mesh-grp` (no duplicate-overlay leak).
 
-**Diagnostic**: dropped a 400×300 image layer at world (200, 150), added Mesh Gradient with `editOnCanvas: true`, then probed:
+**Real root cause**: the sampler in `src/plugins/premium/mesh-gradient/index.js` (the original `sampleMesh`, now `sampleMeshGrid`) indexes the colour table strictly by GRID SLOT — `points[r * gridW + c].color` — and never reads `point.x` or `point.y`. The Phase 20 bicubic Catmull-Rom path treats the mesh as a parametric grid with FIXED positions, so a moved handle was a UI illusion: the overlay rendered the dragged dot but the per-pixel sampler kept reading from the canonical-grid slot. Colour edits worked (they updated the same `points[i].color` the sampler reads); position edits silently no-opped.
 
-- **3×3 init**: 9 handles at exact grid intersections — local `(0, 0)`, `(200, 0)`, `(400, 0)`, `(0, 150)`, `(200, 150)`, `(400, 150)`, `(0, 300)`, `(200, 300)`, `(400, 300)`. Connection lines: 12 = `gridH*(gridW−1) + gridW*(gridH−1)` for 3×3, exact match.
-- **Switch to 4×4 via the Grid pillGroup**: 16 handles at local `(0/133/267/400, 0/100/200/300)` — exact 4×4 lattice. Connection lines: 24, exact match. Only ONE `mesh-grp` in the stage (no duplicate-overlay leak from the old mount).
-- **Drag handle 5 to local (180, 130)**: fraction commits to `(0.45, 0.4333)` — exactly `180/400` and `130/300`. All other 15 handles remain on their canonical grid fractions (e.g. handle 6 still at `(0.6667, 0.3333)`).
-- **Ctrl+Z**: handle 5 returns to `(1/3, 1/3)`; all others unchanged.
-- **`location.reload()`**: 4×4 grid + 16 points + handle 7's custom drag position `(0.65, 0.4667)` all persist from autosave. Other 15 handles still at exact grid fractions.
+**Fix**: dual-path sampler with auto-detect.
 
-The Phase 20 rewrite to bicubic Catmull-Rom + `params.points` storage (current code) replaced an earlier `params.meshHandles` representation. The investigation hint `console.log({ handles: layer.params.meshHandles })` from the original report refers to that old key — likely the report was filed against the in-flight Phase 20 work and the final ship fixed it. Reopen with fresh repro steps if the symptom resurfaces.
+- New `arePointsAtCanonical(points, gridW, gridH)` checks every point against its canonical grid position within `CANONICAL_EPS = 0.005` (half a percent of canvas). If ALL handles still sit on the grid, the renderer uses the original `sampleMeshGrid` path — bicubic Catmull-Rom, full Phase-20 smoothness, zero quality regression on the default look.
+- New `sampleMeshDeformed(points, rgbPoints, u, v, smoothness)` runs an inverse-distance-weighted blend the moment ANY handle is dragged off-grid. Power `p = 2 + (1 − smoothness/100) × 6` maps smoothness=100 → p=2 (soft IDW), smoothness=0 → p=8 (near-Voronoi sharp). Per-point RGB is pre-decoded into a `Float32Array` once per render so the inner loop is hex-parse-free.
+- `renderMeshTo` picks the path ONCE per render via the `useGrid` boolean; pre-decoding only happens on the deformed path.
+
+**Verified**:
+- 3×3 default mesh, canonical handles → `useGrid=true`, canvas hash `1650126509` (Phase-20 baseline preserved exactly).
+- Drag point 4 from `(0.5, 0.5)` → `(0.15, 0.15)`: canvas hash flips to `-1062650886`, all 9 sample positions changed. Drag again to `(0.7, 0.3)` and dragging two more corners off-grid: hash differs again, deformed sampler engaged.
+- Reset every handle to canonical → hash returns to `1650126509` (round-trip clean — `useGrid` flips back correctly).
+- `location.reload()` with three handles dragged off-grid → all positions survive autosave; canvas re-renders with the deformed gradient, hash matches the pre-reload deformed-state hash.
+- Colour change at any handle still propagates to the canvas (the original colour-edit path was always intact).
 
 ---
 
