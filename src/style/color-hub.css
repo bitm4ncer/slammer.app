@@ -428,6 +428,57 @@
   padding: 14px 4px;
 }
 
+/* ---------- Variable-edit banner ----------
+ * Shows at the very top of the popover when the picker is bound to a
+ * variable (`editingVariable` set). Picker writes go to the variable;
+ * commits propagate to every layer that binds it via setVariable
+ * (handled in selection-style.js). Esc or the × button exits. */
+.color-hub-var-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: -8px -14px 12px;        /* full-bleed across the popover */
+  background: color-mix(in srgb, var(--ctx-accent) 18%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ctx-accent) 40%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.color-hub-var-banner[hidden] { display: none; }
+.color-hub-var-banner-name {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+.color-hub-var-banner-exit {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  border-radius: 3px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.color-hub-var-banner-exit:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* The variable row currently being edited gets a clear accent ring +
+ * tinted background so it's obvious which variable the picker drives. */
+.color-hub-var-row.is-editing {
+  background: color-mix(in srgb, var(--ctx-accent) 12%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--ctx-accent) 50%, transparent);
+  outline-offset: -1px;
+}
+
 /* ---------- Variables tab ----------
  * Each row: square colour swatch (drag source + click to apply +
  * right-click to remove), name input (rename inline), hex readout.

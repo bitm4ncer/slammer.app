@@ -35,6 +35,7 @@ let popover = null;
 let unsubs = [];
 let activeSlot = 'fill';     // which slot the picker writes to: 'fill' | 'stroke'
 let activeStopIdx = 0;        // which gradient stop the picker writes to (when kind === 'gradient')
+let editingVariable = null;   // when set ('--brand'), the picker drives this variable's value instead of the active slot
 let setSlotImpl = null;       // function exposed by bindEvents so the dial can switch slots while the hub stays open
 
 export function isColorHubOpen() { return !!popover; }
@@ -96,6 +97,11 @@ function build() {
   popover.style.setProperty('--ring-inner', `${RING_INNER * 2}px`);
   popover.style.setProperty('--tri-box',    `${TRI_BOX}px`);
   popover.innerHTML = `
+    <div class="color-hub-var-banner" hidden>
+      <span class="color-hub-var-banner-label">Editing</span>
+      <span class="color-hub-var-banner-name"></span>
+      <button class="color-hub-var-banner-exit" type="button" title="Exit variable edit mode (Esc)" aria-label="Exit variable edit mode">×</button>
+    </div>
     <div class="color-hub-slot-row">
       <div class="color-hub-slot-toggle" role="tablist" aria-label="Editing colour slot">
         <button class="color-hub-slot color-hub-slot--fill ${activeSlot === 'fill' ? 'is-active' : ''}" data-slot="fill" type="button" role="tab" title="Fill" aria-label="Fill">
@@ -254,6 +260,14 @@ function bindEvents(anchorEl) {
   let { h, s, v } = hexToHsv(activeColor());
 
   function activeColor() {
+    // Variable-edit mode short-circuits everything else — the picker
+    // reads + writes the variable's value, ignoring the active slot.
+    if (editingVariable) {
+      const v = getVariables().find((x) => x.name === editingVariable);
+      if (v) return v.value;
+      // Variable was deleted while we were editing it → exit mode.
+      editingVariable = null;
+    }
     // Source of truth = the effective style (selected layer if any,
     // active state otherwise). In gradient mode the picker drives the
     // SELECTED stop's colour; in solid mode it drives the slot's main
@@ -299,6 +313,14 @@ function bindEvents(anchorEl) {
 
   function commit() {
     const hex = hsvToHex(h, s, v);
+    // Variable-edit mode → write the picker colour to the variable.
+    // onVariablesChange fans the new value out to every layer that
+    // binds this variable (see selection-style.js propagateVariable).
+    if (editingVariable) {
+      setVariable(editingVariable, hex);
+      paint();
+      return;
+    }
     const style = getEffectiveStyle();
     const kind = activeSlot === 'stroke' ? style.strokeKind : style.fillKind;
     if (kind === 'gradient') {
@@ -881,6 +903,31 @@ function bindEvents(anchorEl) {
   const varsListEl = popover.querySelector('.color-hub-vars-list');
   const varsNameInput = popover.querySelector('.color-hub-vars-name');
   const varsAddBtn = popover.querySelector('.color-hub-vars-add');
+  const varBannerEl = popover.querySelector('.color-hub-var-banner');
+  const varBannerName = popover.querySelector('.color-hub-var-banner-name');
+  const varBannerExit = popover.querySelector('.color-hub-var-banner-exit');
+
+  // Banner at top of the popover shows "Editing --brand · [×]" while
+  // the picker is bound to a variable. Hidden when editingVariable is null.
+  function paintVarBanner() {
+    if (!varBannerEl) return;
+    if (editingVariable) {
+      varBannerEl.hidden = false;
+      varBannerName.textContent = editingVariable;
+    } else {
+      varBannerEl.hidden = true;
+    }
+    popover.classList.toggle('color-hub--editing-var', !!editingVariable);
+  }
+  varBannerExit.addEventListener('click', () => {
+    editingVariable = null;
+    paintVarBanner();
+    paintVariables();
+    // Re-sync HSV back to whatever the active slot was showing.
+    const t = hexToHsv(activeColor());
+    h = t.h; s = t.s; v = t.v;
+    paint();
+  });
 
   function paintVariables() {
     if (!varsListEl) return;
@@ -896,7 +943,7 @@ function bindEvents(anchorEl) {
       const varName  = entry.name;
       const varValue = entry.value;
       const row = document.createElement('div');
-      row.className = 'color-hub-var-row';
+      row.className = 'color-hub-var-row' + (editingVariable === varName ? ' is-editing' : '');
       row.innerHTML = `
         <button class="color-hub-var-swatch" type="button" title="${varName} = ${varValue.toUpperCase()} — click to apply, drag onto a layer, right-click to remove" style="background:${varValue}" draggable="true"></button>
         <input class="color-hub-input color-hub-var-name" type="text" value="${varName}" spellcheck="false" />
@@ -905,12 +952,24 @@ function bindEvents(anchorEl) {
       const swatch = row.querySelector('.color-hub-var-swatch');
       const nameInput = row.querySelector('.color-hub-var-name');
       const hexInput = row.querySelector('.color-hub-var-hex');
-      // Click swatch → apply to active slot (resolves the variable to its
-      // current hex, syncs the picker HSV state, commits).
+      // Click swatch → enter variable-edit mode. Picker (hue ring +
+      // triangle + hex + RGB) now drives THIS variable's value, and
+      // changes propagate live to every layer that binds it. Click the
+      // same variable again to exit. Drag (separate handler below) is
+      // unchanged — it still drops the resolved colour onto a target.
       swatch.addEventListener('click', () => {
-        const t = hexToHsv(varValue);
-        h = t.h; s = t.s; v = t.v;
-        commit();
+        if (editingVariable === varName) {
+          editingVariable = null;
+        } else {
+          editingVariable = varName;
+        }
+        // Re-sync the picker to the variable's colour AND mark the
+        // active row so the user sees which one they're editing.
+        const target = hexToHsv(varValue);
+        h = target.h; s = target.s; v = target.v;
+        paint();
+        paintVarBanner();
+        paintVariables();
       });
       // Drag → uses the same x-slammer-color receivers as the Recent strip.
       swatch.addEventListener('dragstart', (e) => {
@@ -972,7 +1031,33 @@ function bindEvents(anchorEl) {
   });
 
   paintVariables();
-  unsubs.push(onVariablesChange(paintVariables));
+  paintVarBanner();
+  // Variables tab needs to repaint on every variable change (rename,
+  // value-edit, add, remove). The picker also needs a fresh sync when
+  // the variable it's currently editing changes — repaint paint() to
+  // reflect the new HSV.
+  unsubs.push(onVariablesChange(() => {
+    paintVariables();
+    if (editingVariable) {
+      const found = getVariables().find((x) => x.name === editingVariable);
+      if (!found) {
+        editingVariable = null;
+        paintVarBanner();
+      } else {
+        // Sync picker only when the variable was edited externally
+        // (e.g. via the inline hex input on the row) — without this the
+        // hue ring + triangle would lag a frame behind. Skip when the
+        // picker's current HSV already matches the variable (avoids
+        // wiping the user's current drag mid-flight).
+        const cur = hsvToHex(h, s, v);
+        if (cur !== found.value.toLowerCase()) {
+          const target = hexToHsv(found.value);
+          h = target.h; s = target.s; v = target.v;
+          paint();
+        }
+      }
+    }
+  }));
 
   // ── Tab switching ────────────────────────────────────────────────────
   popover.querySelectorAll('.color-hub-tab').forEach((tab) => {
@@ -1038,7 +1123,18 @@ function bindEvents(anchorEl) {
 }
 
 function onKey(e) {
-  if (e.key === 'Escape') closeColorHub();
+  if (e.key !== 'Escape') return;
+  // Esc inside the popover should EXIT variable-edit mode first
+  // (cheaper, more focused affordance). Only close the hub if no
+  // variable is being edited. The banner's × button is the explicit
+  // mouse-driven equivalent.
+  if (editingVariable && popover) {
+    // Forward to the banner exit button so the cleanup path stays
+    // identical to the manual click — single source of truth.
+    const exit = popover.querySelector('.color-hub-var-banner-exit');
+    if (exit) { exit.click(); return; }
+  }
+  closeColorHub();
 }
 
 function onOutside(e) {
