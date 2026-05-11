@@ -2343,6 +2343,52 @@
   opacity: 1;
 }
 
+/* ---------- Phase 19 Cluster I — drop loading indicators ---------- */
+/* Layer-panel thumb spinner: shown while the layer's dstCanvas is still
+ * the 1×1 placeholder (multi-MB image / SVG still decoding). Centred
+ * inside the existing 36 px thumb slot. Matches `.browsable-landing-loader`
+ * — ring icon, no glow. */
+.layer-thumb--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+.layer-thumb-spinner {
+  color: var(--primary);
+  font-size: 12px;
+  /* Hide the type icon while spinning — single visual cue. */
+  position: absolute;
+  z-index: 1;
+}
+.layer-thumb--loading .layer-type-icon {
+  display: none;
+}
+
+/* Canvas drop-loader: small centred spinner pinned to the world-coord
+ * drop point. Fade-in handled by the `--visible` class (added 200 ms
+ * after creation so fast drops don't flash). */
+.drop-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 22px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  z-index: 50;
+  /* No glow / halo per house rules. The ring icon is the sole affordance. */
+}
+.drop-loader--visible {
+  opacity: 1;
+}
+
 /* ---------- Landing state (no search yet) ---------- */
 /* Big centered headline + oversized search bar, dropped to normal layout
  * the moment the user submits a query. */

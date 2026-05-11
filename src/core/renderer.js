@@ -21,6 +21,21 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   let transformer = null;
   let pendingRedraw = null;
 
+  // Phase 19 Cluster I — drop loading indicators.
+  // Tracks which layers have committed at least one real (>1×1) dstCanvas.
+  // `firstPaintedListeners` fire on the transition no-paint → first-real-paint.
+  // Cleared on layer:removed so a fresh drop with a recycled id (rare) still
+  // signals correctly.
+  const firstPaintedLayerIds = new Set();
+  const firstPaintedListeners = new Set();
+  function emitFirstPainted(layerId) {
+    if (firstPaintedLayerIds.has(layerId)) return;
+    firstPaintedLayerIds.add(layerId);
+    for (const fn of firstPaintedListeners) {
+      try { fn(layerId); } catch (err) { console.error('[renderer] firstPainted listener', err); }
+    }
+  }
+
   // Per-frame paint queue. Multiple param tweaks within one frame collapse to a single paint.
   const paintQueue = new Set();
   let paintScheduled = false;
@@ -1088,6 +1103,19 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // Bump the paint version so consumers (layer-panel thumb cache) know to
     // re-encode. Cheap integer increment; cache lookups stay branch-free.
     st._paintVersion = (st._paintVersion | 0) + 1;
+    // Drop-loader / layer-card spinner trigger: signal the FIRST commit where
+    // the dstCanvas is real (>1×1, not the placeholder). Cheap Set lookup
+    // gates this so subsequent paints are no-ops.
+    if (st.dstCanvas.width > 1 && st.dstCanvas.height > 1) {
+      emitFirstPainted(layer.id);
+    }
+    // Tell the layer panel a fresh bitmap landed — without this, the panel's
+    // blind +220 ms thumb-refresh timer races slow first paints and caches a
+    // blank 1×1 PNG against paintVersion 0. Event is on history's IGNORE list
+    // so it doesn't pollute undo. Fires on EVERY paint; the panel's
+    // thumbForLayer cache (keyed on `_paintVersion`) skips re-encoding when
+    // the version hasn't actually advanced for the row currently in the DOM.
+    if (document._emitLayerPainted) document._emitLayerPainted(layer.id, st._paintVersion);
     st.image.image(st.dstCanvas);
     st.image.width(finalImageData.width);
     st.image.height(finalImageData.height);
@@ -1391,6 +1419,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
             st.image.width(c.width);
             st.image.height(c.height);
             st._paintVersion = (cached.paintVersion | 0) || 1;
+            // Persistent-cache hydrate counts as a paint as far as the panel
+            // is concerned — dstCanvas now holds the real bitmap. Without
+            // this emit, projects reopened from the IndexedDB render cache
+            // render correctly on canvas but the panel's first thumbForLayer
+            // call may run before the row exists, then never get re-prompted.
+            queueMicrotask(() => {
+              if (document._emitLayerPainted) document._emitLayerPainted(layer.id, st._paintVersion);
+            });
+            // Cache-hit hydration paints a real bitmap immediately, before
+            // the first paintLayerSync runs. Mark as first-painted so the
+            // layer panel never shows a spinner for a freshly-loaded
+            // project, and so any (defensive) future drop-loader listening
+            // for this id receives a cleanup signal.
+            if (c.width > 1 && c.height > 1) emitFirstPainted(layer.id);
             // Restore the geometry metadata (pad + path bounds + content
             // size) so commitImagePosition + getSelfRect produce the same
             // positioning the cold path would have. Without this, vector /
@@ -1843,6 +1885,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       }
       case 'layer:removed': {
         const removedIdx = -1; // already removed; just refresh all FX
+        firstPaintedLayerIds.delete(event.id);
         destroyLayerNodes(event.id);
         for (const l of document.layers) if (l.type === 'fx') {
           const st = layerState.get(l.id);
@@ -2418,6 +2461,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     // finishes mounting every layer group. Used by project-menu / .slmr
     // import to call view.fitTo() at exactly the right moment.
     onceLayersMounted: (cb) => { if (typeof cb === 'function') _onceLayersMountedListeners.push(cb); },
+    // Drop loading indicators — subscribe to the first real paint of any
+    // layer (dstCanvas committed at >1×1). Used by layer-panel and the
+    // canvas drop-loader to tear down their spinners. Returns an
+    // unsubscribe fn.
+    onFirstPainted(fn) {
+      if (typeof fn !== 'function') return () => {};
+      firstPaintedListeners.add(fn);
+      return () => firstPaintedListeners.delete(fn);
+    },
+    // Read-only: has this layer ever committed a real (>1×1) dstCanvas?
+    // Used by layer-panel to decide whether to render a thumb spinner.
+    hasFirstPainted(layerId) {
+      return firstPaintedLayerIds.has(layerId);
+    },
   };
 
   // Read-only export of a single layer's processed pixels as a Blob. Used by

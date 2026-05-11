@@ -9,6 +9,7 @@ import { attachPencilTool } from './vector-tools/pencil-tool.js';
 import { selectOnly, toggleInSelection, addToSelection, clearSelection, getSelection, setSelection, onSelectionChange } from './selection-state.js';
 import { attachMarquee } from './marquee.js';
 import { translatePathD } from '../core/vector-renderer.js';
+import { showPendingDrop } from './drop-loader.js';
 
 // Restrict Konva drag-start to the left mouse button so middle-mouse pan
 // never accidentally drags overlay handles.
@@ -1368,6 +1369,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
             onProxyFallback: (proxy) => console.warn('[canvas-view] direct fetch failed, proxying via', proxy),
           });
           const filename = uri.split('/').pop()?.split('?')[0] || 'image';
+          showPendingDrop(dropPosition.x, dropPosition.y);
           onImageDropped?.(new File([blob], filename, { type: blob.type || 'image/png' }), { position: dropPosition });
         } catch (err) {
           console.warn('[canvas-view] URL drop failed (chain exhausted)', err);
@@ -1379,6 +1381,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
       // SVG → vector layer (Phase 13a). image/svg+xml MIME OR .svg extension.
       if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) {
         try {
+          showPendingDrop(dropPosition.x, dropPosition.y);
           const { importSvgFile } = await import('./vector-tools/svg-import.js');
           await importSvgFile(f, document, { position: dropPosition });
         } catch (err) {
@@ -1386,7 +1389,10 @@ export function initCanvasView({ container, document, onImageDropped }) {
         }
         continue;
       }
-      if (f.type.startsWith('image/')) onImageDropped?.(f, { position: dropPosition });
+      if (f.type.startsWith('image/')) {
+        showPendingDrop(dropPosition.x, dropPosition.y);
+        onImageDropped?.(f, { position: dropPosition });
+      }
     }
   });
 

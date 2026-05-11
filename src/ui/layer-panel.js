@@ -82,6 +82,17 @@ export function initLayerPanel({ container, document, renderer }) {
     return clone;
   }
 
+  // Phase 19 Cluster I — true while a layer's dstCanvas is still the 1×1
+  // placeholder (image / SVG still decoding, effect pipeline hasn't run).
+  // Group / fx layers never carry a bitmap of their own — exclude them.
+  function isUnpainted(layer) {
+    if (!layer) return false;
+    if (layer.type === 'group' || layer.type === 'fx') return false;
+    const st = renderer?.layerState?.get(layer.id);
+    if (!st || !st.dstCanvas) return false;
+    return st.dstCanvas.width <= 1 || st.dstCanvas.height <= 1;
+  }
+
   // Reusable offscreen canvas for thumbnail downscaling — avoids allocating
   // a fresh one per layer per render.
   let _thumbTmp = null;
@@ -91,6 +102,14 @@ export function initLayerPanel({ container, document, renderer }) {
     const src = st.dstCanvas;
     const w = src.width, h = src.height;
     if (w <= 0 || h <= 0) return '';
+    // The renderer hands every fresh layer a 1×1 placeholder dstCanvas; the
+    // real bitmap only lands once paintLayerSync (or the persistent-cache
+    // hydrate path) completes. Caching the placeholder against paintVersion
+    // 0 would lock the row to a blank tile until the user edited something —
+    // the bug this thumb-pipeline fix targets. Skip caching at 1×1 so the
+    // next call (driven by the `layer:painted` event below) re-encodes the
+    // real pixels into the cache slot.
+    if (w <= 1 && h <= 1) return '';
     // Cache: toDataURL is synchronous and expensive (PNG encode on main thread,
     // typically 50–100 ms per full-size layer canvas). With N layers in the
     // panel, every panel rebuild was paying N × encode. Cache keyed by the
@@ -237,7 +256,8 @@ export function initLayerPanel({ container, document, renderer }) {
            style="--layer-accent:${accent}">
         <div class="layer-drag-handle"><i class="fas fa-grip-vertical"></i></div>
         ${swatchMarkup}
-        <div class="layer-thumb" style="background-image:url('${thumbForLayer(layer)}')">
+        <div class="layer-thumb${isUnpainted(layer) ? ' layer-thumb--loading' : ''}" style="background-image:url('${isUnpainted(layer) ? '' : thumbForLayer(layer)}')">
+          ${isUnpainted(layer) ? '<i class="fas fa-circle-notch fa-spin layer-thumb-spinner"></i>' : ''}
           ${layer.type === 'text' ? '<span class="layer-type-icon">T</span>' : `<i class="fas fa-${typeIcon(layer.type)} layer-type-icon"></i>`}
         </div>
         <div class="layer-meta">
@@ -879,7 +899,34 @@ export function initLayerPanel({ container, document, renderer }) {
     ].includes(e.type)) {
       scheduleThumbRefresh(e.layerId || e.id);
     }
+    // Renderer pings us each time paintLayerSync lands a fresh bitmap (and
+    // also when the persistent-cache hydrate path swaps in a real dstCanvas).
+    // This is the deterministic signal — replaces the +220 ms blind-timer
+    // race that was leaving rows blank when first paints took longer than
+    // expected (large images, FX composite, async rasterise). Branch is
+    // cheap: thumbForLayer's cache short-circuits when paintVersion hasn't
+    // advanced past the row's last encode.
+    if (e.type === 'layer:painted' && e.layerId) {
+      refreshThumbNow(e.layerId);
+    }
   });
+
+  // Phase 19 Cluster I — when a freshly-dropped layer's first real paint
+  // commits, replace the inline spinner with the real thumb. Rebuilds the
+  // single affected row in place (cheap) instead of the whole panel.
+  if (renderer && typeof renderer.onFirstPainted === 'function') {
+    renderer.onFirstPainted((layerId) => {
+      const row = container.querySelector(`.layer-item[data-layer-id="${layerId}"]`);
+      if (!row) return;
+      const thumbEl = row.querySelector('.layer-thumb');
+      if (!thumbEl) return;
+      thumbEl.classList.remove('layer-thumb--loading');
+      const spinner = thumbEl.querySelector('.layer-thumb-spinner');
+      if (spinner) spinner.remove();
+      const layer = document.findLayer(layerId);
+      if (layer) thumbEl.style.backgroundImage = `url('${thumbForLayer(layer)}')`;
+    });
+  }
 
   let pending = null;
   function scheduleRender() {
@@ -893,11 +940,20 @@ export function initLayerPanel({ container, document, renderer }) {
     if (thumbTimers.has(layerId)) clearTimeout(thumbTimers.get(layerId));
     thumbTimers.set(layerId, setTimeout(() => {
       thumbTimers.delete(layerId);
-      const row = container.querySelector(`.layer-item[data-layer-id="${layerId}"] .layer-thumb`);
-      const layer = document.findLayer(layerId);
-      if (!row || !layer) return;
-      row.style.backgroundImage = `url('${thumbForLayer(layer)}')`;
+      refreshThumbNow(layerId);
     }, 220));
+  }
+  // Immediate (un-debounced) refresh — wired to the renderer's `layer:painted`
+  // ping. Safe to call repeatedly: thumbForLayer's paintVersion cache means
+  // the actual encode runs only when the bitmap genuinely changed.
+  function refreshThumbNow(layerId) {
+    if (!layerId) return;
+    const row = container.querySelector(`.layer-item[data-layer-id="${layerId}"] .layer-thumb`);
+    const layer = document.findLayer(layerId);
+    if (!row || !layer) return;
+    const url = thumbForLayer(layer);
+    if (!url) return; // 1×1 placeholder — wait for next paint
+    row.style.backgroundImage = `url('${url}')`;
   }
 
   function updateRow(layerId) {

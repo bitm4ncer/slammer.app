@@ -17,6 +17,7 @@ import { createHistory } from './core/history.js';
 import { translatePathD } from './core/vector-renderer.js';
 import { getSelectionArray, selectOnly } from './ui/selection-state.js';
 import { initCanvasView } from './ui/canvas-view.js';
+import { initDropLoader } from './ui/drop-loader.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
 import { initToolbar, addImageFile } from './ui/toolbar.js';
@@ -197,6 +198,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initLayerPanel({
     container: document.getElementById('layerList'),
+    document: doc,
+    renderer,
+  });
+  // Phase 19 Cluster I — bridge the silent gap during multi-MB image drops.
+  // Spawns a small ring at the drop's world coords on every canvas drop, fades
+  // out on layer:firstPainted. Must be initialised AFTER renderer (depends on
+  // renderer.onFirstPainted).
+  initDropLoader({
+    stageContainer: document.getElementById('stageContainer'),
+    stage: view.stage,
     document: doc,
     renderer,
   });
