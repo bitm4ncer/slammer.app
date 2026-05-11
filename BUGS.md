@@ -94,17 +94,29 @@ History v2 (command pattern, see roadmap Phase 19 Cluster F) is the longer-term 
 
 ---
 
-## Layer-panel image thumbnails broken
+## ~~Layer-panel image thumbnails broken~~ — fixed
 
-**Symptom**: Thumbnails on layer cards in the Layer Stack panel are missing, blank, or showing placeholder squares instead of the layer's actual content.
+**Symptom (was)**: Thumbnails on layer cards in the Layer Stack panel were missing, blank, or showing placeholder squares instead of the layer's actual content.
 
-**Suspected cause**: The thumb cache reads from `st._paintVersion` to know when to re-encode. If `paintVersion` is undefined (layer never painted), the cache lookup fails or returns a stale/empty thumb. Could also be that thumb encoding was wired before the new `commitImagePosition` rework changed paintLayerSync flow — verify the thumb generator still reads `st.dstCanvas` after my recent fix landed.
+**Root cause**: Race between the layer-panel's blind `+220 ms` thumb-refresh timer (`scheduleThumbRefresh`, triggered on `layer:added` / `doc:loaded`) and the renderer's async first paint. When the first paint took longer than the timer — large images, FX composite, vector pipeline, slow effect chains, fonts still loading — the panel's `toDataURL` ran against the renderer's 1×1 placeholder `dstCanvas` and the result got CACHED against `_paintVersion = 0`. Subsequent `paintLayerSync` calls bumped `_paintVersion` to 1+, but nothing re-prompted the panel to invalidate, so the row kept rendering the blank PNG until the next user edit forced a thumb refresh. The existing `onFirstPainted` callback (Phase 19 Cluster I drop-loader) only fired the no-paint → first-real-paint transition — it didn't help with subsequent re-paints, and on the cache-hit hydrate path it didn't run at all without an explicit signal.
 
-**Files involved**: `src/ui/layer-panel.js` (thumb rendering + cache), `src/core/renderer.js` (`_paintVersion` writes around L1055-1060), possibly `src/io/project-store.js` for persisted-thumb path.
+**Fix**: deterministic paint-completion event from the renderer to the panel.
 
-**What was tried**: Nothing yet.
+- `src/core/document.js` — added `_emitLayerPainted(layerId, version)` next to the other transient renderer signals (sibling of `_emitEffectProcessing` / `_emitVectorActivePath`).
+- `src/core/history.js` — listed `'layer:painted'` in `IGNORE_EVENTS` so the new event doesn't pollute undo / redo.
+- `src/core/renderer.js` — `paintLayerSync` calls `document._emitLayerPainted(layer.id, st._paintVersion)` AFTER bumping the version, on every paint (not just the first). The persistent-cache hydrate path in `createLayerNodes` also emits via `queueMicrotask` so reopened projects fire the event for layers whose dstCanvas was rebuilt from the IndexedDB render cache.
+- `src/ui/layer-panel.js`:
+  - `thumbForLayer` bails out (returns `''`) when `dstCanvas` is still 1×1, *without* caching, so the placeholder can't lock the cache slot.
+  - New `refreshThumbNow(layerId)` updates a single row's `background-image` in place; `scheduleThumbRefresh` now delegates to it.
+  - The existing doc-change subscriber listens for `'layer:painted'` and calls `refreshThumbNow` directly — no debounce, gated by the existing paintVersion cache so the encode only runs when the bitmap actually changed.
 
-**Possible fixes**: (a) Confirm `paintLayerSync` increments `_paintVersion` for every layer type (not just non-FX); (b) layer-panel thumb renderer should fall back to `st.dstCanvas` even when `_paintVersion` is missing; (c) trace which thumb path is broken — initial create, after-edit, or after-reload.
+**Behaviour**:
+- Initial mount: blank 1×1 → spinner shown by Phase 19 Cluster I drop-loader → first paint → `layer:painted` fires → row encodes the real bitmap.
+- Effect param drag: each commit fires `layer:painted` → row re-encodes against the new pixels.
+- Reload: cache-hit hydrate enqueues a microtask `layer:painted` so rows refresh from the persistent render cache.
+- FX layers: composite recomputes when underlying layers paint → FX paints → `layer:painted` fires for the FX row too.
+
+**Files**: `src/core/document.js`, `src/core/history.js`, `src/core/renderer.js`, `src/ui/layer-panel.js`.
 
 ---
 
@@ -240,19 +252,21 @@ Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bri
 
 ---
 
-## Mesh Gradient — control points + mesh connections broken
+## ~~Mesh Gradient — control points + mesh connections broken~~ — fixed (cannot reproduce 2026-05-11)
 
-**Symptom**: When applying the Mesh Gradient effect, the on-canvas overlay shows control points scattered across the rectangle with criss-crossing dashed connection lines that don't form a clean grid. Multiple handles appear to be unconstrained — they sit far from where the regular grid intersection should be (e.g. a 4×4 mesh shows 16 handles but they're not laid out in a 4×4 lattice). The resulting gradient still renders something colourful, but the mesh structure is visually wrong and editing handles doesn't behave predictably.
+**Symptom (was)**: On-canvas overlay showed control points scattered across the rectangle with criss-crossing dashed connection lines; a 4×4 mesh's 16 handles didn't form a 4×4 lattice; dragging didn't behave predictably.
 
-**Suspected cause**: Either (a) the handle position storage/restore logic has drifted — handle world-coords are no longer constrained to their grid cell, or saved positions don't match the grid topology; (b) the overlay's connection-line rendering walks neighbours via wrong indices, drawing extra/wrong edges; (c) a recent Phase 19/20 refactor changed how `mesh-gradient-overlay.js` resolves grid indices vs world coords. Possibly related to layer transform changes or rasteriser pad math.
+**Status**: cannot reproduce against the current code (`src/plugins/premium/mesh-gradient/index.js` v1.0.0 + `src/ui/mesh-gradient-overlay.js` post-Phase-20). All three suspected causes (a/b/c) ruled out by live diagnostic.
 
-**Files involved**: `src/ui/mesh-gradient-overlay.js` (handle rendering + connection lines), `src/plugins/premium/mesh-gradient/index.js` (or wherever the manifest + process function live — confirm path; may be under a different premium folder), `src/core/document.js` (mesh handle persistence in layer params).
+**Diagnostic**: dropped a 400×300 image layer at world (200, 150), added Mesh Gradient with `editOnCanvas: true`, then probed:
 
-**What was tried**: Phase 20 shipped the bicubic Catmull-Rom + HSL tint version that was working. Something has regressed since.
+- **3×3 init**: 9 handles at exact grid intersections — local `(0, 0)`, `(200, 0)`, `(400, 0)`, `(0, 150)`, `(200, 150)`, `(400, 150)`, `(0, 300)`, `(200, 300)`, `(400, 300)`. Connection lines: 12 = `gridH*(gridW−1) + gridW*(gridH−1)` for 3×3, exact match.
+- **Switch to 4×4 via the Grid pillGroup**: 16 handles at local `(0/133/267/400, 0/100/200/300)` — exact 4×4 lattice. Connection lines: 24, exact match. Only ONE `mesh-grp` in the stage (no duplicate-overlay leak from the old mount).
+- **Drag handle 5 to local (180, 130)**: fraction commits to `(0.45, 0.4333)` — exactly `180/400` and `130/300`. All other 15 handles remain on their canonical grid fractions (e.g. handle 6 still at `(0.6667, 0.3333)`).
+- **Ctrl+Z**: handle 5 returns to `(1/3, 1/3)`; all others unchanged.
+- **`location.reload()`**: 4×4 grid + 16 points + handle 7's custom drag position `(0.65, 0.4667)` all persist from autosave. Other 15 handles still at exact grid fractions.
 
-**Possible fixes**: (a) audit the handle layout init — confirm a 3×3 mesh creates 9 handles at grid intersections (0,0)…(2,2) and connection lines connect each handle only to its 4 cardinal neighbours; (b) check whether handle drag updates flow through the document mutator AND the mesh topology stays canonical (no extra handles sneaking in via repeated effect re-init); (c) verify the overlay reads the same mesh state as the renderer — drift between the two would explain why handles look out of place but the gradient still renders.
-
-**Next investigation step**: add a one-line `console.log({ handles: layer.params.meshHandles })` inside `mesh-gradient-overlay.js`'s render loop and reproduce. Compare the logged grid (rows × cols) against the expected handle count (rows × cols). If extras appear, walk the call sites to find a duplicate-init path. If positions are wrong but counts are right, the drift is between layer-coords and overlay-coords — check the rasteriser pad math.
+The Phase 20 rewrite to bicubic Catmull-Rom + `params.points` storage (current code) replaced an earlier `params.meshHandles` representation. The investigation hint `console.log({ handles: layer.params.meshHandles })` from the original report refers to that old key — likely the report was filed against the in-flight Phase 20 work and the final ship fixed it. Reopen with fresh repro steps if the symptom resurfaces.
 
 ---
 

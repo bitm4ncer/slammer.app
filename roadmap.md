@@ -335,6 +335,8 @@
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
 - [x] **Image plugin loading spinner** — landing-loader's reveal delay tightened from 500 ms → 120 ms in `_shared/browsable.js`. Below 120 ms = sub-perceptual (no flash for fast cache hits); over 120 ms = the centered spinner (existing `.browsable-landing-loader`) appears so the user sees feedback. Met / Openverse routinely hit 1-3 s through wsrv.nl proxy — the old 500 ms gap made those panels look broken on every open.
 - [x] **Plugin feed persistence** — `4e71098` ships shared helper in `_shared/` that snapshots search/filter/page/loaded-items/scroll on plugin window close, hydrates on `openPluginWindow(id)` re-open. Unsplash / Pexels / Met / fal.ai opted in. Persisted under `slammer:plugin:<id>:feed`.
+- [ ] **Audit: every panel plugin shows the landing spinner** — user reports the spinner missing on some plugin landing pages. Shared helper in `src/plugins/panels/_shared/browsable.js` works, but not every plugin's `renderUI` may route the initial fetch through it. Walk every plugin under `src/plugins/panels/`: Unsplash, Pexels, Met, Openverse, fal.ai, V&A, Smithsonian, Europeana, SMK, Cleveland, NASA (plus any new ones). Each must (a) render the `browsable-landing-loader` element AND (b) trigger it on the initial fetch path — kick off the 120 ms reveal timer before `fetch()`, hide on resolve / reject. For plugins that don't use the shared `browsable.js` builder (fal.ai's custom model-browser layout has its own landing layout), add the same affordance: 120 ms delay, centred spinner, hide on first batch.
+- [ ] **Canvas drag-and-drop full-res loading indicator** — when the user drops a multi-MB image (file / plugin card / URL drop / paste), the layer card appears in the Layer Stack immediately but the canvas shows nothing (or a 1×1 placeholder) for up to several seconds while `loadImageBitmap()` decodes + `paintLayerSync()` runs the first pipeline pass. No visible affordance during the gap. Add: (a) **Layer-card thumb spinner** — while `st.dstCanvas` is 1×1 (pre-first-paint), render a small inline spinner inside the thumb slot instead of the blank placeholder; (b) **Canvas-side drop loader** — small spinner at the drop position in world coords (re-uses the world-coords already captured by the drop handler for `f46eec5`'s drop-at-cursor fix). Fades in after 200 ms so fast drops don't flash, fades out the moment `paintLayerSync` commits the first non-placeholder dstCanvas. Hook: `renderer.js` emits a new `layer:firstPainted` event on the first commit where `dstCanvas.width > 1`; the loader subscribes and tears down. Files: `src/ui/layer-panel.js` (thumb-slot spinner), new `src/ui/drop-loader.js` (canvas-side spinner), `src/core/renderer.js` (emit `layer:firstPainted`).
 - [ ] **Quick-access wheel: plugin icons + colours** — the radial quick-access widget should display each plugin's manifest icon (FontAwesome class) tinted by its pack accent (or a default for free plugins). Currently shows generic placeholders. Read `manifest.icon` + `manifest.pack` (resolve to `PACK_INFO[pack].color` from `shop-popup.js`) when populating wheel slots.
 
 ### Cluster J — UI animations & transitions
@@ -933,3 +935,52 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 **Open questions**:
 - Should recordings auto-save into the Library (Phase 25) as a side-effect, so users find their recordings later? Probably yes.
 - Should the recorder be limited to recording the slammer canvas tab only, or full-screen too? Full-screen unlocks "screen + camera face-cam" tutorials but increases the footprint of the feature. Default to full freedom (browser dialog already lets the user choose).
+
+### F8 — AI Agent (MCP server + BYOK Claude plugin) — v2, post-launch
+
+**Intent**: a natural-language driver for slammer.app. The user types "create an A4 document with the headline 'XXX', minimalist red+green gradient background, add a Halftone effect at 60 % strength" — an AI agent translates this into a sequence of slammer-native operations (create document, add text, set font, apply gradient fill, add effect, set effect params), then takes a silent screenshot to verify the result and iterates if the output doesn't match intent.
+
+**Why it could be a real differentiator**:
+- **Aesthetic-specific** — every existing AI design tool (Figma Make, Canva Magic, Photoshop Generative) targets corporate / marketing / template outputs. None target glitch / raster / Y2K / hyperpop / brutalist aesthetics. An agent that knows slammer's effect packs (Datamosh, Halftone, Liquid Gradients, Plastic, Holographic Foil, ...) by name and uses them idiomatically is unique in the market.
+- **Open-source AI driver** — Photoshop's AI is closed, Figma's is closed. slammer is AGPL. An MCP server exposed from slammer means ANY MCP-compatible client (Claude desktop / Claude code / Claude API / local LLMs via LM Studio with MCP bridge / future agents) can drive the editor. Indie / hacker / educator crowd loves this.
+- **Verification loop** — screenshot-as-feedback in the agent loop is a methodological win over "generate-and-pray". No mainstream creative tool does this yet.
+- **Tutorial flywheel** — pairs with [F7 Tutorial Recorder](#f7--tutorial-recorder-in-app-screen--mic-capture). User prompts agent → records the whole flow → posts on TikTok / YouTube → "look what slammer does in 30 seconds" → discovery. Free billboard.
+
+**Status**: **v2 / post-launch only**. The fundamentals (open bugs in `BUGS.md`, Color Hub finalisation, Themes, Tutorial Recorder) ship first. The agent feature is a headline upgrade for the post-v1 launch wave, not a v1 distraction. Pre-launch energy goes into making the editor itself excellent.
+
+#### Architecture sketch (early — don't lock in until v2 implementation starts)
+
+- **MCP server** (Node-side bridge OR an in-browser Web Worker exposing an HTTP/WebSocket endpoint) — exposes slammer's mutators as MCP tools. Catalog of ~15-25 well-chosen operations covering document creation, layer add/remove/transform, effect add/configure, color/gradient set, font set, text content, take_screenshot, and a few macro tools like `apply_effect_preset`.
+- **Tool layer** — thin wrapper over `window.__slammer = { doc, renderer, colors, importImage, ... }`. The mutators already exist; the agent layer is descriptive metadata + parameter validation. No new core architecture needed.
+- **Agent runtime** — multiple paths supported:
+  - **BYOK Claude API plugin** (free, AGPL panel-plugin in this repo): user pastes an Anthropic API key in Settings → API Keys, the in-app sidebar lets them prompt the agent directly. Same BYOK pattern as fal.ai — slammer never sees the key. Token costs are the user's.
+  - **MCP server only** (also free): user runs Claude Desktop / Claude Code / their own LLM client locally, connects to slammer's MCP endpoint, drives the editor from outside. This is the open ecosystem play.
+  - **Future** (probably Pro / Add-on): a hosted convenience option where the maintainer covers some Claude calls per month for Pro subscribers — only if there's clear demand.
+- **Screenshot verification** — a `take_screenshot` MCP tool that calls `renderer.flattenVisible()`, base64-encodes the PNG, returns it. The agent can request screenshots between steps and self-correct.
+
+#### Sub-deliverables (none committed, all v2 territory)
+
+- [ ] **MCP infrastructure** — Node-bridge or in-browser server that exposes a `/mcp` endpoint speaking MCP protocol. Tool catalog defined in JSON Schema. (~3 days)
+- [ ] **Tool catalog v1** — 15-20 essential operations. Documented in a new `src/integrations/mcp-server/` folder with tests. (~3-4 days)
+- [ ] **`take_screenshot` tool** — wraps `renderer.flattenVisible()`. Returns PNG as base64. (~0.5 day)
+- [ ] **BYOK Claude API panel plugin** — Settings → API Keys gets an Anthropic key field; a new "AI Agent" sidebar panel lets the user prompt + watch the agent work step-by-step. (~3 days)
+- [ ] **Agent UI** — prompt input, live step trace, "agent is working" indicator, cancel button, conversation history. (~2 days)
+- [ ] **Documentation + example prompts** — README in the integrations folder showing how to connect Claude Desktop, what tools exist, what good prompts look like. (~1 day)
+- [ ] **MCP server published** to the public MCP registry for discoverability.
+
+**Effort estimate** (v2 sprint): ~10 days MVP, ~17 days polished.
+
+#### Strategic notes
+
+- **Pricing** — TBD at v2 time. Plausible options: agent UI as free with BYOK (consistent with fal.ai stance + open-ecosystem play); OR hosted-token option as a Pro perk if the demand justifies cost coverage. Decision deferred.
+- **Quality bar** — the agent must produce non-embarrassing output OR fail honestly. A bad agent demo is worse than no agent. Plan for an extensive prompt-engineering phase before public release. Effect / pack metadata must be embedded into the tool descriptions so the LLM knows what "Halftone at 60 % strength" means in slammer-specific terms.
+- **Maintenance cost** — MCP protocol evolves; Anthropic / OpenAI APIs change. Budget ~1 day per quarter for upkeep once shipped.
+- **Naming** — the in-app surface is **NOT named "Bitmancer X"**. slammer.app stays neutrally branded; the Bitmancer name is reserved for the seller-side identity (shop, library, premium plugin source). Internal working names for this feature: "AI Agent", "Slammer Agent", "Slammer Co-Pilot" — pick at v2 implementation time.
+
+#### Open questions for v2
+
+- Self-contained Node bridge vs in-browser server vs Cloudflare Worker. Each has tradeoffs in setup friction vs network requirements. Probably in-browser worker = least friction.
+- Where do agent intermediate steps live? In the layer-stack history (full undo per step) or in a separate "agent transcript" panel? Probably both.
+- How much agent autonomy? Single-turn ("do this one thing") vs multi-turn ("achieve this goal, take as many steps as needed and ask me when stuck"). Plan for both, default to single-turn.
+
+**Prerequisite**: v1 stable + Phase 28 commerce live (for any potential hosted-token tier) + Tutorial Recorder shipped (for the demo loop). Realistic timeline: late 2026 or early 2027.
