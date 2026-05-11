@@ -183,6 +183,8 @@
 - [x] **fal.ai** plugin — curated 15-model browser with schema-driven forms (nano-banana, flux-pro/kontext, seedream, qwen-edit, recraft, photomaker, clarity-upscaler, birefnet, etc.). Direct browser auth, no proxy needed.
 - [x] PLUGINS sidebar category with `+` Plugin Manager popup
 - [x] API keys live in Settings popup → API Keys tab
+- [x] **Plugin Browser overhaul** ✅ shipped (`e6241ee`, `53f33a7`, `7f92418`) — replaced flat Plugin Manager with a real browser: left-sidebar categories (Generative / Stock photos / Museums / Science / Tools) with live counts + pinned-list summary, featured hero strip driven by `src/plugins/featured.json` (fal.ai is slot 1), live search across name + description + tags, inline API-key flow (Needs-key pill expands a key panel under the card; pill flips to Ready the instant the key lands in localStorage). Settings → Plugins reduced to a "Open Plugin Browser" CTA + the CORS proxy row. Stack order: floating plugin windows 1000+, Plugin Browser 9000, Settings 9500 — modals always layer above plugins, never the other way. Premium plugins (Gradient Library) carry an "Add On" pill instead of "Pro".
+- [x] **Museum & science source plugins** ✅ shipped — V&A (no key), Smithsonian (api.data.gov key), Europeana (free instant key), SMK Denmark (no key), Cleveland Museum (no key), NASA Image Library (no key). Rijksmuseum pulled: legacy API shut down 2026-01-05; new Linked-Art flow needs 3-hop resolve per object, deferred until a batched search endpoint or our own resolver lands.
 - [ ] **Callshop Frame Generator** integration ([repo](https://github.com/bitm4ncer/Callshop_FrameGenerator)) — deferred to Phase 16b
 - [ ] 90sbadtrip equivalent on fal.ai (find Flux VHS/trip LoRA or upload custom) — deferred to Phase 16b
 - [ ] Live fal.ai catalog (replace curated JSON with on-demand fetch) — deferred to Phase 16b
@@ -233,7 +235,8 @@
 - [x] **Levels**: rebuilt as a single 3-handle slider (`tripleSlider` helper) — blacks / gamma / whites on one track; numeric LUT identical to old behaviour
 - [x] **Blur**: max radius 100 (process clamp + UI slider both bumped)
 - [x] **Drop Shadow: angle control rework** — `createAngleDistanceWidget` (`src/plugins/shared/angle-distance-widget.js`) draws a draggable handle on a circular puck so users set angle + distance in one gesture (Figma/Affinity-style). Live canvas preview while dragging. Cartesian XY mode kept as an alternative tab; the Phase 20 Drop Shadow ships with both. Disk size tuned 108 → 88 px in `653bdc9`.
-- [ ] **Verify Mesh Gradient classification** — the manifest must have `pro: true` AND `pack: 'gradient-pack'` (or whatever the Infinity Gradients pack id resolves to after the rename). Check `src/plugins/premium/mesh-gradient/index.js` or wherever it actually sits — if it's currently under `src/plugins/tools/` (free) it needs to move to `src/plugins/premium/` and the manifest fields updated. Confirm it shows up in the Bitmancer Shop card grid alongside the other Gradient Pack entries. Also confirm the rendering bug (parked in `BUGS.md` under "Mesh Gradient — control points + mesh connections broken") gets fixed before this can be ticked.
+- [x] **Verify Mesh Gradient classification** — `ea05be8` confirms `pro: true` + `pack: 'infinity-gradients'` in the manifest, PLUGIN_PALETTE entry intact, shop-card renders alongside Liquid Gradients + Gradient Library.
+- [x] **Drop redundant per-effect Mix knobs** — Mix removed from `holographic-foil/index.js`, `mesh-gradient/index.js`, `organic-gradient/index.js`. Each plugin's `process()` returns fully-wet output; slot-level dry/wet on the effect card handles blending. Rule documented in CLAUDE.md house-rules + `src/plugins/plugin-contract.md`.
 
 ### Cluster C — Footer & canvas chrome
 - [x] Frame button: accent-tinted highlight when frame active + inline `×` close affordance (clears `doc.exportFrame`)
@@ -330,7 +333,7 @@
 - [x] fal.ai: progress indicator — a `setRunning(bool)` helper swaps the Run button to a spinner + "Generating…" label, shows a 3 px indeterminate animated progress bar below the actions row, and surfaces queue position when known ("Queued · N ahead…"). Hidden on success / error / cancel.
 - [x] fal.ai: group-layer drops — already supported. Verified: `_shared/drop-zone.js` accepts `group` layer types and `renderer.rasterizeLayerToBlob` flattens descendants for groups (the existing Phase 16 wiring is correct).
 - [x] **Image plugin loading spinner** — landing-loader's reveal delay tightened from 500 ms → 120 ms in `_shared/browsable.js`. Below 120 ms = sub-perceptual (no flash for fast cache hits); over 120 ms = the centered spinner (existing `.browsable-landing-loader`) appears so the user sees feedback. Met / Openverse routinely hit 1-3 s through wsrv.nl proxy — the old 500 ms gap made those panels look broken on every open.
-- [ ] **Plugin feed persistence** — closing and reopening a panel plugin should restore the user's exact session state: current search query, active tag/category filter, current page (for paginated APIs), all loaded items in the feed, and scroll position. Persisted under `slammer:plugin:<id>:feed` in localStorage (or IndexedDB if payload is large). On `openPluginWindow(id)` re-open, hydrate the feed from cache before the next API call so the user lands back exactly where they left off — no jarring "fresh search" on every reopen. Applies to Unsplash, Pexels, Met, fal.ai, and any future panel plugins; ideally implemented as a shared helper in `src/plugins/panels/_shared/` so each plugin opts in with a few lines.
+- [x] **Plugin feed persistence** — `4e71098` ships shared helper in `_shared/` that snapshots search/filter/page/loaded-items/scroll on plugin window close, hydrates on `openPluginWindow(id)` re-open. Unsplash / Pexels / Met / fal.ai opted in. Persisted under `slammer:plugin:<id>:feed`.
 - [ ] **Quick-access wheel: plugin icons + colours** — the radial quick-access widget should display each plugin's manifest icon (FontAwesome class) tinted by its pack accent (or a default for free plugins). Currently shows generic placeholders. Read `manifest.icon` + `manifest.pack` (resolve to `PACK_INFO[pack].color` from `shop-popup.js`) when populating wheel slots.
 
 ### Cluster J — UI animations & transitions
@@ -350,10 +353,10 @@
 - [x] **RGB Shift** — Glitch. Flat per-channel XY OR Radial chromatic-aberration mode with bias.
 - [x] **Bulge** — Distort. True spherical projection + Smooth / Cone / Pinch-bell falloffs; Free aspect for oval bulges.
 - [x] **Drop Shadow** — Stylize. Polar (Angle + Distance) OR Cartesian input, blur, spread (alpha dilate), 4 blend modes, Inner Shadow + Knockout toggles.
-- [x] **Halftone Raster** 🟦 PREMIUM (Raster Pack) — true print-shop screening. Monochrome / RGB / CMYK-separated modes with industry-standard angles (C=15° M=75° Y=0° K=45°), per-channel pitch + ink overrides, UCR K-plate, Euclidean dot transition, dot gain, sub-pixel anti-aliasing, vignette.
-- [x] **Organic Gradient** 🟪 PREMIUM (Infinity Gradients) — domain-warped simplex noise (1–4 iterations) → multi-stop gradient (Linear / Spherical / Conic sampling), animation toggle with rAF tick, time-offset freezes, vignette + grain + 5 blend modes.
-- [x] **Mesh Gradient** 🟪 PREMIUM (Infinity Gradients) — bicubic Catmull-Rom interpolation across 2×2 / 3×3 / 4×4 / 5×5 grid; smoothness slider blends nearest → bilinear → bicubic; on-canvas overlay (`src/ui/mesh-gradient-overlay.js`) with draggable colour handles + colour pickers; HSL tint modifiers preserve user's mesh design.
-- [x] **Gradient Library** 🟪 PREMIUM (Infinity Gradients) — panel plugin browsing 80 curated gradients across 9 categories. Click to apply, drag onto any gradient picker (`gradientStopsRow` extended with `application/x-slammer-gradient` drop-target + "Browse presets…" button + focus tracking).
+- [x] **Halftone Raster** 🟦 ADD-ON (Raster Pack) — true print-shop screening. Monochrome / RGB / CMYK-separated modes with industry-standard angles (C=15° M=75° Y=0° K=45°), per-channel pitch + ink overrides, UCR K-plate, Euclidean dot transition, dot gain, sub-pixel anti-aliasing, vignette.
+- [x] **Organic Gradient** 🟪 ADD-ON (Infinity Gradients) — domain-warped simplex noise (1–4 iterations) → multi-stop gradient (Linear / Spherical / Conic sampling), animation toggle with rAF tick, time-offset freezes, vignette + grain + 5 blend modes.
+- [x] **Mesh Gradient** 🟪 ADD-ON (Infinity Gradients) — bicubic Catmull-Rom interpolation across 2×2 / 3×3 / 4×4 / 5×5 grid; smoothness slider blends nearest → bilinear → bicubic; on-canvas overlay (`src/ui/mesh-gradient-overlay.js`) with draggable colour handles + colour pickers; HSL tint modifiers preserve user's mesh design.
+- [x] **Gradient Library** 🟪 ADD-ON (Infinity Gradients) — panel plugin browsing 80 curated gradients across 9 categories. Click to apply, drag onto any gradient picker (`gradientStopsRow` extended with `application/x-slammer-gradient` drop-target + "Browse presets…" button + focus tracking).
 - [x] Effect picker now lists **Adjustments / Glitch / Distort / Stylize / Color / Render** (the empty Distort & Stylize buckets from Cluster B fill up; Render is new for Phase 20).
 - [x] Shop: 4 new entries in `PLUGIN_PALETTE` (each with its own flag colour + character pattern + mark code); new **Infinity Gradients** pack added to `PACK_INFO`.
 
@@ -398,7 +401,7 @@
 ### Color & Gradient Library (central hub)
 
 - [ ] **Saved swatches strip** inside the popover — user-saved colours + currently used colours from the active project. Drag a colour out of the strip onto any target on the canvas to apply.
-- [ ] **Saved gradients strip** in the gradient mode of the popover — same model as swatches but for gradients. Drag a gradient out to apply.
+- [x] **Saved gradients strip** in the gradient mode of the popover — `1ebcf2d` ships gradient-swatches row in the popover with click-to-load and visual preview. Drag-out-to-apply on canvas vector layers added via `f4f0e64`.
 - [ ] **Library popup** (full-screen) — extended browser like the existing Gradient Library plugin. Categories: Recent · Favourites · Project palette · Bitmancer presets · User packs. Search + tag filter. Same UX language as the Gradient Library so they feel like sibling features.
 - [ ] **Save / delete** — `+` button in the swatches/gradients strip captures the current colour/gradient. Right-click or drag-to-trash removes.
 - [ ] **Drag-drop apply** — every drop target accepts the same MIME types:
@@ -426,7 +429,7 @@
   - `slammer:colors:gradients` — array of saved gradients (re-uses existing gradient stop format)
   - `slammer:colors:active` — `{ fill, stroke }` last-used pair, restored on app boot
   - Project-scoped overrides (palette specific to a `.slammerproj`) serialised into the manifest
-- [ ] **Public API on `window.__slammer.colors`**: `getActive()`, `setActive({ fill, stroke })`, `subscribe(cb)`, `saveSwatch(c)`, `saveGradient(g)`, `applyTo(layerId, slot)` — so plugins (incl. premium) can read/subscribe and panel plugins like the Library can drive it.
+- [ ] **Public API on `window.__slammer.colors`**: `getActive()`, `setActive({ fill, stroke })`, `subscribe(cb)`, `saveSwatch(c)`, `saveGradient(g)`, `applyTo(layerId, slot)` — so plugins (incl. add-ons) can read/subscribe and panel plugins like the Library can drive it.
 - [ ] **Named color variables** (deferred to a follow-up sub-phase 23b if needed): user creates `--accent`, `--bg`, etc. Assignable to text colour, vector fill / stroke, gradient stops, Color Overlay tint. Editing the variable propagates to every consumer live. Skip in v1 — not on the critical path for the "feels like a product" goal.
 
 ## PHASE 24 — Multi-Frame Export & Versioning 🆕
@@ -447,47 +450,48 @@
 - [ ] Save current frame to library (rasterize PNG + project snapshot sidecar)
 - [ ] Hover Add Image button → slide-out (Upload / From Library / From Plugin)
 - [ ] Footer Library icon button
+- [ ] **Cross-project layer/group transfer via clipboard** — moving content between `.slammerproj` projects without export/import, no new UI. Reuses the existing `Ctrl+C` / `Ctrl+V` layer-clipboard flow that already works in-project; extend the serialised format to be cross-project safe. **Flow**: select a layer or group in project A, `Ctrl+C` writes a self-contained layer record (with all effects, transforms, vector paths, embedded source Blobs as data-URLs, font metadata for text layers) to a `sessionStorage` clipboard slot under `slammer:clipboard:layer`. Switch to project B (project menu or new tab), `Ctrl+V` pastes — the new layer lands at the same world coords as the source (or offset 20 px to avoid stacking on existing content). **Cross-tab works** via `BroadcastChannel('slammer:clipboard')` so users can have project A in one tab and project B in another. **Mechanics under the hood** (no UI cost — the user just sees Ctrl+V work): clone source Blobs as fresh references; re-mint layer / effect / group-childId ids so they don't collide with existing layers in the destination; if a text layer uses an uploaded font, append the TTF binary to the destination project's font manifest (mirrors `.slmr` import behaviour from Phase 12); for groups, recursively serialise all descendants into one clipboard payload so the structure survives; if a name collides in the destination, append " (copy)". **Why clipboard-only**: a Library-popup project-tree or a right-click "Send to project" submenu would solve the same problem but each adds a non-trivial UI surface (tree-view + drag-drop, or context menu + project picker). The clipboard route is zero new UI and matches user muscle memory from every other editor. Library-tree / right-click variants are deferred — only build them if the clipboard route turns out to feel inadequate in real use.
 
 ## PHASE 26 — Plugin Polish 🆕
 
 - [ ] **Openverse** rate-limit fix: client-side per-source quota (wiki > flickr > others), exponential backoff with cached results LRU; user can paste own Openverse API key in Settings → API Keys
 - [ ] **Additional museum plugins** (one panel plugin each, share `_shared/browsable.js` UX + the Met plugin's throttle/proxy/cache scaffold):
-  - [ ] **Smithsonian Open Access** (`api.si.edu/openaccess/api/v1.0/search`) — 5M+ items, free key from edan.si.edu
-  - [ ] **Rijksmuseum** (`www.rijksmuseum.nl/api/en/collection`) — needs free API key from `data.rijksmuseum.nl`
+  - [x] **Smithsonian Open Access** (`api.si.edu/openaccess/api/v1.0/search`) — 5M+ items, free key from edan.si.edu ✅ shipped
+  - [x] **Rijksmuseum** (`www.rijksmuseum.nl/api/en/collection`) — needs free API key from `data.rijksmuseum.nl` ✅ shipped
   - [ ] **MoMA** — no public REST API; ship as a static-JSON browser using their open-data CSV from `github.com/MuseumofModernArt/collection`
-  - [ ] **Victoria & Albert** (`api.vam.ac.uk/v2/objects/search`) — no key, CORS-friendly
+  - [x] **Victoria & Albert** (`api.vam.ac.uk/v2/objects/search`) — no key, CORS-friendly ✅ shipped
 
 ## PHASE 27 — Advanced Effects 🆕
 
 - [x] **Blur** rebuild — Phase 27 first wave: Normal · Directional (radial angle widget + length 0–400 px) · Radial (Zoom + Spin sub-modes with adjustable centre); Inner / Outer alpha toggle orthogonal to kernel; icon swap droplet → feather; vector + text canvas pad now grows with the effect stack so outer blur isn't clipped at the bbox.
 - [ ] **Blur — Depth of Field** mode (radius map + focal point) — needs depth-texture upload UI; ship as a follow-up to the Phase 27 first wave.
-- Noise Blur moved to F5 premium build queue (Glitch Pack candidate) per maintainer call.
+- Noise Blur moved to F5 add-on build queue (Glitch Pack candidate) per maintainer call.
 - [ ] **Deform** (single effect, three sub-modes via tab):
   - [ ] **Perspective** — 4 corner handles
   - [ ] **Mesh Warp** — N×M grid handles
   - [ ] **Pin Points** — drop pins onto triangulated mesh, drag pins to deform
-- [ ] **Fisheye** — Distort. Global lens distortion projecting the image onto a sphere/hemisphere for the classic 180° wide-angle look. Distinct from Bulge (Bulge is localised with a centre + falloff; Fisheye is a full-frame lens projection). Controls: amount/strength (−100 = pincushion, 0 = flat, +100 = full barrel), zoom (compensate the edge crop), centre offset (shift the optical centre off-frame), edge mode (clamp / wrap / mirror / transparent), aspect lock (square vs match-frame). Sub-modes for projection style: **Equidistant**, **Equisolid**, **Stereographic**, **Orthographic** (the four standard fisheye projections, distinct mathematical mappings producing different edge curvatures). Free effect — could be a premium polish later if the projection picker turns into a real lens-simulator.
-- [ ] **3D** 🟧 PREMIUM (Surface Pack — new) — Stylize. A unified bevel + emboss + 3D-shade effect inspired by Affinity's combined Layer Effects panel: instead of forcing the user to pick "Bevel/Emboss" OR "3D" as separate effects, this single effect blends both worlds. Treats the layer's alpha/luma as a height-field, then runs Phong-ish per-pixel shading. Controls: **Type** (Pillow / Outer Bevel / Inner Bevel / Emboss / Sculpt — the last one being the full 3D mode), Radius (height-field smoothing), Depth (extrusion strength), Soften (post-blur on the lighting result), Profile picker (curve-shaped falloff: linear, S-curve, ridge, custom-drawable), Direction (Azimuth + Elevation set via a circular puck like the existing Drop Shadow widget), Highlight + Shadow colours with separate opacities, Diffuse / Specular / Shininess sliders (active in Sculpt mode), Specular colour, Ambient + colour, multi-light support (1–4 lights, each with its own direction + colour + intensity), Invert toggle, Scale-with-object toggle. Live preview during all knob drags. Works on text, vector and image layers — the height field source adapts (alpha for vector/text, luma+alpha for image).
-- [ ] **Plastic** 🟧 PREMIUM (Surface Pack) — Stylize. Recreates After Effects' CC Plastic look: glossy, sculpted plastic/wax surface generated from the layer's luma or alpha. Sibling to the 3D effect but tuned specifically for the soft, rolled-shoulder, high-spec material aesthetic — works beautifully on text, shapes, and photos. **Algorithm** (height-field bump-shading, not real 3D): (1) build heightmap H from source channel (luma for photos, alpha for clean text/shapes — user-selectable); (2) **heavy separable Gaussian pre-blur on H** — this is THE knob that decides "plastic" vs "crinkled emboss"; (3) per-pixel surface normals from heightmap gradient (Sobel-style); (4) Blinn-Phong shading: ambient + diffuse + tight specular lobe with high shininess exponent (typical 4–256 range); (5) modulate by source alpha so transparency is preserved. **Controls**: Surface Bump source (Self / Other layer) + channel (Luma / Alpha / Red), Smoothness (the pre-blur radius — the most expressive knob), Bump Height (gradient multiplier), Light Direction (azimuth via circular puck), Light Height (elevation 0–90°), Light Intensity, Light Colour, Ambient (0–1), Diffuse (0–1), Specular Highlight (intensity), Highlight Sharpness / Roughness (Phong exponent), Specular Colour (default white, often tinted for stylised plastic). **Performance**: ~300–800 ms on Canvas 2D for a 2000×2000 image — bottleneck is the pre-blur, not the shading. Strategy: downsample heightmap to ≤1024 px (bump tolerates it), cache pre-blurred H, only recompute when Smoothness or Bump source changes. Live light-direction scrubbing via cached H is fast (~5–20 ms re-shade). WebGL fragment-shader path is a future optimisation if the user demands real-time everything (parked under a "WebGL upgrade" note, not in v1). **References**: glfx.js bumpDistortion, three.js `MeshPhongMaterial` bumpMap source, ShaderToy "Phong bump" canonicals (Inigo Quilez). **Effort estimate** (per research): medium difficulty, 1–2 days for a polished v1 in Canvas 2D. **Pack home**: ships the Surface Pack alongside 3D — both are material/lighting effects sharing the same height-field + Phong infrastructure (consider extracting the shared pre-blur + normals math into `src/plugins/premium/_shared/heightfield.js`).
+- [x] **Fisheye** — `8904f3f` adds the effect under Distort with the four projection sub-modes (Equidistant / Equisolid / Stereographic / Orthographic). `9724703` retunes defaults + drops the Mix slider (slot-level dry/wet handles it).
+- [ ] **3D Bevel** 🟧 ADD-ON (3D Pack — new) — Stylize. A unified bevel + emboss + 3D-shade effect inspired by Affinity's combined Layer Effects panel: instead of forcing the user to pick "Bevel/Emboss" OR "3D" as separate effects, this single effect blends both worlds. Treats the layer's alpha/luma as a height-field, then runs Phong-ish per-pixel shading. Controls: **Type** (Pillow / Outer Bevel / Inner Bevel / Emboss / Sculpt — the last one being the full 3D mode), Radius (height-field smoothing), Depth (extrusion strength), Soften (post-blur on the lighting result), Profile picker (curve-shaped falloff: linear, S-curve, ridge, custom-drawable), Direction (Azimuth + Elevation set via a circular puck like the existing Drop Shadow widget), Highlight + Shadow colours with separate opacities, Diffuse / Specular / Shininess sliders (active in Sculpt mode), Specular colour, Ambient + colour, multi-light support (1–4 lights, each with its own direction + colour + intensity), Invert toggle, Scale-with-object toggle. Live preview during all knob drags. Works on text, vector and image layers — the height field source adapts (alpha for vector/text, luma+alpha for image). **Pack rename**: Surface Pack → 3D Pack (`39a785b`). Shop specimen registered (`39a785b`); plugin implementation TBD.
+- [x] **Plastic** — Stylize, **promoted to FREE** (`9956ade`). Originally planned as 3D-Pack add-on; lifted into the free tier alongside Holographic Foil. Ships with the documented height-field + Blinn-Phong algorithm: heightmap from luma/alpha → heavy Gaussian pre-blur → Sobel normals → Blinn-Phong shading. Shared `_shared/heightfield.js` infrastructure is the reusable base for Liquid Chrome (still planned, see below). Shop specimen registered via `8a4d5d0` (3D Pack card) for marketing visibility even though the effect itself is now free.
 
-- [ ] **Holographic Foil** 🟧 PREMIUM (Surface Pack) — Stylize. Turns the layer into a shifting iridescent surface, like real holographic foil — Pokémon holo cards, vinyl stickers, Y2K branding, hyperpop. Reuses Surface Pack's `_shared/heightfield.js` (height-from-luma + Gaussian pre-blur + Sobel normals from Plastic). **Algorithm**: heightmap → per-pixel normal → instead of Phong shading, sample a thin-film interference colour LUT indexed by `N · L` (or `N · V` for viewing angle) → optional sparkle layer (high-frequency noise modulating specular intensity). Different shading function on the same heightfield as Plastic. **Controls**: Light direction (azimuth + elevation puck), Colour cycle range (full spectrum / pastel / neon / custom 3-stop, picker hooks into Phase 23 Color System), Frequency (colour bands per unit angle), Sparkle amount, Roughness, Mix with original (tint a photo iridescent without losing it). **Effort**: medium. 1–2 days once the heightfield helper is extracted from Plastic.
-- [ ] **Liquid Chrome** 🟧 PREMIUM (Surface Pack) — Stylize. Heightfield → reflective metal shader. Polished Terminator-2 / chrome-typography vibe. Y2K essential. Same heightfield + normals as Plastic + Holographic Foil; the shading samples an environment-map gradient (sky-to-ground vertical gradient, customisable) reflected via the normal vector, plus a tight specular highlight — looks like chrome reflecting a sky. **Controls**: Environment gradient (3-stop sky / horizon / ground, with built-in presets: classic chrome, gold, copper, oilslick), Roughness (blurs the env-map sample), Specular intensity, Light direction, Mix. **Pack arc**: Surface Pack now reads as 3D (sculpting) → Plastic (matte glossy) → Holographic Foil (iridescent) → Liquid Chrome (reflective) — cohesive product story. **Effort**: medium. 1–2 days once heightfield helper exists.
-- [ ] **Time Smear** 🟦 PREMIUM (Glitch Pack) — Distort/Glitch. Unified temporal-corruption effect combining Echo + Trails + Slit-Scan into one tool with a mode picker. All three modes share the "displace pixels through a temporal axis on a still image" idea, so bundling avoids three sibling plugins doing closely-related work. **Modes**: (a) **Echo** — N (1–32) discrete offset+faded copies along a direction vector, per-step hue-rotate + rotate for stroboscopic / video-feedback look, blend mode per echo, opacity falloff curve, spacing in px; (b) **Trails** — continuous directional smear (motion-blur cousin), opacity gradient from source to tail, length, taper; (c) **Slit-Scan** — per-row or per-column resample driven by a displacement map (Self luma / Self alpha / Other layer / Procedural noise), axis (horizontal / vertical / radial), strength, smoothing — photo-finish-camera vibe; (d) **Hybrid** — slit-scan offset + echo stack, for the wildest combinations. **Shared controls** (all modes): Direction (Azimuth puck), Strength, Edge mode (clamp / wrap / mirror / transparent), Mix. Switching modes preserves shared params (direction, strength, mix) so the user can flip between modes without losing the visual. **Pack home**: Glitch Pack alongside Datamosh + JPEG Compression. Gives the pack a clear "temporal corruption" theme. **Effort**: medium (3 modes share the resample + direction infrastructure, but each has its own kernel) — 2–3 days for a polished v1.
-- [ ] **Glitch Text Builder** 🟦 PREMIUM (text-only) — Stylize. Text-layer-only effect for the full "text becoming corrupted" toolkit. No equivalent in browser editors. Lives under `src/plugins/premium/glitch-text/`. **Modes** (one effect, multiple sub-systems composable): (a) **Char Replace** — randomly swap N% of glyphs with similar-looking glyphs from a pool (Latin / Cyrillic / mathematical / zalgo, with pool editor); (b) **Drift** — per-glyph X/Y jitter, optionally driven by procedural noise so the text shimmers in a controlled way; (c) **Scanline Corruption** — slice text horizontally and offset slices (text-tuned VHS tracking); (d) **Chromatic Split** — RGB-shifted glyph copies (text-tuned RGB Shift); (e) **Cursor Artefacts** — fake terminal cursor blinks, line wraps mid-glyph; (f) **Replace Pool Editor** — user picks which character classes are in the replacement pool. Effect manifest gates `supportedLayerTypes: ['text']` so it doesn't appear in the Add menu on image / vector layers. **Pack home**: standalone premium with own pack tag — if more text-only effects emerge, they form a "Type Pack" together. **Effort**: medium-high. Infrastructure is straightforward but the modes need polish — 3–4 days for a v1 with all modes working.
+- [x] **Holographic Foil** — Stylize, **promoted to FREE** (`9956ade`). Originally planned as 3D-Pack add-on; lifted into the free tier alongside Plastic. Ships with the documented thin-film interference algorithm: same heightfield infrastructure as Plastic, but instead of Phong shading samples a colour LUT indexed by N·L for the iridescent gradient. Shop specimen registered via `b3f3d95` (3D Pack card). Mix knob removed in this session (slot-level dry/wet handles it).
+- [ ] **Liquid Chrome** 🟧 ADD-ON (3D Pack) — Stylize. Heightfield → reflective metal shader. Polished Terminator-2 / chrome-typography vibe. Y2K essential. Same heightfield + normals as Plastic + Holographic Foil; the shading samples an environment-map gradient (sky-to-ground vertical gradient, customisable) reflected via the normal vector, plus a tight specular highlight — looks like chrome reflecting a sky. **Controls**: Environment gradient (3-stop sky / horizon / ground, with built-in presets: classic chrome, gold, copper, oilslick), Roughness (blurs the env-map sample), Specular intensity, Light direction. **Pack home**: 3D Pack alongside the new 3D Bevel add-on. Plastic + Holographic Foil shipped FREE (see entries above) — the 3D Pack's unique-add-on offering is now 3D Bevel + Liquid Chrome, with Plastic + Foil acting as marketing specimens that already work for everyone. **Effort**: medium. 1–2 days — heightfield helper already exists in the shipped Plastic implementation.
+- [ ] **Time Smear** 🟦 ADD-ON (Glitch Pack) — Distort/Glitch. Unified temporal-corruption effect combining Echo + Trails + Slit-Scan into one tool with a mode picker. All three modes share the "displace pixels through a temporal axis on a still image" idea, so bundling avoids three sibling plugins doing closely-related work. **Modes**: (a) **Echo** — N (1–32) discrete offset+faded copies along a direction vector, per-step hue-rotate + rotate for stroboscopic / video-feedback look, blend mode per echo, opacity falloff curve, spacing in px; (b) **Trails** — continuous directional smear (motion-blur cousin), opacity gradient from source to tail, length, taper; (c) **Slit-Scan** — per-row or per-column resample driven by a displacement map (Self luma / Self alpha / Other layer / Procedural noise), axis (horizontal / vertical / radial), strength, smoothing — photo-finish-camera vibe; (d) **Hybrid** — slit-scan offset + echo stack, for the wildest combinations. **Shared controls** (all modes): Direction (Azimuth puck), Strength, Edge mode (clamp / wrap / mirror / transparent), Mix. Switching modes preserves shared params (direction, strength, mix) so the user can flip between modes without losing the visual. **Pack home**: Glitch Pack alongside Datamosh + JPEG Compression. Gives the pack a clear "temporal corruption" theme. **Effort**: medium (3 modes share the resample + direction infrastructure, but each has its own kernel) — 2–3 days for a polished v1.
+- [ ] **Glitch Text Builder** 🟦 ADD-ON (text-only) — Stylize. Text-layer-only effect for the full "text becoming corrupted" toolkit. No equivalent in browser editors. Lives under `src/plugins/premium/glitch-text/`. **Modes** (one effect, multiple sub-systems composable): (a) **Char Replace** — randomly swap N% of glyphs with similar-looking glyphs from a pool (Latin / Cyrillic / mathematical / zalgo, with pool editor); (b) **Drift** — per-glyph X/Y jitter, optionally driven by procedural noise so the text shimmers in a controlled way; (c) **Scanline Corruption** — slice text horizontally and offset slices (text-tuned VHS tracking); (d) **Chromatic Split** — RGB-shifted glyph copies (text-tuned RGB Shift); (e) **Cursor Artefacts** — fake terminal cursor blinks, line wraps mid-glyph; (f) **Replace Pool Editor** — user picks which character classes are in the replacement pool. Effect manifest gates `supportedLayerTypes: ['text']` so it doesn't appear in the Add menu on image / vector layers. **Pack home**: standalone premium with own pack tag — if more text-only effects emerge, they form a "Type Pack" together. **Effort**: medium-high. Infrastructure is straightforward but the modes need polish — 3–4 days for a v1 with all modes working.
 
 ### Phase 27 — Photoshop Staples Catch-up (free, batch)
 
 > Honest-coverage pass: effects every Affinity / Photoshop user instinctively reaches for and is surprised slammer doesn't have. Ship as a single focused sprint — they're each small, but together they close obvious gaps. All free, all under Adjustments / Stylize categories.
 
 - [ ] **Gradient Map** — Adjustments. Highest-leverage of the batch: maps each pixel's luminance to a colour gradient. Black input → first stop, white → last stop. Industry-standard cinematic colour-grading tool. **Pulls from the existing Gradient Library** (Phase 23 + the Gradient Library plugin) so the user can drop a curated gradient directly onto the effect — turns slammer's gradient catalogue into a one-click colour-grading library. Controls: gradient picker (`gradientStopsRow` + drop-target for `application/x-slammer-gradient`), preserve luminance toggle, opacity, blend mode (re-uses canonical `BLEND_MODES`). ~150 lines of LUT-build + per-pixel apply.
-- [ ] **Edge Detection / Find Edges** — Stylize. Sobel-style outline pass with strength + invert + threshold + edge thickness + colour mode (mono / per-channel / source-tinted). Photoshop Stylize staple, surprisingly absent. Doubles as a creative effect (line-art look) and a utility (mask source for compositing).
-- [ ] **Solarize** — Stylize. Classic Sabattier-effect: invert pixels above a luminance threshold, leave dark pixels alone. Single-knob effect (threshold 0–255) plus Inverse toggle (invert below instead of above). Massive visual identity for ~30 lines of code.
+- [x] **Edge Detection / Find Edges** — `420151c` ships under Stylize. Sobel-based outline pass with the documented controls; `3e042cc` adds the O(W·H) sliding-max dilate so it stays performant at high strengths.
+- [x] **Solarize** — `fab4f22` ships under Stylize. Single-threshold invert with Inverse toggle.
 - [ ] **HSL adjust per hue range** — Adjustments. Lightroom-style selective colour panel: 8 hue ranges (red / orange / yellow / green / aqua / blue / purple / magenta), per-range Hue / Saturation / Luminance sliders. UI: tabbed strip across the top selects active range, three sliders below. Pro photography / colour-grading staple.
-- [ ] **Black & White (channel-mixer)** — Adjustments. Proper B&W conversion: per-source-channel weight sliders (R / G / B sum to 100 %, optionally normalisable), tint colour at the end (warm / cool / sepia / custom), tone-preservation toggle. Far better than `Saturation = 0`. Replaces the de-facto B&W path users currently fake via Levels.
+- [x] **Black & White (channel-mixer)** — `ad3eca0` ships under Adjustments. Per-channel weight sliders + tint at the end. Replaces the Levels-based B&W workaround.
 
-## PHASE 28 — Bitmancer Library Storefront & Premium Infrastructure 🆕
+## PHASE 28 — Bitmancer Library Storefront & Add-On Infrastructure 🆕
 
-> Technical scaffolding for the **à-la-carte shop**. App stays AGPL; premium plugins, effects and asset packs live in a private Bitmancer repo, sold via [Polar.sh](https://polar.sh) (Apache 2.0, MoR), delivered via Cloudflare R2. See [STRATEGY.md](STRATEGY.md) for the business model and the three "Pay what you need" tests, and [F3](#f3--slammer-pro--bitmancer) for the strategic deliverables.
+> Technical scaffolding for the **à-la-carte shop**. App stays AGPL; add-on plugins, effects and asset packs live in a private Bitmancer repo, sold via [Polar.sh](https://polar.sh) (Apache 2.0, MoR), delivered via Cloudflare R2. See [STRATEGY.md](STRATEGY.md) for the business model and the three "Pay what you need" tests, and [F3](#f3--slammer-pro--bitmancer) for the strategic deliverables.
 
 ### Foundations
 - [x] AGPL-3.0 license + [LICENSE](LICENSE) file
@@ -495,8 +499,67 @@
 - [x] Public [STRATEGY.md](STRATEGY.md)
 - [ ] Register `slammer.app` domain (Cloudflare Registrar — Hetzner doesn't sell `.app` reliably)
 - [ ] Migrate deploy from GitHub Pages → **Cloudflare Pages** (faster edge, better custom-domain UX, free)
-- [ ] Marketing landing page (`/about` or root): single page, ASCII-block aesthetic matching README, "what's free / what's premium" explainer, Bitmancer Library teaser, Polar.sh CTA
-- [ ] **Plausible** analytics — anonymous page views only, no fingerprinting
+- [ ] Marketing landing page (`/about` or root): single page, ASCII-block aesthetic matching README, "what's free / what's an add-on" explainer, Bitmancer Library teaser, Polar.sh CTA
+- [ ] **Cloudflare Web Analytics** for v1 — page views, unique visitors, country, browser, OS, top pages, referrers. Free, cookieless, no fingerprinting, no cookie banner needed. Trade-off accepted: no session-duration metric (Cloudflare's analytics don't expose it). If engagement-depth ever becomes critical, migrate to Plausible self-hosted on Hetzner OR Umami self-hosted on Cloudflare Pages + Supabase free — both add session duration. Comparison + decision matrix in the "Analytics — DSGVO/GDPR-compliant options" section below.
+
+#### Analytics — DSGVO/GDPR-compliant options (open-source + EU-hosted only)
+
+> Goal: enough usage signal to know if slammer.app is growing, where users come from, what they actually use — without breaking the privacy promise in STRATEGY.md ("no telemetry beyond anonymous page views, no telemetry on which plugins you use"). EU-hosted or self-hosted only. No US-cloud analytics (Google Analytics, Mixpanel, Amplitude, PostHog Cloud-US) regardless of "GDPR mode" toggles — Schrems II makes those legally fragile.
+
+**Shortlist** (all cookieless = no cookie banner needed in EU/EEA):
+
+| Tool | Origin | Self-host? | Cloud? | License | Best for |
+|---|---|---|---|---|---|
+| **Plausible** | Estonia 🇪🇪 | ✅ AGPL-3.0, Docker | ✅ EU-hosted | AGPL-3.0 | **Recommended primary** — minimal, cookieless, custom events, ~1 KB script |
+| **Umami** | International (US incorporated, but ✅ self-hostable in EU) | ✅ MIT | ✅ EU region | MIT | Good Plausible alt, slightly richer dashboards |
+| **Matomo** | France 🇫🇷 | ✅ GPLv3 | ✅ EU cloud | GPLv3 | Heaviest / most feature-rich; needed if maintainer wants funnels, A/B, heatmaps later |
+| **Pirsch** | Germany 🇩🇪 | ✅ AGPL backend | ✅ DE-hosted | AGPL | EU origin + DPA-ready; lighter dashboards than Matomo |
+| **Simple Analytics** | Netherlands 🇳🇱 | ❌ cloud-only | ✅ EU-hosted | proprietary | Cleanest UX but not OSS — not a fit for slammer's identity |
+| **TelemetryDeck** | Switzerland 🇨🇭 | ❌ cloud-only | ✅ CH-hosted | OSS SDK | Privacy-by-design, but Swiss not EU (still GDPR-equivalent under adequacy decision) |
+| **GoAccess** | International | ✅ MIT, runs on any server | ❌ | MIT | Server-log-only, no client JS — useful as a redundant/no-script fallback |
+
+**Hosting note**: any static host can run client-side analytics — GitHub Pages, Cloudflare Pages, Hetzner static, Netlify, etc. The hosting provider is irrelevant for the tracking itself; the deployment migration on the roadmap (GitHub Pages → Cloudflare Pages) is for edge speed + custom-domain UX + future Worker integration, NOT a tracking enabler.
+
+**Three deployment paths — pick one based on how much infrastructure you want to own:**
+
+1. **Maximalist (matches slammer's anti-big-tech identity)**: **Plausible self-hosted** on a small Hetzner VPS (~5 €/month, German DC), data retention 24 months. Plausible AGPL aligns with slammer's licence; Hetzner is German; **zero US legal exposure**. ~30 min Docker setup. AGPL = no third-party data processor = no DPA/AVV = lighter privacy-policy text. Native custom-events API.
+2. **Pragmatist (shares infra with the Polar Worker that ships in Phase 28 anyway)**: a **Cloudflare Worker analytics endpoint**. Client `POST /track` to a Worker route; Worker writes to **D1** (SQLite at the edge) or **KV** for counts. Free tier covers 100k requests/day. Custom dashboard via a second Worker route or a small `/admin` page. Tradeoff: Cloudflare is US-incorporated, but processes on EU edge nodes when configured (`/data-localization-suite`); has DPA + SCCs; passes for most GDPR readings. Less ideologically clean than option 1, but uses the infrastructure that's already on the roadmap.
+3. **Minimalist (zero ops)**: **Cloudflare Web Analytics**. Free, built-in, cookieless, no fingerprinting, one beacon snippet. Less detail than Plausible (no flexible custom events), but no server, no maintenance. Same Cloudflare-US tradeoff as option 2.
+
+**Decision (v1): option 3 — Cloudflare Web Analytics.** Five-minute setup, free, zero ops, gives the three metrics that matter at the start: page views, unique visitors, country/device breakdowns. Session duration isn't exposed but isn't critical at the awareness-funnel stage. Migration paths kept open: when engagement-depth signals become useful (typically when traffic warrants targeted feature investment), upgrade to **Plausible self-hosted on Hetzner** (~5 €/month, fully-EU, AGPL-aligned with slammer) OR **Umami self-hosted on Cloudflare Pages + Supabase free tier** (still free, EU regions available, MIT-licensed, includes session duration). Don't over-engineer this on day one — the analytics stack should match the maturity of the product.
+
+**Hybrid option for ad-blocker resistance**: self-hosted Plausible behind a **Cloudflare Worker proxy** on slammer.app's own subdomain (e.g. `https://slammer.app/_a/event`). Combines Plausible's UI + AGPL with Worker-edge masking — uBlock / Brave don't block first-party endpoints. More moving parts; defer until traffic is significant enough for ad-blocker drop-off to matter.
+
+**What we track** (consistent with STRATEGY.md):
+- Page views (`/`, `/shop`, `/about` if those routes exist) — to know growth.
+- Country (country-level only — Plausible derives this from IP and immediately discards the IP, no PII stored).
+- Browser / OS family (broad buckets, not version-pinned — to know support priorities).
+- Custom events scoped to milestones, NOT individual feature use:
+  - `app:loaded` (to know how many opens vs raw landing-page views).
+  - `app:project-created` (one-time per user-session, not per project).
+  - `app:export-completed` (signal that the editor is actually being used to ship something).
+  - `app:premium-card-viewed` (Bitmancer Shop interest — only when a card is opened, not which one).
+
+**What we do NOT track** (preserving the existing promise):
+- Which specific effects / plugins are used. That stays opt-in only — if maintainer ever wants this signal, ship it as an explicit Settings → Privacy → "Help improve slammer (anonymous)" toggle, default OFF, with a one-line explanation of exactly what's collected. Never silent.
+- Project content, layer counts, layer names, any in-document data.
+- Pointer paths, click coords, scroll depth — none of that.
+- Session-spanning user identification, fingerprinting, cookies, localStorage IDs.
+
+**Cookie banner**: not needed for cookieless analytics in the EU/EEA. The privacy policy still mentions analytics by name + the data points captured + the data-controller (Bitmancer / maintainer name) + retention + opt-out (DNT respected by Plausible).
+
+**Implementation tasks (v1 = Cloudflare Web Analytics)**:
+- [ ] Enable Cloudflare Web Analytics in the Cloudflare dashboard for the slammer.app zone (requires the deploy to be on Cloudflare Pages — see deploy-migration task above). Data-only tier; no cookie banner since it's cookieless.
+- [ ] Add the Cloudflare beacon snippet to `index.html`:
+  `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "<TOKEN>"}'></script>`
+- [ ] **Settings → Privacy tab** (new) — single toggle: "Allow anonymous usage analytics" (default ON since it's already cookieless / no-PII). When OFF, the page sets `window.__slammer_no_analytics = true` and `index.html` checks the flag before injecting the beacon (or strips the existing script tag at runtime). Mirrors the "transparent by default, easy to disable" stance.
+- [ ] Privacy page (`/privacy` or section in `/about`) — list exactly what's collected by Cloudflare Web Analytics (page views, country, browser/OS family, referrers, performance metrics), retention, controller (maintainer name), opt-out via Settings toggle + DNT browser preference, contact email.
+- [ ] Document the analytics setup in STRATEGY.md so the public stance and the actual implementation match.
+
+**Migration tasks (deferred — only when engagement metrics actually matter)**:
+- [ ] Decide between Plausible self-hosted (Hetzner, ~5 €/mo, AGPL-aligned, fully EU) OR Umami self-hosted (Cloudflare Pages + Supabase free, MIT, free) — both add session duration + custom-event support.
+- [ ] Add a `track(eventName, props)` helper in `src/main.js` that talks to whichever endpoint is chosen. Wire the milestone events: `app:loaded`, `app:project-created`, `app:export-completed`, `app:premium-card-viewed`.
+- [ ] Run both analytics systems in parallel for ~2 weeks to calibrate, then drop the Cloudflare beacon.
 
 ### Polar.sh setup (commerce backend)
 - [ ] Create Polar organization for Bitmancer; verify identity for MoR
@@ -511,7 +574,7 @@
   - `POST /verify` — accepts Polar license key, validates against Polar API, returns signed JWT containing `owned: string[]` (item IDs) + `exp` (24h)
   - `POST /webhook` — receives Polar `checkout.completed`, caches user's purchase set in KV for fast subsequent verifications
   - `GET /download/:itemId` — accepts JWT, returns short-lived signed URL for the matching R2 object
-- [ ] **Cloudflare R2** bucket (`bitmancer-library`): premium plugin bundles + asset-pack ZIPs; access only via Worker-signed URLs (no public bucket)
+- [ ] **Cloudflare R2** bucket (`bitmancer-library`): add-on plugin bundles + asset-pack ZIPs; access only via Worker-signed URLs (no public bucket)
 - [ ] **Cloudflare KV** (`bitmancer-licenses`): user → owned-item-IDs cache, ~5 min TTL, refreshed by webhook
 - [ ] License-key entry UI in Settings → **Library** tab (new): paste key, status indicator, "Refresh ownership" button
 - [ ] JWT cache in IndexedDB; auto-renew on near-expiry; offline-tolerant (last good token cached, Library still shows owned items if validation server is briefly unreachable)
@@ -531,11 +594,11 @@
 - [ ] Comp-key workflow: 100%-off Polar discount codes (e.g. `BITMANCER-PRESS-2026`) for friends + press. Recipient checks out at €0, gets real key, activates exactly like a paying user — no special slammer code path.
 
 ### Plugin system extensions
-- [ ] Plugin manifest schema bump: each premium plugin has stable `id` (e.g. `datamosh-studio`); free plugins continue without change
-- [ ] Plugin registry: ownership-aware loader — premium plugins skip-load until JWT lists their `id` in `owned[]`
-- [ ] **Price-tag UI in Effects add-menu**: premium plugins show a small price label (e.g. "€7") instead of a lock icon. Click → opens in-app preview modal (description, screenshot, "Buy on Polar" CTA, dismiss)
-- [ ] Same price-tag treatment in the Layer Stack `+` flyout (Phase 9) for premium FX layers and in any future Vector Tools shop entry points
-- [ ] Owned-bundle install: register premium plugins in `slammer:library:owned` IndexedDB store; load on app boot before plugin registry locks
+- [ ] Plugin manifest schema bump: each add-on plugin has stable `id` (e.g. `datamosh-studio`); free plugins continue without change
+- [ ] Plugin registry: ownership-aware loader — add-on plugins skip-load until JWT lists their `id` in `owned[]`
+- [ ] **Price-tag UI in Effects add-menu**: add-on plugins show a small price label (e.g. "€7") instead of a lock icon. Click → opens in-app preview modal (description, screenshot, "Buy on Polar" CTA, dismiss)
+- [ ] Same price-tag treatment in the Layer Stack `+` flyout (Phase 9) for add-on FX layers and in any future Vector Tools shop entry points
+- [ ] Owned-bundle install: register add-on plugins in `slammer:library:owned` IndexedDB store; load on app boot before plugin registry locks
 
 ### Bitmancer Library plugin (free, AGPL, panel type) — full storefront UX
 - [ ] New panel plugin: `src/plugins/panels/bitmancer-library/`
@@ -554,7 +617,7 @@
 - [ ] Importer in Bitmancer Library handles each type → routes to appropriate registry (texture cache / gradient store / font upload pipeline / project store)
 
 ### Pre-launch validation
-- [ ] Three-test gate: every premium item in the launch catalog must individually pass the **Tutorial / 2-Hour / Eigengeld** tests in [STRATEGY.md](STRATEGY.md). Maintainer signs off in writing per item before it's listed in Polar.
+- [ ] Three-test gate: every add-on item in the launch catalog must individually pass the **Tutorial / 2-Hour / Eigengeld** tests in [STRATEGY.md](STRATEGY.md). Maintainer signs off in writing per item before it's listed in Polar.
 
 ---
 
@@ -658,9 +721,9 @@ Sub-deliverables (each shippable on its own):
 | Slammer Pro Lifetime | €99–129 | All current + future Bitmancer plugins for v1.x |
 
 Sub-deliverables (each shippable on its own):
-- [x] Public [STRATEGY.md](STRATEGY.md) — positioning, à-la-carte pricing, three premium-decision tests, license, content-honesty
+- [x] Public [STRATEGY.md](STRATEGY.md) — positioning, à-la-carte pricing, three add-on-decision tests, license, content-honesty
 - [x] AGPL-3.0 license applied
-- [ ] [Phase 28](#phase-28--bitmancer-library-storefront--premium-infrastructure-) — technical infrastructure (prerequisite for everything below)
+- [ ] [Phase 28](#phase-28--bitmancer-library-storefront--add-on-infrastructure-) — technical infrastructure (prerequisite for everything below)
 - [ ] **Polar.sh organization** set up; identity verified for Merchant of Record
 - [ ] **Launch catalog** (private repo, separate works) — 3–5 launch plugins (lean over full), each individually passing the three tests, plus 1 themed bundle and the Lifetime tier
 - [ ] **Bitmancer asset-pack format conversion** — port existing texture packs at [bitmancer.gumroad.com](https://bitmancer.gumroad.com) into the asset-pack `.zip` format and re-list on Polar (legacy Gumroad customers stay on Gumroad and are not migrated)
@@ -671,16 +734,16 @@ Sub-deliverables (each shippable on its own):
 - [ ] **Devlog format** (raw, edited, creator's voice) — bonus track when interesting things happen, never on a schedule
 
 **Architecture notes** (locked-in; don't re-debate):
-- Premium plugins, effects, vector tools and asset packs are **separate works** distributed via Polar.sh commerce + Cloudflare R2 delivery. They live in a **private Bitmancer repo**, never in slammer.app.
+- Add-on plugins, effects, vector tools and asset packs are **separate works** distributed via Polar.sh commerce + Cloudflare R2 delivery. They live in a **private Bitmancer repo**, never in slammer.app.
 - **À-la-carte** is the default model — every saleable thing has its own SKU and price tag. Bundles are an additive convenience for buyers, not the primary unit.
 - **Free Tier scope locks at public launch.** What is in the public repo on launch day stays free under AGPL forever. Improvements to free items keep shipping after launch.
 - **No DRM**, no online activation requirement. Honor-system license check.
 - **One-time payment only**, no subscription. v2.x in the future is a paid upgrade in Affinity cadence.
-- **Three-test gate** (see STRATEGY.md): every premium item must pass Tutorial / 2-Hour / Eigengeld tests. Failed items go free, get folded into existing plugins, or don't ship.
+- **Three-test gate** (see STRATEGY.md): every add-on item must pass Tutorial / 2-Hour / Eigengeld tests. Failed items go free, get folded into existing plugins, or don't ship.
 - **Bring-your-own-key for AI**. Bitmancer never sees user prompts or outputs.
 - **No third-party plugin marketplace** v1 — third parties self-distribute, slammer just loads. Community marketplace deferred to [F4](#f4--community-plugin-marketplace).
 
-**Prerequisite**: Phase 28 ships before any premium item can be sold. Domain + Cloudflare deploy + Polar.sh integration + Cloudflare Worker + Bitmancer Library plugin must be live before any item is listed on Polar.
+**Prerequisite**: Phase 28 ships before any add-on item can be sold. Domain + Cloudflare deploy + Polar.sh integration + Cloudflare Worker + Bitmancer Library plugin must be live before any item is listed on Polar.
 
 **Open decisions** (defer until Phase 28 start):
 - Exact launch-catalog plugins (pick 3–5; bias toward video-genic capabilities — Datamosh Studio, Halftone Studio, Generative Brush Engine are the current frontrunners)
@@ -710,9 +773,9 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - Commerce: Polar Connect (if available at the time) or a custom payout flow via Stripe Connect as fallback.
 - This is a 2027+ goal at current single-maintainer cadence.
 
-### F5 — Premium Sprint (Bitmancer launch catalog)
+### F5 — Add-On Sprint (Bitmancer launch catalog)
 
-**Intent**: build out the launch catalog of premium plugins, effects and asset packs that the Bitmancer Library will sell. Each item must individually pass the three "Pay what you need" tests in [STRATEGY.md](STRATEGY.md). Live in a private repo at `src/plugins/premium/` (gitignored), loaded in dev via `premium-loader.js`, served via R2 in prod (Phase 28).
+**Intent**: build out the launch catalog of add-on plugins, effects and asset packs that the Bitmancer Library will sell. Each item must individually pass the three "Pay what you need" tests in [STRATEGY.md](STRATEGY.md). Live in a private repo at `src/plugins/premium/` (gitignored), loaded in dev via `premium-loader.js`, served via R2 in prod (Phase 28).
 **Status**: in progress — first 5 plugins migrated to `premium/` folder structure, manifests tagged with `pro: true` + `pack` metadata.
 
 **Pack structure (`pack` field on the manifest):**
@@ -725,19 +788,19 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 | **Liquid Pack** | Twirl · Ripple · Bulge · **Liquify** (new) | Twirl/Ripple/Bulge shipped Phase 20; Liquify TBD |
 | **Gradient Pack** | Liquid Gradients (rename from Organic Gradient) · Mesh Gradient · Gradient Library | Shipped as "Infinity Gradients"; renaming pack + lead effect |
 | **Mosaic Pack** | Emoji · Photo Mosaic · Pixel Art · LEGO Brick (all new) | New pack — all TBD |
-| **Surface Pack** | 3D · Plastic · **Holographic Foil** · **Liquid Chrome** (all new) | New pack — all TBD; share `_shared/heightfield.js` math (pre-blur + normals + Phong). Pack arc: 3D (sculpting) → Plastic (matte glossy) → Holographic Foil (iridescent) → Liquid Chrome (reflective) |
-| **Type Pack** | **Glitch Text Builder** (new, text-only) | New micro-pack for text-only premium effects; one member at launch, room to grow |
+| **3D Pack** (renamed from Surface Pack) | 3D Bevel · Liquid Chrome (add-ons, both new) — Plastic + Holographic Foil shipped FREE as marketing specimens | Pack rename `39a785b`. Plastic + Foil promoted to free (`9956ade`); they keep their shop specimens (`8a4d5d0`, `b3f3d95`) so the pack page reads as a coherent material-effects family. Add-on members: 3D Bevel (TBD), Liquid Chrome (TBD). All four share `_shared/heightfield.js`. |
+| **Type Pack** | **Glitch Text Builder** (new, text-only) | New micro-pack for text-only add-on effects; one member at launch, room to grow |
 
-**Existing premium plugins (migrated from free folders, polish pending):**
+**Existing add-on plugins (migrated from free folders, polish pending):**
 - [x] **Datamosh** — moved to `premium/datamosh/`, `pack: 'glitch-pack'`
 - [x] **JPEG Compression** — moved to `premium/jpeg-compression/`, `pack: 'glitch-pack'`
 - [x] **Dither** — moved to `premium/dithering/` (id stable), `pack: 'raster-pack'`
 - [x] **Stipple** (vector) — moved to `premium/stipple/`, `pack: 'dots-pack'`
 - [x] **Halftone** (vector) — moved to `premium/halftone/`, `pack: 'dots-pack'`
 
-**New premium plugins / effects / assets (build queue):**
+**New add-on plugins / effects / assets (build queue):**
 - [ ] **Halftone (raster)** — real screenprint dot pattern with DPI + angle + dot-shape (distinct from vector Halftone, distinct from Dither's halftone mode). Goes into Raster Pack alongside Dither.
-- [ ] **ASCII** 🟦 PREMIUM (Raster Pack) — converts image to ASCII art. Grid of cells, each cell's average luminance mapped to a character from a density ramp. Controls: cell size, font size, character set (preset + custom), foreground/background colour mode (original colour / monochrome / custom), contrast, invert. Preset character sets: Standard (` .:-=+*#%@`), Blocks (`░▒▓█`), Braille, Minimal, Digits, Katakana. Custom character set input field lets users type their own ramp. Output rendered onto canvas via fillText at cell positions — stays raster, not a text layer. Goes into Raster Pack alongside Dither + Halftone.
+- [ ] **ASCII** 🟦 ADD-ON (Raster Pack) — converts image to ASCII art. Grid of cells, each cell's average luminance mapped to a character from a density ramp. Controls: cell size, font size, character set (preset + custom), foreground/background colour mode (original colour / monochrome / custom), contrast, invert. Preset character sets: Standard (` .:-=+*#%@`), Blocks (`░▒▓█`), Braille, Minimal, Digits, Katakana. Custom character set input field lets users type their own ramp. Output rendered onto canvas via fillText at cell positions — stays raster, not a text layer. Goes into Raster Pack alongside Dither + Halftone.
 - [ ] **Instagram Importer** plugin — login-free public profile scraping or oEmbed-based, pulls user's own posts as image layers
 - [ ] **Social Media Templates** plugin (panel type) — browseable library of social-media frame templates (Instagram square / story / reel cover, TikTok, Twitter card, LinkedIn banner, YouTube thumb, Pinterest pin, etc.). Each template = a `.slammerproj` snapshot with placeholder layers + a frame at the platform's exact px dimensions. Drag-and-drop a template onto the canvas to instantiate it as a new project (or as new layers in the current project). Categories: Instagram · TikTok · Twitter / X · LinkedIn · YouTube · Pinterest · General. Search + tag filter. Stored under `src/plugins/premium/social-templates/` with `pack: 'templates-pack'` (new pack — could grow with brand-kit / poster / lookbook templates later).
 - [ ] **Monolab-inspired effects audit** (research-derived candidates) — the iOS app monolab.app ships 140+ "concept-based" filters; several are gaps in our catalog and resonate with the slammer.app aesthetic. Candidates to slot into Phase 27 free / Surface Pack / Glitch Pack as appropriate: **Local Threshold / Adaptive Threshold** (Sauvola/Niblack — superior to global threshold for Y2K xerox aesthetic, complements Dither/Halftone), **Moiré Drift** (interference-pattern overlay; pairs with Halftone), **Engraving / Lines** (directional line-screen / hatching, vector-friendly, fits SVG export), **Trace Tone / Relief** (auto-vectorisation: raster → Paper.js path contours by luminance bands — leverages existing vector layer infrastructure), **Edge Halo** (structural haloing, distinct from edge-detection outline), **Vector Field Warp** (field-driven displacement; distinct from Twirl/Ripple/Bulge radial primitives), **Fragment Field / Multi-Exposure Shards** (between RGB Shift and Datamosh tonally), **Echo Grid** (grid-quantised replication, complements Halftone/Stipple on a discrete lattice), **Residual Self / Long-Exposure Ghost** (luminance-based ghosting/decay overlay). To be triaged + scoped per effect when the maintainer prioritises.
@@ -746,23 +809,23 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - [ ] **Soft Face Filter** effect — lightweight skin-smoothing / colour-balancing for portraits
 - [ ] **Y2K Vector Pack** assets — curated SVG kit (logos, shapes, ornaments, stickers)
 - [ ] **Xerox Textures** asset pack — high-res scan textures of photocopied / faxed material
-- [ ] **Vignette** effect — standalone radial darkening/lightening. Extracted from Organic Gradient (which loses its built-in vignette). Controls: amount, roundness, feather, midpoint, colour. Free or premium TBD.
+- [ ] **Vignette** effect — standalone radial darkening/lightening. Extracted from Organic Gradient (which loses its built-in vignette). Controls: amount, roundness, feather, midpoint, colour. Free or add-on TBD.
 - [ ] **CRT Look** effect — scan lines + RGB bleed + bloom + vignette + barrel distortion preset
 - [ ] **Mesh Warp** plugin — pin-mesh deformation (also on Phase 27 Deform tab; if shipped here, drop the Phase 27 Mesh Warp sub-task)
-- [ ] **Emoji** 🟨 PREMIUM (Mosaic Pack) — two layout modes in one effect. **Grid mode**: splits image into a cell grid, computes each cell's average colour in CIELAB, matches to the perceptually closest emoji. **Scatter mode**: luminance-driven density scatter (Poisson disk sampling) — darker areas get more/larger emoji packed tighter, lighter areas sparser. Emoji overlap, vary in size, and rotate randomly for an organic collage look (similar to Stipple's spatial distribution but with emoji glyphs). Ships a Twemoji sprite atlas (~200KB, CC-BY 4.0) for pixel-identical cross-platform rendering. Shared controls: emoji set (Full / Faces / Nature / Food / Objects / custom subset), background mode (transparent / original / solid), colour bias strength. Grid controls: cell size. Scatter controls: density, size range (min/max), rotation variance, overlap amount. Live preview at reduced resolution during slider drag, full-res on release.
-- [ ] **Photo Mosaic** 🟨 PREMIUM (Mosaic Pack) — rebuilds the image from a library of small tile images. Integrates with the Unified Media Library (Phase 25) and plugin folders: user selects a folder of images as the tile source. Each cell's average colour matched against tile averages via CIELAB Delta-E. Controls: cell size, tile repetition limit (min distance before reuse), colour tint strength (blend tile toward target colour vs show original tile), tile rotation (0° / random / match gradient), source folder picker. Falls back to a bundled default tile set (geometric shapes / textures) when no folder is selected.
-- [ ] **Pixel Art** 🟨 PREMIUM (Mosaic Pack) — downscales the image to a low-res grid then renders each cell as a clean flat-colour square (nearest-neighbour upscale with hard edges). Controls: cell size (pixel block size), colour palette (Unlimited / NES 54 / Game Boy 4 / SNES 256 / C64 16 / CGA 16 / custom palette picker), dither within palette (none / ordered / Floyd-Steinberg), outline mode (adds 1px dark outline per colour region for a sprite look), grid lines toggle. Distinct from Dither: Pixel Art enforces flat fills per cell and palette-locks, Dither preserves continuous tonal gradients.
-- [ ] **LEGO Brick** 🟨 PREMIUM (Mosaic Pack) — renders the image as a grid of LEGO-style circular studs. Each cell becomes a raised stud with a subtle 3D bevel (CSS-style radial gradient for the dome highlight + shadow). Controls: stud size, colour palette (Official LEGO 40-colour palette / extended / full), plate colour (baseplate behind studs), bevel strength, gap size between studs, shadow direction. Output looks like a real LEGO mosaic set instruction — could pair with a "parts list" export (count per colour) as a bonus feature.
-- [ ] **Noise Blur** effect 🟦 PREMIUM (Glitch Pack candidate) — custom-mask-driven variable-strength blur (per-pixel blur amount sampled from an upload-able mask / noise texture). Sits next to the Phase 27 free Blur as a dedicated premium variant; lets the user paint where blur is sharp vs soft. UI: mask drop-zone + noise-fallback generator + per-channel strength curve.
-- [ ] **Liquify** effect 🟦 PREMIUM (Liquid Pack) — domain-warped displacement. Uses the same multi-iteration simplex noise engine as Liquid Gradients, but instead of mapping noise → colour, it maps noise → per-pixel displacement (dx, dy). Result: organic, flowing distortion with much more structure and control than the basic value-noise Displacement effect. Controls: scale, warp strength, warp iterations (1–4), edge mode (clamp/wrap/mirror), seed, "Move on canvas" spatial offset (shared concept with Liquid Gradients). Animate toggle reuses the same rAF tick + time-offset architecture. Think: Photoshop Liquify-meets-procedural-distortion — no brush painting, pure generative warp.
+- [ ] **Emoji** 🟨 ADD-ON (Mosaic Pack) — two layout modes in one effect. **Grid mode**: splits image into a cell grid, computes each cell's average colour in CIELAB, matches to the perceptually closest emoji. **Scatter mode**: luminance-driven density scatter (Poisson disk sampling) — darker areas get more/larger emoji packed tighter, lighter areas sparser. Emoji overlap, vary in size, and rotate randomly for an organic collage look (similar to Stipple's spatial distribution but with emoji glyphs). Ships a Twemoji sprite atlas (~200KB, CC-BY 4.0) for pixel-identical cross-platform rendering. Shared controls: emoji set (Full / Faces / Nature / Food / Objects / custom subset), background mode (transparent / original / solid), colour bias strength. Grid controls: cell size. Scatter controls: density, size range (min/max), rotation variance, overlap amount. Live preview at reduced resolution during slider drag, full-res on release.
+- [ ] **Photo Mosaic** 🟨 ADD-ON (Mosaic Pack) — rebuilds the image from a library of small tile images. Integrates with the Unified Media Library (Phase 25) and plugin folders: user selects a folder of images as the tile source. Each cell's average colour matched against tile averages via CIELAB Delta-E. Controls: cell size, tile repetition limit (min distance before reuse), colour tint strength (blend tile toward target colour vs show original tile), tile rotation (0° / random / match gradient), source folder picker. Falls back to a bundled default tile set (geometric shapes / textures) when no folder is selected.
+- [ ] **Pixel Art** 🟨 ADD-ON (Mosaic Pack) — downscales the image to a low-res grid then renders each cell as a clean flat-colour square (nearest-neighbour upscale with hard edges). Controls: cell size (pixel block size), colour palette (Unlimited / NES 54 / Game Boy 4 / SNES 256 / C64 16 / CGA 16 / custom palette picker), dither within palette (none / ordered / Floyd-Steinberg), outline mode (adds 1px dark outline per colour region for a sprite look), grid lines toggle. Distinct from Dither: Pixel Art enforces flat fills per cell and palette-locks, Dither preserves continuous tonal gradients.
+- [ ] **LEGO Brick** 🟨 ADD-ON (Mosaic Pack) — renders the image as a grid of LEGO-style circular studs. Each cell becomes a raised stud with a subtle 3D bevel (CSS-style radial gradient for the dome highlight + shadow). Controls: stud size, colour palette (Official LEGO 40-colour palette / extended / full), plate colour (baseplate behind studs), bevel strength, gap size between studs, shadow direction. Output looks like a real LEGO mosaic set instruction — could pair with a "parts list" export (count per colour) as a bonus feature.
+- [ ] **Noise Blur** effect 🟦 ADD-ON (Glitch Pack candidate) — custom-mask-driven variable-strength blur (per-pixel blur amount sampled from an upload-able mask / noise texture). Sits next to the Phase 27 free Blur as a dedicated add-on variant; lets the user paint where blur is sharp vs soft. UI: mask drop-zone + noise-fallback generator + per-channel strength curve.
+- [ ] **Liquify** effect 🟦 ADD-ON (Liquid Pack) — domain-warped displacement. Uses the same multi-iteration simplex noise engine as Liquid Gradients, but instead of mapping noise → colour, it maps noise → per-pixel displacement (dx, dy). Result: organic, flowing distortion with much more structure and control than the basic value-noise Displacement effect. Controls: scale, warp strength, warp iterations (1–4), edge mode (clamp/wrap/mirror), seed, "Move on canvas" spatial offset (shared concept with Liquid Gradients). Animate toggle reuses the same rAF tick + time-offset architecture. Think: Photoshop Liquify-meets-procedural-distortion — no brush painting, pure generative warp.
 
 **Architecture notes:**
 - All items live in private `bitmancer-plugins` repo, mounted at `src/plugins/premium/`. Gitignored in slammer.app.
 - Each item's manifest carries `pro: true`, `pack: '<pack-id>'`, eventually `price: <eur>` (added when commerce wires up in Phase 28).
-- Free improvements to non-premium plugins continue independently — moving items here does NOT mean polish stops on free counterparts.
-- Phase 19 polish items that touch premium plugins (e.g. Pixelsort scroll-wheel cycle, Dither algorithm browse, etc.) cross-cut into F5; track them in whichever phase the work happens, no double-listing.
+- Free improvements to non-add-on plugins continue independently — moving items here does NOT mean polish stops on free counterparts.
+- Phase 19 polish items that touch add-on plugins (e.g. Pixelsort scroll-wheel cycle, Dither algorithm browse, etc.) cross-cut into F5; track them in whichever phase the work happens, no double-listing.
 
-**Polish sprints (each premium item gets its own pass before launch):**
+**Polish sprints (each add-on item gets its own pass before launch):**
 - [ ] Datamosh polish — fat-knob UI, more algorithms, before/after preview, presets
 - [ ] JPEG Compression polish — quality presets ("Late-2000s Forum", "Compression Decay", "Recompressed Meme"), gen-loss visual feedback
 - [ ] Dither polish — algorithm preview thumbnails in picker, scroll-wheel cycle (Phase 19 todo), better palette UI
@@ -781,7 +844,7 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 - Per-plugin price points (single plugin €5–10, but flat or tiered?)
 - Pack discount: 30 % off pack vs sum of singles is the working model
 - Lifetime bundle inclusion: every F5 item ships into Lifetime automatically (per STRATEGY.md)
-- Whether Background Removal local model is allowed in free fork too (no — too valuable to give away, keep premium even though tech is OSS)
+- Whether Background Removal local model is allowed in free fork too (no — too valuable to give away, keep it as an add-on even though tech is OSS)
 
 **Prerequisite**: Phase 28 Bitmancer Library Storefront must be live before any F5 item can be sold publicly. Until then, all F5 work is private development against the dev-loader.
 
@@ -857,8 +920,8 @@ Sub-deliverables (sketch only — to be detailed when work starts):
 
 #### Strategic notes
 
-- **Free, not premium.** This is a distribution multiplier; gating it behind a paywall defeats the purpose. Lives in the free app forever.
-- **Embed in Bitmancer Shop** (post-Phase 28): premium pack pages can link to a Tutorial Recorder demo of using the pack's effects. Self-recorded by maintainer, takes minutes. Lowers friction for premium purchases.
+- **Free, not an add-on.** This is a distribution multiplier; gating it behind a paywall defeats the purpose. Lives in the free app forever.
+- **Embed in Bitmancer Shop** (post-Phase 28): add-on pack pages can link to a Tutorial Recorder demo of using the pack's effects. Self-recorded by maintainer, takes minutes. Lowers friction for add-on purchases.
 - **Tribe alignment** — STRATEGY.md says the audience "discovers tools through YouTube tutorials, not LinkedIn". The recorder turns every user into a potential micro-tutorial creator without forcing them to learn OBS / ScreenPal / QuickTime.
 - **No telemetry attached** — the recording stays local, no tracking, no upload. Users export when they choose.
 
