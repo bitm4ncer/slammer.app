@@ -900,10 +900,11 @@ function bindEvents(anchorEl) {
       row.innerHTML = `
         <button class="color-hub-var-swatch" type="button" title="${varName} = ${varValue.toUpperCase()} — click to apply, drag onto a layer, right-click to remove" style="background:${varValue}" draggable="true"></button>
         <input class="color-hub-input color-hub-var-name" type="text" value="${varName}" spellcheck="false" />
-        <span class="color-hub-var-hex">${varValue.toUpperCase()}</span>
+        <input class="color-hub-input color-hub-var-hex" type="text" value="${varValue.toUpperCase()}" maxlength="7" spellcheck="false" />
       `;
       const swatch = row.querySelector('.color-hub-var-swatch');
       const nameInput = row.querySelector('.color-hub-var-name');
+      const hexInput = row.querySelector('.color-hub-var-hex');
       // Click swatch → apply to active slot (resolves the variable to its
       // current hex, syncs the picker HSV state, commits).
       swatch.addEventListener('click', () => {
@@ -932,6 +933,24 @@ function bindEvents(anchorEl) {
         if (!next.startsWith('--')) next = '--' + next.replace(/^-+/, '');
         if (next === varName) return;
         renameVariable(varName, next);
+      });
+      // Hex value edit — Enter or blur commits, Esc reverts.
+      // Accepts `#RRGGBB` with or without the `#`; auto-prepends it.
+      // Invalid input reverts to the variable's current value.
+      hexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); hexInput.blur(); }
+        else if (e.key === 'Escape') { hexInput.value = varValue.toUpperCase(); hexInput.blur(); }
+      });
+      hexInput.addEventListener('blur', () => {
+        let next = hexInput.value.trim();
+        if (next && !next.startsWith('#')) next = '#' + next;
+        if (!/^#[0-9a-f]{6}$/i.test(next)) {
+          hexInput.value = varValue.toUpperCase();
+          return;
+        }
+        next = next.toLowerCase();
+        if (next === varValue) return;
+        setVariable(varName, next);
       });
       varsListEl.appendChild(row);
     }

@@ -386,7 +386,12 @@
 }
 
 .color-hub-tab-panel {
-  min-height: 64px;
+  /* Reserve enough height that switching Recent ↔ Variables doesn't
+   * reflow the popover. The Variables panel can grow to ~220 px when
+   * the list is full + the add-row is visible; Recent at most ~120 px
+   * for 24 swatches. We pin to the larger so both tabs sit in the
+   * same vertical slot. */
+  min-height: 220px;
 }
 .color-hub-tab-panel[hidden] { display: none; }
 
@@ -476,11 +481,26 @@
   outline: none;
 }
 .color-hub-var-hex {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 9px !important;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--text-secondary) !important;
   flex-shrink: 0;
+  width: 60px !important;
+  padding: 2px 4px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  text-align: right;
+  text-transform: uppercase;
+}
+.color-hub-var-hex:hover {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.color-hub-var-hex:focus {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border-color: var(--ctx-accent) !important;
+  color: var(--text-primary) !important;
+  outline: none;
 }
 
 .color-hub-vars-add-row {
