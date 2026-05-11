@@ -158,7 +158,7 @@
 - [x] Shift-click multi-select in Layer Stack — `src/ui/layer-panel.js` shift-range via `selectRange()` reading panel order. (Canvas-side shift-click not wired; marquee + panel cover the workflow.)
 - [x] Multi-layer transform — `src/core/renderer.js` `multiDragSession` captures every selected layer's start position on dragstart, replicates the delta on dragmove, commits all transforms on dragend; `selectionNodes()` attaches the full set to the Konva.Transformer; vector paths bake via `translatePathD`.
 - [x] Fix: delete-key now honours full selection — `src/ui/canvas-view.js` Delete/Backspace handler loops over `getSelection()` instead of `activeLayerId`.
-- [x] Grouping preserves order + position — `addGroupLayer()` reads `childIds` in panel-top-first order, splices the group at the topmost child's z-position; `handleSortEnd` rebuilds from panel DOM order.
+- [x] Grouping preserves order + position — `addGroupLayer()` reads `childIds` in panel-top-first order, splices the group at the topmost child's z-position; `handleSortEnd` rebuilds from panel DOM order. — re-fixed in `c233a94` (auto-centre guard for non-image layers in `createLayerNodes` + bottom-first childIds normalisation in `addGroupLayer`).
 - [x] Slider-driven path Simplify with live preview — replaced the one-shot button with a tolerance slider (0–50, default 2.5). Drag fires `doc.setVectorPathEphemeral` (new mutator, emits `layer:vectorChangedEphemeral` — NOT in PROP_EVENTS, so hover-spam doesn't pollute undo). Release commits ONCE via `setVectorPath`. Escape reverts cleanly. Pure `computeSimplifiedD()` extracted from `simplifyPath` so the same formula drives both paths.
 
 ## PHASE 14 — Brush tool ⏳
@@ -293,7 +293,8 @@
 - [ ] Undo flicker fix: don't tear down all Konva nodes on history step; diff and patch — **parked in BUGS.md** (renderer rewrite scope; needs its own cluster)
 - [x] Audit: plugin params persistence — every plugin stores state in `effect.params` (snapshotted per `JSON.stringify`); only `displacement` keeps a module-level `_textureCache` Map that's a non-persisted in-memory perf cache (correct). No gaps found.
 - [x] Audit: events missing from undo coverage — `doc:propChanged` (project rename) was the only gap. Added to history's PROP_EVENTS so renaming a project commits to history; `statesLookEqual` extended to compare `state.name` + `state.exportFrame` so renames + frame edits aren't dropped as duplicate snapshots.
-- [ ] **History v2 — switch from snapshot-based to command-pattern undo** (architectural overhaul). Quick fixes for the immediate "only 1 step back" + missing-event-coverage bugs are tracked in `BUGS.md` and ship first; History v2 is the proper long-term solution. See dedicated section below.
+- [x] **Quick-fix pass on snapshot-history regression** (commit `d2f297b`) — closed the "only 1 step back" bug from BUGS.md. `statesLookEqual` replaced with a full-snapshot `deepEq` so every persisted field (vector path data, layer name, locked, parentGroupId, childIds, colorVar bindings, …) automatically participates in the duplicate check. Event handling inverted: every emitted doc event triggers a debounced commit unless it appears in an explicit `IGNORE_EVENTS` set (`layer:active`, `effect:processing`, the three `*Ephemeral` ones, `layer:vectorActivePath`, `doc:guidelines`) — new event types default to in-history. Capacity bumped 80 → 200. Verified live: 1 px nudge / layer rename / lock toggle / vector path edit / colour change / drag-to-move all commit + undo cleanly. `history` exposed on `window.__slammer` for diagnostics.
+- [ ] **History v2 — switch from snapshot-based to command-pattern undo** (architectural overhaul). The quick fix above closes the actively-broken user surface; v2 is the long-term replacement that gets us cheap memory + per-step labels + a History panel. See dedicated section below.
 
 #### History v2 — Command-pattern undo (architectural overhaul)
 
@@ -317,7 +318,7 @@
 
 **Effort**: 5-7 days for Phases A + B + tests. Phase C cleanup is small. The bulk of work is converting ~30 mutators in `document.js` to Commands — mechanical but tedious.
 
-**Pre-requisite**: the quick-fix bugs in `BUGS.md` (extend `statesLookEqual`, defend `doc:loaded`, audit event coverage, bump capacity to 200) ship first. History v2 is the long-term replacement, not the short-term fix.
+**Pre-requisite**: ~~the quick-fix bugs in `BUGS.md` (extend `statesLookEqual`, defend `doc:loaded`, audit event coverage, bump capacity to 200) ship first~~ — done in `d2f297b`. History v2 is the long-term replacement, not the short-term fix.
 
 ### Cluster G — Typography polish
 - [x] Text layer auto-renames to its text content (debounced 300 ms; first 30 chars; stops the moment the user manually renames via layer-card double-click — tracked by a `_autoNamed` flag that persists across reload)
