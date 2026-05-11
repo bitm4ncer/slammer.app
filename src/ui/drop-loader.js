@@ -66,13 +66,14 @@ function createLoaderEl() {
 
 function fadeIn(entry) {
   if (!entry.el) return;
-  // The 200 ms delay before adding `--visible` is what suppresses the
-  // flash on tiny / cached drops: if paintLayerSync commits first,
-  // hide() drops the entry before this timer fires.
-  entry.fadeInTimer = setTimeout(() => {
-    entry.fadeInTimer = 0;
+  // Show immediately — the user wants instant feedback at the drop point.
+  // A brief flash for a tiny / cached drop is better UX than no affordance
+  // at all on multi-MB drops (which was the bug we shipped initially).
+  // requestAnimationFrame ensures the opacity-0 → opacity-1 transition
+  // actually plays instead of being collapsed by the same paint.
+  requestAnimationFrame(() => {
     if (entry.el) entry.el.classList.add('drop-loader--visible');
-  }, 200);
+  });
 }
 
 function disposeEntry(entry) {

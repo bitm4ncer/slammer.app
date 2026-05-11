@@ -2372,16 +2372,18 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--primary);
-  font-size: 22px;
+  font-size: 28px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 200ms ease;
+  /* Quick fade-in for instant feedback. The fade-OUT is handled by the same
+   * transition when the --visible class is removed on first paint. */
+  transition: opacity 120ms ease;
   z-index: 50;
   /* No glow / halo per house rules. The ring icon is the sole affordance. */
 }

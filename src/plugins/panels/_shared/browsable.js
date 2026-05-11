@@ -115,6 +115,39 @@ export function createBrowsable({
   const searchPanel = container.querySelector('.browsable-tab-panel--search');
   searchPanel.style.opacity = '0';
 
+  // The landing-loader is inside .browsable-tab-panel--search, which we
+  // start at opacity:0 to hide the empty grid/headline flash until content
+  // arrives. Inherited opacity makes the spinner invisible too — defeating
+  // its whole purpose on initial open of slow sources like Met / Europeana.
+  // Promote the loader to be a sibling of the panel so it lives outside
+  // the fade-in container. Also ensure the host container has a positioning
+  // context so its absolute layout still hits centre.
+  const landingLoaderEl = container.querySelector('[data-landing-loader]');
+  if (landingLoaderEl) {
+    container.appendChild(landingLoaderEl);
+    if (getComputedStyle(container).position === 'static') {
+      container.style.position = 'relative';
+    }
+  }
+
+  // Sticky-offset alignment: measure the tab strip's actual height and
+  // expose it as --browsable-tabs-h so .browsable-search-header docks
+  // flush below it. Without this, the search header used a hard-coded
+  // top: 38px that left a gap whenever the tab strip rendered taller or
+  // shorter (font metrics, line wrap, accent borders). Re-measure on
+  // resize so the offset stays correct after the user resizes the
+  // floating window or the tab strip wraps.
+  const tabStrip = container.querySelector('.browsable-tabs');
+  const updateTabsH = () => {
+    if (!tabStrip) return;
+    const h = Math.round(tabStrip.getBoundingClientRect().height);
+    if (h > 0) container.style.setProperty('--browsable-tabs-h', `${h}px`);
+  };
+  updateTabsH();
+  if (typeof ResizeObserver !== 'undefined' && tabStrip) {
+    new ResizeObserver(updateTabsH).observe(tabStrip);
+  }
+
   // ---------- Column-based masonry helpers ----------
   // Resets a grid to N empty columns, each tracking its own predicted height
   // so the next append can pick the shortest one without measuring layout.
@@ -230,17 +263,34 @@ export function createBrowsable({
   async function runSearch() {
     const q = searchInput.value.trim();
     if (!q) return;
+    const wasLanding = searchPanel.classList.contains('browsable-landing');
     // Once the user searches, drop the landing layout so the search bar
     // docks at its normal top position.
     searchPanel.style.opacity = '1';
     searchPanel.classList.remove('browsable-landing');
     const landingLoader = container.querySelector('[data-landing-loader]');
-    landingLoader?.classList.remove('visible');
+    if (!wasLanding) {
+      // Feed-mode search (results already on screen): scroll the panel back
+      // to the top and clear the grid so the user sees a clean loading
+      // state instead of the previous query's results scrolling behind a
+      // small inline spinner. The big centred landing-loader doubles as
+      // the feed-mode spinner — same affordance, no second element.
+      if (scrollRoot) scrollRoot.scrollTop = 0;
+      resetColumns(searchGrid);
+      emptyEl.hidden = true;
+      landingLoader?.classList.add('visible');
+    } else {
+      landingLoader?.classList.remove('visible');
+    }
     lastQuery = q;
     currentPage = 0;
     hasMore = true;
     loadedItems.length = 0;
-    await loadPage({ append: false });
+    try {
+      await loadPage({ append: false });
+    } finally {
+      landingLoader?.classList.remove('visible');
+    }
   }
   searchBtn.addEventListener('click', runSearch);
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
