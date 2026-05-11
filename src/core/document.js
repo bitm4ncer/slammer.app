@@ -170,9 +170,20 @@ export function createDocument() {
 
     // Group ops — see plan: a group wraps N children of any type via
     // childIds + each child's parentGroupId mirror. Nested groups are
-    // allowed. childIds order = panel display order (top-of-stack first).
+    // allowed.
+    //
+    // childIds convention: BOTTOM-FIRST (matches `state.layers` storage
+    // + the renderer's `syncZOrder` Pass 2 + `nodeMarkup`'s `.reverse()`
+    // before rendering). Whatever order the caller passes — selection
+    // order, DOM order (top-first), Set insertion order — gets normalised
+    // here by sorting on `findIndex(cid)` ascending. The user-visible
+    // z-stack and panel order therefore survive Ctrl+G regardless of how
+    // the caller enumerated the selection.
     addGroupLayer(opts = {}) {
       const layer = createGroupLayer({ id: uid(), ...opts });
+      layer.childIds = (layer.childIds || [])
+        .filter((cid) => findLayer(cid))
+        .sort((a, b) => findIndex(a) - findIndex(b));
       // Stamp parentGroupId on each child + drop them from any prior group.
       for (const childId of layer.childIds) {
         const child = findLayer(childId);
@@ -252,7 +263,11 @@ export function createDocument() {
       const idx = findIndex(groupId);
       if (idx >= 0) state.layers.splice(idx, 1);
       if (state.activeLayerId === groupId) {
-        state.activeLayerId = group.childIds[0] || state.layers[idx]?.id || null;
+        // childIds is bottom-first → pick the LAST entry as the new active,
+        // so dissolving feels like "the topmost child surfaces" rather
+        // than "the bottommost child surfaces".
+        const topChild = group.childIds[group.childIds.length - 1];
+        state.activeLayerId = topChild || state.layers[idx]?.id || null;
         emit({ type: 'layer:active', id: state.activeLayerId });
       }
       emit({ type: 'group:dissolved', layerId: groupId });

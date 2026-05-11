@@ -1441,9 +1441,18 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st.dirtyFromIndex = 0;
       paintLayer(layer, st);
 
-      // If transform never set explicitly, center the layer in the current viewport.
+      // If transform never set explicitly, center the layer in the current
+      // viewport. Image-only — text/vector tools set transform at creation
+      // time, and groups MUST stay at (0, 0) so children's world coords
+      // (recorded as their own transform.x/y while top-level) survive the
+      // reparent into the group's local coord system. Without this gate,
+      // Ctrl+G grouping a fresh viewport's worth of layers nudged the
+      // group to viewport-centre and every child appeared offset by that
+      // amount until the user dragged.
       const stageRef = getStage();
-      if (layer.transform.x === 0 && layer.transform.y === 0 && layer.naturalSize == null) {
+      if (layer.type === 'image'
+          && layer.transform.x === 0 && layer.transform.y === 0
+          && layer.naturalSize == null) {
         const stageScale = stageRef.scaleX();
         const worldW = stageRef.width() / stageScale;
         const worldH = stageRef.height() / stageScale;
