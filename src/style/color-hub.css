@@ -92,6 +92,26 @@
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
+/* Variable-binding badge — when the slot's colour is bound to a named
+ * variable (e.g. --brand) on the selected layer, a tiny mono-font label
+ * appears beneath the chip. Implemented via [data-var] attribute set by
+ * paintSlotChips; the empty-string fallback hides the badge cleanly. */
+.color-hub-slot[data-var]:not([data-var=""])::after {
+  content: attr(data-var);
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  color: var(--ctx-accent);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.color-hub-slot {
+  position: relative;             /* anchor for the ::after badge */
+}
 .color-hub-slot-chip {
   width: 16px;
   height: 16px;

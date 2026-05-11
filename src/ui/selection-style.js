@@ -31,6 +31,7 @@ import {
   getActiveGradient, setActiveGradient,
   setActiveSlot,
   onActiveChange,
+  getVariables, onVariablesChange,
 } from '../core/colors.js';
 import { getSelectionArray, getAnchor, onSelectionChange } from './selection-state.js';
 
@@ -43,6 +44,13 @@ export function attachSelectionStyle(doc) {
   onSelectionChange(() => emit());
   // Active state → re-emit (so writes that go to active still update UI).
   onActiveChange(() => emit());
+  // Variable value changes → propagate the new hex to every layer that
+  // binds the variable (colorVar metadata on fill / stroke), then
+  // re-emit so the UI catches up.
+  onVariablesChange(() => {
+    propagateVariablesToLayers();
+    emit();
+  });
   // Document changes — vectorChanged + textChanged on a selected layer
   // also need to fire a repaint (other tools might mutate the layer).
   doc.subscribe((evt) => {
@@ -50,6 +58,37 @@ export function attachSelectionStyle(doc) {
     if (evt.type === 'layer:vectorChanged' && isSelected(evt.id)) emit();
     else if (evt.type === 'layer:textChanged' && evt.prop === 'color' && isSelected(evt.id)) emit();
   });
+}
+
+// Walk every layer; for any fill / stroke / text-color that carries a
+// `colorVar: '--name'` binding, update its `color` to the variable's
+// current value. Skips layers where the colour is already in sync.
+function propagateVariablesToLayers() {
+  if (!_doc) return;
+  const byName = new Map(getVariables().map((v) => [v.name, v.value]));
+  for (const layer of _doc.layers) {
+    if (layer.type === 'vector' && layer.vector?.paths?.length) {
+      layer.vector.paths.forEach((p, idx) => {
+        if (p.fill?.colorVar && byName.has(p.fill.colorVar)) {
+          const want = byName.get(p.fill.colorVar);
+          if (p.fill.color !== want) {
+            _doc.setVectorFill(layer.id, idx, { ...p.fill, color: want });
+          }
+        }
+        if (p.stroke?.colorVar && byName.has(p.stroke.colorVar)) {
+          const want = byName.get(p.stroke.colorVar);
+          if (p.stroke.color !== want) {
+            _doc.setVectorStroke(layer.id, idx, { ...p.stroke, color: want });
+          }
+        }
+      });
+    } else if (layer.type === 'text' && layer.text?.colorVar && byName.has(layer.text.colorVar)) {
+      const want = byName.get(layer.text.colorVar);
+      if (layer.text.color !== want) {
+        _doc.setTextProp(layer.id, 'color', want);
+      }
+    }
+  }
 }
 
 function emit() {
@@ -107,6 +146,8 @@ export function getEffectiveStyle() {
         strokeKind: stroke.type === 'gradient' ? 'gradient' : (stroke.type === 'none' ? 'none' : 'solid'),
         fill: fill.color || '#ffffff',
         stroke: stroke.color || '#000000',
+        fillColorVar: fill.colorVar || null,
+        strokeColorVar: stroke.colorVar || null,
         fillOpacity: Number.isFinite(fill.opacity) ? fill.opacity : 1,
         strokeOpacity: Number.isFinite(stroke.opacity) ? stroke.opacity : 1,
         strokeWidth: Number.isFinite(stroke.width) ? stroke.width : 2,
@@ -132,6 +173,8 @@ export function getEffectiveStyle() {
       strokeKind: getActiveKind('stroke'),
       fill: getActiveKind('fill') === 'solid' ? (layer.text?.color || '#ffffff') : getActiveFill(),
       stroke: getActiveStroke(),
+      fillColorVar: layer.text?.colorVar || null,
+      strokeColorVar: null,
       fillOpacity: getActiveOpacity('fill'),
       strokeOpacity: getActiveOpacity('stroke'),
       strokeWidth: getActiveStrokeWidth(),
@@ -147,6 +190,8 @@ export function getEffectiveStyle() {
     strokeKind: getActiveKind('stroke'),
     fill: getActiveFill(),
     stroke: getActiveStroke(),
+    fillColorVar: null,
+    strokeColorVar: null,
     fillOpacity: getActiveOpacity('fill'),
     strokeOpacity: getActiveOpacity('stroke'),
     strokeWidth: getActiveStrokeWidth(),
@@ -292,10 +337,16 @@ export function applyStrokeWidth(width) {
 //   rasteriser doesn't render strokes — see roadmap Phase 23).
 // ---------------------------------------------------------------------------
 
-export function applyColorToLayer(layerId, hex, slot = 'fill') {
+export function applyColorToLayer(layerId, hex, slot = 'fill', opts = {}) {
   if (!_doc || !layerId || !isHex(hex)) return false;
   const layer = _doc.findLayer(layerId);
   if (!layer) return false;
+  // `opts.colorVar` (e.g. '--brand') is the variable binding — set when
+  // the drop source is a variable swatch. Future variable edits will
+  // propagate to this layer via propagateVariablesToLayers. Passing
+  // null (or omitting) explicitly STRIPS any existing binding so a
+  // plain Recent-swatch drop unbinds the layer cleanly.
+  const colorVar = opts.colorVar || null;
   if (layer.type === 'vector') {
     const paths = layer.vector?.paths || [];
     paths.forEach((p, idx) => {
@@ -316,6 +367,9 @@ export function applyColorToLayer(layerId, hex, slot = 'fill') {
       delete next.from;
       delete next.to;
       delete next.angle;
+      // Set or clear the variable binding.
+      if (colorVar) next.colorVar = colorVar;
+      else          delete next.colorVar;
       if (slot === 'fill') _doc.setVectorFill(layer.id, idx, next);
       else                 _doc.setVectorStroke(layer.id, idx, next);
     });
@@ -323,6 +377,11 @@ export function applyColorToLayer(layerId, hex, slot = 'fill') {
   }
   if (layer.type === 'text' && slot === 'fill') {
     _doc.setTextProp(layer.id, 'color', hex.toLowerCase());
+    // Text-layer model doesn't have a structured fill object — we tag
+    // the binding directly on the text record. propagateVariablesToLayers
+    // reads it the same way.
+    if (colorVar) _doc.setTextProp(layer.id, 'colorVar', colorVar);
+    else if (layer.text?.colorVar) _doc.setTextProp(layer.id, 'colorVar', null);
     return true;
   }
   return false;

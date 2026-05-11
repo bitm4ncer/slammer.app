@@ -344,6 +344,12 @@ function bindEvents(anchorEl) {
     const fillChip = popover.querySelector('[data-slot-chip="fill"]');
     const strokeChip = popover.querySelector('[data-slot-chip="stroke"]');
     const style = getEffectiveStyle();
+    // Slot buttons get a small "--name" badge under the chip when the
+    // active slot is bound to a variable on the selected layer.
+    const fillSlotBtn   = popover.querySelector('.color-hub-slot--fill');
+    const strokeSlotBtn = popover.querySelector('.color-hub-slot--stroke');
+    fillSlotBtn  ?.setAttribute('data-var', style.fillColorVar || '');
+    strokeSlotBtn?.setAttribute('data-var', style.strokeColorVar || '');
     if (fillChip) {
       fillChip.classList.toggle('is-none', style.fillKind === 'none');
       if (style.fillKind === 'gradient') {
@@ -971,10 +977,14 @@ function bindEvents(anchorEl) {
         paintVarBanner();
         paintVariables();
       });
-      // Drag → uses the same x-slammer-color receivers as the Recent strip.
+      // Drag — sets both the resolved hex (for unaware receivers) AND
+      // the variable name in a second MIME so aware receivers can store
+      // the binding on the target layer. Aware receivers then
+      // re-propagate when the variable value changes.
       swatch.addEventListener('dragstart', (e) => {
         if (!e.dataTransfer) return;
         e.dataTransfer.setData('application/x-slammer-color', varValue);
+        e.dataTransfer.setData('application/x-slammer-color-var', varName);
         e.dataTransfer.setData('text/plain', `${varName} (${varValue.toUpperCase()})`);
         e.dataTransfer.effectAllowed = 'copy';
       });

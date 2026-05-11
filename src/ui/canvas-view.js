@@ -1256,6 +1256,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
     // ── Solid colour drop (from colour hub Recent strip) ────────────────
     // Plain drop = fill, Shift+drop = stroke.
     const colorPayload = e.dataTransfer?.getData('application/x-slammer-color');
+    const colorVar = e.dataTransfer?.getData('application/x-slammer-color-var') || null;
     if (colorPayload && /^#[0-9a-f]{6}$/i.test(colorPayload)) {
       const layer = hitLayer();
       if (layer?.type === 'vector' && layer.vector?.paths?.length) {
@@ -1264,20 +1265,26 @@ export function initCanvasView({ container, document, onImageDropped }) {
           // Replace whatever was there — solid / gradient / none — with a
           // fresh solid carrying the dropped colour. Preserves opacity +
           // (for stroke) width / cap / join etc. Strips gradient fields
-          // so they don't linger.
+          // so they don't linger. Adds (or clears) the variable binding.
           const next = { ...(cur || {}), type: 'solid', color: colorPayload.toLowerCase(), opacity: cur?.opacity ?? 1 };
           delete next.gradientType;
           delete next.stops;
           delete next.from;
           delete next.to;
           delete next.angle;
+          if (colorVar) next.colorVar = colorVar;
+          else          delete next.colorVar;
           if (slot === 'fill') document.setVectorFill(layer.id, idx, next);
           else                 document.setVectorStroke(layer.id, idx, next);
         });
-        window.__slammer?.notify?.(`${colorPayload.toUpperCase()} → ${slot}`);
+        const label = colorVar ? `${colorVar} (${colorPayload.toUpperCase()})` : colorPayload.toUpperCase();
+        window.__slammer?.notify?.(`${label} → ${slot}`);
       } else if (layer?.type === 'text' && slot === 'fill') {
         document.setTextProp(layer.id, 'color', colorPayload.toLowerCase());
-        window.__slammer?.notify?.(`${colorPayload.toUpperCase()} → text colour`);
+        if (colorVar)               document.setTextProp(layer.id, 'colorVar', colorVar);
+        else if (layer.text?.colorVar) document.setTextProp(layer.id, 'colorVar', null);
+        const label = colorVar ? `${colorVar} (${colorPayload.toUpperCase()})` : colorPayload.toUpperCase();
+        window.__slammer?.notify?.(`${label} → text colour`);
       } else {
         window.__slammer?.notify?.('Drop a colour on a vector or text layer', { kind: 'warn' });
       }

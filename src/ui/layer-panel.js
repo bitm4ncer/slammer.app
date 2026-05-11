@@ -348,6 +348,7 @@ export function initLayerPanel({ container, document, renderer }) {
         row.classList.remove('layer-item--drop-target');
         const slot = e.shiftKey ? 'stroke' : 'fill';
         const hex = e.dataTransfer.getData('application/x-slammer-color');
+        const colorVar = e.dataTransfer.getData('application/x-slammer-color-var') || null;
         const gradJson = e.dataTransfer.getData('application/x-slammer-gradient');
         if (gradJson) {
           e.preventDefault();
@@ -358,8 +359,11 @@ export function initLayerPanel({ container, document, renderer }) {
           } catch {}
         } else if (hex) {
           e.preventDefault();
-          const ok = applyColorToLayer(id, hex, slot);
-          if (ok) showNotification(`${hex.toUpperCase()} → ${slot} on ${layer.name}`);
+          const ok = applyColorToLayer(id, hex, slot, { colorVar });
+          if (ok) {
+            const label = colorVar ? `${colorVar} (${hex.toUpperCase()})` : hex.toUpperCase();
+            showNotification(`${label} → ${slot} on ${layer.name}`);
+          }
         }
       });
 
