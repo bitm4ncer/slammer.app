@@ -448,7 +448,11 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 200;
+  /* Stack order: floating plugin windows live at z 1000+, climbing on focus.
+   * Settings modal must sit above everything. Plugin Browser sits above the
+   * floating windows but below Settings (see .pb-backdrop override below
+   * and in plugin-browser.css). */
+  z-index: 9500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2391,7 +2395,11 @@
   flex-direction: column;
   gap: 8px;
   position: sticky;
-  top: 38px;
+  /* Docks directly under the sticky tab strip. The actual tab-strip
+   * height is measured at runtime in browsable.js and exposed via this
+   * CSS variable, so the search header ALWAYS sits flush with the tabs
+   * regardless of tab-strip styling, line-wrap, or font metrics. */
+  top: var(--browsable-tabs-h, 38px);
   z-index: 4;
   background: var(--floating-bg, var(--surface-2));
   padding: 10px 0 8px;

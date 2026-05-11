@@ -5,6 +5,12 @@
    - House rules: custom scrollbar, no left accent borders, no glow.
    ========================================================================== */
 
+/* Stack order: floating plugin windows climb from z 1000+ on focus, so the
+ * Plugin Browser must sit above them. The Settings modal sits even higher
+ * (9500, via the base .settings-backdrop rule in components.css) so it can
+ * always be opened on top of the browser. */
+.settings-backdrop.pb-backdrop { z-index: 9000; }
+
 .pb-modal {
   width: 760px;
   height: 580px;

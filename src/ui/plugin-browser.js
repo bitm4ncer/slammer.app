@@ -56,7 +56,9 @@ export function openPluginBrowser() {
   );
 
   backdrop = document.createElement('div');
-  backdrop.className = 'settings-backdrop';
+  // .pb-backdrop sits ABOVE floating plugin windows (z 1000+) but BELOW the
+  // Settings modal (z 9500) — see plugin-browser.css.
+  backdrop.className = 'settings-backdrop pb-backdrop';
   backdrop.innerHTML = `
     <div class="settings-modal pb-modal" role="dialog" aria-label="Plugin Browser" aria-modal="true">
       <div class="settings-header">
