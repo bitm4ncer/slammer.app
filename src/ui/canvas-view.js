@@ -1235,6 +1235,22 @@ export function initCanvasView({ container, document, onImageDropped }) {
     e.preventDefault();
     container.classList.remove('drag-over');
 
+    // ── Drop position in WORLD coords ────────────────────────────────────
+    // Maps the screen drop point to the doc's world coord system so a
+    // dropped image / SVG / URL can land its CENTRE at the cursor instead
+    // of the viewport centre (Affinity / Figma / Photoshop convention).
+    // Works at any stage scale + pan because we account for both.
+    // Consumers (URL, file, SVG branches) pass `dropPosition` through
+    // `onImageDropped` / `importSvgFile` so the layer model carries it
+    // until the renderer's `createLayerNodes` reads it post-bitmap-decode.
+    const stageBox = container.getBoundingClientRect();
+    const screen = { x: e.clientX - stageBox.left, y: e.clientY - stageBox.top };
+    const sc = stage.scaleX() || 1;
+    const dropPosition = {
+      x: (screen.x - stage.x()) / sc,
+      y: (screen.y - stage.y()) / sc,
+    };
+
     // ── Hit-test helper for swatch drops — walks the Konva tree to the
     // topmost layer at (clientX, clientY), or falls back to the active
     // layer when the drop missed (e.g. canvas background).
@@ -1352,7 +1368,7 @@ export function initCanvasView({ container, document, onImageDropped }) {
             onProxyFallback: (proxy) => console.warn('[canvas-view] direct fetch failed, proxying via', proxy),
           });
           const filename = uri.split('/').pop()?.split('?')[0] || 'image';
-          onImageDropped?.(new File([blob], filename, { type: blob.type || 'image/png' }));
+          onImageDropped?.(new File([blob], filename, { type: blob.type || 'image/png' }), { position: dropPosition });
         } catch (err) {
           console.warn('[canvas-view] URL drop failed (chain exhausted)', err);
         }
@@ -1364,13 +1380,13 @@ export function initCanvasView({ container, document, onImageDropped }) {
       if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) {
         try {
           const { importSvgFile } = await import('./vector-tools/svg-import.js');
-          await importSvgFile(f, document);
+          await importSvgFile(f, document, { position: dropPosition });
         } catch (err) {
           console.warn('[svg] import failed', err);
         }
         continue;
       }
-      if (f.type.startsWith('image/')) onImageDropped?.(f);
+      if (f.type.startsWith('image/')) onImageDropped?.(f, { position: dropPosition });
     }
   });
 

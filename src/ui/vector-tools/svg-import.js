@@ -1,10 +1,17 @@
 // svg-import — turn a dropped .svg file into a new vector layer.
 // Uses Paper.js's importSVG which understands almost every SVG construct
 // (paths, shapes, transforms, groups, gradients, basic style attributes).
+//
+// Optional `opts.position` (world coords) makes the SVG's CENTRE land at
+// the drop point. Translates every path d-string at creation time and
+// sets the layer's transform accordingly, honouring the Phase 13
+// top-left-origin contract (transform.x/y set ONCE at creation, never
+// mutated later — see CLAUDE.md "Vector layer architecture").
 
 import { paper, ensurePaper, activatePaper } from '../../core/paper-context.js';
+import { translatePathD } from '../../core/vector-renderer.js';
 
-export async function importSvgFile(file, doc) {
+export async function importSvgFile(file, doc, opts = {}) {
   ensurePaper();
   const text = await file.text();
   // Use a temporary detached project so we don't pollute the rasterise pipeline.
@@ -48,11 +55,31 @@ export async function importSvgFile(file, doc) {
   // at the world coords matching the path data inside the file.
   const { computePathBounds } = await import('../../core/vector-renderer.js');
   const b = computePathBounds(records);
+  // If a drop position is supplied, translate every path d-string so the
+  // SVG's centre lands at (position.x, position.y). The new top-left is
+  // (position.x - b.width/2, position.y - b.height/2). transform.x/y is
+  // set ONCE here per the Phase 13 top-left-origin contract.
+  let finalRecords = records;
+  let originX = b.x;
+  let originY = b.y;
+  const position = opts && opts.position;
+  if (position) {
+    const targetX = position.x - b.width / 2;
+    const targetY = position.y - b.height / 2;
+    const dx = targetX - b.x;
+    const dy = targetY - b.y;
+    finalRecords = records.map((rec) => ({
+      ...rec,
+      d: translatePathD(rec.d, dx, dy),
+    }));
+    originX = targetX;
+    originY = targetY;
+  }
   return doc.addVectorLayer({
     name: file.name.replace(/\.svg$/i, ''),
     // Top-left origin: layer's transform = path bbox top-left in world.
-    transform: { x: b.x, y: b.y },
-    vector: { paths: records },
+    transform: { x: originX, y: originY },
+    vector: { paths: finalRecords },
   });
 }
 

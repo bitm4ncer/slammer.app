@@ -1441,16 +1441,32 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st.dirtyFromIndex = 0;
       paintLayer(layer, st);
 
-      // If transform never set explicitly, center the layer in the current
-      // viewport. Image-only — text/vector tools set transform at creation
-      // time, and groups MUST stay at (0, 0) so children's world coords
-      // (recorded as their own transform.x/y while top-level) survive the
-      // reparent into the group's local coord system. Without this gate,
-      // Ctrl+G grouping a fresh viewport's worth of layers nudged the
-      // group to viewport-centre and every child appeared offset by that
-      // amount until the user dragged.
+      // First-paint placement. Three branches in priority order:
+      //   1. `_dropPosition` set → image was created from a canvas drop.
+      //      Place its CENTRE at the drop point (Affinity convention).
+      //      The transient hint clears once consumed so future mounts
+      //      (autosave reload, undo restore) don't re-place — by then
+      //      the persisted transform.x/y holds the same value.
+      //   2. Transform is still (0, 0) AND naturalSize is null → fresh
+      //      image with no position info (Open menu, Ctrl+V paste, file
+      //      dialog, fal.ai result land). Centre in the viewport.
+      //   3. Anything else (transform already set, e.g. autosaved layer
+      //      restored on reload) → leave it alone.
+      // Text + vector tools set transform at creation time and groups
+      // must stay at (0, 0); only image layers fall through to (1) or (2).
       const stageRef = getStage();
-      if (layer.type === 'image'
+      if (layer.type === 'image' && layer._dropPosition) {
+        const { x: px, y: py } = layer._dropPosition;
+        const cx = Math.round(px - imgData.width / 2);
+        const cy = Math.round(py - imgData.height / 2);
+        layer.transform.x = cx;
+        layer.transform.y = cy;
+        group.position({ x: cx, y: cy });
+        // Clear the hint so subsequent mounts (autosave hydrate, undo)
+        // don't re-place the layer. The persisted transform.x/y now
+        // carries the same data.
+        delete layer._dropPosition;
+      } else if (layer.type === 'image'
           && layer.transform.x === 0 && layer.transform.y === 0
           && layer.naturalSize == null) {
         const stageScale = stageRef.scaleX();

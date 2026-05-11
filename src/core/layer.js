@@ -33,7 +33,7 @@ const COMMON_LAYER = (opts = {}) => ({
   parentGroupId: opts.parentGroupId || null,
 });
 
-export function createImageLayer({ id, name, source, naturalSize, transform, accentColor, parentGroupId } = {}) {
+export function createImageLayer({ id, name, source, naturalSize, transform, accentColor, parentGroupId, position } = {}) {
   return {
     id,
     type: 'image',
@@ -44,6 +44,15 @@ export function createImageLayer({ id, name, source, naturalSize, transform, acc
     effects: [],
     source: source || null,           // Blob | DataURL | string URL
     naturalSize: naturalSize || null, // { w, h } once decoded
+    // _dropPosition is a transient pre-decode hint set when the layer was
+    // created from a canvas drop — the renderer's createLayerNodes reads
+    // it after the bitmap decodes, computes `transform.x/y` so the image's
+    // centre lands there, then clears the field. Underscore-prefixed so
+    // autosave / .slammerproj skip serialising it (they trip on unknown
+    // public fields but tolerate the underscore convention used for
+    // other transient hints like `_autoNamed`). Absent → fall back to
+    // viewport centring (existing behaviour for Open menu / Ctrl+V).
+    ...(position ? { _dropPosition: { x: position.x, y: position.y } } : {}),
   };
 }
 

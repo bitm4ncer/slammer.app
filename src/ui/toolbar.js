@@ -685,6 +685,15 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   syncHint();
 }
 
-export function addImageFile(file, doc) {
-  doc.addImageLayer({ name: file.name || 'Image', source: file });
+// Adds a file as an image layer. Optional `opts.position` (world coords)
+// makes the new layer's CENTRE land at that point — used by the canvas
+// drop handler. Without it, the renderer's createLayerNodes centres the
+// image in the viewport (Open menu / Ctrl+V paste / file dialog all use
+// that fallback).
+export function addImageFile(file, doc, opts = {}) {
+  doc.addImageLayer({
+    name: file.name || 'Image',
+    source: file,
+    position: opts.position,
+  });
 }

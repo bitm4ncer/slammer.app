@@ -6,6 +6,22 @@
 
 ---
 
+## ~~Dropped images land in canvas center instead of at the cursor~~ — fixed
+
+**Symptom (was)**: Drag an image from the user's disk, an image plugin (Unsplash / Pexels / Met / Openverse), a fal.ai generation result, a different browser tab, or any URL/file source onto the canvas. Regardless of where the user released the drop, the new layer always landed centered in the viewport.
+
+**Fix** (commit below): `canvas-view.js#drop` handler computes the drop point in WORLD coords (accounts for stage scale + pan) and threads it through `onImageDropped` → `addImageFile` → `doc.addImageLayer` → `createImageLayer` as a transient `_dropPosition` hint on the layer model. `renderer.js#createLayerNodes` reads the hint after bitmap decode and sets `layer.transform.x/y` so the image's CENTRE lands at the cursor (accounting for the renderer's effect-pad offset). The transient hint is cleared once consumed so future mounts (autosave reload, undo restore) use the persisted transform. Same path for URL drops (after the proxy fetch chain) and SVG drops (path d-strings are translated at import time per the Phase 13 top-left-origin contract). `window.__slammer.importImage(blob, name, { position })` exposes the position parameter to plugins. Absent position → existing viewport-centre fallback (Open menu, Ctrl+V paste, fal.ai result lands, plugin click-import — all keep centring).
+
+**Verified live**:
+- `importImage` with `{ position: { x: 500, y: 400 } }` + 200×150 PNG: bitmap centre lands at world (500, 400). transform.x = 384 (centre − w/2 − pad).
+- `importImage` without position: existing viewport-centre fallback fires unchanged.
+- SVG import with position: path bbox centre lands at the drop point; transform.x/y = bbox top-left (Phase 13 contract honoured).
+- Real drag-drop event at screen (300, 200) with stage scale 0.5 + pan (100, 100): bitmap centre lands at world (400, 200) = `(screen − pan) / scale` — math correct under zoom + pan.
+- Undo removes layer; redo restores at the same transform.
+- After `location.reload()` (autosave hydrate): transform.x/y persists; the `_dropPosition` hint isn't serialised (underscore-prefix convention).
+
+---
+
 ## ~~fal.ai generation aborts (or result is lost) when the plugin window is closed mid-generation~~ — fixed
 
 **Symptom (was)**: Starting a fal.ai generation, then closing the plugin window before the model finished, lost the result — the request was cancelled by the plugin's own teardown logic, or the success handler tried to write into a DOM that no longer existed and silently dropped the layer.

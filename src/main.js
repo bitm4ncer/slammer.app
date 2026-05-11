@@ -175,7 +175,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const view = initCanvasView({
     container: document.getElementById('stageContainer'),
     document: doc,
-    onImageDropped: (file) => addImageFile(file, doc),
+    // Drop on canvas → addImageFile (toolbar.js). The optional `opts`
+    // carries `position` in WORLD coords so the rendered image's centre
+    // lands at the cursor instead of the viewport centre.
+    onImageDropped: (file, opts) => addImageFile(file, doc, opts),
   });
 
   // Phase 21 — Canvas Grid (mounts its Konva.Layer between bgLayer and contentLayer).
@@ -273,15 +276,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     canvasGrid,
     colors: colorsApi,
     notify: (msg, _kind = 'info') => showNotification(msg),
-    importImage: async (sourceOrUrl, name = 'Imported image') => {
+    // Plugin-facing image-import facade. Optional third arg
+    // `{ position: { x, y } }` (world coords) makes the new layer's CENTRE
+    // land at that point — used by panel plugins that capture a drop event
+    // on the canvas. Absent → keep the existing centre-in-viewport
+    // fallback (correct for click-to-import buttons, fal.ai result lands,
+    // and any path without a drop position). Optional third arg as an
+    // object so older callers passing just (source, name) still work.
+    importImage: async (sourceOrUrl, name = 'Imported image', opts = {}) => {
+      const position = opts && opts.position;
       try {
         if (typeof sourceOrUrl === 'string') {
           const res = await fetch(sourceOrUrl, { referrerPolicy: 'no-referrer' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const blob = await res.blob();
-          return doc.addImageLayer({ name, source: blob });
+          return doc.addImageLayer({ name, source: blob, position });
         }
-        return doc.addImageLayer({ name, source: sourceOrUrl });
+        return doc.addImageLayer({ name, source: sourceOrUrl, position });
       } catch (err) {
         showNotification(`Import failed: ${err.message}`);
         throw err;
