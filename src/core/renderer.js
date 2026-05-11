@@ -8,6 +8,7 @@ import { getTool, onToolChange } from '../ui/vector-tools/active-tool.js';
 import { getSelection, onSelectionChange } from '../ui/selection-state.js';
 import { getSettings, onSettingsChange } from '../ui/settings-popup.js';
 import { computeBoxScaleSnap } from '../ui/snap-rulers.js';
+import { getRender, setRender, deleteRender } from '../io/layer-render-cache.js';
 
 function resolveFontMeta(text) {
   if (!text) return null;
@@ -1038,6 +1039,20 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // Actual paint — called only from the RAF queue. Async-friendly: when an effect
   // returns a Promise (e.g. JPEG using the browser's real encoder), we await it.
   async function paintLayerSync(layer, st) {
+    // Lazy-rasterise gate. createLayerNodes' cache-hit path leaves
+    // st.sourceImageData null because the cached PNG is enough to display
+    // the layer at boot. The first edit that triggers a paint pays the
+    // rasterise cost now — by then the user has already seen their canvas.
+    if (st._lazySource && !st.sourceImageData && layer.type !== 'fx') {
+      try {
+        const imgData = await rasterizeSource(layer, st);
+        if (imgData) st.sourceImageData = imgData;
+      } catch (err) {
+        console.error('[renderer] lazy rasterise failed', layer.id, err);
+      }
+      st._lazySource = false;
+      st.dirtyFromIndex = 0;
+    }
     // FX layers re-source from the composite of layers below before each paint.
     if (layer.type === 'fx') {
       const composite = compositeLayersBelow(layer);
@@ -1132,7 +1147,77 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       st._renderedSourceKey = layerSourceKey(layer);
       st._renderedEffectKeys = effectStepKeys(layer.effects);
     }
+    // Persist the freshly-rendered dstCanvas to the layer-render cache so
+    // next page reload can hydrate Konva.Image directly without rerunning
+    // the effect pipeline. Debounced per layer (1.5 s) so a slider drag
+    // doesn't thrash IDB on every frame. FX layers skip — their bitmap
+    // depends on layers below and is cheap enough to recompose.
+    if (layer.type !== 'fx') scheduleRenderCacheSave(layer, st);
     scheduleDraw();
+  }
+
+  // Per-layer debounced save of dstCanvas → PNG Blob → IDB.
+  // Runs at idle, off the render-critical path. Stale saves are dropped
+  // if another paint lands before the timer fires.
+  const _renderCacheTimers = new Map();
+  function scheduleRenderCacheSave(layer, st) {
+    const id = layer.id;
+    const prev = _renderCacheTimers.get(id);
+    if (prev) clearTimeout(prev);
+    const t = setTimeout(async () => {
+      _renderCacheTimers.delete(id);
+      const stNow = layerState.get(id);
+      if (!stNow || stNow !== st) return;
+      const canvas = stNow.dstCanvas;
+      if (!canvas || canvas.width < 2 || canvas.height < 2) return;
+      const paintVersion = stNow._paintVersion | 0;
+      const contentKey = stNow._patchContentKey;
+      // Capture Konva.Image local offset + pad metadata so the cache-hit
+      // path on next boot can restore vector/text/image-pad positioning
+      // without rerunning rasterizeSource.
+      const img = stNow.image;
+      const geom = {
+        ix: img ? img.x() : 0,
+        iy: img ? img.y() : 0,
+        iw: img ? img.width() : canvas.width,
+        ih: img ? img.height() : canvas.height,
+        imagePad: stNow.imagePad ?? null,
+        textPad: stNow.textPad ?? null,
+        vectorPad: stNow.vectorPad ?? null,
+        vectorPathBounds: stNow.vectorPathBounds || null,
+        textContentSize: stNow.textContentSize || null,
+        imageContentSize: stNow.imageContentSize || null,
+        naturalSize: stNow.naturalSize || null,
+      };
+      try {
+        const blob = await canvasToBlob(canvas);
+        // Drop the save if the layer painted again between toBlob start
+        // and finish — the newer paint will queue its own write.
+        const after = layerState.get(id);
+        if (!after || after !== stNow) return;
+        if ((after._paintVersion | 0) !== paintVersion) return;
+        if (!blob) return;
+        setRender(id, blob, contentKey, paintVersion, geom);
+      } catch (err) {
+        // Silent — caching is best-effort.
+      }
+    }, 1500);
+    _renderCacheTimers.set(id, t);
+  }
+
+  function canvasToBlob(canvas) {
+    return new Promise((resolve) => {
+      try {
+        if (canvas.convertToBlob) {
+          // OffscreenCanvas path.
+          canvas.convertToBlob({ type: 'image/png' }).then(resolve, () => resolve(null));
+        } else if (canvas.toBlob) {
+          canvas.toBlob((b) => resolve(b), 'image/png');
+        } else {
+          resolve(null);
+        }
+      } catch { resolve(null); }
+    });
   }
 
   // FX layers are "invisible pseudo-layers" — they don't grab pointer events.
@@ -1285,6 +1370,70 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       };
     }
 
+    // Fast-path: try the persistent layer-render cache. If we wrote out a
+    // dstCanvas blob in a previous session AND the content fingerprint
+    // still matches, we can hydrate the Konva.Image directly from the PNG
+    // blob and skip rasterizeSource + the entire effect pipeline. The
+    // source ImageData is built lazily inside paintLayerSync on the user's
+    // first edit. Cuts cold-boot restore from "all effects rerun" down to
+    // "decode one PNG per layer".
+    if (layer.type !== 'fx') {
+      const cached = await getRender(layer.id).catch(() => null);
+      if (cached && cached.blob && cached.contentKey === layerContentKey(layer)) {
+        try {
+          const bmp = await createImageBitmap(cached.blob);
+          if (bmp && bmp.width > 0 && bmp.height > 0) {
+            const c = makeCanvas(bmp.width, bmp.height);
+            c.getContext('2d').drawImage(bmp, 0, 0);
+            try { bmp.close && bmp.close(); } catch {}
+            st.dstCanvas = c;
+            st.image.image(c);
+            st.image.width(c.width);
+            st.image.height(c.height);
+            st._paintVersion = (cached.paintVersion | 0) || 1;
+            // Restore the geometry metadata (pad + path bounds + content
+            // size) so commitImagePosition + getSelfRect produce the same
+            // positioning the cold path would have. Without this, vector /
+            // text / padded-image layers shift by their pad on first paint.
+            const g = cached.geom || null;
+            if (g) {
+              if (g.imagePad != null) st.imagePad = g.imagePad;
+              if (g.textPad != null) st.textPad = g.textPad;
+              if (g.vectorPad != null) st.vectorPad = g.vectorPad;
+              if (g.vectorPathBounds) st.vectorPathBounds = g.vectorPathBounds;
+              if (g.textContentSize) st.textContentSize = g.textContentSize;
+              if (g.imageContentSize) st.imageContentSize = g.imageContentSize;
+              if (g.naturalSize) st.naturalSize = g.naturalSize;
+              // Konva.Image local offset — captures the pad-compensation
+              // shift commitImagePosition would have applied.
+              if (typeof g.ix === 'number' && typeof g.iy === 'number') {
+                st.image.position({ x: g.ix, y: g.iy });
+              }
+            } else {
+              commitImagePosition(layer, st);
+            }
+            // Mark sourceImageData as not-yet-built. paintLayerSync's
+            // lazy-rasterise gate populates it on the first edit.
+            st._lazySource = true;
+            syncZOrder();
+            if (document.activeLayerId === layer.id) attachTransformer(group);
+            {
+              const tt = layer.transform;
+              st._patchContentKey = layerContentKey(layer);
+              st._patchPropsKey = `${tt.x}|${tt.y}|${tt.scaleX}|${tt.scaleY}|${tt.rotation}|${layer.opacity}|${layer.visible}|${layer.blendMode}`;
+              st._renderedSourceKey = layerSourceKey(layer);
+              st._renderedEffectKeys = effectStepKeys(layer.effects);
+            }
+            scheduleDraw();
+            return st;
+          }
+        } catch (err) {
+          // Cache decode failed — fall through to the normal cold path.
+          console.warn('[renderer] layer-render cache miss', layer.id, err);
+        }
+      }
+    }
+
     // Decode source -> sourceImageData
     const imgData = await rasterizeSource(layer, st);
     if (imgData) {
@@ -1327,6 +1476,11 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
     if (transformer && transformer.nodes().includes(st.group)) attachTransformer(null);
     st.group.destroy();
     layerState.delete(id);
+    // Cancel any pending render-cache save for this layer; drop the cached
+    // blob from IDB since the layer no longer exists.
+    const pendingTimer = _renderCacheTimers.get(id);
+    if (pendingTimer) { clearTimeout(pendingTimer); _renderCacheTimers.delete(id); }
+    deleteRender(id);
     scheduleDraw();
   }
 
@@ -1344,6 +1498,14 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
   // step. Blob `source` doesn't serialise; we tag `sourceRef` separately
   // so swapping a Blob in still invalidates the cache.
   function layerContentKey(layer) {
+    // For image layers, include a weak Blob fingerprint (size + type) so
+    // swapping the source image between sessions invalidates the cached
+    // render even though the layer id is unchanged. Real hash would be
+    // ideal but too slow on the boot path.
+    const src = layer.source;
+    const sourceTag = (src && typeof src === 'object' && 'size' in src)
+      ? `${src.size}:${src.type || ''}`
+      : (typeof src === 'string' ? `s:${src.length}` : null);
     return JSON.stringify({
       type: layer.type,
       effects: layer.effects,
@@ -1353,6 +1515,7 @@ export function createRenderer({ stage, contentLayer, document, getStage }) {
       locked: layer.locked,
       parentGroupId: layer.parentGroupId,
       childIds: layer.childIds,
+      sourceTag,
     });
   }
 

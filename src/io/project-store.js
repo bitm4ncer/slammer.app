@@ -82,10 +82,14 @@ function readAll(name) {
 
 // Cache the open connection so we don't churn on every save / read.
 let _dbPromise = null;
+// Exported so adjacent modules (layer-render-cache, plugin caches) can share
+// the same connection — opening twice triggers `onversionchange` races and
+// forces the older handle to close mid-transaction.
+export function _openSharedDB() { return openDB(); }
 function openDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 4);
+    const req = indexedDB.open(DB_NAME, 5);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -112,6 +116,13 @@ function openDB() {
       if (!db.objectStoreNames.contains('plugin-cache')) {
         const cache = db.createObjectStore('plugin-cache', { keyPath: 'key' });
         cache.createIndex('byPlugin', 'pluginId');
+      }
+      // v5 — per-layer rendered dstCanvas cache. On page reload the renderer
+      // can hydrate Konva.Image with the cached PNG blob INSTEAD of re-running
+      // each layer's full effect pipeline. Effects only rerun lazily when the
+      // user makes the first edit. Key = layer.id (globally-unique UUID).
+      if (!db.objectStoreNames.contains('layer-renders')) {
+        db.createObjectStore('layer-renders', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => {
