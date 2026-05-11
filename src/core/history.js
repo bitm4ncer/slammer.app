@@ -39,6 +39,7 @@ const IGNORE_EVENTS = new Set([
   'layer:textChangedEphemeral',   // live preview during font hover
   'layer:vectorChangedEphemeral', // live preview during anchor drag
   'layer:vectorActivePath',       // active sub-path UI hint
+  'layer:painted',                // renderer paint-completion ping (drives thumb cache)
   'doc:guidelines',               // mirror of doc:propChanged that fires on the same write
 ]);
 

@@ -121,6 +121,16 @@ export function createDocument() {
       emit({ type: 'layer:vectorActivePath', id: layerId, pathIdx });
     },
 
+    // Renderer fires this each time paintLayerSync (or the persistent-cache
+    // hydrate path) lands a fresh bitmap for a layer. The layer-panel listens
+    // and re-encodes that layer's thumbnail — without this signal a slow
+    // first paint races the panel's blind +220 ms refresh timer and leaves
+    // the row showing a blank 1×1 PNG cached against paintVersion 0.
+    // Ignored by history (transient render-pipeline signal).
+    _emitLayerPainted(layerId, version) {
+      emit({ type: 'layer:painted', layerId, version });
+    },
+
     setName(name) {
       state.name = name;
       emit({ type: 'doc:propChanged', prop: 'name' });
