@@ -240,7 +240,7 @@ function renderCard(p, settings) {
 
 function pillFor(p, settings) {
   if (p.pro) {
-    return { kind: 'pro', html: `<span class="pb-pill pb-pill--pro">Pro</span>` };
+    return { kind: 'pro', html: `<span class="pb-pill pb-pill--pro">Add On</span>` };
   }
   let status = null;
   if (typeof p.computeStatus === 'function') {
