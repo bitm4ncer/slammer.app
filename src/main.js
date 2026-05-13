@@ -2,6 +2,9 @@
 
 import Konva from 'konva';
 import './style/variables.css';
+import './style/themes/dark.css';
+import './style/themes/anthracite.css';
+import './style/themes/light.css';
 import './style/layout.css';
 import './style/components.css';
 import './style/effects.css';

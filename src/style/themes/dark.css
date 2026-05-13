@@ -1,0 +1,52 @@
+/* Default dark theme. Canonical --sl-* values live here so variables.css
+ * can drop the bare-name fallbacks at the end of the foundation refactor.
+ * Loaded unconditionally (via :root) AND under :root[data-theme="dark"] so
+ * the default-load and explicit-dark behave identically. */
+
+:root,
+:root[data-theme="dark"] {
+  /* surfaces */
+  --sl-bg-app:           #1E1E1E;
+  --sl-surface-panel:    #262626;
+  --sl-surface-raised:   #2E2E2E;
+  --sl-surface-elevated: #383838;
+  --sl-surface-canvas-checker-dark: #2a2a2a;
+
+  /* borders */
+  --sl-border-default: #3D3D3D;
+  --sl-border-faint:   rgba(255, 255, 255, 0.04);
+  --sl-border-subtle:  rgba(255, 255, 255, 0.08);
+  --sl-border-strong:  rgba(255, 255, 255, 0.18);
+
+  /* text */
+  --sl-text-primary:   #F2F2F2;
+  --sl-text-secondary: #AAAAAA;
+  --sl-text-on-accent: #0a0a0a;
+
+  /* accent */
+  --sl-accent-primary:       #8aff8c;
+  --sl-accent-primary-rgb:   138, 255, 140;
+  --sl-accent-primary-hover: #6ECC70;
+
+  /* interactive overlays */
+  --sl-hover-overlay-faint:  rgba(255, 255, 255, 0.04);
+  --sl-hover-overlay:        rgba(255, 255, 255, 0.05);
+  --sl-hover-overlay-strong: rgba(255, 255, 255, 0.10);
+
+  /* VHS depth */
+  --sl-shadow-vhs-stripe:    rgba(200, 200, 200, 0.03);
+  --sl-shadow-vhs-groove:    rgba(0, 0, 0, 0.2);
+  --sl-shadow-vhs-deep:      rgba(0, 0, 0, 0.5);
+  --sl-shadow-vhs-highlight: rgba(255, 255, 255, 0.1);
+  --sl-shadow-vhs-inset:     rgba(0, 0, 0, 0.35);
+
+  /* canvas / vector */
+  --sl-canvas-frame-stroke: #aab0b6;
+  --sl-anchor-outline:      #0a0a0a;
+  --sl-anchor-fill-default: #ffffff;
+
+  /* quick-wheel keys (three near-blacks preserved as distinct tokens) */
+  --sl-quick-wheel-key-1: #050505;
+  --sl-quick-wheel-key-2: #0a0a0a;
+  --sl-quick-wheel-key-3: #181818;
+}

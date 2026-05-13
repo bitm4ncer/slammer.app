@@ -1,0 +1,14 @@
+/* Anthracite theme — cool, neutral greys.
+ * Initial palette: shift the surface ladder cooler, keep accent + text.
+ * Phase 30 tunes the exact values. All other tokens inherit dark defaults
+ * via the :root cascade (dark.css writes :root unconditionally). */
+
+:root[data-theme="anthracite"] {
+  --sl-bg-app:           #1A1C1E;
+  --sl-surface-panel:    #232629;
+  --sl-surface-raised:   #2A2D31;
+  --sl-surface-elevated: #34383C;
+  --sl-surface-canvas-checker-dark: #25282B;
+
+  --sl-border-default: #3A3E42;
+}

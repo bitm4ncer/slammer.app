@@ -1,0 +1,33 @@
+/* Light theme — inverted brightness ladder.
+ * Phase 30 tunes the exact values. Initial pass establishes the override
+ * surface so the three-theme swap test in Task 16 can verify infrastructure. */
+
+:root[data-theme="light"] {
+  --sl-bg-app:           #F5F5F5;
+  --sl-surface-panel:    #FFFFFF;
+  --sl-surface-raised:   #F0F0F0;
+  --sl-surface-elevated: #E5E5E5;
+  --sl-surface-canvas-checker-dark: #D5D5D5;
+
+  --sl-border-default: #C8C8C8;
+  --sl-border-faint:   rgba(0, 0, 0, 0.04);
+  --sl-border-subtle:  rgba(0, 0, 0, 0.08);
+  --sl-border-strong:  rgba(0, 0, 0, 0.18);
+
+  --sl-text-primary:   #1A1A1A;
+  --sl-text-secondary: #555555;
+  --sl-text-on-accent: #1A1A1A;
+
+  --sl-hover-overlay-faint:  rgba(0, 0, 0, 0.04);
+  --sl-hover-overlay:        rgba(0, 0, 0, 0.05);
+  --sl-hover-overlay-strong: rgba(0, 0, 0, 0.10);
+
+  /* VHS shadows muted on light backgrounds */
+  --sl-shadow-vhs-stripe:    rgba(0, 0, 0, 0.03);
+  --sl-shadow-vhs-groove:    rgba(0, 0, 0, 0.1);
+  --sl-shadow-vhs-deep:      rgba(0, 0, 0, 0.25);
+  --sl-shadow-vhs-highlight: rgba(255, 255, 255, 0.6);
+  --sl-shadow-vhs-inset:     rgba(0, 0, 0, 0.18);
+
+  --sl-canvas-frame-stroke: #5A5F65;
+}
