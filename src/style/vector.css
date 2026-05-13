@@ -19,7 +19,7 @@
   font-size: 8px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.4;
   padding: 2px 0;
   user-select: none;
@@ -29,15 +29,15 @@
 .tool-section-divider {
   width: 24px;
   height: 1px;
-  background: var(--vhs-shadow);
+  background: var(--sl-shadow-vhs-deep);
   margin: 2px 0;
 }
 
 /* ---------- Shape flyout (portaled to body) ---------- */
 
 .tool-flyout {
-  background: var(--surface);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
   padding: 4px;
@@ -54,7 +54,7 @@
   padding: 6px 10px;
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   text-align: left;
@@ -62,8 +62,8 @@
   border-radius: 3px;
 }
 .tool-flyout-item:hover {
-  background: color-mix(in srgb, var(--primary) 18%, transparent);
-  color: var(--primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 18%, transparent);
+  color: var(--sl-accent-primary);
 }
 .tool-flyout-item i {
   width: 14px;
@@ -86,10 +86,10 @@
   min-width: 30px;
   height: 22px;
   padding: 0 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-raised);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 999px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   font-size: 10px;
@@ -98,11 +98,11 @@
   justify-content: center;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
-.vector-pill:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+.vector-pill:hover { color: var(--sl-text-primary); border-color: rgba(255,255,255,0.18); }
 .vector-pill.active {
-  color: var(--surface);
-  background: var(--primary);
-  border-color: var(--primary);
+  color: var(--sl-surface-panel);
+  background: var(--sl-accent-primary);
+  border-color: var(--sl-accent-primary);
 }
 .vector-pill--icon {
   width: 32px;
@@ -124,7 +124,7 @@
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 3px;
   height: 24px;
   cursor: pointer;
@@ -158,7 +158,7 @@
   width: 22px;
   height: 22px;
   border-radius: 4px;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   cursor: pointer;
   padding: 0;
   background-clip: padding-box;
@@ -169,8 +169,8 @@
   transform: scale(1.08);
 }
 .vector-path-swatch.active {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary), 0 0 6px -1px color-mix(in srgb, var(--primary) 70%, transparent);
+  border-color: var(--sl-accent-primary);
+  box-shadow: 0 0 0 2px var(--sl-accent-primary), 0 0 6px -1px color-mix(in srgb, var(--sl-accent-primary) 70%, transparent);
 }
 
 /* Cluster H — "Split" button next to the path-picker strip. Sits on the
@@ -180,9 +180,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--vhs-shadow);
-  color: var(--text-secondary);
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-shadow-vhs-deep);
+  color: var(--sl-text-secondary);
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 10px;
@@ -193,8 +193,8 @@
   transition: border-color 0.12s ease, color 0.12s ease;
 }
 .vector-path-split-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--sl-accent-primary);
+  color: var(--sl-accent-primary);
 }
 .vector-path-split-btn i { font-size: 11px; }
 
@@ -213,7 +213,7 @@
   font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.7;
 }
 #pencilSmoothnessSlider {
@@ -221,7 +221,7 @@
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--surface);
+  background: var(--sl-surface-panel);
   border-radius: 999px;
   outline: none;
   cursor: pointer;
@@ -230,20 +230,20 @@
   -webkit-appearance: none;
   appearance: none;
   width: 12px; height: 12px; border-radius: 50%;
-  background: var(--primary);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-accent-primary);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   cursor: grab;
 }
 #pencilSmoothnessSlider::-moz-range-thumb {
   width: 12px; height: 12px; border-radius: 50%;
-  background: var(--primary);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-accent-primary);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   cursor: grab;
 }
 .pencil-smoothness-readout {
   font-family: 'Inter', sans-serif;
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   width: 22px;
   text-align: right;
 }
@@ -257,18 +257,18 @@
   margin-top: 8px;
   padding: 6px 10px;
   background: transparent;
-  border: 1px dashed var(--vhs-shadow);
+  border: 1px dashed var(--sl-shadow-vhs-deep);
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   cursor: pointer;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 .typo-to-path-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--sl-accent-primary);
+  border-color: var(--sl-accent-primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 8%, transparent);
 }
 .typo-to-path-btn i { font-size: 10px; }
 
@@ -308,9 +308,9 @@
   min-width: 52px;
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 3px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   font-family: 'Inter', sans-serif;
   font-size: 10px;
   letter-spacing: 0.02em;
@@ -318,9 +318,9 @@
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 .vector-action-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--sl-accent-primary);
+  border-color: var(--sl-accent-primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 8%, transparent);
 }
 .vector-action-btn:active {
   transform: translateY(1px);
@@ -328,8 +328,8 @@
 
 /* ---------- Vector Effects panel (vector-only effect stack) ---------- */
 .vector-fx-panel {
-  background: var(--surface);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
   padding: 10px;
   margin-top: 8px;
@@ -346,7 +346,7 @@
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -354,21 +354,21 @@
 .vector-fx-header h3 i { font-size: 11px; }
 .vector-fx-add {
   background: transparent;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
   width: 22px; height: 22px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 .vector-fx-add:hover {
-  color: var(--primary);
-  border-color: var(--primary);
+  color: var(--sl-accent-primary);
+  border-color: var(--sl-accent-primary);
 }
 .vector-fx-empty {
   font-size: 10.5px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.6;
   text-align: center;
   padding: 14px 0;
@@ -379,8 +379,8 @@
   gap: 6px;
 }
 .vector-fx-card {
-  background: color-mix(in srgb, var(--surface) 92%, var(--text-secondary));
-  border: 1px solid var(--vhs-shadow);
+  background: color-mix(in srgb, var(--sl-surface-panel) 92%, var(--sl-text-secondary));
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 3px;
   padding: 4px 6px 6px 6px;
   transition: opacity 0.12s;
@@ -394,7 +394,7 @@
 .vector-fx-card-name {
   flex: 1;
   font-size: 11px;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -404,18 +404,18 @@
   background: transparent;
   border: 0;
   width: 18px; height: 18px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-size: 10px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 2px;
 }
-.vector-fx-toggle:hover, .vector-fx-collapse:hover { color: var(--primary); }
+.vector-fx-toggle:hover, .vector-fx-collapse:hover { color: var(--sl-accent-primary); }
 .vector-fx-remove:hover { color: #ff6b6b; }
 .vector-fx-card-body {
   margin-top: 6px;
   padding-top: 4px;
-  border-top: 1px dashed color-mix(in srgb, var(--vhs-shadow) 70%, transparent);
+  border-top: 1px dashed color-mix(in srgb, var(--sl-shadow-vhs-deep) 70%, transparent);
 }
 .vector-fx-picker {
   margin-top: 8px;
@@ -423,8 +423,8 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 6px;
-  background: color-mix(in srgb, var(--surface) 88%, var(--text-secondary));
-  border: 1px solid var(--vhs-shadow);
+  background: color-mix(in srgb, var(--sl-surface-panel) 88%, var(--sl-text-secondary));
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
 }
 .vector-fx-picker-item {
@@ -436,19 +436,19 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   cursor: pointer;
   text-align: left;
 }
 .vector-fx-picker-item:hover {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: var(--sl-accent-primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 8%, transparent);
 }
 .vector-fx-picker-item i { width: 12px; text-align: center; opacity: 0.8; }
 .vector-fx-picker-empty {
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   font-size: 11px;
   opacity: 0.7;
   padding: 8px;
@@ -456,7 +456,7 @@
 
 /* ---------- Multi-selection ring on layer rows (Phase A) ---------- */
 .layer-item.multi-selected {
-  outline: 2px solid var(--layer-accent, var(--primary));
+  outline: 2px solid var(--layer-accent, var(--sl-accent-primary));
   outline-offset: -2px;
 }
 
@@ -465,9 +465,9 @@
  * dragged over the row. Drop applies the colour to fill (Shift = stroke).
  */
 .layer-item--drop-target {
-  outline: 2px dashed var(--ctx-accent, var(--primary));
+  outline: 2px dashed var(--ctx-accent, var(--sl-accent-primary));
   outline-offset: -2px;
-  background: color-mix(in srgb, var(--ctx-accent, var(--primary)) 8%, transparent);
+  background: color-mix(in srgb, var(--ctx-accent, var(--sl-accent-primary)) 8%, transparent);
 }
 
 /* ---------- Layer-panel tree (Phase C) ---------- */
@@ -478,18 +478,18 @@
   margin-right: 4px;
   width: 22px; height: 22px;
   background: transparent;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 .layers-combine-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--sl-accent-primary);
+  border-color: var(--sl-accent-primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 8%, transparent);
 }
 
 /* Group rows + chevron */
@@ -497,14 +497,14 @@
   width: 14px; height: 14px;
   background: transparent;
   border: 0;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-size: 10px;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   margin-right: 2px;
 }
-.layer-chevron:hover { color: var(--primary); }
+.layer-chevron:hover { color: var(--sl-accent-primary); }
 .layer-item--group .layer-meta { padding-left: 2px; }
 
 /* Children container — indents nested rows + draws a left bracket connector. */
@@ -519,7 +519,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: color-mix(in srgb, var(--vhs-shadow) 80%, transparent);
+  background: color-mix(in srgb, var(--sl-shadow-vhs-deep) 80%, transparent);
 }
 .layer-children > .layer-item {
   position: relative;
@@ -532,7 +532,7 @@
   top: 50%;
   width: 8px;
   height: 1px;
-  background: color-mix(in srgb, var(--vhs-shadow) 80%, transparent);
+  background: color-mix(in srgb, var(--sl-shadow-vhs-deep) 80%, transparent);
 }
 
 /* Lock icon styling */
@@ -540,15 +540,15 @@
 .layer-item.locked {
   opacity: 0.78;
 }
-.layer-item.locked .act-lock i { color: var(--primary); }
+.layer-item.locked .act-lock i { color: var(--sl-accent-primary); }
 
 /* Hidden-layer styling — keeps the row legible but signals its state. */
 .layer-item.hidden:not(.locked) { opacity: 0.6; }
 
 /* ---------- Context menu (right-click) ---------- */
 .context-menu {
-  background: var(--surface);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 4px;
   padding: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -558,7 +558,7 @@
   gap: 1px;
   font-family: 'Inter', sans-serif;
   font-size: 11.5px;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 .context-menu-item {
   display: flex;
@@ -575,11 +575,11 @@
   border-radius: 2px;
 }
 .context-menu-item:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  background: color-mix(in srgb, var(--sl-accent-primary) 12%, transparent);
 }
 .context-menu-item.is-disabled,
 .context-menu-item:disabled {
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.5;
   cursor: default;
 }
@@ -589,14 +589,14 @@
   margin-left: auto;
   font-family: 'Inter', sans-serif;
   font-size: 10px;
-  color: var(--text-secondary);
-  background: color-mix(in srgb, var(--vhs-shadow) 50%, transparent);
+  color: var(--sl-text-secondary);
+  background: color-mix(in srgb, var(--sl-shadow-vhs-deep) 50%, transparent);
   padding: 1px 5px;
   border-radius: 3px;
 }
 .context-menu-separator {
   height: 1px;
-  background: var(--vhs-shadow);
+  background: var(--sl-shadow-vhs-deep);
   margin: 4px 2px;
 }
 
@@ -607,7 +607,7 @@
   gap: 0;
   margin-left: auto;
   /* Dark border separating actions from the meta column. */
-  border-left: 1px solid color-mix(in srgb, var(--vhs-shadow) 90%, #000);
+  border-left: 1px solid color-mix(in srgb, var(--sl-shadow-vhs-deep) 90%, #000);
   padding-left: 4px;
 }
 .layer-actions > .layer-icon-btn {
@@ -616,7 +616,7 @@
   border-radius: 0;
   /* Soft divider between stacked buttons (skip the first to avoid a
      leading line above the top button). */
-  border-bottom: 1px solid color-mix(in srgb, var(--vhs-shadow) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--sl-shadow-vhs-deep) 60%, transparent);
 }
 .layer-actions > .layer-icon-btn:last-child {
   border-bottom: 0;
@@ -637,11 +637,11 @@
 /* ---------- Selection-hierarchy hints (panel) ---------- */
 /* A group is selected → subtle accent tint on every descendant row. */
 .layer-item.in-selected-group {
-  background: color-mix(in srgb, var(--layer-accent, var(--primary)) 8%, transparent);
+  background: color-mix(in srgb, var(--layer-accent, var(--sl-accent-primary)) 8%, transparent);
 }
 /* A leaf inside a group is selected → subtle "contains selection" hint
    on the ancestor group rows. */
 .layer-item.ancestor-of-selected:not(.active):not(.multi-selected) {
-  outline: 1px dashed color-mix(in srgb, var(--layer-accent, var(--primary)) 60%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--layer-accent, var(--sl-accent-primary)) 60%, transparent);
   outline-offset: -2px;
 }
