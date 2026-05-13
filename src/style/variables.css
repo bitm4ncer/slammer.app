@@ -23,6 +23,42 @@
   --side-panel-w: 340px;
   --tool-sidebar-w: 44px;
   --footer-h: 36px;
+
+  /* === Phase 30 foundation: --sl-* alias bridge =========================== *
+   * --sl-* tokens are the canonical theme surface for Phase 30. They alias  *
+   * existing tokens during migration. Consumers migrate panel-by-panel.    *
+   * Once every consumer is migrated, the bare tokens (above) are pruned.   *
+   * Do NOT add new consumers of the bare names.                            *
+   * --ctx-accent and --color-hub-* are deliberately untouched.             *
+   * ======================================================================= */
+
+  /* surfaces */
+  --sl-bg-app:           var(--background);
+  --sl-surface-panel:    var(--surface);
+  --sl-surface-raised:   var(--surface-2);
+  --sl-surface-elevated: var(--surface-3);
+
+  /* borders */
+  --sl-border-default: var(--border);
+
+  /* text */
+  --sl-text-primary:   var(--text-primary);
+  --sl-text-secondary: var(--text-secondary);
+
+  /* accent */
+  --sl-accent-primary:       var(--primary);
+  --sl-accent-primary-rgb:   var(--primary-rgb);
+  --sl-accent-primary-hover: var(--primary-hover);
+
+  /* interactive overlays */
+  --sl-hover-overlay: var(--button-hover-bg);
+
+  /* VHS depth */
+  --sl-shadow-vhs-stripe:    var(--vhs-stripe);
+  --sl-shadow-vhs-groove:    var(--vhs-groove);
+  --sl-shadow-vhs-deep:      var(--vhs-shadow);
+  --sl-shadow-vhs-highlight: var(--vhs-highlight);
+  --sl-shadow-vhs-inset:     var(--vhs-inset);
 }
 
 @font-face {
