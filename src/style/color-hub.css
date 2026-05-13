@@ -24,7 +24,7 @@
    * we reserve the bottom 36 px as dead space behind it. */
   padding: 14px 14px 50px 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   user-select: none;
   backdrop-filter: blur(14px) saturate(115%);
   -webkit-backdrop-filter: blur(14px) saturate(115%);
@@ -80,17 +80,17 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   font-family: inherit;
   padding: 5px 8px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.14s, color 0.14s;
 }
-.color-hub-slot:hover { color: var(--text-primary); }
+.color-hub-slot:hover { color: var(--sl-text-primary); }
 .color-hub-slot.is-active {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 /* Variable-binding badge — when the slot's colour is bound to a named
  * variable (e.g. --brand) on the selected layer, a tiny mono-font label
@@ -121,7 +121,7 @@
 }
 /* Fill: solid filled disc — background paints the active fill colour. */
 .color-hub-slot-chip--fill {
-  background: var(--primary);
+  background: var(--sl-accent-primary);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 /* Stroke: hollow ring — transparent core, thick border paints the active
@@ -129,7 +129,7 @@
  * stroke colours. */
 .color-hub-slot-chip--stroke {
   background: transparent;
-  border: 4px solid var(--primary);
+  border: 4px solid var(--sl-accent-primary);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(0, 0, 0, 0.4);
@@ -149,7 +149,7 @@
   margin: 0 2px;
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   padding: 0;
   width: 18px;
@@ -163,7 +163,7 @@
   transition: color 0.14s, background 0.14s, opacity 0.14s, transform 0.14s;
 }
 .color-hub-slot-swap:hover {
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   background: rgba(255, 255, 255, 0.08);
   opacity: 1;
   transform: rotate(180deg);
@@ -310,7 +310,7 @@
 .color-hub-icon-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   width: 24px;
   height: 22px;
   border-radius: 3px;
@@ -325,7 +325,7 @@
 .color-hub-icon-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 
 .color-hub-input-row {
@@ -347,7 +347,7 @@
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   flex-shrink: 0;
 }
 .color-hub-input {
@@ -355,7 +355,7 @@
   min-width: 0;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   padding: 4px 6px;
@@ -388,7 +388,7 @@
   background: transparent;
   border: 0;
   border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -398,10 +398,10 @@
   font-family: inherit;
 }
 .color-hub-tab:hover {
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 .color-hub-tab.is-active {
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   border-bottom-color: var(--ctx-accent);
 }
 
@@ -442,7 +442,7 @@
 .color-hub-empty,
 .color-hub-vars-placeholder {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.7;
   text-align: center;
   padding: 14px 4px;
@@ -464,7 +464,7 @@
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
 }
 .color-hub-var-banner[hidden] { display: none; }
 .color-hub-var-banner-name {
@@ -473,12 +473,12 @@
   text-transform: none;
   letter-spacing: 0.02em;
   font-size: 11px;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 .color-hub-var-banner-exit {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
@@ -487,7 +487,7 @@
   transition: color 0.12s ease, background 0.12s ease;
 }
 .color-hub-var-banner-exit:hover {
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -555,7 +555,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
   font-size: 9px !important;
   letter-spacing: 0.05em;
-  color: var(--text-secondary) !important;
+  color: var(--sl-text-secondary) !important;
   flex-shrink: 0;
   width: 60px !important;
   padding: 2px 4px !important;
@@ -570,7 +570,7 @@
 .color-hub-var-hex:focus {
   background: rgba(0, 0, 0, 0.4) !important;
   border-color: var(--ctx-accent) !important;
-  color: var(--text-primary) !important;
+  color: var(--sl-text-primary) !important;
   outline: none;
 }
 
@@ -611,7 +611,7 @@
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid transparent;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   font-size: 11px;
   cursor: pointer;
   display: inline-flex;
@@ -621,7 +621,7 @@
   padding: 0;
 }
 .color-hub-mode-btn:hover {
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   background: rgba(255, 255, 255, 0.08);
 }
 .color-hub-mode-btn.is-active {
@@ -697,13 +697,13 @@
   -webkit-appearance: none;
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: var(--text-primary);
+  background: var(--sl-text-primary);
   cursor: pointer;
 }
 .color-hub-opacity::-moz-range-thumb {
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: var(--text-primary);
+  background: var(--sl-text-primary);
   border: none;
   cursor: pointer;
 }
@@ -720,13 +720,13 @@
   -webkit-appearance: none;
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: var(--text-primary);
+  background: var(--sl-text-primary);
   cursor: pointer;
 }
 .color-hub-stroke-width::-moz-range-thumb {
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: var(--text-primary);
+  background: var(--sl-text-primary);
   border: none;
   cursor: pointer;
 }
