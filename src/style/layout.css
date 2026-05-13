@@ -1,8 +1,8 @@
 html, body {
   margin: 0;
   padding: 0;
-  background-color: var(--background);
-  color: var(--text-primary);
+  background-color: var(--sl-bg-app);
+  color: var(--sl-text-primary);
   overflow: hidden;
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -20,7 +20,7 @@ html, body {
  */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--surface-3) transparent;
+  scrollbar-color: var(--sl-surface-elevated) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
@@ -30,14 +30,14 @@ html, body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--surface-3);
+  background: var(--sl-surface-elevated);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
   min-height: 30px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--ctx-accent) 50%, var(--surface-3));
+  background: color-mix(in srgb, var(--ctx-accent) 50%, var(--sl-surface-elevated));
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-corner { background: transparent; }
@@ -73,9 +73,9 @@ body.panels-collapsed #app {
 
 /* ---------- Toolbar ---------- */
 .app-toolbar {
-  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
-  border-bottom: 1px solid var(--vhs-shadow);
-  box-shadow: inset 0 1px 0 var(--vhs-highlight), 0 1px 3px rgba(0,0,0,0.5);
+  background: linear-gradient(to bottom, var(--sl-surface-raised) 0%, var(--sl-surface-panel) 100%);
+  border-bottom: 1px solid var(--sl-shadow-vhs-deep);
+  box-shadow: inset 0 1px 0 var(--sl-shadow-vhs-highlight), 0 1px 3px var(--sl-shadow-vhs-deep);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -93,15 +93,15 @@ body.panels-collapsed #app {
 
 .slammer-mini-logo {
   font-family: 'GothicPixels', monospace;
-  color: var(--primary);
+  color: var(--sl-accent-primary);
   font-size: 1.1rem;
   letter-spacing: 0.2em;
-  text-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+  text-shadow: 0 0 8px rgba(var(--sl-accent-primary-rgb), 0.4);
 }
 
 .version-tag {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.6;
   letter-spacing: 0.1em;
 }
@@ -109,20 +109,20 @@ body.panels-collapsed #app {
 .tb-sep {
   width: 1px;
   height: 24px;
-  background: var(--vhs-shadow);
+  background: var(--sl-shadow-vhs-deep);
   margin: 0 6px;
 }
 
 /* ---------- Canvas area ---------- */
 .canvas-area {
   position: relative;
-  background-color: var(--background);
+  background-color: var(--sl-bg-app);
   overflow: hidden;
   background-image:
-    linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
-    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
-    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+    linear-gradient(45deg, var(--sl-surface-canvas-checker-dark) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--sl-surface-canvas-checker-dark) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--sl-surface-canvas-checker-dark) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--sl-surface-canvas-checker-dark) 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
 }
@@ -141,15 +141,15 @@ body.panels-collapsed #app {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   pointer-events: none;
   text-align: center;
   opacity: 0.6;
 }
 
-.canvas-hint i { font-size: 48px; color: var(--primary); opacity: 0.5; }
+.canvas-hint i { font-size: 48px; color: var(--sl-accent-primary); opacity: 0.5; }
 .canvas-hint p { margin: 0; font-size: 14px; }
-.canvas-hint strong { color: var(--primary); }
+.canvas-hint strong { color: var(--sl-accent-primary); }
 .canvas-hint.hidden { display: none; }
 
 .zoom-controls {
@@ -167,22 +167,22 @@ body.panels-collapsed #app {
 
 /* ---------- Tool sidebar (Photoshop-style) ---------- */
 .tool-sidebar {
-  background-color: var(--surface);
+  background-color: var(--sl-surface-panel);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   padding: 8px 4px;
-  border-right: 1px solid var(--vhs-shadow);
-  box-shadow: inset -1px 0 0 var(--vhs-highlight);
+  border-right: 1px solid var(--sl-shadow-vhs-deep);
+  box-shadow: inset -1px 0 0 var(--sl-shadow-vhs-highlight);
   overflow: hidden;
 }
 
 /* ---------- Footer ---------- */
 .app-footer {
-  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
-  border-top: 1px solid var(--vhs-shadow);
-  box-shadow: inset 0 1px 0 var(--vhs-highlight), 0 -1px 3px rgba(0,0,0,0.4);
+  background: linear-gradient(to bottom, var(--sl-surface-raised) 0%, var(--sl-surface-panel) 100%);
+  border-top: 1px solid var(--sl-shadow-vhs-deep);
+  box-shadow: inset 0 1px 0 var(--sl-shadow-vhs-highlight), 0 -1px 3px rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -224,8 +224,8 @@ body.panels-collapsed #app {
   margin-right: 8px;
   border: 0;
   border-radius: 11px;
-  background: color-mix(in srgb, var(--primary, #7de0b5) 22%, transparent);
-  color: color-mix(in srgb, var(--primary, #7de0b5) 90%, #fff);
+  background: color-mix(in srgb, var(--sl-accent-primary, #7de0b5) 22%, transparent);
+  color: color-mix(in srgb, var(--sl-accent-primary, #7de0b5) 90%, #fff);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   font-weight: 500;
@@ -234,7 +234,7 @@ body.panels-collapsed #app {
   transition: background 0.12s ease;
 }
 .active-gen-chip:hover {
-  background: color-mix(in srgb, var(--primary, #7de0b5) 32%, transparent);
+  background: color-mix(in srgb, var(--sl-accent-primary, #7de0b5) 32%, transparent);
 }
 .active-gen-chip[hidden] { display: none; }
 .active-gen-chip-spinner { font-size: 10px; }
@@ -277,8 +277,8 @@ body.panels-collapsed #app {
   border-radius: 50%;
   /* Border in the footer's top-gradient colour so circle + footer
    * fuse into one piece. No outer outline, no drop shadow. */
-  border: 6px solid var(--surface-2);
-  background: var(--surface);
+  border: 6px solid var(--sl-surface-raised);
+  background: var(--sl-surface-panel);
   padding: 0;
   cursor: pointer;
   display: inline-flex;
@@ -286,7 +286,7 @@ body.panels-collapsed #app {
   justify-content: center;
 }
 .color-circle-btn:hover {
-  border-color: var(--surface-3);
+  border-color: var(--sl-surface-elevated);
   transform: translate(-50%, -50%) scale(1.04);
 }
 /* Stroke ring — sits between the footer-coloured outer border and the
@@ -296,7 +296,7 @@ body.panels-collapsed #app {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 4px solid var(--primary);
+  border: 4px solid var(--sl-accent-primary);
   box-sizing: border-box;
   pointer-events: auto;
   transition: border-color 0.12s ease;
@@ -313,7 +313,7 @@ body.panels-collapsed #app {
   position: absolute;
   inset: 4px;            /* tucked inside the stroke ring */
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--sl-accent-primary);
   pointer-events: auto;
   transition: background 0.12s ease;
 }
@@ -572,7 +572,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .quick-wheel-key {
   width: 36px;
   height: 12px;
-  background: #0a0a0a;
+  background: var(--sl-quick-wheel-key-2);
   color: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 3px;
@@ -587,12 +587,12 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 .quick-wheel-key:hover {
-  background: #181818;
+  background: var(--sl-quick-wheel-key-3);
   border-color: rgba(255, 255, 255, 0.4);
   color: #fff;
 }
 .quick-wheel-key:active {
-  background: #050505;
+  background: var(--sl-quick-wheel-key-1);
 }
 .quick-wheel-config {
   position: absolute;
@@ -604,14 +604,14 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .quick-wheel-assign-flyout {
   position: fixed;
   z-index: 240;
-  background: var(--surface-2);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-raised);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 6px;
   padding: 10px;
   width: 240px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--text-primary);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--sl-text-primary);
+  box-shadow: 0 10px 30px var(--sl-shadow-vhs-deep);
   user-select: none;
 }
 .quick-wheel-assign-head {
@@ -621,13 +621,13 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   margin-bottom: 8px;
 }
 .quick-wheel-assign-close {
   background: transparent;
   border: 0;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   font-size: 11px;
   padding: 2px 4px;
@@ -643,7 +643,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .quick-wheel-assign-item {
   background: transparent;
   border: 0;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   cursor: pointer;
   display: grid;
   grid-template-columns: 14px 1fr auto;
@@ -675,12 +675,12 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 }
 .quick-wheel-assign-item:hover {
   background: color-mix(in srgb, var(--ctx-accent) 14%, transparent);
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
 }
 .quick-wheel-assign-hint {
   margin-top: 8px;
   font-size: 9px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.7;
   letter-spacing: 0.04em;
 }
@@ -688,14 +688,14 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .color-flyout {
   position: fixed;
   z-index: 220;
-  background: var(--surface-2);
-  border: 1px solid var(--vhs-shadow);
+  background: var(--sl-surface-raised);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   border-radius: 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px var(--sl-shadow-vhs-deep);
   padding: 12px;
   width: 240px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--text-primary);
+  color: var(--sl-text-primary);
   user-select: none;
 }
 .color-flyout-head {
@@ -708,14 +708,14 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   flex-shrink: 0;
 }
 .color-flyout-hex {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
 }
 .color-flyout-actions {
   display: flex;
@@ -724,9 +724,9 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 }
 .color-flyout-btn {
   flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--vhs-shadow);
-  color: var(--text-secondary);
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-shadow-vhs-deep);
+  color: var(--sl-text-secondary);
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -744,7 +744,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.55;
   margin-bottom: 6px;
 }
@@ -757,7 +757,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   width: 100%;
   aspect-ratio: 1;
   border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sl-shadow-vhs-inset);
   cursor: pointer;
   padding: 0;
   transition: transform 0.1s ease, border-color 0.1s ease;
@@ -768,7 +768,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 }
 .color-flyout-empty {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--sl-text-secondary);
   opacity: 0.7;
   grid-column: 1 / -1;
   text-align: center;
@@ -779,7 +779,7 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .side-panel {
   --side-panel-top-h: 38%;     /* live-updated by sidePanelHandle drag */
   overflow: hidden;             /* sections own their own scroll */
-  border-left: 1px solid var(--vhs-shadow);
+  border-left: 1px solid var(--sl-shadow-vhs-deep);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -811,9 +811,9 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .side-panel-handle {
   flex: 0 0 8px;
   position: relative;
-  background: var(--vhs-groove);
-  border-top: 1px solid var(--vhs-shadow);
-  border-bottom: 1px solid var(--vhs-shadow);
+  background: var(--sl-shadow-vhs-groove);
+  border-top: 1px solid var(--sl-shadow-vhs-deep);
+  border-bottom: 1px solid var(--sl-shadow-vhs-deep);
   cursor: ns-resize;
   display: flex;
   align-items: center;
@@ -824,13 +824,13 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
 .side-panel-handle:hover,
 .side-panel-handle:focus-visible,
 .side-panel-handle.dragging {
-  background: color-mix(in srgb, var(--ctx-accent) 22%, var(--vhs-groove));
+  background: color-mix(in srgb, var(--ctx-accent) 22%, var(--sl-shadow-vhs-groove));
 }
 .side-panel-handle-grip {
   width: 28px;
   height: 2px;
   border-radius: 1px;
-  background: color-mix(in srgb, var(--text-secondary) 60%, transparent);
+  background: color-mix(in srgb, var(--sl-text-secondary) 60%, transparent);
 }
 .side-panel-handle.dragging .side-panel-handle-grip,
 .side-panel-handle:hover .side-panel-handle-grip { background: var(--ctx-accent); }
@@ -838,20 +838,20 @@ body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
 
 /* ---------- Control groups ---------- */
 .control-group {
-  background-color: var(--surface-2);
+  background-color: var(--sl-surface-raised);
   border-radius: 6px;
   padding: 14px;
   width: 100%;
-  border: 1px solid var(--vhs-shadow);
-  box-shadow: inset 1px 1px 3px var(--vhs-inset), 0 1px 0 #807777;
+  border: 1px solid var(--sl-shadow-vhs-deep);
+  box-shadow: inset 1px 1px 3px var(--sl-shadow-vhs-inset), 0 1px 0 #807777;
 }
 
 .control-group h3 {
   margin: 0 0 14px 0;
   font-size: 1.05rem;
   letter-spacing: 0.18em;
-  color: var(--primary);
-  border-bottom: 1px solid var(--border);
+  color: var(--sl-accent-primary);
+  border-bottom: 1px solid var(--sl-border-default);
   padding-bottom: 8px;
   display: flex;
   align-items: center;
@@ -864,7 +864,7 @@ body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
   font-size: 0.95rem;
   width: 20px;
   text-align: center;
-  color: var(--primary);
+  color: var(--sl-accent-primary);
 }
 
 /* Effects panel header tracks the active layer's accent. Layer Stack header keeps --primary as a stable spine. */
@@ -892,11 +892,11 @@ body.is-resizing-side-panel { cursor: ns-resize !important; user-select: none; }
   right: 16px;
   bottom: 16px;
   max-width: min(420px, calc(100% - 32px));
-  background: var(--surface-2);
-  color: var(--text-primary);
+  background: var(--sl-surface-raised);
+  color: var(--sl-text-primary);
   padding: 9px 14px;
   border-radius: 5px;
-  border: 1px solid var(--vhs-shadow);
+  border: 1px solid var(--sl-shadow-vhs-deep);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
   opacity: 0;
   pointer-events: none;
