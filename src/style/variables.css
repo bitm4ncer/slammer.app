@@ -59,6 +59,32 @@
   --sl-shadow-vhs-deep:      var(--vhs-shadow);
   --sl-shadow-vhs-highlight: var(--vhs-highlight);
   --sl-shadow-vhs-inset:     var(--vhs-inset);
+
+  /* === Phase 30 foundation: semantic palette (NEW values) ================= *
+   * Codifies recurring colour literals scattered across components.css and  *
+   * effects.css (~400+ occurrences). Panel migrations replace literals with *
+   * these token references. Variants preserved as distinct tokens — three  *
+   * near-blacks stay three tokens, three border-alpha values stay three.   *
+   * ======================================================================= */
+
+  --sl-surface-canvas-checker-dark: #2a2a2a;
+
+  --sl-border-faint:  rgba(255, 255, 255, 0.04);
+  --sl-border-subtle: rgba(255, 255, 255, 0.08);
+  --sl-border-strong: rgba(255, 255, 255, 0.18);
+
+  --sl-text-on-accent: #0a0a0a;
+
+  --sl-hover-overlay-faint:  rgba(255, 255, 255, 0.04);
+  --sl-hover-overlay-strong: rgba(255, 255, 255, 0.10);
+
+  --sl-canvas-frame-stroke: #aab0b6;
+  --sl-anchor-outline:      #0a0a0a;
+  --sl-anchor-fill-default: #ffffff;
+
+  --sl-quick-wheel-key-1: #050505;
+  --sl-quick-wheel-key-2: #0a0a0a;
+  --sl-quick-wheel-key-3: #181818;
 }
 
 @font-face {
