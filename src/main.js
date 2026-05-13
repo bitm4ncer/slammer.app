@@ -20,6 +20,7 @@ import { createHistory } from './core/history.js';
 import { translatePathD } from './core/vector-renderer.js';
 import { getSelectionArray, selectOnly } from './ui/selection-state.js';
 import { initCanvasView } from './ui/canvas-view.js';
+import { initThemeBridge } from './ui/theme-bridge.js';
 import { initDropLoader } from './ui/drop-loader.js';
 import { initLayerPanel } from './ui/layer-panel.js';
 import { initEffectPanel } from './ui/effect-panel.js';
@@ -174,6 +175,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // present. No-op in production; the folder is gitignored so a public
   // clone never sees premium code. See plugins/premium-loader.js.
   registerPremiumPluginsForDev();
+
+  // Theme-bridge: resolves --sl-* CSS tokens for Konva-using code and
+  // notifies subscribers when <html data-theme> changes. Phase 30 will
+  // wire a theme picker; for now this just makes Konva node colours
+  // follow whatever data-theme is on <html>.
+  initThemeBridge();
 
   const doc = createDocument();
   const view = initCanvasView({
