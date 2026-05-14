@@ -113,3 +113,37 @@ export function isTyping(target) {
 export function isMod(e) {
   return !!(e && (e.ctrlKey || e.metaKey));
 }
+
+// Detect macOS so the Settings tab can render `Mod` as `⌘` instead of
+// `Ctrl`. SSR-safe (returns false when navigator is absent).
+function isMac() {
+  try { return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || ''); }
+  catch { return false; }
+}
+
+// Turn a canonical combo string ('Mod+Shift+ArrowUp') into a human-
+// readable form for the Settings table ('Ctrl+Shift+↑' on Windows /
+// Linux, '⌘+Shift+↑' on macOS). Multi-combo strings ('Mod+Shift+Z /
+// Mod+Y' from getBindings().activeKeys) round-trip cleanly.
+const PRETTY_KEYS = {
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+  Space: 'Space',
+  Escape: 'Esc',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
+  Enter: 'Enter',
+  Tab: 'Tab',
+};
+export function prettyCombo(combo) {
+  if (!combo) return '';
+  const modLabel = isMac() ? '⌘' : 'Ctrl';
+  return combo.split(' / ').map((c) => c.split('+').map((part) => {
+    if (part === 'Mod') return modLabel;
+    if (part === 'Cmd') return '⌘';
+    if (PRETTY_KEYS[part]) return PRETTY_KEYS[part];
+    return part;
+  }).join('+')).join(' / ');
+}

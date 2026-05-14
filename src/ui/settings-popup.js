@@ -4,6 +4,8 @@
 
 import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
+import { getBindings } from './shortcut-manager.js';
+import { prettyCombo } from './shortcuts/helpers.js';
 
 const STORE_KEY = 'slammer:settings';
 const DEFAULTS = {
@@ -638,7 +640,68 @@ function wirePlugins(root) {
   }
 }
 
+// Per-category list of behaviours that are documented in the Settings
+// reference but are NOT keyboard bindings — mouse-wheel, drag conventions,
+// browser-native shortcuts, etc. These render as literal rows alongside
+// the live registry bindings.
+const SHORTCUT_EXTRAS = {
+  File: [
+    ['Shift+click Export', 'Export <code>.slammerproj</code> directly'],
+  ],
+  Edit: [
+    ['Ctrl+V', 'Paste image from system clipboard (when no internal layer is buffered)'],
+    ['Delete / Backspace', 'Delete selection'],
+  ],
+  'Move & transform': [
+    ['← → ↑ ↓', 'Nudge selection 1 px'],
+    ['Shift+arrow', 'Nudge selection 10 px'],
+    ['Drag rotate handle', 'Free rotate (live degree pill follows pointer)'],
+    ['Shift+rotate', 'Snap rotation to nearest 5°'],
+    ['Alt+drag layer', 'Duplicate the layer and drag the copy (Photoshop / Figma convention)'],
+    ['Alt+drag (mid-gesture)', 'Escape snap during drag'],
+    ['Ctrl+Shift+drag handle (text)', 'Resize text-box width (auto-wrap)'],
+  ],
+  Tools: [],
+  Canvas: [
+    ['Mouse-wheel', 'Pan or zoom — Settings → Workflow → Canvas navigation chooses the default'],
+    ['Ctrl+wheel / pinch', 'Zoom (when scroll is set to Pan) / Pan (when scroll is set to Zoom)'],
+    ['Shift+wheel', 'Pan horizontally with a single-axis mouse wheel'],
+    ['Middle-mouse drag', 'Pan'],
+    ['Space+drag', 'Pan (alternative to middle-mouse)'],
+    ['F11', 'Toggle fullscreen'],
+    ['Drag a layer card to canvas', 'Re-add layer (or to plugin: send for processing)'],
+  ],
+};
+
+// Category order matches the previous hardcoded table.
+const SHORTCUT_CATEGORY_ORDER = ['File', 'Edit', 'Move & transform', 'Tools', 'Canvas'];
+
 function renderShortcuts() {
+  // Pull every registered binding from the central registry (Phase 21b)
+  // and group by category. The registry is the single source of truth —
+  // when shortcuts get user-overridable in a follow-up sprint, this
+  // table reflects the live state without further changes here.
+  const bindings = getBindings();
+  const byCategory = bindings.reduce((acc, b) => {
+    const cat = b.category || 'Edit';
+    (acc[cat] = acc[cat] || []).push(b);
+    return acc;
+  }, {});
+
+  const sectionHtml = SHORTCUT_CATEGORY_ORDER.map((cat) => {
+    const liveRows = (byCategory[cat] || []).map((b) => [
+      prettyCombo(b.activeKeys),
+      b.label,
+    ]);
+    const extras = SHORTCUT_EXTRAS[cat] || [];
+    const rows = [...liveRows, ...extras];
+    if (!rows.length) return '';
+    // Display label keeps the ampersand HTML-escaped to mirror the
+    // previous template literal exactly.
+    const label = cat === 'Move & transform' ? 'Move &amp; transform' : cat;
+    return shortcutSection(label, rows);
+  }).join('');
+
   return `
     <section class="settings-tab-panel" data-tab="shortcuts" hidden>
       <header class="settings-panel-head">
@@ -651,66 +714,7 @@ function renderShortcuts() {
         <table class="settings-shortcuts">
           <colgroup><col class="settings-shortcuts-keys"/><col/></colgroup>
           <tbody>
-            ${shortcutSection('File', [
-              ['Ctrl+N', 'New blank project'],
-              ['Ctrl+O', 'Open project popup'],
-              ['Ctrl+S', 'Save project'],
-              ['Ctrl+E', 'Export PNG / JPEG / WebP popup'],
-              ['Shift+click Export', 'Export <code>.slammerproj</code> directly'],
-            ])}
-            ${shortcutSection('Edit', [
-              ['Ctrl+Z', 'Undo'],
-              ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
-              ['Ctrl+C / V / X', 'Copy / Paste / Cut active layer'],
-              ['Ctrl+V', 'Paste image from system clipboard (when no internal layer is buffered)'],
-              ['Ctrl+D', 'Duplicate active layer (+20 / +20 px)'],
-              ['Ctrl+A', 'Select all layers'],
-              ['Ctrl+G', 'Group selection'],
-              ['Ctrl+Shift+G', 'Ungroup'],
-              ['Ctrl+L', 'Lock / unlock active layer'],
-              ['Ctrl+↑ / Ctrl+↓', 'Bring forward / send backward one step'],
-              ['Ctrl+Shift+↑ / Ctrl+Shift+↓', 'Bring to front / send to back'],
-              ['Ctrl+Alt+↑ / Ctrl+Alt+↓', 'Select layer above / below in stack'],
-              ['Delete / Backspace', 'Delete selection'],
-              ['Esc', 'Deselect / cancel current gesture'],
-            ])}
-            ${shortcutSection('Move &amp; transform', [
-              ['← → ↑ ↓', 'Nudge selection 1 px'],
-              ['Shift+arrow', 'Nudge selection 10 px'],
-              ['Drag rotate handle', 'Free rotate (live degree pill follows pointer)'],
-              ['Shift+rotate', 'Snap rotation to nearest 5°'],
-              ['Alt+drag layer', 'Duplicate the layer and drag the copy (Photoshop / Figma convention)'],
-              ['Alt+drag (mid-gesture)', 'Escape snap during drag'],
-              ['Ctrl+Shift+drag handle (text)', 'Resize text-box width (auto-wrap)'],
-            ])}
-            ${shortcutSection('Tools', [
-              ['V', 'Select tool'],
-              ['A', 'Direct Select (anchor edit)'],
-              ['P', 'Pen tool'],
-              ['B', 'Pencil tool'],
-              ['R', 'Rectangle (cycle shape primitives)'],
-              ['T', 'Add text layer'],
-              ['I', 'Add image layer'],
-              ['C', 'Toggle Colour Hub'],
-              ['X', 'Swap fill ↔ stroke colour'],
-            ])}
-            ${shortcutSection('Canvas', [
-              ['Mouse-wheel', 'Pan or zoom — Settings → Workflow → Canvas navigation chooses the default'],
-              ['Ctrl+wheel / pinch', 'Zoom (when scroll is set to Pan) / Pan (when scroll is set to Zoom)'],
-              ['Shift+wheel', 'Pan horizontally with a single-axis mouse wheel'],
-              ['Middle-mouse drag', 'Pan'],
-              ['Space+drag', 'Pan (alternative to middle-mouse)'],
-              ['Ctrl+= / Ctrl++', 'Zoom in (around viewport center)'],
-              ['Ctrl+-', 'Zoom out (around viewport center)'],
-              ['Ctrl+0', 'Fit content to viewport'],
-              ['Ctrl+1', 'Zoom to 100 % (actual size, around viewport center)'],
-              ['Ctrl+R', 'Toggle rulers'],
-              ['Ctrl+;', 'Toggle canvas grid'],
-              ['S', 'Toggle snap'],
-              ['Tab', 'Toggle side panels (more canvas room)'],
-              ['F11', 'Toggle fullscreen'],
-              ['Drag a layer card to canvas', 'Re-add layer (or to plugin: send for processing)'],
-            ])}
+            ${sectionHtml}
           </tbody>
         </table>
       </div>
