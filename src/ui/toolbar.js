@@ -418,143 +418,15 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     const mod = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
 
-    // Modifier shortcuts (Ctrl/Cmd) — work even from form fields except text editing fields.
-    //
-    // Phase 21b migration: Ctrl+S / Ctrl+E / Ctrl+N / Ctrl+O are now
-    // owned by the central shortcut registry — see registerShortcuts
-    // below ('File' category). The remaining inline mod branches
-    // (Ctrl+0/1/=/-, group/select-all/dup/lock, z-order) migrate in
-    // subsequent commits.
-    if (mod && !e.altKey) {
-      // Ctrl+0 — fit content to viewport (Affinity / Figma convention).
-      if (key === '0' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        view?.fitTo?.();
-        return;
-      }
-      // Ctrl+1 — zoom to actual size (100 %) around viewport center.
-      if (key === '1' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        zoomToScale(1);
-        return;
-      }
-      // Ctrl+= / Ctrl++ — zoom in (around viewport center). Most US/EU
-      // keyboards emit '=' for the un-shifted +/= key; Shift+= = '+' is
-      // also accepted so num-pad and laptop layouts both work.
-      if ((key === '=' || key === '+') && !e.altKey) {
-        if (inField) return;
-        e.preventDefault();
-        zoomByCentered(1.2);
-        return;
-      }
-      // Ctrl+- — zoom out.
-      if (key === '-' && !e.shiftKey && !e.altKey) {
-        if (inField) return;
-        e.preventDefault();
-        zoomByCentered(1 / 1.2);
-        return;
-      }
-
-      // Selection / group shortcuts (Phase D).
-      if (key === 'g' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        const sel = getSelectionArray().filter((id) => {
-          const l = doc.findLayer(id);
-          return l && l.type !== 'fx';
-        });
-        if (sel.length < 2) return;
-        const ordered = topLevelOrder(doc, sel);
-        const grp = doc.addGroupLayer({ name: 'Group', childIds: ordered });
-        if (grp) selectOnly(grp.id);
-        return;
-      }
-      if (key === 'g' && e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        // Find a group to dissolve — prefer the active layer if it IS
-        // a group, otherwise its parent group.
-        const active = doc.activeLayer;
-        let target = null;
-        if (active && active.type === 'group') target = active;
-        else if (active && active.parentGroupId) target = doc.findLayer(active.parentGroupId);
-        if (target) {
-          const childIds = (target.childIds || []).slice();
-          doc.dissolveGroup(target.id);
-          // Re-select what used to be inside.
-          if (childIds.length) setSelection(childIds, childIds[0]);
-        }
-        return;
-      }
-      if (key === 'a' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        // Select all top-level layers (groups counted as one each).
-        const ids = doc.layers.filter((l) => !l.parentGroupId).map((l) => l.id);
-        setSelection(ids, ids[ids.length - 1] || null);
-        return;
-      }
-      // Ctrl+D (duplicate) — Phase 21b migration step 5. See
-      // registerShortcuts below (id: edit.duplicate).
-      if (key === 'l' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        const sel = getSelectionArray();
-        if (!sel.length) return;
-        // Toggle based on the FIRST selected layer's current state.
-        const first = doc.findLayer(sel[0]);
-        if (!first) return;
-        const next = !first.locked;
-        for (const id of sel) doc.setLayerLocked(id, next);
-        return;
-      }
-    }
-
-    // Plain Esc → reduce multi-selection to active layer only.
-    if (key === 'escape' && !mod && !e.altKey && !e.shiftKey) {
-      if (inField) return;
-      const sel = getSelection();
-      if (sel.size > 1) {
-        const active = doc.activeLayerId;
-        if (active) selectOnly(active);
-        else clearSelection();
-        e.preventDefault();
-        return;
-      }
-    }
-
-    // ── Layer Z-order + stack navigation via arrow + modifier ──────────
-    // Ctrl+Up         — bring forward (one step toward top of stack)
-    // Ctrl+Down       — send backward (one step toward bottom)
-    // Ctrl+Shift+Up   — bring to front (top of stack)
-    // Ctrl+Shift+Down — send to back (bottom of stack)
-    // Ctrl+Alt+Up     — select next layer up in the stack
-    // Ctrl+Alt+Down   — select next layer down
-    if (mod && (key === 'arrowup' || key === 'arrowdown')) {
-      if (inField) return;
-      e.preventDefault();
-      const dir = key === 'arrowup' ? 'up' : 'down';
-      // Ctrl+Alt+Up/Down — change active selection to neighbouring layer.
-      if (e.altKey && !e.shiftKey) {
-        const all = doc.layers;
-        if (!all.length) return;
-        let i = all.findIndex((l) => l.id === doc.activeLayerId);
-        if (i < 0) i = dir === 'up' ? -1 : all.length;
-        let next = dir === 'up' ? i + 1 : i - 1;
-        next = Math.max(0, Math.min(all.length - 1, next));
-        const target = all[next];
-        if (target && target.id !== doc.activeLayerId) selectOnly(target.id);
-        return;
-      }
-      // Z-order moves require a non-empty selection (or active layer).
-      const sel = new Set(getSelectionArray());
-      if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
-      if (!sel.size) return;
-      reorderZ(doc, [...sel], dir, e.shiftKey);
-      return;
-    }
+    // Phase 21b migration step 6: Ctrl+0/1/=/-, Ctrl+G / Ctrl+Shift+G,
+    // Ctrl+A, Ctrl+L, plain Esc (reduce multi-select), Ctrl+arrows
+    // (z-order + stack nav) all moved into the central shortcut
+    // registry — see registerShortcuts below.
+    // Plain-arrow nudges (no modifier) and Delete/Backspace / Space-pan
+    // / Esc-marquee-cancel from canvas-view.js are not migrated in this
+    // sprint — they sit close to selection/marquee state and the brief
+    // restricts to behaviour parity. Tracked as a follow-up in the
+    // plan file.
 
     // Arrow-key nudge for selected layers (Select tool only).
     if ((key === 'arrowleft' || key === 'arrowright' || key === 'arrowup' || key === 'arrowdown')
@@ -602,23 +474,11 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       return;
     }
 
-    // Tab — toggle side panels (more canvas room). Standard
-    // Figma / Photoshop behaviour. Skip when a form field has focus
-    // so Tab still cycles inputs / textareas as the browser default.
-    if (key === 'tab' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
-      if (inField) return;
-      e.preventDefault();
-      window.document.body.classList.toggle('panels-collapsed');
-      return;
-    }
-
-    // Plain-letter tool hotkeys now live in the central shortcut
-    // registry — see registerShortcuts({...}) below in this same init.
-    // Note: the previous implementation case-folded via toLowerCase()
-    // so Shift+letter incidentally activated the same tool. The
-    // registry differentiates Shift+V from V (and the Settings table
-    // documents the bare letter only) — anyone who relied on the
-    // Shift-folded variant should file a regression.
+    // Tab toggle, plain-letter tool hotkeys, and all the Ctrl/Cmd
+    // mod shortcuts now live in the central shortcut registry — see
+    // registerShortcuts({...}) below in this same init. The only
+    // remaining inline keydown logic is the plain-arrow nudge above,
+    // kept for behaviour parity (deferred follow-up).
   });
 
   // ---------- Tool-activation shortcuts (Phase 21b migration step 2) ----------
@@ -766,6 +626,227 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
         const newIds = duplicateSelection(doc, ids);
         if (Array.isArray(newIds) && newIds.length) setSelection(newIds, newIds[0]);
       },
+    },
+    // ---------- Edit selection / groups (Phase 21b step 6) ----------
+    {
+      id: 'edit.selectAll',
+      label: 'Select all layers',
+      defaultKeys: 'Mod+A',
+      scope: 'global',
+      category: 'Edit',
+      action: () => {
+        const ids = doc.layers.filter((l) => !l.parentGroupId).map((l) => l.id);
+        setSelection(ids, ids[ids.length - 1] || null);
+      },
+    },
+    {
+      id: 'edit.group',
+      label: 'Group selection',
+      defaultKeys: 'Mod+G',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        const sel = getSelectionArray().filter((id) => {
+          const l = doc.findLayer(id);
+          return l && l.type !== 'fx';
+        });
+        if (sel.length < 2) return;
+        e.preventDefault();
+        const ordered = topLevelOrder(doc, sel);
+        const grp = doc.addGroupLayer({ name: 'Group', childIds: ordered });
+        if (grp) selectOnly(grp.id);
+      },
+    },
+    {
+      id: 'edit.ungroup',
+      label: 'Ungroup',
+      defaultKeys: 'Mod+Shift+G',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        const active = doc.activeLayer;
+        let target = null;
+        if (active && active.type === 'group') target = active;
+        else if (active && active.parentGroupId) target = doc.findLayer(active.parentGroupId);
+        if (!target) return;
+        e.preventDefault();
+        const childIds = (target.childIds || []).slice();
+        doc.dissolveGroup(target.id);
+        if (childIds.length) setSelection(childIds, childIds[0]);
+      },
+    },
+    {
+      id: 'edit.lockToggle',
+      label: 'Lock / unlock active layer',
+      defaultKeys: 'Mod+L',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        const sel = getSelectionArray();
+        if (!sel.length) return;
+        const first = doc.findLayer(sel[0]);
+        if (!first) return;
+        e.preventDefault();
+        const next = !first.locked;
+        for (const id of sel) doc.setLayerLocked(id, next);
+      },
+    },
+    {
+      id: 'edit.deselect',
+      label: 'Deselect / cancel current gesture',
+      defaultKeys: 'Escape',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        // Only acts if there's a multi-selection to collapse. Other Esc
+        // listeners (modal closers, marquee cancel in canvas-view) still
+        // run because preventDefault is conditional and the registry
+        // doesn't stopPropagation.
+        const sel = getSelection();
+        if (sel.size <= 1) return;
+        e.preventDefault();
+        const active = doc.activeLayerId;
+        if (active) selectOnly(active);
+        else clearSelection();
+      },
+    },
+    // ---------- Move & transform — z-order + stack nav (step 6) ----------
+    {
+      id: 'move.bringForward',
+      label: 'Bring forward (one step toward top)',
+      defaultKeys: 'Mod+ArrowUp',
+      scope: 'global',
+      category: 'Move & transform',
+      preventDefault: false,
+      action: (e) => {
+        const sel = new Set(getSelectionArray());
+        if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
+        if (!sel.size) return;
+        e.preventDefault();
+        reorderZ(doc, [...sel], 'up', false);
+      },
+    },
+    {
+      id: 'move.sendBackward',
+      label: 'Send backward (one step toward bottom)',
+      defaultKeys: 'Mod+ArrowDown',
+      scope: 'global',
+      category: 'Move & transform',
+      preventDefault: false,
+      action: (e) => {
+        const sel = new Set(getSelectionArray());
+        if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
+        if (!sel.size) return;
+        e.preventDefault();
+        reorderZ(doc, [...sel], 'down', false);
+      },
+    },
+    {
+      id: 'move.bringToFront',
+      label: 'Bring to front',
+      defaultKeys: 'Mod+Shift+ArrowUp',
+      scope: 'global',
+      category: 'Move & transform',
+      preventDefault: false,
+      action: (e) => {
+        const sel = new Set(getSelectionArray());
+        if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
+        if (!sel.size) return;
+        e.preventDefault();
+        reorderZ(doc, [...sel], 'up', true);
+      },
+    },
+    {
+      id: 'move.sendToBack',
+      label: 'Send to back',
+      defaultKeys: 'Mod+Shift+ArrowDown',
+      scope: 'global',
+      category: 'Move & transform',
+      preventDefault: false,
+      action: (e) => {
+        const sel = new Set(getSelectionArray());
+        if (!sel.size && doc.activeLayerId) sel.add(doc.activeLayerId);
+        if (!sel.size) return;
+        e.preventDefault();
+        reorderZ(doc, [...sel], 'down', true);
+      },
+    },
+    {
+      id: 'move.selectAbove',
+      label: 'Select layer above in stack',
+      defaultKeys: 'Mod+Alt+ArrowUp',
+      scope: 'global',
+      category: 'Move & transform',
+      action: () => {
+        const all = doc.layers;
+        if (!all.length) return;
+        let i = all.findIndex((l) => l.id === doc.activeLayerId);
+        if (i < 0) i = -1;
+        const next = Math.max(0, Math.min(all.length - 1, i + 1));
+        const target = all[next];
+        if (target && target.id !== doc.activeLayerId) selectOnly(target.id);
+      },
+    },
+    {
+      id: 'move.selectBelow',
+      label: 'Select layer below in stack',
+      defaultKeys: 'Mod+Alt+ArrowDown',
+      scope: 'global',
+      category: 'Move & transform',
+      action: () => {
+        const all = doc.layers;
+        if (!all.length) return;
+        let i = all.findIndex((l) => l.id === doc.activeLayerId);
+        if (i < 0) i = all.length;
+        const next = Math.max(0, Math.min(all.length - 1, i - 1));
+        const target = all[next];
+        if (target && target.id !== doc.activeLayerId) selectOnly(target.id);
+      },
+    },
+    // ---------- Canvas / view (step 6) ----------
+    {
+      id: 'canvas.fitToViewport',
+      label: 'Fit content to viewport',
+      defaultKeys: 'Mod+0',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => view?.fitTo?.(),
+    },
+    {
+      id: 'canvas.actualSize',
+      label: 'Zoom to 100 % (actual size)',
+      defaultKeys: 'Mod+1',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => zoomToScale(1),
+    },
+    {
+      id: 'canvas.zoomIn',
+      label: 'Zoom in',
+      defaultKeys: ['Mod+=', 'Mod+Shift+='],
+      scope: 'global',
+      category: 'Canvas',
+      action: () => zoomByCentered(1.2),
+    },
+    {
+      id: 'canvas.zoomOut',
+      label: 'Zoom out',
+      defaultKeys: 'Mod+-',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => zoomByCentered(1 / 1.2),
+    },
+    {
+      id: 'view.togglePanels',
+      label: 'Toggle side panels',
+      defaultKeys: 'Tab',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => window.document.body.classList.toggle('panels-collapsed'),
     },
   ]);
 

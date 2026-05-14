@@ -434,30 +434,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSettings({ canvasGridShow: !cur });
   });
 
-  // Keyboard shortcuts:
-  //   S        → toggle snap (no modifier — bare S in a non-input context)
-  //   Ctrl+R   → toggle rulers (preventDefault stops the browser-reload default)
-  //   Ctrl+;   → toggle canvas grid (matches Photoshop)
-  window.addEventListener('keydown', (e) => {
-    const ae = document.activeElement;
-    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
-    if (inField) return;
-    const isMod = e.ctrlKey || e.metaKey;
-    if (!isMod && !e.altKey && (e.key === 's' || e.key === 'S')) {
-      const cur = getSettings().snapEnabled !== false;
-      setSettings({ snapEnabled: !cur });
-    }
-    if (isMod && !e.shiftKey && !e.altKey && (e.key === 'r' || e.key === 'R')) {
-      e.preventDefault();
-      const cur = !!getSettings().rulersEnabled;
-      setSettings({ rulersEnabled: !cur });
-    }
-    if (isMod && !e.shiftKey && !e.altKey && e.key === ';') {
-      e.preventDefault();
-      const cur = !!getSettings().canvasGridShow;
-      setSettings({ canvasGridShow: !cur });
-    }
-  });
+  // Snap / Rulers / Grid shortcuts — Phase 21b registry migration (step 6).
+  //   S      → toggle snap
+  //   Ctrl+R → toggle rulers (preventDefault stops browser-reload default)
+  //   Ctrl+; → toggle canvas grid (matches Photoshop)
+  registerShortcuts([
+    {
+      id: 'canvas.toggleSnap',
+      label: 'Toggle snap',
+      defaultKeys: 'S',
+      scope: 'global',
+      category: 'Canvas',
+      // The previous inline handler did NOT preventDefault for S — match
+      // that (S in a non-input context has no browser default to suppress
+      // anyway, but be explicit so the registry doesn't accidentally
+      // swallow keystrokes other listeners might still want).
+      preventDefault: false,
+      action: () => setSettings({ snapEnabled: !(getSettings().snapEnabled !== false) }),
+    },
+    {
+      id: 'canvas.toggleRulers',
+      label: 'Toggle rulers',
+      defaultKeys: 'Mod+R',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => setSettings({ rulersEnabled: !getSettings().rulersEnabled }),
+    },
+    {
+      id: 'canvas.toggleGrid',
+      label: 'Toggle canvas grid',
+      defaultKeys: 'Mod+;',
+      scope: 'global',
+      category: 'Canvas',
+      action: () => setSettings({ canvasGridShow: !getSettings().canvasGridShow }),
+    },
+  ]);
 
   onSettingsChange(() => { syncSnapBtn(); syncRulersBtn(); syncGridBtn(); });
   syncSnapBtn();
