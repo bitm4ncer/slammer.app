@@ -35,6 +35,7 @@ import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupport
 import { showNotification } from './ui/notifications.js';
 import { registerPlugin } from './plugins/registry.js';
 import { registerPremiumPluginsForDev } from './plugins/premium-loader.js';
+import { initShortcutManager } from './ui/shortcut-manager.js';
 
 // Plugins (Phase 4a foundation: Invert. Others registered as they land.)
 import invertPlugin from './plugins/filters/invert/index.js';
@@ -335,6 +336,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   activeGenerations.initFooterChip();
   initSidebarPlugins();
+
+  // ---------- Phase 21b — Shortcut Manager ----------
+  // Central registry + global keydown router. Foundation lands first
+  // with an empty registry; the migration commits in this branch move
+  // ~9 in-scope listeners (Groups A + B from the audit) into it.
+  // Modal Escape closers and field-local Enter/Esc stay where they are
+  // — they're not user-rebindable. See plan file for details.
+  window.__slammer.shortcuts = initShortcutManager();
 
   // ---------- Bitmancer Shop button ----------
   const btnShop = document.getElementById('btnShop');
