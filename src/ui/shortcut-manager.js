@@ -54,6 +54,11 @@ function getRuntime() {
     scopeStack: ['global'],
     routerInstalled: false,
     captureRouterInstalled: false,
+    // Set of `${scope}|${combo}` keys we've already warned about, so
+    // boot-time registration doesn't spam the console with the same
+    // collision N×N times. Cleared whenever a binding or override
+    // changes so a NEW conflict still gets a fresh warning.
+    warnedConflicts: new Set(),
   };
   window[RUNTIME_KEY] = rt;
   return rt;
@@ -109,20 +114,61 @@ function normaliseSpec(spec) {
 // Conflict check — dev-only warning. Two bindings within the SAME scope
 // resolving to the SAME combo will both want to fire and order becomes
 // undefined. Cross-scope collisions are fine (active-scope wins).
+//
+// Each unique (scope, combo) collision warns AT MOST ONCE per app
+// session — boot-time registration calls this 45+ times, but a real
+// collision only logs once. Set `rt.warnedConflicts.clear()` (called
+// implicitly on any override change) to surface a fresh warning after
+// the user remaps something.
+//
+// Returns a Map of `${scope}|${combo}` → [id, id, …] for callers that
+// need to react programmatically (the remap UI uses this to surface
+// "Conflicts with X" before saving).
 function checkConflicts() {
   const rt = getRuntime();
   const seen = new Map(); // `${scope}|${combo}` → id
+  const collisions = new Map(); // key → array of ids in collision
   for (const spec of rt.bindings.values()) {
     for (const combo of effectiveCombos(spec)) {
       const key = `${spec.scope}|${combo}`;
       if (seen.has(key) && seen.get(key) !== spec.id) {
-        // eslint-disable-next-line no-console
-        console.warn(`[shortcut-manager] conflict: "${combo}" in scope "${spec.scope}" → ${seen.get(key)} vs ${spec.id}`);
+        const otherId = seen.get(key);
+        if (!collisions.has(key)) collisions.set(key, [otherId]);
+        collisions.get(key).push(spec.id);
+        if (!rt.warnedConflicts.has(key)) {
+          rt.warnedConflicts.add(key);
+          // eslint-disable-next-line no-console
+          console.warn(`[shortcut-manager] conflict: "${combo}" in scope "${spec.scope}" → ${otherId} vs ${spec.id}`);
+        }
       } else {
         seen.set(key, spec.id);
       }
     }
   }
+  return collisions;
+}
+
+// Look up which existing binding (if any) would collide if `combo`
+// were set on `excludeId` in `scope`. Used by the remap UI before
+// committing an override — returns `{ id, label, overridden }` for
+// the colliding binding, or null when the combo is free.
+export function findCollision(combo, scope, excludeId) {
+  const rt = getRuntime();
+  const target = normaliseCombos(combo);
+  if (!target.length) return null;
+  for (const spec of rt.bindings.values()) {
+    if (spec.id === excludeId) continue;
+    if (spec.scope !== scope) continue;
+    const combos = effectiveCombos(spec);
+    if (combos.some((c) => target.includes(c))) {
+      return {
+        id: spec.id,
+        label: spec.label,
+        overridden: !!rt.overrides[spec.id],
+      };
+    }
+  }
+  return null;
 }
 
 // ---------- Public API ----------
@@ -185,20 +231,45 @@ export function setOverride(id, combo) {
   if (!normalised.length) { delete rt.overrides[id]; }
   else                    { rt.overrides[id] = normalised.join(' / '); }
   persistOverrides();
+  // A new override can introduce a fresh collision — wipe the seen-set
+  // so checkConflicts re-warns about anything that's now newly broken.
+  rt.warnedConflicts.clear();
   checkConflicts();
+  notifyChange();
 }
 
 export function clearOverride(id) {
   const rt = getRuntime();
   delete rt.overrides[id];
   persistOverrides();
+  rt.warnedConflicts.clear();
   checkConflicts();
+  notifyChange();
 }
 
 export function resetAllOverrides() {
   const rt = getRuntime();
   rt.overrides = {};
   persistOverrides();
+  rt.warnedConflicts.clear();
+  notifyChange();
+}
+
+// ---------- Change subscription ----------
+// The Settings → Shortcuts tab listens here so its rows redraw the
+// moment any override changes (set / clear / reset-all). Cheap pub/
+// sub — no diffing, just a redraw signal.
+function notifyChange() {
+  const rt = getRuntime();
+  if (!rt.listeners) return;
+  for (const fn of rt.listeners) { try { fn(); } catch { /* keep going */ } }
+}
+
+export function onBindingsChange(fn) {
+  const rt = getRuntime();
+  if (!rt.listeners) rt.listeners = new Set();
+  rt.listeners.add(fn);
+  return () => rt.listeners.delete(fn);
 }
 
 // ---------- Router ----------
@@ -207,6 +278,12 @@ export function resetAllOverrides() {
 // something fired.
 function dispatch(e, captureOnly) {
   const rt = getRuntime();
+  // Paused by the Settings remap UI while a row is in listening mode.
+  // The remap UI installs its own capture-phase keydown handler that
+  // fills the chip with the next keystroke — the router must stay
+  // silent so the user's "press Q to rebind" doesn't also fire the
+  // currently-bound Q action.
+  if (rt.routerPaused) return false;
   const combo = comboFromEvent(e);
   if (!combo) return false;
 
@@ -273,6 +350,13 @@ export function initShortcutManager() {
     setOverride,
     clearOverride,
     resetAllOverrides,
+    findCollision,
+    onBindingsChange,
+    // Pause/resume the router — used by the Settings remap UI while a
+    // row is in listening mode, so the next keypress fills the chip
+    // instead of triggering whichever shortcut was previously bound.
+    pauseRouter:  () => { getRuntime().routerPaused = true; },
+    resumeRouter: () => { getRuntime().routerPaused = false; },
     // For dev-tools poking — read-only access to the live runtime.
     _runtime: getRuntime,
   };

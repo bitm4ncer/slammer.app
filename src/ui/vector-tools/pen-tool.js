@@ -25,7 +25,7 @@ import { getTool, onToolChange } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
 import { buildVectorFillFromActive, buildVectorStrokeFromActive } from '../../core/colors.js';
-import { registerShortcuts } from '../shortcut-manager.js';
+import { registerShortcuts, pushScope, popScope } from '../shortcut-manager.js';
 
 // Default style for a freshly-created Pen path: pulls from the colour hub's
 // active stroke. The pen's natural state is "outline-only" so a fresh path
@@ -550,23 +550,28 @@ export function attachPenTool({ stage, document: doc }) {
   }
 
   // Tool-switch + Esc / Enter via the central shortcut registry.
-  // Phase 21b migration (step 7). Bindings are registered at scope
-  // 'global' but the action declines (returns false) when pen isn't
-  // active + drawing — so the global edit.deselect (Esc) still gets
-  // a turn when this binding bails.
+  // Bindings live in the 'pen-active' scope which is pushed onto the
+  // scope stack whenever the pen tool is active. That keeps Esc out
+  // of the 'global' scope where it would collide with edit.deselect
+  // (the conflict warning that fired 360× on cold boot). When pen is
+  // active but NOT drawing, the action returns false so the router
+  // falls through to global bindings (edit.deselect still fires for
+  // multi-select reduction).
   onToolChange((newTool) => {
     if (newTool !== 'pen' && state.drawing) finishOpen();
+    if (newTool === 'pen') pushScope('pen-active');
+    else                   popScope('pen-active');
   });
   registerShortcuts([
     {
       id: 'vector.pen.cancel',
       label: 'Cancel pen path (drop pending segments)',
       defaultKeys: 'Escape',
-      scope: 'global',
+      scope: 'pen-active',
       category: 'Tools',
       preventDefault: false,
       action: (e) => {
-        if (getTool() !== 'pen' || !state.drawing) return false;
+        if (!state.drawing) return false;
         e.preventDefault();
         cancel();
       },
@@ -575,11 +580,11 @@ export function attachPenTool({ stage, document: doc }) {
       id: 'vector.pen.finish',
       label: 'Close pen path',
       defaultKeys: 'Enter',
-      scope: 'global',
+      scope: 'pen-active',
       category: 'Tools',
       preventDefault: false,
       action: (e) => {
-        if (getTool() !== 'pen' || !state.drawing) return false;
+        if (!state.drawing) return false;
         e.preventDefault();
         finishClose();
       },
