@@ -35,7 +35,7 @@ import { loadSystemFonts, wasPreviouslyGranted, isSupported as localFontsSupport
 import { showNotification } from './ui/notifications.js';
 import { registerPlugin } from './plugins/registry.js';
 import { registerPremiumPluginsForDev } from './plugins/premium-loader.js';
-import { initShortcutManager } from './ui/shortcut-manager.js';
+import { initShortcutManager, registerShortcuts } from './ui/shortcut-manager.js';
 
 // Plugins (Phase 4a foundation: Invert. Others registered as they land.)
 import invertPlugin from './plugins/filters/invert/index.js';
@@ -504,21 +504,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   undoBtns.forEach((b) => b.addEventListener('click', () => history.undo()));
   redoBtns.forEach((b) => b.addEventListener('click', () => history.redo()));
-  window.addEventListener('keydown', (e) => {
-    const isMod = e.ctrlKey || e.metaKey;
-    if (!isMod) return;
-    const ae = document.activeElement;
-    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
-    if (inField) return;
-    const k = e.key.toLowerCase();
-    if (k === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      history.undo();
-    } else if ((k === 'z' && e.shiftKey) || k === 'y') {
-      e.preventDefault();
-      history.redo();
-    }
-  });
+  // Undo / redo shortcuts — Phase 21b registry migration (step 3).
+  // The previous inline window-level keydown that lived here is gone;
+  // the central router calls history.undo / .redo via these specs.
+  registerShortcuts([
+    {
+      id: 'edit.undo',
+      label: 'Undo',
+      defaultKeys: 'Mod+Z',
+      scope: 'global',
+      category: 'Edit',
+      action: () => history.undo(),
+    },
+    {
+      id: 'edit.redo',
+      label: 'Redo',
+      defaultKeys: ['Mod+Shift+Z', 'Mod+Y'],
+      scope: 'global',
+      category: 'Edit',
+      action: () => history.redo(),
+    },
+  ]);
 
   // ---------- Layer clipboard (Ctrl+C / Ctrl+V / Ctrl+X) ----------
   // Ctrl+D (duplicate) and arrow-nudge already live in toolbar.js — those
