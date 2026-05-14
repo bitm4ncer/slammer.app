@@ -12,6 +12,7 @@ import {
   getSelection, getSelectionArray, setSelection, selectOnly, clearSelection,
 } from './selection-state.js';
 import { getActiveFill, getActiveKind } from '../core/colors.js';
+import { registerShortcuts } from './shortcut-manager.js';
 
 // Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
 const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
@@ -638,40 +639,108 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       return;
     }
 
-    // Plain-letter tool hotkeys.
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (inField) return;
-    if (key === 'i') { e.preventDefault(); $('btnAddImage')?.click(); }
-    else if (key === 't') { e.preventDefault(); $('btnAddText')?.click(); }
-    else if (key === 'v') { e.preventDefault(); setTool('select'); }
-    else if (key === 'a') { e.preventDefault(); setTool('directSelect'); }
-    else if (key === 'p') { e.preventDefault(); setTool('pen'); }
-    else if (key === 'b') { e.preventDefault(); setTool('pencil'); }
-    else if (key === 'c') {
-      e.preventDefault();
-      const dial = document.getElementById('btnColorCircle');
-      if (dial) toggleColorHub(dial);
-    }
-    else if (key === 'x') {
-      // X — swap fill ↔ stroke colours (Affinity / Photoshop convention).
-      // Synchronous import via static reference at top of file would be
-      // ideal, but the toolbar already imports many modules; lazy-load
-      // here keeps bundle clean for users who never press X.
-      e.preventDefault();
-      import('../core/colors.js').then(({ swapFillStroke }) => swapFillStroke());
-    }
-    else if (key === 'r') {
-      e.preventDefault();
-      // R cycles through shapes if pressed repeatedly while a shape is active.
-      if (getTool().startsWith('shape:')) {
-        const idx = SHAPE_OPTIONS.findIndex((s) => `shape:${s.id}` === getTool());
-        const next = SHAPE_OPTIONS[(idx + 1) % SHAPE_OPTIONS.length];
-        setTool(`shape:${next.id}`);
-      } else {
-        setTool(getLastShape());
-      }
-    }
+    // Plain-letter tool hotkeys now live in the central shortcut
+    // registry — see registerShortcuts({...}) below in this same init.
+    // Note: the previous implementation case-folded via toLowerCase()
+    // so Shift+letter incidentally activated the same tool. The
+    // registry differentiates Shift+V from V (and the Settings table
+    // documents the bare letter only) — anyone who relied on the
+    // Shift-folded variant should file a regression.
   });
+
+  // ---------- Tool-activation shortcuts (Phase 21b migration step 2) ----------
+  // Bare-letter shortcuts that activate a tool or trigger a one-shot.
+  // All are scoped `global` and gated by the registry's is-typing
+  // guard so typing 'V' in a text input does NOT switch tool.
+  registerShortcuts([
+    {
+      id: 'tools.select',
+      label: 'Select tool',
+      defaultKeys: 'V',
+      scope: 'global',
+      category: 'Tools',
+      action: () => setTool('select'),
+    },
+    {
+      id: 'tools.directSelect',
+      label: 'Direct Select (anchor edit)',
+      defaultKeys: 'A',
+      scope: 'global',
+      category: 'Tools',
+      action: () => setTool('directSelect'),
+    },
+    {
+      id: 'tools.pen',
+      label: 'Pen tool',
+      defaultKeys: 'P',
+      scope: 'global',
+      category: 'Tools',
+      action: () => setTool('pen'),
+    },
+    {
+      id: 'tools.pencil',
+      label: 'Pencil tool',
+      defaultKeys: 'B',
+      scope: 'global',
+      category: 'Tools',
+      action: () => setTool('pencil'),
+    },
+    {
+      id: 'tools.shape',
+      label: 'Rectangle (cycle shape primitives)',
+      defaultKeys: 'R',
+      scope: 'global',
+      category: 'Tools',
+      // R cycles shapes if a shape is already active, else activates
+      // the last-used shape primitive.
+      action: () => {
+        if (getTool().startsWith('shape:')) {
+          const idx = SHAPE_OPTIONS.findIndex((s) => `shape:${s.id}` === getTool());
+          const next = SHAPE_OPTIONS[(idx + 1) % SHAPE_OPTIONS.length];
+          setTool(`shape:${next.id}`);
+        } else {
+          setTool(getLastShape());
+        }
+      },
+    },
+    {
+      id: 'tools.addText',
+      label: 'Add text layer',
+      defaultKeys: 'T',
+      scope: 'global',
+      category: 'Tools',
+      action: () => $('btnAddText')?.click(),
+    },
+    {
+      id: 'tools.addImage',
+      label: 'Add image layer',
+      defaultKeys: 'I',
+      scope: 'global',
+      category: 'Tools',
+      action: () => $('btnAddImage')?.click(),
+    },
+    {
+      id: 'tools.toggleColorHub',
+      label: 'Toggle Colour Hub',
+      defaultKeys: 'C',
+      scope: 'global',
+      category: 'Tools',
+      action: () => {
+        const dial = document.getElementById('btnColorCircle');
+        if (dial) toggleColorHub(dial);
+      },
+    },
+    {
+      id: 'tools.swapFillStroke',
+      label: 'Swap fill ↔ stroke colour',
+      defaultKeys: 'X',
+      scope: 'global',
+      category: 'Tools',
+      // Dynamic-import preserved from the previous inline handler to
+      // keep the bundle slim for users who never press X.
+      action: () => import('../core/colors.js').then(({ swapFillStroke }) => swapFillStroke()),
+    },
+  ]);
 
   // Update canvas hint visibility based on layer presence.
   function syncHint() {
