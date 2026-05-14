@@ -569,43 +569,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  window.addEventListener('keydown', (e) => {
-    const isMod = e.ctrlKey || e.metaKey;
-    if (!isMod || e.shiftKey || e.altKey) return;
-    const ae = document.activeElement;
-    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
-    if (inField) return;
-    const k = e.key.toLowerCase();
-    if (k !== 'c' && k !== 'v' && k !== 'x') return;
-
-    const sel = getSelectionArray();
-    const activeId = doc.activeLayerId;
-
-    if (k === 'c') {
-      const layer = activeId && doc.findLayer(activeId);
-      if (!layer) return;
-      e.preventDefault();
-      layerClipboard = snapshotLayer(layer);
-    } else if (k === 'v') {
-      // Internal layer-paste takes priority. When the clipboard holds
-      // an internal layer (Ctrl+C / Ctrl+X), paste that and prevent
-      // default — the browser will NOT fire a `paste` event after this.
-      // When layerClipboard is empty, do nothing here; the `paste`
-      // listener below picks up image-from-clipboard (screenshots etc.)
-      if (!layerClipboard) return;
-      e.preventDefault();
-      pasteFromClipboard();
-    } else if (k === 'x') {
-      const targets = sel.length ? sel : (activeId ? [activeId] : []);
-      if (!targets.length) return;
-      e.preventDefault();
-      // Snapshot the most-recent target so Ctrl+V after Ctrl+X behaves
-      // like a true cut.
-      const lastLayer = doc.findLayer(targets[targets.length - 1]);
-      if (lastLayer) layerClipboard = snapshotLayer(lastLayer);
-      for (const id of targets) doc.removeLayer(id);
-    }
-  });
+  // Layer clipboard shortcuts — Phase 21b registry migration (step 5).
+  // Ctrl+C / Ctrl+X always preventDefault; Ctrl+V is delicate — it must
+  // ONLY preventDefault when there's an internal layer to paste, so the
+  // browser's `paste` event below can still fire for image-from-clipboard.
+  registerShortcuts([
+    {
+      id: 'edit.copy',
+      label: 'Copy active layer',
+      defaultKeys: 'Mod+C',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        const activeId = doc.activeLayerId;
+        const layer = activeId && doc.findLayer(activeId);
+        if (!layer) return;
+        e.preventDefault();
+        layerClipboard = snapshotLayer(layer);
+      },
+    },
+    {
+      id: 'edit.paste',
+      label: 'Paste layer (or image from system clipboard)',
+      defaultKeys: 'Mod+V',
+      scope: 'global',
+      category: 'Edit',
+      // Don't preventDefault unconditionally — when layerClipboard is
+      // empty we want the browser's `paste` event to fire so the
+      // image-from-clipboard handler picks it up.
+      preventDefault: false,
+      action: (e) => {
+        if (!layerClipboard) return;
+        e.preventDefault();
+        pasteFromClipboard();
+      },
+    },
+    {
+      id: 'edit.cut',
+      label: 'Cut active layer (or selection)',
+      defaultKeys: 'Mod+X',
+      scope: 'global',
+      category: 'Edit',
+      preventDefault: false,
+      action: (e) => {
+        const sel = getSelectionArray();
+        const activeId = doc.activeLayerId;
+        const targets = sel.length ? sel : (activeId ? [activeId] : []);
+        if (!targets.length) return;
+        e.preventDefault();
+        // Snapshot the most-recent target so Ctrl+V after Ctrl+X
+        // behaves like a true cut.
+        const lastLayer = doc.findLayer(targets[targets.length - 1]);
+        if (lastLayer) layerClipboard = snapshotLayer(lastLayer);
+        for (const id of targets) doc.removeLayer(id);
+      },
+    },
+  ]);
 
   // ---------- Ctrl+V — paste image from system clipboard ----------
   // Fires AFTER our keydown handler above. When layerClipboard is set,

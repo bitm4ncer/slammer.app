@@ -496,17 +496,8 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
         setSelection(ids, ids[ids.length - 1] || null);
         return;
       }
-      if (key === 'd' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        const ids = getSelectionArray();
-        if (!ids.length && doc.activeLayerId) ids.push(doc.activeLayerId);
-        const newIds = duplicateSelection(doc, ids);
-        if (Array.isArray(newIds) && newIds.length) {
-          setSelection(newIds, newIds[0]);
-        }
-        return;
-      }
+      // Ctrl+D (duplicate) — Phase 21b migration step 5. See
+      // registerShortcuts below (id: edit.duplicate).
       if (key === 'l' && !e.shiftKey) {
         if (inField) return;
         e.preventDefault();
@@ -758,6 +749,23 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       scope: 'global',
       category: 'File',
       action: () => $('btnOpen')?.click(),
+    },
+    // ---------- Edit / clipboard (Phase 21b step 5) ----------
+    // Ctrl+D — duplicate the current selection (or active layer).
+    // Ctrl+C/V/X live in main.js because the paste handler shares
+    // closure state (layerClipboard) with the `paste` event listener.
+    {
+      id: 'edit.duplicate',
+      label: 'Duplicate active layer (+20 / +20 px)',
+      defaultKeys: 'Mod+D',
+      scope: 'global',
+      category: 'Edit',
+      action: () => {
+        const ids = getSelectionArray();
+        if (!ids.length && doc.activeLayerId) ids.push(doc.activeLayerId);
+        const newIds = duplicateSelection(doc, ids);
+        if (Array.isArray(newIds) && newIds.length) setSelection(newIds, newIds[0]);
+      },
     },
   ]);
 
