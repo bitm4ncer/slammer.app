@@ -419,31 +419,13 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     const key = e.key.toLowerCase();
 
     // Modifier shortcuts (Ctrl/Cmd) — work even from form fields except text editing fields.
+    //
+    // Phase 21b migration: Ctrl+S / Ctrl+E / Ctrl+N / Ctrl+O are now
+    // owned by the central shortcut registry — see registerShortcuts
+    // below ('File' category). The remaining inline mod branches
+    // (Ctrl+0/1/=/-, group/select-all/dup/lock, z-order) migrate in
+    // subsequent commits.
     if (mod && !e.altKey) {
-      if (key === 's' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        $('btnSave')?.click();
-        return;
-      }
-      if (key === 'e' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        $('btnExport')?.click();
-        return;
-      }
-      if (key === 'n' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        $('btnNew')?.click();
-        return;
-      }
-      if (key === 'o' && !e.shiftKey) {
-        if (inField) return;
-        e.preventDefault();
-        $('btnOpen')?.click();
-        return;
-      }
       // Ctrl+0 — fit content to viewport (Affinity / Figma convention).
       if (key === '0' && !e.shiftKey) {
         if (inField) return;
@@ -739,6 +721,43 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       // Dynamic-import preserved from the previous inline handler to
       // keep the bundle slim for users who never press X.
       action: () => import('../core/colors.js').then(({ swapFillStroke }) => swapFillStroke()),
+    },
+    // ---------- File category (Phase 21b step 4) ----------
+    // Mirror what the previous inline keydown did: click the toolbar
+    // button. Keeping click() as the action means the button's own
+    // listener owns the actual logic (save, export popup, new project,
+    // open project popup) — single source of truth.
+    {
+      id: 'file.save',
+      label: 'Save project',
+      defaultKeys: 'Mod+S',
+      scope: 'global',
+      category: 'File',
+      action: () => $('btnSave')?.click(),
+    },
+    {
+      id: 'file.export',
+      label: 'Export PNG / JPEG / WebP popup',
+      defaultKeys: 'Mod+E',
+      scope: 'global',
+      category: 'File',
+      action: () => $('btnExport')?.click(),
+    },
+    {
+      id: 'file.new',
+      label: 'New blank project',
+      defaultKeys: 'Mod+N',
+      scope: 'global',
+      category: 'File',
+      action: () => $('btnNew')?.click(),
+    },
+    {
+      id: 'file.open',
+      label: 'Open project popup',
+      defaultKeys: 'Mod+O',
+      scope: 'global',
+      category: 'File',
+      action: () => $('btnOpen')?.click(),
     },
   ]);
 
