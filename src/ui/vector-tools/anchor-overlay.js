@@ -22,6 +22,7 @@
 import Konva from 'konva';
 import { getTool, onToolChange } from './active-tool.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
+import { registerShortcuts } from '../shortcut-manager.js';
 
 // Marker the user can toggle via Alt-click on a handle dot. While set, a
 // handle drag mutates only the touched side; otherwise both sides mirror
@@ -681,28 +682,81 @@ export function initAnchorOverlay({ stage, document: doc }) {
   });
   onToolChange(() => { selected = null; selectedSet.clear(); refresh(); });
 
-  // Backspace / Delete removes the selected anchors; arrow keys nudge them.
-  window.addEventListener('keydown', (e) => {
-    if (getTool() !== 'directSelect') return;
-    if (!selected && !selectedSet.size) return;
-    const ae = window.document.activeElement;
-    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      e.preventDefault();
-      deleteSelectedAnchor();
-    } else if (e.key.startsWith('Arrow')) {
-      const step = e.shiftKey ? 10 : 1;
-      let dx = 0, dy = 0;
-      if (e.key === 'ArrowLeft')  dx = -step;
-      if (e.key === 'ArrowRight') dx =  step;
-      if (e.key === 'ArrowUp')    dy = -step;
-      if (e.key === 'ArrowDown')  dy =  step;
-      if (dx || dy) {
+  // Backspace / Delete + arrow nudge — Phase 21b registry migration
+  // (step 7). Bindings live at scope 'global'; the action declines
+  // (returns false) when directSelect isn't active OR no anchor is
+  // selected, so the canvas-view layer-delete + nudge handlers still
+  // get a turn.
+  function anchorActive() {
+    return getTool() === 'directSelect' && (selected || selectedSet.size);
+  }
+  registerShortcuts([
+    {
+      id: 'vector.anchor.delete',
+      label: 'Delete selected anchor(s)',
+      defaultKeys: ['Delete', 'Backspace'],
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (!anchorActive()) return false;
         e.preventDefault();
-        nudgeSelectedAnchors(dx, dy);
-      }
-    }
-  });
+        deleteSelectedAnchor();
+      },
+    },
+    {
+      id: 'vector.anchor.nudgeLeft',
+      label: 'Nudge selected anchors left',
+      defaultKeys: ['ArrowLeft', 'Shift+ArrowLeft'],
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (!anchorActive()) return false;
+        e.preventDefault();
+        nudgeSelectedAnchors(e.shiftKey ? -10 : -1, 0);
+      },
+    },
+    {
+      id: 'vector.anchor.nudgeRight',
+      label: 'Nudge selected anchors right',
+      defaultKeys: ['ArrowRight', 'Shift+ArrowRight'],
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (!anchorActive()) return false;
+        e.preventDefault();
+        nudgeSelectedAnchors(e.shiftKey ? 10 : 1, 0);
+      },
+    },
+    {
+      id: 'vector.anchor.nudgeUp',
+      label: 'Nudge selected anchors up',
+      defaultKeys: ['ArrowUp', 'Shift+ArrowUp'],
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (!anchorActive()) return false;
+        e.preventDefault();
+        nudgeSelectedAnchors(0, e.shiftKey ? -10 : -1);
+      },
+    },
+    {
+      id: 'vector.anchor.nudgeDown',
+      label: 'Nudge selected anchors down',
+      defaultKeys: ['ArrowDown', 'Shift+ArrowDown'],
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (!anchorActive()) return false;
+        e.preventDefault();
+        nudgeSelectedAnchors(0, e.shiftKey ? 10 : 1);
+      },
+    },
+  ]);
 
   // Click on empty stage area in directSelect → deselect anchor(s).
   stage.on('click.anchorOverlayEmpty', (e) => {

@@ -223,12 +223,19 @@ function dispatch(e, captureOnly) {
       if (spec.scope === 'global' && !spec.allowInTextInput && isTyping(e.target)) return false;
 
       if (spec.preventDefault) e.preventDefault();
+      let result;
       try {
-        spec.action(e, { activeScope: activeScope() });
+        result = spec.action(e, { activeScope: activeScope() });
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(`[shortcut-manager] action "${spec.id}" threw:`, err);
       }
+      // Explicit `return false` from an action means "I declined — try
+      // the next matching binding." Anything else (undefined / true /
+      // any value) = handled, stop scanning. This lets a tool-scoped
+      // binding fall through to a global one when its state guard
+      // says "not applicable right now."
+      if (result === false) continue;
       return true;
     }
   }

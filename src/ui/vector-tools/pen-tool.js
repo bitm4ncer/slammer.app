@@ -25,6 +25,7 @@ import { getTool, onToolChange } from './active-tool.js';
 import { computePathBounds } from '../../core/vector-renderer.js';
 import { paper, activatePaper } from '../../core/paper-context.js';
 import { buildVectorFillFromActive, buildVectorStrokeFromActive } from '../../core/colors.js';
+import { registerShortcuts } from '../shortcut-manager.js';
 
 // Default style for a freshly-created Pen path: pulls from the colour hub's
 // active stroke. The pen's natural state is "outline-only" so a fresh path
@@ -548,15 +549,42 @@ export function attachPenTool({ stage, document: doc }) {
     clearRubber();
   }
 
-  // Tool-switch + Esc / Enter from window.
+  // Tool-switch + Esc / Enter via the central shortcut registry.
+  // Phase 21b migration (step 7). Bindings are registered at scope
+  // 'global' but the action declines (returns false) when pen isn't
+  // active + drawing — so the global edit.deselect (Esc) still gets
+  // a turn when this binding bails.
   onToolChange((newTool) => {
     if (newTool !== 'pen' && state.drawing) finishOpen();
   });
-  window.addEventListener('keydown', (e) => {
-    if (getTool() !== 'pen' || !state.drawing) return;
-    if (e.key === 'Escape') { e.preventDefault(); cancel(); }
-    else if (e.key === 'Enter') { e.preventDefault(); finishClose(); }
-  });
+  registerShortcuts([
+    {
+      id: 'vector.pen.cancel',
+      label: 'Cancel pen path (drop pending segments)',
+      defaultKeys: 'Escape',
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (getTool() !== 'pen' || !state.drawing) return false;
+        e.preventDefault();
+        cancel();
+      },
+    },
+    {
+      id: 'vector.pen.finish',
+      label: 'Close pen path',
+      defaultKeys: 'Enter',
+      scope: 'global',
+      category: 'Tools',
+      preventDefault: false,
+      action: (e) => {
+        if (getTool() !== 'pen' || !state.drawing) return false;
+        e.preventDefault();
+        finishClose();
+      },
+    },
+  ]);
 
   return { start, move, up, cancel, finishOpen, finishClose, isDrawing: () => state.drawing };
 }
