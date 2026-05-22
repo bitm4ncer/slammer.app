@@ -1,0 +1,375 @@
+/* ============================================================================
+   Effect Library — modal picker for the Effects + button.
+   Layout pattern follows .font-picker (typography.css), but classes live in
+   their own .eff-lib-* namespace so the two evolve independently.
+   ========================================================================= */
+
+.eff-lib-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eff-lib-backdrop.anchored { background: transparent; pointer-events: auto; }
+.eff-lib-backdrop.anchored .eff-lib { position: fixed; margin: 0; }
+
+.eff-lib {
+  width: 720px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 60px);
+  height: 600px;
+  background: var(--surface);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 6px;
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- Header ---------- */
+.eff-lib-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+  background: linear-gradient(to bottom, var(--surface-2) 0%, var(--surface) 100%);
+}
+.eff-lib-title {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.eff-lib-view-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.eff-lib-view-toggle button {
+  width: 26px;
+  height: 22px;
+  background: var(--surface-2);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, background 0.12s;
+}
+.eff-lib-view-toggle button + button { border-left: 1px solid var(--vhs-shadow); }
+.eff-lib-view-toggle button:hover { color: var(--text-primary); }
+.eff-lib-view-toggle button.active {
+  color: var(--surface);
+  background: var(--primary);
+}
+.eff-lib-close {
+  width: 26px; height: 22px;
+  background: transparent;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.eff-lib-close:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ---------- Search row ---------- */
+.eff-lib-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.eff-lib-search-icon { color: var(--text-secondary); font-size: 12px; }
+.eff-lib-search {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  outline: none;
+}
+.eff-lib-search:focus { border-color: var(--primary); }
+.eff-lib-search::placeholder { color: var(--text-secondary); opacity: 0.7; }
+
+/* ---------- Chip row (categories + favorites/recents) ---------- */
+.eff-lib-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--vhs-shadow);
+}
+.eff-lib-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.eff-lib-chip:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+.eff-lib-chip.active {
+  color: var(--surface);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.eff-lib-chip i { margin-right: 4px; font-size: 9px; }
+
+/* ---------- Result area: shared scroll container, custom scrollbar ---------- */
+.eff-lib-results {
+  flex: 1;
+  overflow-y: auto;
+  outline: none;
+  padding: 12px;
+}
+/* Custom scrollbar — house rule, never the native OS bar. */
+.eff-lib-results::-webkit-scrollbar { width: 8px; }
+.eff-lib-results::-webkit-scrollbar-track { background: transparent; }
+.eff-lib-results::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+}
+.eff-lib-results::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-secondary) 50%, transparent);
+}
+.eff-lib-results { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
+
+.eff-lib-section-label {
+  display: block;
+  margin: 6px 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+.eff-lib-results .eff-lib-section-label:first-child { margin-top: 0; }
+
+/* ---------- Grid view ---------- */
+.eff-lib-results.is-grid .eff-lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.eff-lib-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.12s, background 0.12s;
+  outline: none;
+}
+.eff-lib-card:hover,
+.eff-lib-card.is-selected {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--surface-2) 60%, var(--surface));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.eff-lib-card.is-selected { border-color: var(--primary); }
+
+.eff-lib-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ctx-accent, var(--primary));
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.eff-lib-card-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Description lives in the card's title attribute — native tooltip on hover.
+   Keep the visible card minimal: icon + name + category. */
+.eff-lib-card-desc { display: none; }
+.eff-lib-card-cat {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.55;
+}
+
+/* AddOn badge — absolute top-right in grid, absolute right-centred in list.
+   Stays out of the card's flow in BOTH layouts so icons stay aligned across
+   pro and free rows. */
+.eff-lib-pro-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface));
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  pointer-events: none;
+}
+.eff-lib-card.is-locked .eff-lib-card-icon {
+  background: color-mix(in srgb, var(--text-secondary) 14%, var(--surface));
+  color: var(--text-secondary);
+}
+.eff-lib-card.is-locked:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--vhs-shadow));
+}
+
+/* Favorite star — absolute top-left, hidden until hover. Doesn't take flow
+   space, so icons remain aligned. */
+.eff-lib-fav {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 9px;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+  z-index: 2;
+}
+.eff-lib-card:hover .eff-lib-fav,
+.eff-lib-fav.is-fav { opacity: 1; }
+.eff-lib-fav:hover,
+.eff-lib-fav.is-fav { color: #ffd34d; }
+
+/* ---------- List view ---------- */
+.eff-lib-results.is-list { padding: 4px 0; }
+.eff-lib-results.is-list .eff-lib-grid {
+  display: flex;
+  flex-direction: column;
+}
+.eff-lib-results.is-list .eff-lib-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 70px 5px 30px;       /* left: room for fav star · right: room for AddOn */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  min-height: 30px;
+}
+.eff-lib-results.is-list .eff-lib-card:hover,
+.eff-lib-results.is-list .eff-lib-card.is-selected {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+.eff-lib-results.is-list .eff-lib-card.is-selected {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.eff-lib-results.is-list .eff-lib-card-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+.eff-lib-results.is-list .eff-lib-card-name {
+  flex: 1;
+  font-size: 12px;
+}
+.eff-lib-results.is-list .eff-lib-card-cat {
+  flex: 0 0 auto;
+}
+.eff-lib-results.is-list .eff-lib-fav {
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+}
+.eff-lib-results.is-list .eff-lib-pro-badge {
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+}
+
+/* ---------- Empty / footer ---------- */
+.eff-lib-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.eff-lib-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--vhs-shadow);
+  background: var(--surface-2);
+  font-family: 'Inter', sans-serif;
+}
+.eff-lib-count {
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.eff-lib-hint {
+  color: var(--text-secondary);
+  font-size: 10px;
+  opacity: 0.75;
+}
+.eff-lib-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  margin: 0 2px;
+  border: 1px solid var(--vhs-shadow);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
