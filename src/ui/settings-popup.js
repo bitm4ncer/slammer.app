@@ -96,6 +96,7 @@ const TABS = [
   { id: 'canvas',     label: 'Canvas',     icon: 'vector-square' },
   { id: 'plugins',    label: 'Plugins',    icon: 'puzzle-piece' },
   { id: 'shortcuts',  label: 'Shortcuts',  icon: 'keyboard' },
+  { id: 'app',        label: 'App',        icon: 'arrow-up-from-bracket' },
   { id: 'about',      label: 'About',      icon: 'circle-info' },
 ];
 
@@ -222,6 +223,7 @@ export function initSettingsPopup({ button, version }) {
             ${renderCanvas()}
             ${renderPlugins()}
             ${renderShortcuts()}
+            ${renderApp()}
             ${renderAbout(version)}
           </div>
         </div>
@@ -248,6 +250,7 @@ export function initSettingsPopup({ button, version }) {
     wireCanvas(backdrop);
     wirePlugins(backdrop);
     wireShortcuts(backdrop);
+    wireApp(backdrop);
     wireAbout(backdrop);
 
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -1024,6 +1027,114 @@ function wireShortcuts(backdrop) {
 
 function cssEscape(s) {
   return String(s).replace(/[^a-zA-Z0-9_-]/g, (ch) => '\\' + ch);
+}
+
+// ---------------------------------------------------------------------------
+// App tab — PWA install + meta. The "Add to Desktop" button asks the
+// browser to install slammer.app as a standalone window, pinnable to the
+// Windows taskbar / macOS dock. Reads `window.__slammer.pwa` (set up in
+// main.js#setupPwa) for capability + the install() callback.
+// ---------------------------------------------------------------------------
+function renderApp() {
+  return `
+    <section class="settings-tab-panel" data-tab="app" hidden>
+      <header class="settings-panel-head">
+        <span class="settings-panel-eyebrow">App</span>
+        <h2 class="settings-panel-title">Install &amp; standalone</h2>
+        <p class="settings-panel-desc">Add slammer.app to your desktop or dock as a standalone window — looks and feels like a native app, no browser chrome, pinnable to the taskbar.</p>
+      </header>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Desktop install</div>
+        <div class="settings-row">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setPwaInstall">Add to Desktop</label>
+            <span class="settings-rowhint" id="setPwaInstallHint">Installs slammer.app as a standalone window. Works on Chrome / Edge / Brave (Windows + macOS + Linux). Safari users: use Share &rarr; "Add to Dock" instead.</span>
+          </div>
+          <button class="settings-action-btn settings-action-btn--primary" id="setPwaInstall" type="button" disabled>
+            <i class="fas fa-arrow-up-from-bracket"></i><span>Add to Desktop</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>What you get</div>
+        <ul class="settings-bullets">
+          <li>Own window, own dock / taskbar icon — no browser chrome.</li>
+          <li>Right-click the icon to pin permanently.</li>
+          <li>Cmd / Ctrl + Tab cycles to it like any other app.</li>
+          <li>Files dropped onto the dock icon open in the editor.</li>
+          <li>Uninstalls with one click — settings + projects stay in the browser's storage.</li>
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
+function wireApp(root) {
+  const btn  = root.querySelector('#setPwaInstall');
+  const hint = root.querySelector('#setPwaInstallHint');
+  const pwa  = window.__slammer?.pwa;
+  if (!btn || !hint) return;
+
+  const render = () => {
+    if (!pwa) {
+      btn.disabled = true;
+      btn.querySelector('span').textContent = 'PWA not initialised';
+      hint.textContent = 'The PWA bootstrap did not register — check the dev console for service-worker errors.';
+      return;
+    }
+    if (pwa.isStandalone()) {
+      btn.disabled = true;
+      btn.querySelector('span').textContent = 'Already installed';
+      btn.querySelector('i').className = 'fas fa-check';
+      hint.textContent = 'slammer.app is running as a standalone app right now. Find it on your dock or taskbar; you can pin it there permanently.';
+      return;
+    }
+    if (pwa.canInstall()) {
+      btn.disabled = false;
+      btn.querySelector('span').textContent = 'Add to Desktop';
+      btn.querySelector('i').className = 'fas fa-arrow-up-from-bracket';
+      hint.textContent = 'Installs slammer.app as a standalone window. Works on Chrome / Edge / Brave (Windows + macOS + Linux). Safari users: use Share → "Add to Dock" instead.';
+      return;
+    }
+    // No prompt available — could be Safari (no PWA install API on desktop),
+    // already installed but didn't fire appinstalled, or the browser is
+    // still measuring engagement / hasn't fired beforeinstallprompt yet.
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Install not available';
+    btn.querySelector('i').className = 'fas fa-circle-info';
+    const ua = navigator.userAgent;
+    if (/safari/i.test(ua) && !/chrome|crios|firefox|edg/i.test(ua)) {
+      hint.innerHTML = 'Safari does not expose a PWA install button. Use the share menu → <strong>Add to Dock</strong> (macOS Sonoma+) or <strong>Add to Home Screen</strong> (iOS / iPadOS).';
+    } else {
+      hint.textContent = 'Your browser has not offered to install the app yet. Try interacting with the editor for a few seconds, then reopen Settings. Some browsers also require visiting the site twice before showing the install prompt.';
+    }
+  };
+
+  btn.addEventListener('click', async () => {
+    if (!pwa || !pwa.canInstall()) return;
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Installing…';
+    const outcome = await pwa.install();
+    if (outcome === 'accepted') {
+      btn.querySelector('span').textContent = 'Installed!';
+      btn.querySelector('i').className = 'fas fa-check';
+    } else {
+      // 'dismissed' or 'unavailable' — re-evaluate state.
+      render();
+    }
+  });
+
+  // Subscribe so render() runs when beforeinstallprompt fires AFTER the
+  // settings popup is already open, or when appinstalled fires after the
+  // user installs from a different surface.
+  const unsub = pwa?.subscribe?.(render);
+  const old = root._unsubPwa;
+  if (old) try { old(); } catch (_) {}
+  root._unsubPwa = unsub;
+
+  render();
 }
 
 function renderAbout(version) {

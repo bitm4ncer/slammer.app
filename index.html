@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>slammer.app</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <!-- Progressive Web App — let users install slammer.app to their
+       desktop / dock via the "Add to Desktop" button in Settings → App.
+       manifest declares standalone display + icons; theme-color paints
+       the title-bar in dark Chrome on Win + ChromeOS. Apple-touch-icon
+       is the iOS/iPadOS home-screen icon (Safari doesn't read the
+       manifest's icons for home-screen pinning, only this link). -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#282828" />
+  <link rel="apple-touch-icon" href="./favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />

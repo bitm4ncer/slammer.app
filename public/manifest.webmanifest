@@ -1,0 +1,28 @@
+{
+  "name": "slammer.app",
+  "short_name": "slammer",
+  "description": "Browser-native multi-layer image editor for slamming, glitching and dithering. Runs entirely in your browser — no backend, no telemetry, no account.",
+  "id": "slammer-app",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#282828",
+  "theme_color": "#282828",
+  "categories": ["graphics", "design", "productivity"],
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

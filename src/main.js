@@ -133,6 +133,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(getSettings().theme);
   onSettingsChange((s) => applyTheme(s.theme));
 
+  // PWA — register service worker + capture the install prompt. Settings →
+  // App → "Add to Desktop" button reads `window.__slammer.pwa` to know
+  // whether install is available, then calls `prompt()` on user click.
+  // The Service Worker is also a soft prerequisite for Chrome's install
+  // criteria; without one registered no `beforeinstallprompt` fires.
+  setupPwa();
+
   // Konva.pixelRatio policy — applied BEFORE any Konva object is created.
   //   • 1x display (Windows / desktop monitors): pixelRatio = 1. No-op.
   //   • 2x retina (most Macs, iPads): pixelRatio = 2. Sharp UI, default.
@@ -785,3 +792,94 @@ async function restoreLastSession({ doc, projectStore }) {
     console.warn('[slammer.app] restore failed', err);
   }
 }
+
+// ---------------------------------------------------------------------------
+// PWA setup — service worker registration + install-prompt capture.
+//
+// Exposes on `window.__slammer.pwa`:
+//   - `canInstall()` → boolean. True iff Chrome has captured a
+//     beforeinstallprompt event for this session and the user hasn't
+//     installed yet. Settings → App reads this to enable/disable the
+//     "Add to Desktop" button.
+//   - `isStandalone()` → boolean. True iff the page is running as an
+//     installed PWA (window-controls-overlay / standalone display mode).
+//     Settings → App swaps button text to "Already installed" when true.
+//   - `install()` → Promise<'accepted' | 'dismissed' | 'unavailable'>.
+//     Invokes the captured prompt + reports the user's choice. After
+//     'accepted' the prompt is consumed; canInstall() goes false until
+//     the user uninstalls and revisits.
+//   - `subscribe(fn)` → unsub. Fires whenever capability changes
+//     (prompt captured, app installed, etc.) so Settings can re-render
+//     the row without polling.
+// ---------------------------------------------------------------------------
+function setupPwa() {
+  const listeners = new Set();
+  let deferredPrompt = null;
+  let lastInstallOutcome = null;
+  const notify = () => listeners.forEach((fn) => { try { fn(); } catch (_) {} });
+
+  // Service worker registration — must succeed before Chrome captures
+  // beforeinstallprompt. Skip in dev (vite serves no sw.js anyway and
+  // we don't want a stale SW caching the HMR client).
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then(
+        (reg) => { console.log('[pwa] service worker registered (scope:', reg.scope, ')'); },
+        (err) => { console.warn('[pwa] service worker registration failed:', err); },
+      );
+    });
+  }
+
+  // Capture the install prompt event. Chrome / Edge fire this once per
+  // visit when installability criteria are met. We hold it until the
+  // user clicks the Settings → App button.
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    notify();
+  });
+
+  // Re-render Settings when the install completes so the button reflects
+  // "Already installed" state.
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    lastInstallOutcome = 'installed';
+    notify();
+  });
+
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches
+    || window.matchMedia('(display-mode: window-controls-overlay)').matches
+    || window.navigator.standalone === true; // iOS Safari
+
+  return {
+    canInstall: () => !!deferredPrompt && !isStandalone(),
+    isStandalone,
+    async install() {
+      if (!deferredPrompt) return 'unavailable';
+      try {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        lastInstallOutcome = choice.outcome; // 'accepted' | 'dismissed'
+        // Prompt is single-use — Chrome won't refire beforeinstallprompt
+        // in the same page lifetime. Clear so the button disables.
+        deferredPrompt = null;
+        notify();
+        return choice.outcome;
+      } catch (err) {
+        console.warn('[pwa] install prompt failed:', err);
+        return 'dismissed';
+      }
+    },
+    lastOutcome: () => lastInstallOutcome,
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+}
+
+// Expose immediately at module-eval time so settings-popup can read it
+// even if rendered before DOMContentLoaded finishes.
+window.__slammer = window.__slammer || {};
+if (!window.__slammer.pwa) window.__slammer.pwa = setupPwa();

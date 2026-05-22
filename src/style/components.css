@@ -3185,6 +3185,23 @@
   line-height: 1.5;
   letter-spacing: 0;
 }
+/* Settings → App "What you get" bullets — small list under the install
+ * group, slightly muted, fixed bullet style so it reads as info-text
+ * rather than an interactive control list. */
+.settings-bullets {
+  margin: 0;
+  padding: 4px 0 0 18px;
+  list-style: disc outside;
+  color: var(--sl-text-secondary);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.settings-bullets li {
+  margin: 2px 0;
+}
+.settings-bullets li::marker {
+  color: var(--sl-text-tertiary, var(--sl-text-secondary));
+}
 .settings-rowhelp {
   font-size: 9.5px;
   color: var(--sl-accent-primary);
