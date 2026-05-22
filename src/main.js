@@ -138,7 +138,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // whether install is available, then calls `prompt()` on user click.
   // The Service Worker is also a soft prerequisite for Chrome's install
   // criteria; without one registered no `beforeinstallprompt` fires.
-  setupPwa();
+  // Captured into a local — gets folded into window.__slammer below (the
+  // whole-object assignment at line ~305 would otherwise overwrite any
+  // earlier `window.__slammer.pwa` set at module-eval time).
+  const pwa = setupPwa();
 
   // Konva.pixelRatio policy — applied BEFORE any Konva object is created.
   //   • 1x display (Windows / desktop monitors): pixelRatio = 1. No-op.
@@ -311,6 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     onSettingsChange,
     canvasGrid,
     colors: colorsApi,
+    pwa,
     notify: (msg, _kind = 'info') => showNotification(msg),
     // Plugin-facing image-import facade. Optional third arg
     // `{ position: { x, y } }` (world coords) makes the new layer's CENTRE
@@ -879,7 +883,7 @@ function setupPwa() {
   };
 }
 
-// Expose immediately at module-eval time so settings-popup can read it
-// even if rendered before DOMContentLoaded finishes.
-window.__slammer = window.__slammer || {};
-if (!window.__slammer.pwa) window.__slammer.pwa = setupPwa();
+// (PWA is wired into `window.__slammer.pwa` inside the DOMContentLoaded
+// handler — see the `const pwa = setupPwa()` call + the object literal at
+// the top of bootstrap. Setting it earlier was futile because the whole-
+// object assignment of __slammer in DOMContentLoaded would replace it.)
