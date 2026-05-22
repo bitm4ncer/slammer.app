@@ -11,7 +11,7 @@ A browser-native graphics editor built around layers, non-destructive
 effects and a VST-like plugin system. Vector tools, pro typography,
 generative AI plugins. No backend.
 
-**Live: https://bitm4ncer.github.io/slammer.app/**
+**Live (public BETA): [slammer-app.pages.dev](https://slammer-app.pages.dev)**
 
 
 ## Features
