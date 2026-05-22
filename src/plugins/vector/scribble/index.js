@@ -13,6 +13,7 @@ export default {
   type: 'vector-filter',
   icon: 'pencil-alt',
   category: 'pattern',
+  description: 'Replace fill with sketchy scribble lines',
 
   defaultParams() {
     return { spacing: 6, jitter: 2, lineWidth: 1, color: '#FFFFFF', angle: 0, seed: 1 };

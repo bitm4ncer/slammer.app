@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'sun',
   category: 'stylize',
+  description: 'Invert tones above a threshold',
 
   defaultParams() {
     return { threshold: 128, inverse: false, perChannel: false };

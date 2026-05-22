@@ -1,6 +1,6 @@
 // Contrast — classic c=(259*(C+255))/(255*(259-C)) formula on each channel.
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRowLg, makeRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'contrast',
@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'circle-half-stroke',
   category: 'color',
+  description: 'Stretch tonal range around mid grey',
 
   defaultParams() { return { value: 0 }; },
 
@@ -27,7 +28,7 @@ export default {
 
   renderUI(params, onChange) {
     const root = makeRoot();
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Value', min: -255, max: 255, step: 1, value: params.value ?? 0, defaultValue: 0,
       onChange: (v) => onChange({ value: v }),
     }));

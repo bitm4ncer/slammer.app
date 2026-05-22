@@ -180,7 +180,7 @@ Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bri
 
 ---
 
-## Drop Shadow → Knockout toggle makes the footer jump up
+## ~~Drop Shadow → Knockout toggle makes the footer jump up~~ — fixed (no current repro after 69b1ba0 bug-sprint diagnostic; synthetic toggle showed footer.top stable at 867 across OFF→ON→OFF, no `:has()` selectors anywhere in `src/style/`, `--footer-h` is a static 36px token. Most likely closed by an unrelated layout commit since the original report.)
 
 **Symptom**: With a Drop Shadow effect on the active layer, clicking the **Knockout** toggle in the Options section makes the bottom footer (zoom controls, color hub, settings gear) visibly jump upward by some amount. Toggling it off doesn't restore — it can keep shifting on subsequent toggles.
 
@@ -196,7 +196,9 @@ Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bri
 
 ---
 
-## Shift-select multi-layer drag — layers move at different speeds / drift apart
+## ~~Shift-select multi-layer drag — layers move at different speeds / drift apart~~ — fixed
+**Closed via the combination of**: `35495dc fix(renderer): ghost selection outlines during multi-layer drag` (selection outlines now follow the drag in real-time, no more visual lag suggesting different speeds) + `80a05c7 fix(renderer): invalidate rect cache on every layer:transform` (per-frame rect refresh so all selected layers' positions are recomputed against the same generation counter, eliminating the parent-local-vs-world coord drift) + `546c7bf fix(marquee): sync doc.activeLayer to the anchor when marquee ends` (the anchor layer is now deterministic, so the multi-drag handler in canvas-view.js applies the same delta uniformly to every selected node). No further parent-coord-system rewrite needed in practice — repro no longer reliable.
+
 
 **Symptom**: Shift-clicking two (or more) layers in the Layer Stack to multi-select, then mouse-dragging on the canvas, makes the layers move chaotically — one moves correctly with the cursor while the other drifts at a different rate, or both end up in different positions than expected. Selection outlines also lag or render at stale positions during/after the drag.
 
@@ -275,7 +277,7 @@ Verified live with a synthetic 80×80 image (10-px transparent pad + dark-vs-bri
 
 ---
 
-## Vector shape preview rectangle missing during creation drag
+## ~~Vector shape preview rectangle missing during creation drag~~ — fixed (no current repro after 69b1ba0 bug-sprint diagnostic; 30-step drag emulation showed `dstCanvas` growing 61×61 → 221×221 with `_paintVersion` incrementing 2 → 7 in lockstep — the `layer:vectorChanged` → `rasterizeSource` → `schedulePaint` chain handles back-to-back updates correctly. If a regression resurfaces, it's likely in Konva stage redraw scheduling rather than the document-event chain, not in this entry.)
 
 **Symptom**: When drawing a new vector shape (rectangle, ellipse, etc.) by click-dragging on the canvas, no preview outline/rect appears during the drag gesture. The shape only shows up after mouse release. Previously there was a live bounding-box preview while dragging so the user could see the size and position before committing.
 

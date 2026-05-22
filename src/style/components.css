@@ -1134,7 +1134,21 @@
 /* Dark base. Perlmutt = nacre = mother-of-pearl: very faint colour      */
 /* shifts under a glossy surface, never loud. Whisper-low opacities,     */
 /* one slow breath, no big outer glow.                                   */
-.tool-section--bottom { margin-top: auto; padding-top: 8px; }
+/* Bottom section pinned outside the scroll container (see layout.css
+ * .tool-sidebar-scroll). No more `margin-top: auto` — the outer flex
+ * column places it naturally at the bottom. A subtle top border + small
+ * gap visually separates the scrolling area from the pinned shop. */
+.tool-section--bottom {
+  padding-top: 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--sl-shadow-vhs-deep);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  flex: 0 0 auto;
+}
 .tool-btn--shop {
   position: relative;
   background:
@@ -1925,7 +1939,7 @@
 .settings-shortcuts td {
   text-align: left;
   padding: 5px 8px;
-  vertical-align: top;
+  vertical-align: middle;
   border-bottom: 1px solid var(--sl-shadow-vhs-deep);
 }
 .settings-shortcuts tr.settings-shortcuts-head th {
@@ -1935,7 +1949,152 @@
   letter-spacing: 0.06em;
   font-size: 10px;
   padding-top: 10px;
+  vertical-align: top;
 }
+
+/* ---------- Phase 21b — editable shortcut rows ---------- */
+.settings-shortcuts-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.settings-action-btn--danger-soft {
+  background: transparent;
+  border: 1px solid var(--sl-shadow-vhs-deep);
+  color: var(--sl-text-secondary);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+.settings-action-btn--danger-soft:hover {
+  color: var(--danger, #ff7373);
+  border-color: var(--danger, #ff7373);
+  background: var(--sl-surface-panel);
+}
+.settings-action-btn--danger-soft i { font-size: 10px; }
+
+.shortcut-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.shortcut-chip {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background 120ms, border-color 120ms, box-shadow 120ms;
+}
+.shortcut-chip:hover {
+  background: var(--sl-surface-panel);
+  border-color: var(--sl-shadow-vhs-deep);
+}
+.shortcut-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.shortcut-row.is-overridden .shortcut-chip kbd {
+  border-color: var(--primary, #8aff8c);
+  color: var(--primary, #8aff8c);
+}
+.shortcut-row.is-listening .shortcut-chip {
+  background: var(--sl-surface-panel);
+  border-color: var(--primary, #8aff8c);
+  animation: shortcut-chip-pulse 1.4s ease-in-out infinite;
+}
+.shortcut-chip-listening {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--primary, #8aff8c);
+  padding: 1px 4px;
+  font-style: italic;
+}
+.shortcut-chip-empty {
+  display: inline-block;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--sl-text-secondary);
+  padding: 1px 4px;
+  opacity: 0.7;
+}
+@keyframes shortcut-chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(138, 255, 140, 0); }
+  50%      { box-shadow: 0 0 0 3px rgba(138, 255, 140, 0.18); }
+}
+
+.shortcut-reset {
+  background: transparent;
+  border: 0;
+  color: var(--sl-text-secondary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 120ms, background 120ms;
+}
+.shortcut-reset[hidden] { display: none; }
+.shortcut-reset:hover {
+  color: var(--sl-text-primary);
+  background: var(--sl-surface-panel);
+}
+
+.shortcut-conflict-row td {
+  padding: 0 !important;
+  border-bottom: 1px solid var(--sl-shadow-vhs-deep);
+}
+.shortcut-conflict {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--sl-surface-panel);
+  font-size: 11px;
+  color: var(--sl-text-primary);
+}
+.shortcut-conflict-icon {
+  color: var(--danger, #ff7373);
+  font-size: 11px;
+}
+.shortcut-conflict-msg { line-height: 1.4; }
+.shortcut-conflict-msg strong { color: var(--sl-text-primary); font-weight: 600; }
+.shortcut-conflict-spacer { flex: 1; }
+.shortcut-conflict-btn {
+  background: transparent;
+  border: 1px solid var(--sl-shadow-vhs-deep);
+  color: var(--sl-text-secondary);
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+.shortcut-conflict-btn:hover {
+  color: var(--sl-text-primary);
+  border-color: var(--sl-text-primary);
+}
+.shortcut-conflict-btn--danger {
+  color: var(--danger, #ff7373);
+  border-color: var(--danger, #ff7373);
+}
+.shortcut-conflict-btn--danger:hover {
+  background: var(--danger, #ff7373);
+  color: var(--sl-bg-app);
+}
+
+.shortcut-row.is-unbound .shortcut-chip kbd { opacity: 0.4; }
 .settings-shortcuts kbd {
   display: inline-block;
   background: var(--sl-surface-panel);

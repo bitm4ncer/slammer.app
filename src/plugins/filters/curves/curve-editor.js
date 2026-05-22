@@ -5,7 +5,7 @@ const W = 256;
 const H = 200;
 const PAD = 10;
 
-export function createCurveEditor({ getPoints, setPoints, channelColor }) {
+export function createCurveEditor({ getPoints, setPoints, channelColor, getHistogram }) {
   const root = document.createElement('div');
   root.className = 'curve-editor';
   root.innerHTML = `<canvas class="curve-canvas" width="${W}" height="${H}"></canvas>`;
@@ -42,6 +42,25 @@ export function createCurveEditor({ getPoints, setPoints, channelColor }) {
     // Backdrop — slightly lighter than the panel surface for contrast.
     ctx.fillStyle = '#161616';
     ctx.fillRect(0, 0, W, H);
+
+    // Histogram bars behind everything else.
+    const hist = getHistogram?.();
+    if (hist) {
+      let peak = 0;
+      for (let i = 0; i < 256; i++) if (hist[i] > peak) peak = hist[i];
+      if (peak > 0) {
+        const drawH = H - PAD * 2;
+        const drawW = W - PAD * 2;
+        const barW = drawW / 256;
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        for (let i = 0; i < 256; i++) {
+          if (hist[i] === 0) continue;
+          const h = Math.sqrt(hist[i] / peak) * drawH;
+          const x = PAD + i * barW;
+          ctx.fillRect(x, H - PAD - h, Math.max(barW, 1), h);
+        }
+      }
+    }
 
     // Subtle 4×4 grid + bolder centre lines.
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';

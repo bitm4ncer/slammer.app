@@ -1,6 +1,6 @@
 // Brightness — additive offset on RGB channels.
 
-import { sliderRow, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRowLg, makeRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'brightness',
@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'sun',
   category: 'color',
+  description: 'Lift or crush overall luminance',
 
   defaultParams() { return { value: 0 }; },
 
@@ -26,7 +27,7 @@ export default {
 
   renderUI(params, onChange) {
     const root = makeRoot();
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Value', min: -100, max: 100, step: 1, value: params.value ?? 0, defaultValue: 0,
       onChange: (v) => onChange({ value: v }),
     }));

@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'palette',
   category: 'color',
+  description: 'Rotate hue and tweak saturation',
 
   defaultParams() { return { hue: 0, saturation: 0, lightness: 0 }; },
 

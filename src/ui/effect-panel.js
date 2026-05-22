@@ -3,9 +3,8 @@
 // Hidden entirely when no layer is selected.
 
 import Sortable from 'sortablejs';
-import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
+import { getPlugin, makeEffectInstance } from '../plugins/registry.js';
 import { getSettings, onSettingsChange } from './settings-popup.js';
-import { clampToViewport } from '../plugins/shared/ui-helpers.js';
 
 export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
   let sortable = null;
@@ -227,82 +226,40 @@ export function initEffectPanel({ stackEl, addBtn, groupEl, document }) {
     return wrap;
   }
 
-  // ---------- Single merged Add menu ----------
-  // Category order + display labels. Categories not listed here fall through to
-  // "Other" at the end. Empty categories are skipped — so "color" stays hidden
-  // until a Gradient Map / Color Overlay plugin lands.
-  const CATEGORY_ORDER = ['image', 'glitch', 'distort', 'stylize', 'color', 'render'];
-  const CATEGORY_LABELS = { image: 'Adjustments', glitch: 'Glitch', distort: 'Distort', stylize: 'Stylize', color: 'Color', render: 'Render', other: 'Other' };
-
-  function showAddMenu(button) {
-    closeAnyMenu();
+  // ---------- Effect Library ----------
+  // Opens the full-screen picker (search, filters, grid/list). The library
+  // owns its own DOM and lifecycle; we just hand it an onPick callback that
+  // performs the same tool-collapse-then-add logic the old inline menu did.
+  function openLibrary(button) {
     const layer = activeLayer();
     if (!layer) return;
-    const items = [...listPlugins({ type: 'filter' }), ...listPlugins({ type: 'tool' })];
-    if (!items.length) return;
-
-    // Group by category, alphabetise within each group.
-    const buckets = new Map();
-    for (const p of items) {
-      const cat = CATEGORY_ORDER.includes(p.category) ? p.category : 'other';
-      if (!buckets.has(cat)) buckets.set(cat, []);
-      buckets.get(cat).push(p);
-    }
-    for (const arr of buckets.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
-
-    const orderedCats = [...CATEGORY_ORDER, 'other'].filter((c) => buckets.has(c));
-
-    const menu = window.document.createElement('div');
-    menu.className = 'add-effect-menu';
-    menu.innerHTML = orderedCats.map((cat) => `
-      <div class="add-effect-section-label">${CATEGORY_LABELS[cat] || cat}</div>
-      ${buckets.get(cat).map((p) => `
-        <button class="add-effect-item" data-id="${p.id}">
-          <i class="fas fa-${p.icon || 'puzzle-piece'}"></i>
-          <span>${p.name}</span>
-        </button>
-      `).join('')}
-    `).join('');
-    window.document.body.appendChild(menu);
-
-    // Position menu using clampToViewport — flips above when near the bottom edge.
-    const r = button.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.zIndex = 200;
-    clampToViewport(menu, r);
-
-    menu.querySelectorAll('.add-effect-item').forEach((el) => {
-      el.addEventListener('click', () => {
-        const inst = makeEffectInstance(el.dataset.id);
-        if (inst) {
-          const plugin = getPlugin(el.dataset.id);
-          // For tools: collapse others, expand this one.
-          if (plugin?.type === 'tool') {
-            for (const e2 of layer.effects) {
+    import('./effect-library.js').then(({ openEffectLibrary }) => {
+      openEffectLibrary({
+        mode: 'raster',
+        anchor: button,
+        doc: document,
+        onPick: (plugin) => {
+          const cur = activeLayer();
+          if (!cur) return;
+          const inst = makeEffectInstance(plugin.id);
+          if (!inst) return;
+          if (plugin.type === 'tool') {
+            for (const e2 of cur.effects) {
               if (getPlugin(e2.pluginId)?.type === 'tool') {
-                document.setEffectProp(layer.id, e2.id, 'expanded', false);
+                document.setEffectProp(cur.id, e2.id, 'expanded', false);
               }
             }
             inst.expanded = true;
           }
-          document.addEffect(layer.id, inst);
-        }
-        closeAnyMenu();
+          document.addEffect(cur.id, inst);
+        },
       });
     });
-
-    setTimeout(() => {
-      window.addEventListener('click', closeAnyMenu, { once: true });
-    });
-  }
-
-  function closeAnyMenu() {
-    window.document.querySelectorAll('.add-effect-menu').forEach((m) => m.remove());
   }
 
   addBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    showAddMenu(addBtn);
+    openLibrary(addBtn);
   });
 
   document.subscribe((e) => {

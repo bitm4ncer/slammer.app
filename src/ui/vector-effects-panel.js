@@ -2,9 +2,10 @@
 // instances on the active vector layer. Rendered into a dedicated card
 // inside the Vector tool panel; mirrors the existing Effects card but
 // only shows plugins of type 'vector-filter' and writes to
-// layer.vectorEffects.
+// layer.vectorEffects. The "+" button opens the shared Effect Library
+// modal in vector mode.
 
-import { listPlugins, getPlugin, makeEffectInstance } from '../plugins/registry.js';
+import { getPlugin, makeEffectInstance } from '../plugins/registry.js';
 
 export function initVectorEffectsPanel({ document: doc, host }) {
   const panel = document.createElement('div');
@@ -18,61 +19,32 @@ export function initVectorEffectsPanel({ document: doc, host }) {
       </button>
     </div>
     <div class="vector-fx-stack" data-host="stack"></div>
-    <div class="vector-fx-picker" data-host="picker" hidden></div>
   `;
   host.appendChild(panel);
 
   const addBtn = panel.querySelector('.vector-fx-add');
   const stack  = panel.querySelector('[data-host=stack]');
-  const picker = panel.querySelector('[data-host=picker]');
 
   function activeLayer() { return doc.activeLayer; }
 
-  function buildPicker() {
-    picker.innerHTML = '';
-    const layer = activeLayer();
-    const isGroup = layer && layer.type === 'group';
-    const plugins = listPlugins({ type: 'vector-filter' }).slice();
-    // Sort: when a group is active, multi-preferred plugins (Metaball,
-    // Boolean — anything that's most useful with N source paths) float
-    // to the top of the picker.
-    if (isGroup) {
-      plugins.sort((a, b) => (b.multiPathPreferred === true) - (a.multiPathPreferred === true));
-    }
-    if (!plugins.length) {
-      picker.innerHTML = '<div class="vector-fx-picker-empty">No vector effects available.</div>';
-      return;
-    }
-    for (const p of plugins) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'vector-fx-picker-item';
-      const tag = (isGroup && p.multiPathPreferred) ? '<span class="vector-fx-picker-tag" title="Best on multiple shapes">✨</span>' : '';
-      b.innerHTML = `<i class="fas fa-${p.icon || 'circle'}"></i><span>${p.name}</span>${tag}`;
-      b.addEventListener('click', () => {
-        const cur = activeLayer();
-        if (!cur) return;
-        const okType = cur.type === 'vector' || (cur.type === 'group' && doc.isVectorOnlyGroup?.(cur.id));
-        if (!okType) return;
-        const inst = makeEffectInstance(p.id);
-        if (!inst) return;
-        doc.addVectorEffect(cur.id, inst);
-        picker.hidden = true;
-      });
-      picker.appendChild(b);
-    }
-  }
-
   addBtn.addEventListener('click', () => {
-    if (picker.hidden) buildPicker();
-    picker.hidden = !picker.hidden;
-  });
-
-  // Click outside the picker closes it.
-  document.addEventListener('click', (e) => {
-    if (picker.hidden) return;
-    if (panel.contains(e.target)) return;
-    picker.hidden = true;
+    import('./effect-library.js').then(({ openEffectLibrary }) => {
+      openEffectLibrary({
+        mode: 'vector',
+        anchor: addBtn,
+        doc,
+        onPick: (plugin) => {
+          const cur = activeLayer();
+          if (!cur) return;
+          const okType = cur.type === 'vector'
+            || (cur.type === 'group' && doc.isVectorOnlyGroup?.(cur.id));
+          if (!okType) return;
+          const inst = makeEffectInstance(plugin.id);
+          if (!inst) return;
+          doc.addVectorEffect(cur.id, inst);
+        },
+      });
+    });
   });
 
   function renderEffectInstance(eff) {

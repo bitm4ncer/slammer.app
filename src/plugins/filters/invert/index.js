@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'adjust',
   category: 'color',
+  description: 'Negative — flip every channel',
 
   defaultParams() {
     return { strength: 1 };

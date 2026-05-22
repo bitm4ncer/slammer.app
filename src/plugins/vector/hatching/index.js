@@ -13,6 +13,7 @@ export default {
   type: 'vector-filter',
   icon: 'grip-lines',
   category: 'pattern',
+  description: 'Fill with parallel hatch lines',
 
   defaultParams() {
     return { spacing: 8, angle: 45, lineWidth: 1, color: '#FFFFFF', double: false };

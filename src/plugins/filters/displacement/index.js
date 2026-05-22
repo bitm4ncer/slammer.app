@@ -3,7 +3,7 @@
 // OR an uploaded displacement texture (R = X offset, G = Y offset).
 // Edge mode: clamp. Output is a fresh ImageData (cannot mutate in place).
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowSm, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
 
 // In-memory cache: data-URL → decoded { w, h, data: Uint8ClampedArray }.
 // Lives for the page lifetime (small textures, cheap re-decode otherwise).
@@ -15,7 +15,8 @@ export default {
   version: '1.2.0',
   type: 'filter',
   icon: 'wave-square',
-  category: 'glitch',
+  category: 'distort',
+  description: 'Warp pixels along a noise field',
 
   defaultParams() {
     return {
@@ -182,7 +183,7 @@ export default {
         });
       }
 
-      root.appendChild(sliderRow({
+      root.appendChild(sliderRowLg({
         label: 'Amount', min: 0, max: 100, step: 1, value: local.amount ?? 10, defaultValue: 10, suffix: 'px',
         onChange: (v) => { local.amount = v; onChange({ amount: v }); },
       }));
@@ -192,7 +193,7 @@ export default {
           label: 'Scale', min: 1, max: 100, step: 1, value: local.scale ?? 8, defaultValue: 8,
           onChange: (v) => { local.scale = v; onChange({ scale: v }); },
         }));
-        root.appendChild(sliderRow({
+        root.appendChild(sliderRowSm({
           label: 'Seed', min: 1, max: 99, step: 1, value: local.seed ?? 1, defaultValue: 1,
           onChange: (v) => { local.seed = v; onChange({ seed: v }); },
         }));

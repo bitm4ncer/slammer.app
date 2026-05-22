@@ -7,11 +7,12 @@
 **slammer.app** is a multi-layer image editor for slamming, glitching, and dithering. It runs entirely in the browser as a single-page app with no backend.
 
 Key characteristics:
-- **Konva-based** free canvas with pan, zoom, and drag-to-transform layers.
+- **Konva-based** free canvas with pan, zoom, drag-to-transform layers, snap-to-edge, rulers + guidelines, and a togglable two-tier canvas grid.
 - **Non-destructive per-layer effect stacks** — each layer can carry an ordered list of effects (filters and tools).
-- **VST-like plugin system** — effects are registered ES modules with a standard manifest. New effects appear automatically in the UI once imported and registered in `src/main.js`.
-- **Typography layer** — text rendered to an offscreen canvas, rasterized into the same pixel pipeline as images, with per-character tracking and word-wrapping text-box mode.
-- **IndexedDB project storage** with autosave, thumbnail capture, and a project-browser modal.
+- **VST-like plugin system** — effects (filters / tools) and floating panel plugins (image browsers, AI generators) are registered ES modules with a standard manifest. New plugins appear automatically in the UI once imported and registered in `src/main.js`.
+- **Typography layer** — text rendered to an offscreen canvas with full font management (Google Fonts, Fontshare, uploaded TTF/OTF/WOFF2 in IndexedDB, system fonts via Local Font Access). Variable axes + OpenType features. Text→Path conversion for vector workflows.
+- **Vector layer** — Paper.js-backed shapes, pen/pencil tools, anchor + handle editing, boolean ops, path simplify/smooth/reverse, multi-path layers with per-path fill/stroke. Top-left origin convention with locked transform (see CLAUDE.md for the coordinate-system gotchas).
+- **IndexedDB project storage** with autosave, thumbnail capture, and a project-browser modal. Plugin-favorites and plugin-folders are also stored here.
 - **Affinity Photo 2 bridge** via SSE + JSON-RPC 2.0 to Affinity's bundled MCP server (default endpoint `http://localhost:6767/sse`).
 
 The project was forked from a v0.5 single-image tool (`CRUSH_app`). Legacy `.crushproj` files and old `crush:*` localStorage / IndexedDB stores are migrated automatically on first launch.
@@ -43,17 +44,23 @@ Vite config (`vite.config.js`) uses `base: './'` so the app can be opened from `
 src/
   core/           # Document model, layer factories, renderer, history
   ui/             # Canvas view, panels, toolbar, modals, notifications
+                  # Plus: floating-window.js, plugin-host.js, snap-rulers.js, canvas-grid.js
+                  # Plus: vector-tools/ (pen, pencil, anchor overlay, text-to-path, active-tool registry)
   plugins/
-    registry.js   # Plugin register / lookup / validator
+    registry.js     # Plugin register / lookup / validator
     plugin-contract.md
-    filters/      # Compact effects: invert, brightness, contrast, levels, blur
-    tools/        # VST-style effects: dithering, jpeg-compression, pixelsort
-    shared/       # UI helpers for plugin controls (sliders, pills, selects, colours)
-  io/             # IndexedDB project store, .slammerproj import/export, PNG export
+    filters/        # Compact effects: invert, brightness, contrast, levels, blur, posterize, etc.
+    tools/          # VST-style effects: dithering, jpeg-compression, pixelsort, etc.
+    panels/         # Floating panel plugins: unsplash, pexels, met, falai, etc.
+    premium/        # Gitignored — paid plugins (datamosh, halftone, dither, stipple, ...). See CLAUDE.md for setup.
+    premium-loader.js  # Auto-discovers premium plugins via import.meta.glob at boot
+    shared/         # UI helpers for plugin controls (sliders, pills, selects, colours)
+    panels/_shared/ # Shared helpers for panel plugins (drop-zone, layer-card-drag)
+  io/             # IndexedDB project store, plugin-store (favorites/folders), .slammerproj import/export, PNG export
   integrations/
     affinity/     # SSE + JSON-RPC bridge to Affinity Photo 2
   style/          # CSS variables, layout, components, plastic-texture effects
-  main.js         # Bootstrap: register plugins, init document / renderer / UI, wire history + autosave
+  main.js         # Bootstrap: register plugins, init document / renderer / UI, wire history + autosave, set window.__slammer façade
 ```
 
 ## Architecture Patterns
@@ -75,19 +82,44 @@ src/
 
 ### Plugin System
 
-- Plugins default-export a manifest object with `id`, `name`, `type` (`'filter'`|`'tool'`|`'generator'`), `icon`, `category`, `defaultParams()`, `process(imageData, params)`, and `renderUI(params, onChange)`.
-- **Filters** render as compact rows inside the effect stack. **Tools** render as expanded panels (only one tool expanded at a time per layer).
+- Plugins default-export a manifest object with `id`, `name`, `type` (`'filter'`|`'tool'`|`'generator'`|`'panel'`), `icon`, `category`, `defaultParams()`, `process(imageData, params)`, and `renderUI(params, onChange)`.
+- **Filters** render as compact rows inside the effect stack. **Tools** render as expanded panels (only one tool expanded at a time per layer). **Panels** are floating VST-style windows opened via `openPluginWindow(id)` — they have `renderUI(container, ctx)` and skip `process()`.
 - `process()` must be a pure function of `(imageData, params)`. It may mutate or replace the input `ImageData`.
 - UI helpers live in `src/plugins/shared/ui-helpers.js`: `sliderRow`, `pillGroup`, `selectRow`, `colorRow`, `makeRoot`, `makeToolRoot`.
+- Premium plugins (`pack: '<name>-pack'`, `pro: true`) live under `src/plugins/premium/` and are auto-loaded by `premium-loader.js`. The folder is gitignored — see CLAUDE.md for the private-repo workflow.
 - See `src/plugins/plugin-contract.md` for the full spec and caching contract.
+
+### Plugin Windows + App Context
+
+- **`src/ui/floating-window.js`** — drag, resize, ESC-close-when-topmost, click-to-focus, geometry persistence under `slammer:window:<id>`. Reused by both the export popup and every panel plugin.
+- **`src/ui/plugin-host.js`** — `openPluginWindow(id)` is idempotent: re-opening focuses the existing window. Multiple plugin windows can be open simultaneously.
+- **App context façade** — `window.__slammer = { doc, renderer, getSettings, setSettings, onSettingsChange, notify, importImage }`, set once in `main.js`. Plugins MUST use this and never reach into module closures directly.
+
+### Vector Layer
+
+- **Paper.js** (`paper@^0.12`) backs the path engine — bezier maths, simplify, SVG import/export, boolean ops.
+- **`opentype.js`** (`@^1.3.5`) extracts font glyphs for Text→Path. Cannot decode WOFF2 directly — see CLAUDE.md for the Fontsource jsDelivr workaround.
+- **Top-left origin with locked transform** — `layer.transform.x/y` is set ONCE at layer creation and never updated by anchor/path edits. Path coordinates are in WORLD space. Do not reintroduce centre-origin (it broke twice).
+- Tools live under `src/ui/vector-tools/`: pen, pencil, anchor-overlay, text-to-path, active-tool registry.
+- Boolean ops via Paper's `PathItem.unite/subtract/intersect/exclude/divide`; outline-stroke via `paperjs-offset`.
+
+### Canvas Tools (Snap, Rulers, Grid)
+
+- **`src/ui/snap-rulers.js`** owns layer-to-layer snap math, top + left ruler canvases with zoom-aware ticks, and draggable guidelines (`doc.state.guidelines`, persisted + undoable).
+- **`src/ui/canvas-grid.js`** renders a two-tier grid (default 10 px minor / 100 px major) between bgLayer and contentLayer; moves with stage transform; integrates with snap.
+- Footer toggles for Snap (`S`), Rulers (`R`), Grid (`Ctrl+;`).
 
 ### Storage & I/O
 
-- **IndexedDB** (`slammer` database, `projects` object store) holds full project documents.
-- **localStorage** holds a lightweight project index (`slammer:projects`) and the current project id (`slammer:current`).
-- **Settings** (`slammer:settings`) persist accent colour, autosave delay, and custom-layer-colours toggle.
+- **IndexedDB** (`slammer` database, version 3) holds:
+  - `projects` — full project documents
+  - `plugin-favorites` — saved items per panel plugin (keyPath `id`, indexed by `pluginId` + `folderId`)
+  - `plugin-folders` — user-defined folders for plugin-favorites
+  - `fonts` — uploaded TTF/OTF/WOFF2 binaries with metadata
+- **localStorage** holds a lightweight project index (`slammer:projects`), the current project id (`slammer:current`), settings (`slammer:settings`), pinned plugins (`slammer:pinnedPlugins`), per-window geometry (`slammer:window:*`), and various UI prefs.
+- **Settings** (`slammer:settings`) persist accent colour, autosave delay, custom-layer-colours toggle, snap/rulers/grid prefs, API keys (`unsplashAccessKey`, `pexelsApiKey`, `falaiApiKey`), and many more.
 - **Autosave** — debounced by `autosaveMs` (default 800 ms). A status dot in the footer shows `dirty → saving → saved`.
-- **`.slammerproj`** — Self-contained JSON with embedded data URLs. Drop onto canvas to import. Legacy `.crushproj` is still accepted.
+- **`.slammerproj`** — Self-contained JSON with embedded data URLs + font metadata (so opening another user's project auto-loads their fonts). Drop onto canvas to import. Legacy `.crushproj` is still accepted.
 - **Migration** — On first launch, `crush:*` localStorage keys and the old `crush` IndexedDB are copied into `slammer:*` / `slammer` if the new ones are empty.
 
 ### Affinity Bridge
@@ -121,7 +153,7 @@ There is **no automated test suite** currently. Verification is manual: launch t
 
 ## Security Considerations
 
-- **All client-side** — there is no server, auth, or secrets file. API keys for future integrations (e.g. Replicate) will live in the Settings popup and be stored in localStorage.
+- **All client-side** — there is no server, auth, or secrets file. API keys for browser-direct integrations (Unsplash, Pexels, fal.ai) live in the Settings → API Keys tab and are stored in localStorage. Each user pastes their own keys; the app never sees them centrally.
 - **XSS mitigation**: UI modules escape user content (`escape()` helper in `layer-panel.js` and `project-menu.js`). Maintain this when rendering user-controlled strings (layer names, project names).
 - **CORS**: Image sources may be Blobs, data URLs, or remote URLs. `loadImageBitmap` sets `crossOrigin = 'anonymous'` for string URLs.
 - **No eval or inline scripts** beyond the Konva/Vite module bundle.
@@ -145,13 +177,21 @@ There is **no automated test suite** currently. Verification is manual: launch t
 | Plugin manifest spec | `src/plugins/plugin-contract.md` |
 | Plugin registry | `src/plugins/registry.js` |
 | Plugin UI primitives | `src/plugins/shared/ui-helpers.js` |
+| Premium plugin loader | `src/plugins/premium-loader.js` |
+| Floating plugin windows | `src/ui/floating-window.js`, `src/ui/plugin-host.js` |
 | Project storage (IndexedDB) | `src/io/project-store.js` |
+| Plugin favorites/folders | `src/io/plugin-store.js` |
 | Project file import/export | `src/io/project-file.js` |
 | PNG export | `src/io/export-png.js` |
 | Affinity bridge | `src/integrations/affinity/index.js` |
 | Canvas view (pan/zoom/drop) | `src/ui/canvas-view.js` |
+| Snap, rulers, guidelines | `src/ui/snap-rulers.js` |
+| Canvas grid | `src/ui/canvas-grid.js` |
+| Vector tools | `src/ui/vector-tools/` (pen, pencil, anchor-overlay, text-to-path, active-tool) |
 | Layer panel | `src/ui/layer-panel.js` |
 | Effect panel | `src/ui/effect-panel.js` |
 | Toolbar & shortcuts | `src/ui/toolbar.js` |
 | Settings popup | `src/ui/settings-popup.js` |
+| Hard-won knowledge & quirks | `CLAUDE.md` |
 | Roadmap / planned phases | `roadmap.md` |
+| Parked bugs | `BUGS.md` |

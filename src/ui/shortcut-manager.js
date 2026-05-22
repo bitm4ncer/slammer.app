@@ -83,10 +83,19 @@ function persistOverrides() {
 
 // Resolve the active combos for a binding: user override (if set) else
 // the spec's defaultKeys. Returns array of canonical combo strings.
+//
+// A KEY EXISTS in `rt.overrides` even when its value is the empty
+// string — that represents an explicitly UNBOUND binding (user pressed
+// "Replace anyway" in a conflict resolution, leaving the displaced
+// binding without a combo). `clearOverride` removes the key entirely
+// to fall back on defaults; `unbindBinding` leaves the key with an
+// empty string.
 function effectiveCombos(spec) {
   const rt = getRuntime();
-  const override = rt.overrides[spec.id];
-  if (override) return normaliseCombos(override);
+  const id = spec.id;
+  if (Object.prototype.hasOwnProperty.call(rt.overrides, id)) {
+    return normaliseCombos(rt.overrides[id]);
+  }
   return normaliseCombos(spec.defaultKeys);
 }
 
@@ -221,7 +230,9 @@ export function getBindings() {
     scope:        spec.scope,
     category:     spec.category,
     description:  spec.description,
-    overridden:   !!rt.overrides[spec.id],
+    // hasOwnProperty, not truthiness — an empty-string override
+    // (explicit "unbound" set by Replace-anyway) is still an override.
+    overridden:   Object.prototype.hasOwnProperty.call(rt.overrides, spec.id),
   }));
 }
 
@@ -246,6 +257,23 @@ export function clearOverride(id) {
   checkConflicts();
   notifyChange();
 }
+
+// Explicitly set a binding to UNBOUND (no key combo at all). Distinct
+// from clearOverride() which reverts to the registered defaults.
+// Used by the Settings remap UI's "Replace anyway" flow.
+export function unbindBinding(id) {
+  const rt = getRuntime();
+  rt.overrides[id] = '';
+  persistOverrides();
+  rt.warnedConflicts.clear();
+  notifyChange();
+}
+
+// Pause/resume the keydown router. Used by the Settings remap UI while
+// a row is in listening mode so the next keypress fills the chip
+// instead of triggering whichever shortcut was previously bound.
+export function pauseRouter()  { getRuntime().routerPaused = true; }
+export function resumeRouter() { getRuntime().routerPaused = false; }
 
 export function resetAllOverrides() {
   const rt = getRuntime();
@@ -350,6 +378,7 @@ export function initShortcutManager() {
     setOverride,
     clearOverride,
     resetAllOverrides,
+    unbindBinding,
     findCollision,
     onBindingsChange,
     // Pause/resume the router — used by the Settings remap UI while a

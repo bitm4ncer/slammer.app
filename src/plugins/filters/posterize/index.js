@@ -2,7 +2,7 @@
 // luminance / palette mode, perceptual / equalised distribution, edge
 // softness anti-aliasing, bias remap, and original-mix blending.
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowSm, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
 
 export default {
   id: 'posterize',
@@ -11,6 +11,7 @@ export default {
   type: 'filter',
   icon: 'bars-staggered',
   category: 'image',
+  description: 'Reduce tone count for poster look',
 
   defaultParams() {
     return {
@@ -99,7 +100,7 @@ export default {
   renderUI(params, onChange) {
     const root = makeRoot();
 
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Levels', min: 2, max: 32, step: 1,
       value: params.levels ?? 5, defaultValue: 5,
       onChange: (v) => onChange({ levels: v }),
@@ -134,7 +135,7 @@ export default {
       onChange: (v) => onChange({ softness: v }),
     }));
 
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowSm({
       label: 'Bias', min: -100, max: 100, step: 1,
       value: Math.round((params.bias ?? 0) * 100), defaultValue: 0,
       format: (v) => Math.round(v) / 100,

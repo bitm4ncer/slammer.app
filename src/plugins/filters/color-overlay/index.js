@@ -10,6 +10,7 @@ export default {
   type: 'filter',
   icon: 'fill-drip',
   category: 'color',
+  description: 'Tint the layer with a flat colour',
 
   defaultParams() { return { color: '#8aff8c', mode: 'tint' }; },
 

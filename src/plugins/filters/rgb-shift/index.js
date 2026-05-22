@@ -6,7 +6,8 @@
 // Edge handling: clamp (default) · mirror · wrap
 // Common: mix (0-100%)
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowSm, sliderRowLg, pillGroup, makeRoot, section } from '../../shared/ui-helpers.js';
+import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
 // ---------- edge helpers ----------
 function edgeClamp(v, max) {
@@ -52,6 +53,7 @@ export default {
   type: 'filter',
   icon: 'arrow-right-arrow-left',
   category: 'glitch',
+  description: 'Split colour channels for chromatic glitch',
 
   defaultParams() {
     return {
@@ -177,59 +179,66 @@ export default {
       }));
 
       if (local.mode === 'flat' || !local.mode) {
-        // -- Red channel --
+        const chLabel = (ch, color) => {
+          const el = section(ch);
+          el.style.color = color;
+          el.style.opacity = '0.85';
+          return el;
+        };
+        root.appendChild(chLabel('Red', '#ff6b6b'));
         root.appendChild(sliderRow({
-          label: 'R  X', min: -50, max: 50, step: 1,
+          label: 'X', min: -50, max: 50, step: 1,
           value: local.rx ?? 4, defaultValue: 4, suffix: 'px',
           onChange: (v) => { local.rx = v; onChange({ rx: v }); },
         }));
         root.appendChild(sliderRow({
-          label: 'R  Y', min: -50, max: 50, step: 1,
+          label: 'Y', min: -50, max: 50, step: 1,
           value: local.ry ?? 0, defaultValue: 0, suffix: 'px',
           onChange: (v) => { local.ry = v; onChange({ ry: v }); },
         }));
-        // -- Green channel --
+        root.appendChild(chLabel('Green', '#6bda6b'));
         root.appendChild(sliderRow({
-          label: 'G  X', min: -50, max: 50, step: 1,
+          label: 'X', min: -50, max: 50, step: 1,
           value: local.gx ?? 0, defaultValue: 0, suffix: 'px',
           onChange: (v) => { local.gx = v; onChange({ gx: v }); },
         }));
         root.appendChild(sliderRow({
-          label: 'G  Y', min: -50, max: 50, step: 1,
+          label: 'Y', min: -50, max: 50, step: 1,
           value: local.gy ?? 0, defaultValue: 0, suffix: 'px',
           onChange: (v) => { local.gy = v; onChange({ gy: v }); },
         }));
-        // -- Blue channel --
+        root.appendChild(chLabel('Blue', '#6b9fff'));
         root.appendChild(sliderRow({
-          label: 'B  X', min: -50, max: 50, step: 1,
+          label: 'X', min: -50, max: 50, step: 1,
           value: local.bx ?? -4, defaultValue: -4, suffix: 'px',
           onChange: (v) => { local.bx = v; onChange({ bx: v }); },
         }));
         root.appendChild(sliderRow({
-          label: 'B  Y', min: -50, max: 50, step: 1,
+          label: 'Y', min: -50, max: 50, step: 1,
           value: local.by ?? 0, defaultValue: 0, suffix: 'px',
           onChange: (v) => { local.by = v; onChange({ by: v }); },
         }));
       } else {
-        // radial controls
-        root.appendChild(sliderRow({
+        root.appendChild(sliderRowLg({
           label: 'Strength', min: 0, max: 50, step: 0.5,
           value: local.strength ?? 6, defaultValue: 6, suffix: 'px',
           onChange: (v) => { local.strength = v; onChange({ strength: v }); },
         }));
-        root.appendChild(sliderRow({
-          label: 'Center X', min: 0, max: 100, step: 1,
-          value: local.centerX ?? 50, defaultValue: 50, suffix: '%',
-          onChange: (v) => { local.centerX = v; onChange({ centerX: v }); },
+        root.appendChild(createXYPadWidget({
+          x: local.centerX ?? 50,
+          y: local.centerY ?? 50,
+          defaultX: 50,
+          defaultY: 50,
+          onChange: ({ x, y }) => {
+            local.centerX = x;
+            local.centerY = y;
+            onChange({ centerX: x, centerY: y });
+          },
         }));
-        root.appendChild(sliderRow({
-          label: 'Center Y', min: 0, max: 100, step: 1,
-          value: local.centerY ?? 50, defaultValue: 50, suffix: '%',
-          onChange: (v) => { local.centerY = v; onChange({ centerY: v }); },
-        }));
-        root.appendChild(sliderRow({
-          label: 'Bias', min: -1, max: 1, step: 0.05,
-          value: local.bias ?? 0, defaultValue: 0,
+        root.appendChild(sliderRowSm({
+          label: 'Bias', min: -100, max: 100, step: 5,
+          value: Math.round((local.bias ?? 0) * 100), defaultValue: 0,
+          format: (v) => Math.round(v) / 100,
           onChange: (v) => { local.bias = v; onChange({ bias: v }); },
         }));
       }

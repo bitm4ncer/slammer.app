@@ -22,12 +22,16 @@
   --sl-hover-overlay:        rgba(0, 0, 0, 0.05);
   --sl-hover-overlay-strong: rgba(0, 0, 0, 0.10);
 
-  /* VHS shadows muted on light backgrounds */
-  --sl-shadow-vhs-stripe:    rgba(0, 0, 0, 0.03);
-  --sl-shadow-vhs-groove:    rgba(0, 0, 0, 0.1);
-  --sl-shadow-vhs-deep:      rgba(0, 0, 0, 0.25);
-  --sl-shadow-vhs-highlight: rgba(255, 255, 255, 0.6);
-  --sl-shadow-vhs-inset:     rgba(0, 0, 0, 0.18);
+  /* VHS shadows ZEROED on light backgrounds — Light is elegant flat design.
+   * Every consumer of these tokens (insets, grooves, drop shadows that
+   * use --sl-shadow-vhs-deep, etc.) effectively becomes invisible. The
+   * hardcoded black-rgba drop shadows on some cards still need per-rule
+   * overrides in layout.css's light-theme block. */
+  --sl-shadow-vhs-stripe:    transparent;
+  --sl-shadow-vhs-groove:    transparent;
+  --sl-shadow-vhs-deep:      transparent;
+  --sl-shadow-vhs-highlight: transparent;
+  --sl-shadow-vhs-inset:     transparent;
 
   --sl-canvas-frame-stroke: #5A5F65;
 }

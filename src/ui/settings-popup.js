@@ -4,8 +4,12 @@
 
 import { createKnob } from '../plugins/shared/knob.js';
 import { createNumericInput } from '../plugins/shared/numeric-input.js';
-import { getBindings } from './shortcut-manager.js';
-import { prettyCombo } from './shortcuts/helpers.js';
+import {
+  getBindings, setOverride, clearOverride, resetAllOverrides, unbindBinding,
+  findCollision, onBindingsChange, pauseRouter, resumeRouter,
+} from './shortcut-manager.js';
+import { prettyCombo, captureCombo } from './shortcuts/helpers.js';
+import { showConfirm } from './confirm-prompt.js';
 
 const STORE_KEY = 'slammer:settings';
 const DEFAULTS = {
@@ -243,6 +247,7 @@ export function initSettingsPopup({ button, version }) {
     wireWorkflow(backdrop);
     wireCanvas(backdrop);
     wirePlugins(backdrop);
+    wireShortcuts(backdrop);
     wireAbout(backdrop);
 
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -739,10 +744,35 @@ const SHORTCUT_EXTRAS = {
 const SHORTCUT_CATEGORY_ORDER = ['File', 'Edit', 'Move & transform', 'Tools', 'Canvas'];
 
 function renderShortcuts() {
-  // Pull every registered binding from the central registry (Phase 21b)
-  // and group by category. The registry is the single source of truth —
-  // when shortcuts get user-overridable in a follow-up sprint, this
-  // table reflects the live state without further changes here.
+  return `
+    <section class="settings-tab-panel" data-tab="shortcuts" hidden>
+      <header class="settings-panel-head">
+        <span class="settings-panel-eyebrow">Shortcuts</span>
+        <h2 class="settings-panel-title">Keyboard reference</h2>
+        <p class="settings-panel-desc">Click any key chip to rebind. Reset individually with the rotate icon or restore every default with the button below.</p>
+        <div class="settings-shortcuts-toolbar">
+          <button type="button" class="settings-action-btn settings-action-btn--danger-soft" data-act="resetAllShortcuts">
+            <i class="fas fa-rotate-left"></i><span>Reset all to defaults</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="settings-group settings-group--shortcuts">
+        <table class="settings-shortcuts">
+          <colgroup><col class="settings-shortcuts-keys"/><col/></colgroup>
+          <tbody data-shortcuts-tbody>
+            ${renderShortcutRows()}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+// Render the <tbody> contents only — used for both initial render and
+// the re-render after every override change (subscribed via
+// onBindingsChange in wireShortcuts).
+function renderShortcutRows() {
   const bindings = getBindings();
   const byCategory = bindings.reduce((acc, b) => {
     const cat = b.category || 'Edit';
@@ -750,38 +780,250 @@ function renderShortcuts() {
     return acc;
   }, {});
 
-  const sectionHtml = SHORTCUT_CATEGORY_ORDER.map((cat) => {
-    const liveRows = (byCategory[cat] || []).map((b) => [
-      prettyCombo(b.activeKeys),
-      b.label,
-    ]);
+  return SHORTCUT_CATEGORY_ORDER.map((cat) => {
+    const liveBindings = byCategory[cat] || [];
     const extras = SHORTCUT_EXTRAS[cat] || [];
-    const rows = [...liveRows, ...extras];
-    if (!rows.length) return '';
-    // Display label keeps the ampersand HTML-escaped to mirror the
-    // previous template literal exactly.
+    if (!liveBindings.length && !extras.length) return '';
     const label = cat === 'Move & transform' ? 'Move &amp; transform' : cat;
-    return shortcutSection(label, rows);
+    const head = `<tr class="settings-shortcuts-head"><th colspan="2">${label}</th></tr>`;
+    const live = liveBindings.map((b) => renderShortcutRow(b)).join('');
+    const literal = extras.map(([keys, desc]) => renderLiteralRow(keys, desc)).join('');
+    return head + live + literal;
   }).join('');
+}
 
+// Live (registry-backed) row — chip + reset button, both interactive.
+function renderShortcutRow(b) {
+  const overridden = b.overridden;
+  const unbound = overridden && !b.activeKeys;
+  const chipContents = unbound
+    ? '<span class="shortcut-chip-empty">Unbound</span>'
+    : kbdHtml(prettyCombo(b.activeKeys));
   return `
-    <section class="settings-tab-panel" data-tab="shortcuts" hidden>
-      <header class="settings-panel-head">
-        <span class="settings-panel-eyebrow">Shortcuts</span>
-        <h2 class="settings-panel-title">Keyboard reference</h2>
-        <p class="settings-panel-desc">Every binding the editor responds to. Customisation arrives later.</p>
-      </header>
-
-      <div class="settings-group settings-group--shortcuts">
-        <table class="settings-shortcuts">
-          <colgroup><col class="settings-shortcuts-keys"/><col/></colgroup>
-          <tbody>
-            ${sectionHtml}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <tr class="shortcut-row${overridden ? ' is-overridden' : ''}${unbound ? ' is-unbound' : ''}" data-binding-id="${escapeAttr(b.id)}">
+      <td>
+        <span class="shortcut-cell">
+          <button type="button" class="shortcut-chip" data-act="remap"
+                  title="Click to rebind (Esc cancels)">${chipContents}</button>
+          <button type="button" class="shortcut-reset" data-act="reset"
+                  title="Reset to default (${escapeAttr(prettyCombo(b.defaultKeys))})"
+                  aria-label="Reset to default"${overridden ? '' : ' hidden'}>
+            <i class="fas fa-rotate-left"></i>
+          </button>
+        </span>
+      </td>
+      <td>${escapeHtml(b.label)}</td>
+    </tr>
   `;
+}
+
+// Literal row — pure documentation, no controls.
+function renderLiteralRow(keys, desc) {
+  return `
+    <tr class="shortcut-row shortcut-row--readonly">
+      <td>${kbdHtml(keys, /* allowGesture */ true)}</td>
+      <td>${desc}</td>
+    </tr>
+  `;
+}
+
+// Render a combo string ("Ctrl+Shift+↑" or "Mouse-wheel") as <kbd>-
+// wrapped parts. Pure helper shared by live + literal rows.
+function kbdHtml(combo, allowGesture = false) {
+  if (!combo) return '';
+  return combo.split(' / ').map((c) => c.split('+').map((p) => {
+    if (allowGesture && (p.includes('drag') || p.includes('click') || p.includes('mouse') || p.includes('wheel'))) {
+      return p;
+    }
+    return `<kbd>${p}</kbd>`;
+  }).join('+')).join(' / ');
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------- Shortcuts tab interaction ----------
+function wireShortcuts(backdrop) {
+  // The settings popup uses `data-tab="shortcuts"` on BOTH the sidebar
+  // button AND the panel section — be specific so the click delegate
+  // attaches to the panel.
+  const panel = backdrop.querySelector('.settings-tab-panel[data-tab="shortcuts"]');
+  if (!panel) return;
+  const tbody = panel.querySelector('[data-shortcuts-tbody]');
+
+  const offChange = onBindingsChange(() => {
+    if (!document.body.contains(panel)) { offChange(); return; }
+    cancelListening();
+    tbody.innerHTML = renderShortcutRows();
+  });
+  const moRoot = backdrop.parentNode || document.body;
+  const mo = new MutationObserver(() => {
+    if (!document.body.contains(backdrop)) {
+      offChange();
+      cancelListening();
+      mo.disconnect();
+    }
+  });
+  mo.observe(moRoot, { childList: true });
+
+  let listeningRow = null;
+  let listeningId = null;
+  let onKeyCapture = null;
+  let onClickOutside = null;
+
+  function startListening(rowEl, bindingId) {
+    cancelListening();
+    listeningRow = rowEl;
+    listeningId = bindingId;
+    rowEl.classList.add('is-listening');
+    const chip = rowEl.querySelector('.shortcut-chip');
+    if (chip) chip.innerHTML = '<span class="shortcut-chip-listening">Press key combination…</span>';
+    pauseRouter();
+
+    onKeyCapture = (e) => {
+      const res = captureCombo(e);
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      if (res.kind === 'pending') return;
+      if (res.kind === 'cancel')  { cancelListening(); return; }
+      commitCombo(bindingId, res.combo);
+    };
+    document.addEventListener('keydown', onKeyCapture, true);
+
+    onClickOutside = (e) => {
+      if (e.target.closest('.shortcut-row[data-binding-id="' + cssEscape(bindingId) + '"]')) return;
+      if (e.target.closest('.shortcut-conflict-row[data-binding-id="' + cssEscape(bindingId) + '"]')) return;
+      cancelListening();
+    };
+    document.addEventListener('mousedown', onClickOutside, true);
+  }
+
+  function cancelListening() {
+    // Idempotent: if nothing's active, do absolutely nothing — in
+    // particular DON'T re-render the tbody. startListening() calls
+    // cancelListening() as its first step to clear stale state; a
+    // gratuitous re-render at that point would detach the rowEl the
+    // caller is about to set is-listening on, and the visible chip
+    // never updates.
+    const hadKey = !!onKeyCapture;
+    const hadClick = !!onClickOutside;
+    const hadConflictRow = !!panel.querySelector('.shortcut-conflict-row');
+    const wasListening = !!listeningRow;
+    if (!hadKey && !hadClick && !hadConflictRow && !wasListening) return;
+
+    if (onKeyCapture) {
+      document.removeEventListener('keydown', onKeyCapture, true);
+      onKeyCapture = null;
+    }
+    if (onClickOutside) {
+      document.removeEventListener('mousedown', onClickOutside, true);
+      onClickOutside = null;
+    }
+    listeningRow = null;
+    listeningId = null;
+    resumeRouter();
+    panel.querySelectorAll('.shortcut-conflict-row').forEach((r) => r.remove());
+    // Re-render so any chip stuck mid-"Press…" text reverts.
+    tbody.innerHTML = renderShortcutRows();
+  }
+
+  function commitCombo(bindingId, combo) {
+    const binding = getBindings().find((b) => b.id === bindingId);
+    if (!binding) { cancelListening(); return; }
+    const collision = findCollision(combo, binding.scope, bindingId);
+    if (collision) {
+      if (onKeyCapture) { document.removeEventListener('keydown', onKeyCapture, true); onKeyCapture = null; }
+      if (onClickOutside) { document.removeEventListener('mousedown', onClickOutside, true); onClickOutside = null; }
+      if (listeningRow) listeningRow.classList.remove('is-listening');
+      listeningRow = null;
+      listeningId = null;
+      resumeRouter();
+      tbody.innerHTML = renderShortcutRows();
+      showConflict(bindingId, combo, collision);
+      return;
+    }
+    setOverride(bindingId, combo);
+    cancelListening();
+  }
+
+  function showConflict(bindingId, attemptedCombo, collision) {
+    const row = tbody.querySelector(`.shortcut-row[data-binding-id="${cssEscape(bindingId)}"]`);
+    if (!row) return;
+    tbody.querySelectorAll(`.shortcut-conflict-row[data-binding-id="${cssEscape(bindingId)}"]`)
+      .forEach((r) => r.remove());
+    const conflictTr = document.createElement('tr');
+    conflictTr.className = 'shortcut-conflict-row';
+    conflictTr.dataset.bindingId = bindingId;
+    conflictTr.innerHTML = `
+      <td colspan="2">
+        <div class="shortcut-conflict">
+          <i class="fas fa-triangle-exclamation shortcut-conflict-icon"></i>
+          <span class="shortcut-conflict-msg">
+            <strong>${escapeHtml(prettyCombo(attemptedCombo))}</strong>
+            conflicts with <strong>${escapeHtml(collision.label)}</strong>.
+          </span>
+          <span class="shortcut-conflict-spacer"></span>
+          <button type="button" class="shortcut-conflict-btn" data-act="conflictCancel">Cancel</button>
+          <button type="button" class="shortcut-conflict-btn shortcut-conflict-btn--danger" data-act="conflictReplace">Replace anyway</button>
+        </div>
+      </td>
+    `;
+    row.after(conflictTr);
+
+    conflictTr.addEventListener('click', (e) => {
+      if (e.target.closest('[data-act=conflictCancel]')) {
+        conflictTr.remove();
+        return;
+      }
+      if (e.target.closest('[data-act=conflictReplace]')) {
+        unbindBinding(collision.id);
+        setOverride(bindingId, attemptedCombo);
+      }
+    });
+  }
+
+  panel.addEventListener('click', async (e) => {
+    const chip = e.target.closest('.shortcut-chip');
+    const reset = e.target.closest('.shortcut-reset');
+    const resetAll = e.target.closest('[data-act=resetAllShortcuts]');
+    if (chip) {
+      const rowEl = chip.closest('.shortcut-row');
+      if (!rowEl) return;
+      const id = rowEl.dataset.bindingId;
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      startListening(rowEl, id);
+      return;
+    }
+    if (reset) {
+      const rowEl = reset.closest('.shortcut-row');
+      if (!rowEl) return;
+      const id = rowEl.dataset.bindingId;
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      clearOverride(id);
+      return;
+    }
+    if (resetAll) {
+      e.preventDefault();
+      e.stopPropagation();
+      const ok = await showConfirm({
+        title: 'Reset all shortcuts',
+        message: 'Reset every keyboard shortcut to its default? Custom remaps will be lost.',
+        confirmText: 'Reset all',
+        kind: 'danger',
+      });
+      if (ok) resetAllOverrides();
+    }
+  });
+}
+
+function cssEscape(s) {
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, (ch) => '\\' + ch);
 }
 
 function renderAbout(version) {

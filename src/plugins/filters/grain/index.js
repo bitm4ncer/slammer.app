@@ -1,7 +1,7 @@
 // Grain — four flavours of noise. All deterministic via seeded mulberry32 so
 // the result is identical across reloads.
 
-import { sliderRow, pillGroup, makeRoot, toggleRow, selectRow } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowSm, sliderRowLg, pillGroup, makeRoot, toggleRow, selectRow } from '../../shared/ui-helpers.js';
 import { BLEND_MODES, BLEND_LABELS } from '../../../core/layer.js';
 
 export default {
@@ -11,6 +11,7 @@ export default {
   type: 'filter',
   icon: 'circle-nodes',
   category: 'glitch',
+  description: 'Sprinkle film-style noise',
 
   defaultParams() {
     return { type: 'film', amount: 30, size: 1, monochrome: true, seed: 1, contrast: 0, blendMode: 'source-over' };
@@ -86,7 +87,7 @@ export default {
       value: params.type || 'film',
       onChange: (v) => onChange({ type: v }),
     }));
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Amount', min: 0, max: 100, step: 1, value: params.amount ?? 30, defaultValue: 30, suffix: '%',
       onChange: (v) => onChange({ amount: v }),
     }));
@@ -104,7 +105,7 @@ export default {
       onChange: (v) => onChange({ monochrome: v }),
       align: 'left',
     }));
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowSm({
       label: 'Seed', min: 1, max: 99, step: 1, value: params.seed ?? 1, defaultValue: 1,
       onChange: (v) => onChange({ seed: v }),
     }));

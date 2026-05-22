@@ -13,6 +13,7 @@ export default {
   type: 'vector-filter',
   icon: 'clone',
   category: 'generate',
+  description: 'Duplicate the shape on a grid or arc',
 
   defaultParams() {
     return { count: 6, translateX: 12, translateY: 0, rotate: 0, scale: 100 };

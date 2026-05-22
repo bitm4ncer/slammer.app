@@ -17,6 +17,7 @@ export default {
   type: 'vector-filter',
   icon: 'object-group',
   category: 'combine',
+  description: 'Combine paths with union, subtract, intersect',
   multiPathPreferred: true,
 
   defaultParams() { return { op: 'unite' }; },

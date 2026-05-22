@@ -147,3 +147,27 @@ export function prettyCombo(combo) {
     return part;
   }).join('+')).join(' / ');
 }
+
+// Capture a keyboard event in "listening mode" (the Settings remap UI).
+// Returns one of:
+//   { kind: 'pending' } — modifier-only keystroke; user is still
+//                         composing (e.g. just pressed Shift, hasn't
+//                         pressed the non-modifier key yet)
+//   { kind: 'cancel' }  — Escape pressed alone (acts as the cancel
+//                         signal — NOT captured as a combo)
+//   { kind: 'capture', combo: 'Mod+Shift+K' } — final combo to save
+//
+// Esc-as-cancel is per the brief: Esc is reserved as the listening-
+// mode cancel signal and can't be rebound through the UI.
+export function captureCombo(e) {
+  const k = keyName(e);
+  if (!k || MODIFIER_TOKENS.has(k) || k === 'Control' || k === 'Meta') {
+    return { kind: 'pending' };
+  }
+  if (k === 'Escape' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+    return { kind: 'cancel' };
+  }
+  const combo = comboFromEvent(e);
+  if (!combo) return { kind: 'pending' };
+  return { kind: 'capture', combo };
+}

@@ -51,6 +51,7 @@ Every subagent invocation MUST include, in this order:
    - Custom scrollbars only — never the native OS scrollbar.
    - Never mutate the live document via `preview_eval` — verification probes are READ-ONLY.
    - No left colour-accent borders on cards / list items / sidebar rows. Use a dot, icon tint, or hover glow.
+   - **No per-effect Mix / Opacity knob inside the plugin UI.** The effect-stack already provides a slot-level dry/wet slider on every effect card — duplicating it inside the plugin is redundant and inconsistent. If a plugin manifest exposes a `mix` param in `defaultParams()`, it's a regression — drop it. Slot-level mix lerps between the plugin's pure output and the previous step's input automatically (`applyEffectsPipeline` line ~963).
 4. **Phase context** — copy the matching row from the Phase status table at the bottom of this file (e.g. "Phase 13b shipped — pen/pencil/anchor/text-to-path"). Stops subagents reintroducing reverted decisions like centre-origin transforms.
 5. **Verification requirement** — "Before claiming DONE, start preview, exercise the feature, capture a screenshot or console log as evidence. No success claims without fresh evidence." (`superpowers:verification-before-completion`)
 6. **Status code** expected back: `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`.
@@ -139,6 +140,18 @@ cp -r .claude/worktrees/<sibling>/src/plugins/premium  /c/GitHub/slammer.app/src
 ```
 
 Then restart the dev server (gitignored content can't HMR if it's a glob entry). If multiple sibling worktrees have diverging copies of the same gitignored folder, ask the user which one is canonical before copying — never silently overwrite.
+
+### Dev-server cwd + stale-worktree gotcha
+
+The dev server's **cwd matters**. Vite serves the files in whichever directory it was launched from. If a previous session left the dev server running in `.claude/worktrees/<name>/`, it serves THAT worktree's code — even if you've been editing the main repo. The user sees old behaviour, you see your edits, both feel right and confused. Symptom: edits in main repo don't appear in the browser; or the browser breaks with "Failed to resolve import" / "does not provide an export" on files that obviously exist.
+
+**Diagnostic**: `mcp__Claude_Preview__preview_list` shows the dev server's `cwd`. If it's a worktree path, the server is serving stale code.
+
+**Fix**: stop the server, then start it again — `preview_start` defaults to the agent shell's cwd, which is the main repo. Verify via `preview_list` that the new server's cwd is `C:\GitHub\slammer.app`.
+
+**Stale-worktree check**: a worktree is "stale" if `git log v.1.0.2..claude/<worktree-branch>` returns no commits (= worktree has nothing the main branch lacks) AND the worktree-branch tip is many commits behind v.1.0.2. Resync via `git stash` → `git fetch /c/GitHub/slammer.app v.1.0.2:tmp-main -f` → `git reset --hard tmp-main` → `git stash pop` (resolve conflicts in favour of v.1.0.2 unless the WIP is genuinely newer).
+
+**In-memory cache vs file cache**: clearing `node_modules/.vite` is NOT enough on its own. Vite holds the resolved module graph in process memory. After a worktree reset that adds/removes files, you MUST restart the dev server — file-system watcher invalidation is unreliable across bulk file changes from `git reset`.
 
 ## Stack additions beyond AGENTS.md
 

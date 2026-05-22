@@ -10,6 +10,7 @@ export default {
   type: 'filter',
   icon: 'arrow-up-right-dots',
   category: 'color',
+  description: 'Remap luminance to a gradient',
 
   defaultParams() {
     return {

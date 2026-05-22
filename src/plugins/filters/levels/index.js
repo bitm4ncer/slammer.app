@@ -9,6 +9,7 @@ export default {
   type: 'filter',
   icon: 'sliders',
   category: 'color',
+  description: 'Black/white/gamma input remap',
 
   defaultParams() { return { black: 0, mid: 1.0, white: 255 }; },
 

@@ -21,6 +21,7 @@ export default {
   type: 'filter',
   icon: 'circle-half-stroke',
   category: 'image',
+  description: 'Channel-mixed monochrome conversion',
 
   defaultParams() {
     return {
