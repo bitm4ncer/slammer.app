@@ -1,0 +1,21 @@
+{
+  "id": "twirl",
+  "pack": "liquid-pack",
+  "tagline": "Inverse-warp twist with falloff curves — from gentle whirlpools to hard tornadoes",
+  "description": "Rotational distortion computed via inverse-warp so bilinear sampling stays clean at any angle. Angle sweeps ±1080° — three full rotations in either direction — for everything from a half-degree lens whisper to a tight vortex. Four falloff curves define how the rotation dies off toward the edge: Smooth (cosine bell) for organic whirlpools, Linear for a uniform cone, Hard for a flat rotation disk, and Bell (sine ring) for a twist that peaks in the middle and quiets at center and edge. Inverse mode flips the falloff so the outer ring twists and the center stays calm — a tornado profile.",
+  "faq": [
+    {
+      "q": "What falloff gives the most natural whirlpool look?",
+      "a": "Smooth. It uses a cosine bell that peaks at the center and fades to zero at the edge, matching how real vortex flows slow as they lose energy away from the drain."
+    },
+    {
+      "q": "What does the Inverse toggle do?",
+      "a": "Inverse flips the falloff so the edge twists the most and the center stays calm. Combined with Hard falloff you get a rotating ring — useful for tornado or drill-bit effects."
+    },
+    {
+      "q": "Why does bilinear sampling matter at high angles?",
+      "a": "At 360° or more the warp pulls source pixels from large distances. Nearest-neighbour sampling at those distances creates visible stepping on diagonal edges. Bilinear interpolates between the four nearest source pixels, keeping curves smooth even at extreme twist angles."
+    }
+  ],
+  "screenshots": []
+}

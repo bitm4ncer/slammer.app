@@ -38,7 +38,11 @@
 import { registerPlugin } from './registry.js';
 
 export function registerPremiumPluginsForDev() {
-  if (!import.meta.env.DEV) return 0;
+  // BETA-period note: previously gated behind `import.meta.env.DEV` so production
+  // builds (CF Pages CI) skipped the glob. During the public BETA the premium
+  // folder is force-committed to the private repo so CF DOES have access, AND
+  // we want premium plugins to register on production too. The gate is removed
+  // until Phase 28 commerce ships the proper license-gated dynamic loader.
   const modules = import.meta.glob('./premium/*/index.js', { eager: true });
   let count = 0;
   for (const path in modules) {
@@ -50,7 +54,7 @@ export function registerPremiumPluginsForDev() {
     if (registerPlugin(manifest)) count += 1;
   }
   if (count > 0) {
-    console.log(`[premium-loader] registered ${count} premium plugin(s) (dev only)`);
+    console.log(`[premium-loader] registered ${count} premium plugin(s)`);
   }
   return count;
 }

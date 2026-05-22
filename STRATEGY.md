@@ -54,31 +54,33 @@ Existing Bitmancer customers on Gumroad keep their purchases. New inventory ship
 
 The free app is fully functional. No watermarks, no feature gates, no export limits, no online activation requirement.
 
-Two stages of "free":
+Three stages of "free":
 
-1. **Pre-public-launch (now):** the project is in private development. The exact split between what becomes free and what becomes premium is still in flux as features mature. Nothing is locked yet.
+1. **Pre-public-launch (the early days):** the project was in private development. The exact split between what becomes free and what becomes an add-on was still in flux as features matured. Nothing was locked yet.
 
-2. **At public launch (when slammer.app goes public + the Bitmancer Library shop opens):** the **Free Tier scope is locked**. Whatever is in the public repository on launch day stays free under AGPL-3.0, **forever**. From that point on, the free side never gets smaller — only better. Bug fixes, UX wins, polish, and additions to free plugins keep flowing. Premium = new capabilities only, never unlocked-handcuffs of free ones.
+2. **Public BETA (current stage):** slammer.app is deployed to a public URL but the **Bitmancer Library shop has NOT launched yet**. During the BETA period, all add-on plugins (Datamosh, JPEG Compression, Stipple, Plastic, Holographic Foil, Reaktor, Slime Mold, etc.) are **unlocked for free** so beta testers can use the full feature set. The scope of what's permanently free vs. what becomes a paid add-on is NOT locked yet — we may move plugins between tiers based on what feels right during the BETA. **Beta-tester goodwill commitment**: anything installed and used during the BETA stays unlocked on your machine when the shop launches — no surprise paywalls retroactively applied to existing users.
 
-If you fork slammer the day after launch, you have a fully working editor that doesn't need a license for anything currently in the repo. That is the point.
+3. **At shop launch (when the Bitmancer Library opens for purchases):** the **Free Tier scope is locked**. Whatever's marked as free in the public repository on shop-launch day stays free under AGPL-3.0, **forever**. From that point on, the free side never gets smaller — only better. Bug fixes, UX wins, polish, and additions to free plugins keep flowing. Add-ons = new capabilities only, never unlocked-handcuffs of free ones. New users arriving after shop launch pay for the add-ons.
+
+If you fork slammer the day after shop launch, you have a fully working editor that doesn't need a license for anything marked free in the repo. That is the point.
 
 ---
 
-## How we decide what's premium
+## How we decide what's an add-on
 
-Free vs. premium is decided by three filters. Anything that fails one of them does not get sold.
+Free vs. add-on is decided by three filters. Anything that fails one of them does not get sold.
 
 1. **Tutorial Test** — Could we make an honest 7+ minute YouTube tutorial about it that wouldn't bore the viewer? If a video about it would feel like filler, the plugin is too thin to charge for.
-2. **2-Hour Test** — Would a competent user need 2+ hours to recreate the result themselves? A premium plugin must do real work, not just expose a slider with a wider range.
+2. **2-Hour Test** — Would a competent user need 2+ hours to recreate the result themselves? A add-on plugin must do real work, not just expose a slider with a wider range.
 3. **Eigengeld Test** — Would the maintainer actually pay €5+ for this if they were a user? Honest answer "I'd hesitate" → users will hesitate too.
 
 If a plugin fails any of these tests, the options are: ship it free, fold it into an existing plugin, or don't ship it. Better an empty Library shelf than one full of dead weight.
 
-This is a deliberate defense against the CapCut / late-Adobe failure mode where premium tiers get bloated with features nobody asked for, just to justify the price.
+This is a deliberate defense against the CapCut / late-Adobe failure mode where add-on tiers get bloated with features nobody asked for, just to justify the price.
 
 **Bundle rules.** Themed bundles are workflow-coherent — "Glitch Pack" = related effects that belong together in a workflow. We do not bundle "5 random plugins at 30 % off."
 
-**Free-tier rules.** Improvements to free plugins keep shipping. Bug fixes, UX wins, sensible defaults — all stay free. We do not sabotage the free side to push premium.
+**Free-tier rules.** Improvements to free plugins keep shipping. Bug fixes, UX wins, sensible defaults — all stay free. We do not sabotage the free side to push add-ons.
 
 ---
 
@@ -86,13 +88,13 @@ This is a deliberate defense against the CapCut / late-Adobe failure mode where 
 
 slammer is licensed AGPL-3.0. That covers the editor, the plugin registry, every plugin in this repo, and the Bitmancer Library plugin itself (which is free and open source, in this repo).
 
-**Premium plugins, asset packs and Pro effects are separate works.** They live in a private Bitmancer repository, are built into separate JS bundles or content ZIPs, sold through [Polar.sh](https://polar.sh), and loaded into slammer at runtime through the documented public plugin API. They are not derivatives of slammer — same legal pattern as VST plugins for Ableton, Photoshop plugins, Sublime Text packages, kernel modules.
+**Add-on plugins, asset packs and Pro effects are separate works.** They live in a private Bitmancer repository, are built into separate JS bundles or content ZIPs, sold through [Polar.sh](https://polar.sh), and loaded into slammer at runtime through the documented public plugin API. They are not derivatives of slammer — same legal pattern as VST plugins for Ableton, Photoshop plugins, Sublime Text packages, kernel modules.
 
 **Why Polar.sh:** open-source platform (Apache 2.0), acts as Merchant of Record so EU VAT and global tax compliance are handled automatically, native license-key API, indie-creator focused. Transaction fee is 4 % + €0.40. We chose it specifically because the values match the project — open source, indie, European-led.
 
 **The flow:**
 
-1. You browse the Bitmancer Library inside slammer. Premium items show their price next to the icon.
+1. You browse the Bitmancer Library inside slammer. Add-on items show their price next to the icon.
 2. You click *Buy* → Polar checkout opens in a new tab. Polar handles payment, currency, and EU VAT as Merchant of Record.
 3. Polar issues you a license key.
 4. You paste the key into Settings → Library — or it is detected automatically if you returned via the in-app *Buy* button.
@@ -145,6 +147,12 @@ Instead:
 
 We will not pretend to ship faster than we do. We will pretend less than most software companies do.
 
+### User-amplification (the flywheel we actually want)
+
+The maintainer can't ship enough tutorials alone. The audience can — if we make recording effortless. **Roadmap [F7](roadmap.md#f7--tutorial-recorder-in-app-screen--mic-capture) ships an in-app screen + mic recorder** built on browser-native APIs (no third-party tools, no plugin install, no account). One click, screen + audio + optional webcam PiP, save as WebM. The friction between "I just made a cool glitch" and "this is on my Twitter" should be twenty seconds, not twenty minutes.
+
+This is not a feature; it's distribution infrastructure. Every user who posts a slammer recording is a free billboard pointing at a tribe member who didn't know slammer existed yet. The recorder stays free forever — gating it behind Pro would defeat the entire mechanic.
+
 ---
 
 ## What we will not do
@@ -152,15 +160,15 @@ We will not pretend to ship faster than we do. We will pretend less than most so
 A short list of things that have come up and been deliberately set aside:
 
 - **No subscription.** Not for the app, not for Pro, not for plugins. The tribe values one-time payment; we listen.
-- **No cloud account, no telemetry beyond anonymous page views.** Your projects belong to you, on your machine.
-- **No upgrade nag screens, no popups on launch, no "complete your account."** Premium items advertise their existence with a small price tag in the menu, that's it.
+- **No cloud account, no telemetry beyond anonymous page views.** Your projects belong to you, on your machine. Concretely (v1): **Cloudflare Web Analytics** records page views, unique-visitor counts (cookieless, derived without identifiers), country-level location, browser/OS family, and referrers. No cookies. No fingerprinting. No tracking of which effects you use, what your layers contain, where you click, or how long you stay. A **Settings → Privacy** toggle disables the beacon entirely. We honour Do-Not-Track. If a future product question genuinely needs richer engagement data, we'll migrate to a self-hosted EU stack (Plausible on Hetzner or Umami on Cloudflare Pages + Supabase) — same privacy posture, same opt-out. See [roadmap.md → Phase 28 → Analytics](roadmap.md#analytics--dsgvogdpr-compliant-options-open-source--eu-hosted-only).
+- **No upgrade nag screens, no popups on launch, no "complete your account."** Add-on items advertise their existence with a small price tag in the menu, that's it.
 - **No NFT, no crypto, no Web3.** It's 2026, the answer is still no.
 - **No "AI features that talk to our servers."** All AI features are bring-your-own-key (fal.ai). We never see your prompts or outputs.
 - **No DRM, no online activation requirement.** Honor-system licenses.
-- **No removal or deprecation of free features to push premium.** What is free at public launch stays free.
+- **No removal or deprecation of free features to push add-ons.** What is marked free at shop launch stays free.
 - **No third-party plugin marketplace** in v1. Plugin developers can sell their own work directly. A community marketplace is a long-term goal (see roadmap **F4**), not a v1 deliverable.
 - **No mobile apps** in v1. Browser-only.
-- **No "AI-generated" filler plugins.** Every premium item must pass the three tests above.
+- **No "AI-generated" filler plugins.** Every add-on item must pass the three tests above.
 
 ---
 

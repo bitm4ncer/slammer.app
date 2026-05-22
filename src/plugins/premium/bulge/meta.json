@@ -1,0 +1,21 @@
+{
+  "id": "bulge",
+  "pack": "liquid-pack",
+  "tagline": "Real spherical projection — pinch and bulge with depth-true distortion",
+  "description": "True hemisphere warp computed per-pixel in the browser. Four falloff curves — Spherical (fish-eye projection), Smooth (cosine bell), Cone (linear ramp), and Pinch-Bell (sine ring) — each producing a distinct character from subtle lens correction to extreme pinch. Positive Strength pushes pixels outward like a convex lens; negative pulls inward like a concave one. Free Aspect mode decouples X and Y for oval bulges and anamorphic squeezes. Bilinear sampling eliminates stepping artefacts on fine detail.",
+  "faq": [
+    {
+      "q": "What is the difference between Spherical and Smooth falloff?",
+      "a": "Spherical uses the true hemisphere projection formula — the same model a real fish-eye or spherize lens uses. Smooth uses a cosine bell that ramps off more gradually toward the edge, giving a softer, less geometric look."
+    },
+    {
+      "q": "How do I pinch instead of bulge?",
+      "a": "Drag Strength into negative values. Negative strength pulls pixels toward the center instead of pushing them outward, producing the pinch (concave lens) effect."
+    },
+    {
+      "q": "What does Free Aspect do?",
+      "a": "Free Aspect unlocks separate Strength X and Strength Y sliders so the distortion field is elliptical rather than circular. Use it for anamorphic lens effects or to squash/stretch along one axis only."
+    }
+  ],
+  "screenshots": []
+}

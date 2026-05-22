@@ -1,0 +1,16 @@
+{
+  "id": "organic-gradient",
+  "name": "Organic Gradient",
+  "version": "1.0.0",
+  "pack": "infinity-gradients",
+  "packName": "Infinity Gradients Pack",
+  "tagline": "Domain-warped noise meets multi-stop gradients",
+  "description": "Shader-quality organic gradients powered by domain-warped simplex noise. Multi-stop colour mapping with linear, spherical, and conic modes. Animate the field live or freeze it at any moment in the cycle.",
+  "icon": "wand-magic-sparkles",
+  "category": "render",
+  "pro": true,
+  "tags": ["gradient", "noise", "generative", "warp", "animate"],
+  "previewImage": null,
+  "price": null,
+  "bundledWithPack": true
+}

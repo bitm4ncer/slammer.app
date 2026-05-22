@@ -10,6 +10,7 @@ export default {
   type: 'tool',
   icon: 'arrow-down-wide-short',          // sorted bars — visually evokes pixel-row reordering
   category: 'glitch',
+  description: 'Sort pixel rows by brightness',
   pro: true,
   pack: 'glitch-pack',
 

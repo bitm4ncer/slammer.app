@@ -12,6 +12,9 @@ const DEFAULTS = {
   // Appearance
   accent: '#8aff8c',
   customLayerColors: true,
+  // Phase 30 — UI theme. Values map 1:1 to the <html data-theme> attribute
+  // and to the override blocks in src/style/themes/<name>.css.
+  theme: 'dark',                // 'dark' | 'anthracite' | 'light'
   // Workflow
   keepEffectsOpen: false,
   textToPathReplace: true,
@@ -62,9 +65,12 @@ const DEFAULTS = {
 };
 
 // Curated accent palette — clicking a swatch sets accent without opening the
-// native colour picker. Designed to span the visual gamut without harming
-// readability against --background and --surface.
+// native colour picker. First row is bright pastels that read well on dark
+// surfaces; second row is darker, saturated variants that hold contrast on
+// the light theme. Users on Light pick from row 2; users on Dark pick from
+// row 1 — the picker doesn't enforce this, the choice is theirs.
 const ACCENT_PRESETS = [
+  // Bright — readable on Dark / Anthracite surfaces
   '#8aff8c',  // slammer green (default)
   '#7fb3ff',  // sky
   '#c39bff',  // lavender
@@ -73,6 +79,11 @@ const ACCENT_PRESETS = [
   '#7fffea',  // cyan
   '#ff5b5b',  // siren red
   '#f0f0f0',  // mono
+  // Darker — needed for contrast on the Light theme
+  '#1f9c52',  // forest green
+  '#2563eb',  // royal blue
+  '#7c3aed',  // deep violet
+  '#0f172a',  // ink
 ];
 
 const TABS = [
@@ -110,10 +121,31 @@ export function onSettingsChange(fn) {
 }
 
 export function applyAccent(hex) {
-  document.documentElement.style.setProperty('--primary', hex);
-  document.documentElement.style.setProperty('--primary-hover', darken(hex, 0.18));
   const { r, g, b } = hexToRgb(hex);
-  document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+  const hover = darken(hex, 0.18);
+  const rgb = `${r}, ${g}, ${b}`;
+  // Phase 30 canonical tokens — written inline on documentElement so they
+  // win the cascade against the active theme file's :root[data-theme=...]
+  // declarations. Without this, the accent picker silently no-ops because
+  // theme files set --sl-accent-primary to their own concrete value.
+  const root = document.documentElement.style;
+  root.setProperty('--sl-accent-primary', hex);
+  root.setProperty('--sl-accent-primary-hover', hover);
+  root.setProperty('--sl-accent-primary-rgb', rgb);
+  // Back-compat bare tokens — still consumed by a handful of inline JS
+  // styles that haven't been migrated. Remove once nothing references them.
+  root.setProperty('--primary', hex);
+  root.setProperty('--primary-hover', hover);
+  root.setProperty('--primary-rgb', rgb);
+}
+
+// Phase 30 — apply the UI theme by setting the data-theme attribute on
+// <html>. theme-bridge.js watches this attribute via MutationObserver and
+// pushes the resolved --sl-* values into Konva nodes.
+const VALID_THEMES = new Set(['dark', 'anthracite', 'light']);
+export function applyTheme(value) {
+  const v = VALID_THEMES.has(value) ? value : 'dark';
+  document.documentElement.setAttribute('data-theme', v);
 }
 
 function hexToRgb(hex) {
@@ -261,6 +293,23 @@ function renderAppearance() {
       </div>
 
       <div class="settings-group">
+        <div class="settings-group-head"><span class="settings-group-tick"></span>Theme</div>
+        <div class="settings-row">
+          <div class="settings-rowlabelblock">
+            <label class="settings-rowlabel" for="setTheme">UI theme</label>
+            <span class="settings-rowhint">Dark — the default canvas-friendly palette. Anthracite — cooler neutral greys. Light — inverted brightness ladder for bright rooms.</span>
+          </div>
+          <div class="settings-control">
+            <div class="settings-segmented" data-key="theme" id="setTheme">
+              <button type="button" class="settings-seg ${s.theme === 'dark' || !s.theme ? 'active' : ''}" data-v="dark">Dark</button>
+              <button type="button" class="settings-seg ${s.theme === 'anthracite' ? 'active' : ''}" data-v="anthracite">Anthracite</button>
+              <button type="button" class="settings-seg ${s.theme === 'light' ? 'active' : ''}" data-v="light">Light</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
         <div class="settings-group-head"><span class="settings-group-tick"></span>Layer chrome</div>
         ${toggleRowHTML('setCustomLayerColors', 'Custom layer colours', s.customLayerColors,
           'Each layer gets its own pastel accent for selection handles and effect-card tint.')}
@@ -285,6 +334,19 @@ function wireAppearance(root) {
   swatches.forEach((s) => s.addEventListener('click', () => setAccent(s.dataset.hex)));
 
   bindToggle(root, 'setCustomLayerColors', 'customLayerColors');
+
+  // Theme segmented control — applies immediately + persists.
+  const themeSeg = root.querySelector('#setTheme');
+  if (themeSeg) {
+    themeSeg.querySelectorAll('.settings-seg').forEach((b) => {
+      b.addEventListener('click', () => {
+        const v = b.dataset.v;
+        themeSeg.querySelectorAll('.settings-seg').forEach((x) => x.classList.toggle('active', x === b));
+        applyTheme(v);
+        setSettings({ theme: v });
+      });
+    });
+  }
 }
 
 function renderWorkflow() {
@@ -782,6 +844,7 @@ function wireAbout(root) {
     };
     localStorage.setItem(STORE_KEY, JSON.stringify({ ...DEFAULTS, ...preserved }));
     applyAccent(DEFAULTS.accent);
+    applyTheme(DEFAULTS.theme);
     listeners.forEach((fn) => fn(getSettings()));
     // Re-open to reflect new state.
     document.querySelector('.settings-close')?.click();

@@ -4,7 +4,8 @@
 // by remapping the radial coordinate based on a falloff curve.
 // Pixels outside radius are left unchanged (or blended via Mix).
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
 export default {
   id: 'bulge',
@@ -13,6 +14,7 @@ export default {
   type: 'filter',
   icon: 'up-right-and-down-left-from-center',
   category: 'distort',
+  description: 'Push pixels outward from a centre',
   pro: true,
   pack: 'liquid-pack',
 
@@ -134,16 +136,16 @@ export default {
     function rebuild() {
       root.innerHTML = '';
 
-      root.appendChild(sliderRow({
-        label: 'Center X', min: 0, max: 100, step: 1,
-        value: local.centerX, defaultValue: 50, suffix: '%',
-        onChange: (v) => { local.centerX = v; onChange({ centerX: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Center Y', min: 0, max: 100, step: 1,
-        value: local.centerY, defaultValue: 50, suffix: '%',
-        onChange: (v) => { local.centerY = v; onChange({ centerY: v }); },
+      root.appendChild(createXYPadWidget({
+        x: local.centerX ?? 50,
+        y: local.centerY ?? 50,
+        defaultX: 50,
+        defaultY: 50,
+        onChange: ({ x, y }) => {
+          local.centerX = x;
+          local.centerY = y;
+          onChange({ centerX: x, centerY: y });
+        },
       }));
 
       root.appendChild(sliderRow({
@@ -175,7 +177,7 @@ export default {
           onChange: (v) => { local.strengthY = v; onChange({ strengthY: v }); },
         }));
       } else {
-        root.appendChild(sliderRow({
+        root.appendChild(sliderRowLg({
           label: 'Strength', min: -100, max: 100, step: 1,
           value: local.strength, defaultValue: 50,
           onChange: (v) => { local.strength = v; onChange({ strength: v }); },

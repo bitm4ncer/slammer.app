@@ -8,7 +8,8 @@
 // shift this effect's focal point. Original alpha is restored after the
 // warp so the silhouette stays put.
 
-import { sliderRow, pillGroup, toggleRow, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowLg, pillGroup, toggleRow, makeRoot } from '../../shared/ui-helpers.js';
+import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
 export default {
   id: 'twirl',
@@ -17,6 +18,7 @@ export default {
   type: 'filter',
   icon: 'arrows-spin',
   category: 'distort',
+  description: 'Spiral rotation around a point',
   pro: true,
   pack: 'liquid-pack',
 
@@ -182,22 +184,22 @@ export default {
     function rebuild() {
       root.innerHTML = '';
 
-      root.appendChild(sliderRow({
+      root.appendChild(sliderRowLg({
         label: 'Angle', min: -1080, max: 1080, step: 1,
         value: local.angle, defaultValue: 180, suffix: '°',
         onChange: (v) => { local.angle = v; onChange({ angle: v }); },
       }));
 
-      root.appendChild(sliderRow({
-        label: 'Center X', min: 0, max: 100, step: 1,
-        value: local.centerX, defaultValue: 50, suffix: '%',
-        onChange: (v) => { local.centerX = v; onChange({ centerX: v }); },
-      }));
-
-      root.appendChild(sliderRow({
-        label: 'Center Y', min: 0, max: 100, step: 1,
-        value: local.centerY, defaultValue: 50, suffix: '%',
-        onChange: (v) => { local.centerY = v; onChange({ centerY: v }); },
+      root.appendChild(createXYPadWidget({
+        x: local.centerX ?? 50,
+        y: local.centerY ?? 50,
+        defaultX: 50,
+        defaultY: 50,
+        onChange: ({ x, y }) => {
+          local.centerX = x;
+          local.centerY = y;
+          onChange({ centerX: x, centerY: y });
+        },
       }));
 
       root.appendChild(sliderRow({

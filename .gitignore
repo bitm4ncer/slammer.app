@@ -14,4 +14,15 @@ notes/
 
 # Premium plugins under development (not part of public AGPL distribution)
 # Lives in its own private git repo. See src/plugins/premium-loader.js.
-src/plugins/premium/
+#
+# TEMPORARILY DISABLED during the public-BETA phase so Cloudflare Pages can
+# build with the full feature set (Reaktor, Slime Mold, Plastic, Holographic
+# Foil, Datamosh, etc.) for beta testers. Repo stays PRIVATE so the AGPL
+# distribution clause does not bite.
+#
+# When Phase 28 commerce ships (Polar.sh + Cloudflare Worker license
+# validator + R2 bucket), re-enable this line AND filter the premium folder
+# out of git history before any public-repo move:
+#   git filter-repo --path src/plugins/premium/ --invert-paths
+# See STRATEGY.md "BETA period" section + roadmap.md Phase 28.
+# src/plugins/premium/

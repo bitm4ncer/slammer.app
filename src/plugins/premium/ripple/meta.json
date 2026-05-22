@@ -1,0 +1,21 @@
+{
+  "id": "ripple",
+  "pack": "liquid-pack",
+  "tagline": "Concentric waves with four shapes and four polarisations — pond drops, VHS rolls, neon grids",
+  "description": "Wave distortion with a real physics backbone. Four wave shapes — Sine, Triangle, Square, and Sawtooth — produce everything from gentle water rings to hard digital glitches. Four polarisation modes — Radial (pond-drop circles), Horizontal, Vertical, and Diagonal — change where the wave energy propagates. A Decay slider attenuates the wave from center outward so inner rings are tightest and outer rings fade naturally. Phase shifts the entire wave cycle for animation-ready offset loops.",
+  "faq": [
+    {
+      "q": "What polarisation should I use for a classic water-drop effect?",
+      "a": "Radial. It propagates the wave as concentric rings from the center point — exactly how a drop hitting still water looks. Set Wavelength around 30 px and Amplitude around 8-12 px for a realistic scale."
+    },
+    {
+      "q": "How do I get a VHS scan-line roll look?",
+      "a": "Set Polarisation to Vertical, Wave to Sawtooth, Amplitude high (40-60 px), Wavelength wide (80-120 px), and Decay near zero. This mimics the way VHS tracking errors bend horizontal scan lines."
+    },
+    {
+      "q": "Can I animate the ripple?",
+      "a": "Phase is designed for this — increment it from 0 to 360 across frames for a forward-flowing wave. Combined with a Square wave and Horizontal polarisation you get the classic neon-grid warp."
+    }
+  ],
+  "screenshots": []
+}

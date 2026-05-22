@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 
-// GitHub Pages serves project sites under /<repo>/, so we need a base
-// path of '/slammer.app/' for production builds. Dev keeps './' so the
-// app can also be opened from file:// or any subpath.
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/slammer.app/' : './',
+// Production deploy is Cloudflare Pages at slammer-app.pages.dev (root
+// domain). Use './' for both dev and build so the result is also openable
+// from file:// or any subpath without breaking asset URLs. (Previously this
+// was '/slammer.app/' for GitHub Pages project-site hosting — that
+// produced broken absolute asset paths on the Cloudflare root domain.)
+export default defineConfig(() => ({
+  base: './',
   server: { port: 5173, open: false },
   build: {
     outDir: 'dist',

@@ -1,0 +1,16 @@
+{
+  "id": "mesh-gradient",
+  "name": "Mesh Gradient",
+  "version": "1.0.0",
+  "pack": "infinity-gradients",
+  "packName": "Infinity Gradients Pack",
+  "tagline": "Bicubic mesh gradient with on-canvas direct manipulation",
+  "description": "Real bicubic Catmull-Rom mesh gradient with a (2..5)×(2..5) control-point grid. Drag handles directly on the canvas to sculpt the mesh. Shift colours per-point. Add grain, vignette, and five blend modes for seamless compositing over any layer.",
+  "icon": "border-all",
+  "category": "render",
+  "pro": true,
+  "tags": ["gradient", "mesh", "bicubic", "generative", "color"],
+  "previewImage": null,
+  "price": null,
+  "bundledWithPack": true
+}

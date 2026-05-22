@@ -1,0 +1,29 @@
+{
+  "id": "halftone-raster",
+  "pack": "raster-pack",
+  "tagline": "Real print-shop dot raster — per-channel CMY angles, Euclidean dot transitions, paper texture.",
+  "description": "True offset-press halftone separation rendered in the browser. Three colour modes (monochrome, RGB-separated, CMYK-separated) render independent dot screens at industry-standard angles (C=15°, M=75°, Y=0°, K=45°) to eliminate moiré. Six dot shapes — including the Euclidean smooth dot-to-square-to-dot transition beloved by print technicians. Dot gain simulation, sub-pixel anti-aliasing, per-channel pitch multipliers, ink-colour overrides for spot-colour work, and a K-plate generator via UCR. Finished with a vignette pass for the photographed-print look.",
+  "faq": [
+    {
+      "q": "How is this different from the Dithering plugin's Halftone mode?",
+      "a": "The Dithering plugin's halftone is a single-channel Floyd-Steinberg-style approximation with a recolour pass. Halftone Raster renders four fully-separated CMY+K screens at true industry angles with configurable dot shapes, pitch, and gain — the same model an offset printing press uses."
+    },
+    {
+      "q": "What is the Euclidean dot shape?",
+      "a": "Euclidean rosette is the dot shape used by high-quality commercial printers. Coverage below 50% prints a circle growing outward; above 50% it prints paper-coloured circles shrinking into solid ink, with a smooth crossover at the midpoint to eliminate the harsh band you get from a pure circle function."
+    },
+    {
+      "q": "What are the industry-standard CMYK angles?",
+      "a": "C=15°, M=75°, Y=0°, K=45°. These four angles are spaced to maximise the distance between screen pairs, which minimises the moiré interference pattern. The 'Use industry preset' button restores these defaults in one click."
+    },
+    {
+      "q": "Can I use custom ink colours?",
+      "a": "Yes. Each CMYK channel has an ink override colour picker. Leave it at its pure CMY default for accurate colour separation, or dial in a Pantone-equivalent for spot-colour work — e.g. replace Cyan with a brand blue."
+    },
+    {
+      "q": "Why does sub-pixel anti-aliasing make rendering slower?",
+      "a": "Sub-pixel mode samples each output pixel four times (at quarter-pixel offsets) and averages the results. This eliminates jaggies on small dots at the cost of 4× the per-pixel work. For final output, it's worth it; for live preview, switch to Soft."
+    }
+  ],
+  "screenshots": []
+}

@@ -1,0 +1,9510 @@
+{
+  "categories": [
+    "pastel",
+    "neon",
+    "sunset",
+    "monochrome",
+    "vintage",
+    "vaporwave",
+    "brand",
+    "earth",
+    "spectrum",
+    "metallic",
+    "cosmic",
+    "jewel",
+    "food",
+    "aurora",
+    "duotone",
+    "weather",
+    "films",
+    "cities",
+    "art-movements",
+    "candy",
+    "texture",
+    "custom"
+  ],
+  "gradients": [
+    {
+      "id": "sunset-classic",
+      "name": "Sunset Classic",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1e0a3c"
+        },
+        {
+          "at": 0.5,
+          "color": "#fc476c"
+        },
+        {
+          "at": 1,
+          "color": "#ffd166"
+        }
+      ],
+      "tags": [
+        "warm",
+        "evening",
+        "purple",
+        "orange"
+      ]
+    },
+    {
+      "id": "golden-hour",
+      "name": "Golden Hour",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f7971e"
+        },
+        {
+          "at": 1,
+          "color": "#ffd200"
+        }
+      ],
+      "tags": [
+        "warm",
+        "gold",
+        "yellow",
+        "afternoon"
+      ]
+    },
+    {
+      "id": "dusk-ember",
+      "name": "Dusk Ember",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0f0c29"
+        },
+        {
+          "at": 0.45,
+          "color": "#302b63"
+        },
+        {
+          "at": 1,
+          "color": "#ff6b6b"
+        }
+      ],
+      "tags": [
+        "dark",
+        "purple",
+        "red",
+        "evening"
+      ]
+    },
+    {
+      "id": "phoenix-rise",
+      "name": "Phoenix Rise",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f83600"
+        },
+        {
+          "at": 0.5,
+          "color": "#fe8c00"
+        },
+        {
+          "at": 1,
+          "color": "#f9d423"
+        }
+      ],
+      "tags": [
+        "fire",
+        "orange",
+        "yellow",
+        "warm"
+      ]
+    },
+    {
+      "id": "crimson-dusk",
+      "name": "Crimson Dusk",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#4b0082"
+        },
+        {
+          "at": 0.4,
+          "color": "#8b0000"
+        },
+        {
+          "at": 0.7,
+          "color": "#dc143c"
+        },
+        {
+          "at": 1,
+          "color": "#ff8c00"
+        }
+      ],
+      "tags": [
+        "dark",
+        "red",
+        "crimson",
+        "purple"
+      ]
+    },
+    {
+      "id": "opal-sky",
+      "name": "Opal Sky",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#667eea"
+        },
+        {
+          "at": 0.5,
+          "color": "#f093fb"
+        },
+        {
+          "at": 1,
+          "color": "#f5a623"
+        }
+      ],
+      "tags": [
+        "purple",
+        "pink",
+        "gold",
+        "sky"
+      ]
+    },
+    {
+      "id": "candy-floss",
+      "name": "Candy Floss",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffcce0"
+        },
+        {
+          "at": 0.5,
+          "color": "#e8d5f5"
+        },
+        {
+          "at": 1,
+          "color": "#c3e8fd"
+        }
+      ],
+      "tags": [
+        "soft",
+        "pink",
+        "purple",
+        "blue"
+      ]
+    },
+    {
+      "id": "mint-sorbet",
+      "name": "Mint Sorbet",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8edea"
+        },
+        {
+          "at": 1,
+          "color": "#fed6e3"
+        }
+      ],
+      "tags": [
+        "mint",
+        "pink",
+        "soft",
+        "fresh"
+      ]
+    },
+    {
+      "id": "peach-cream",
+      "name": "Peach Cream",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffecd2"
+        },
+        {
+          "at": 1,
+          "color": "#fcb69f"
+        }
+      ],
+      "tags": [
+        "peach",
+        "warm",
+        "soft",
+        "cream"
+      ]
+    },
+    {
+      "id": "lavender-mist",
+      "name": "Lavender Mist",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e0c3fc"
+        },
+        {
+          "at": 0.5,
+          "color": "#c3b1e1"
+        },
+        {
+          "at": 1,
+          "color": "#8ec5fc"
+        }
+      ],
+      "tags": [
+        "lavender",
+        "purple",
+        "blue",
+        "soft"
+      ]
+    },
+    {
+      "id": "cotton-candy",
+      "name": "Cotton Candy",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f9a8d4"
+        },
+        {
+          "at": 0.5,
+          "color": "#c4b5fd"
+        },
+        {
+          "at": 1,
+          "color": "#93c5fd"
+        }
+      ],
+      "tags": [
+        "pink",
+        "purple",
+        "blue",
+        "sweet"
+      ]
+    },
+    {
+      "id": "lemon-chiffon",
+      "name": "Lemon Chiffon",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fef9c3"
+        },
+        {
+          "at": 0.5,
+          "color": "#bef264"
+        },
+        {
+          "at": 1,
+          "color": "#a7f3d0"
+        }
+      ],
+      "tags": [
+        "yellow",
+        "green",
+        "mint",
+        "fresh"
+      ]
+    },
+    {
+      "id": "blush-rose",
+      "name": "Blush Rose",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffe4e8"
+        },
+        {
+          "at": 0.4,
+          "color": "#ffc0cb"
+        },
+        {
+          "at": 1,
+          "color": "#ffaec0"
+        }
+      ],
+      "tags": [
+        "blush",
+        "pink",
+        "rose",
+        "gentle"
+      ]
+    },
+    {
+      "id": "electric-indigo",
+      "name": "Electric Indigo",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a0a"
+        },
+        {
+          "at": 0.4,
+          "color": "#4400ff"
+        },
+        {
+          "at": 1,
+          "color": "#00f5ff"
+        }
+      ],
+      "tags": [
+        "neon",
+        "blue",
+        "purple",
+        "dark"
+      ]
+    },
+    {
+      "id": "cyber-punk",
+      "name": "Cyberpunk",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0221"
+        },
+        {
+          "at": 0.4,
+          "color": "#ff00a0"
+        },
+        {
+          "at": 0.7,
+          "color": "#ff6600"
+        },
+        {
+          "at": 1,
+          "color": "#00ff88"
+        }
+      ],
+      "tags": [
+        "neon",
+        "pink",
+        "green",
+        "orange",
+        "dark"
+      ]
+    },
+    {
+      "id": "plasma-burst",
+      "name": "Plasma Burst",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#6600ff"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff00cc"
+        },
+        {
+          "at": 1,
+          "color": "#00ffcc"
+        }
+      ],
+      "tags": [
+        "neon",
+        "plasma",
+        "purple",
+        "cyan"
+      ]
+    },
+    {
+      "id": "neon-sunrise",
+      "name": "Neon Sunrise",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0099"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff6600"
+        },
+        {
+          "at": 1,
+          "color": "#ffff00"
+        }
+      ],
+      "tags": [
+        "neon",
+        "pink",
+        "orange",
+        "yellow"
+      ]
+    },
+    {
+      "id": "acid-matrix",
+      "name": "Acid Matrix",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ff41"
+        },
+        {
+          "at": 1,
+          "color": "#003b00"
+        }
+      ],
+      "tags": [
+        "neon",
+        "green",
+        "matrix",
+        "dark"
+      ]
+    },
+    {
+      "id": "ultraviolet",
+      "name": "Ultraviolet",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a001a"
+        },
+        {
+          "at": 0.5,
+          "color": "#cc00ff"
+        },
+        {
+          "at": 1,
+          "color": "#ffffff"
+        }
+      ],
+      "tags": [
+        "neon",
+        "purple",
+        "uv",
+        "white"
+      ]
+    },
+    {
+      "id": "hot-ice",
+      "name": "Hot Ice",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff00ff"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ffff"
+        },
+        {
+          "at": 1,
+          "color": "#ffffff"
+        }
+      ],
+      "tags": [
+        "neon",
+        "magenta",
+        "cyan",
+        "white"
+      ]
+    },
+    {
+      "id": "carbon",
+      "name": "Carbon",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0d0d"
+        },
+        {
+          "at": 1,
+          "color": "#4a4a4a"
+        }
+      ],
+      "tags": [
+        "dark",
+        "black",
+        "grey",
+        "minimal"
+      ]
+    },
+    {
+      "id": "arctic-white",
+      "name": "Arctic White",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffffff"
+        },
+        {
+          "at": 1,
+          "color": "#e8e8e8"
+        }
+      ],
+      "tags": [
+        "white",
+        "light",
+        "minimal",
+        "clean"
+      ]
+    },
+    {
+      "id": "midnight-slate",
+      "name": "Midnight Slate",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c1c2e"
+        },
+        {
+          "at": 0.5,
+          "color": "#2d2d44"
+        },
+        {
+          "at": 1,
+          "color": "#3a3a5c"
+        }
+      ],
+      "tags": [
+        "dark",
+        "blue-grey",
+        "navy",
+        "night"
+      ]
+    },
+    {
+      "id": "silver-mist",
+      "name": "Silver Mist",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bdc3c7"
+        },
+        {
+          "at": 1,
+          "color": "#2c3e50"
+        }
+      ],
+      "tags": [
+        "silver",
+        "grey",
+        "dark",
+        "steel"
+      ]
+    },
+    {
+      "id": "warm-ash",
+      "name": "Warm Ash",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#2c2c2c"
+        },
+        {
+          "at": 0.5,
+          "color": "#5a5a5a"
+        },
+        {
+          "at": 1,
+          "color": "#8a8a8a"
+        }
+      ],
+      "tags": [
+        "grey",
+        "dark",
+        "neutral",
+        "warm"
+      ]
+    },
+    {
+      "id": "sepia-tone",
+      "name": "Sepia Tone",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#2c1810"
+        },
+        {
+          "at": 0.5,
+          "color": "#8b5e3c"
+        },
+        {
+          "at": 1,
+          "color": "#d4a97a"
+        }
+      ],
+      "tags": [
+        "sepia",
+        "brown",
+        "vintage",
+        "aged"
+      ]
+    },
+    {
+      "id": "kodachrome",
+      "name": "Kodachrome",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#d4a017"
+        },
+        {
+          "at": 0.33,
+          "color": "#c0392b"
+        },
+        {
+          "at": 0.66,
+          "color": "#2980b9"
+        },
+        {
+          "at": 1,
+          "color": "#1abc9c"
+        }
+      ],
+      "tags": [
+        "retro",
+        "film",
+        "saturated",
+        "classic"
+      ]
+    },
+    {
+      "id": "faded-denim",
+      "name": "Faded Denim",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#4a6fa5"
+        },
+        {
+          "at": 0.5,
+          "color": "#7a9ec4"
+        },
+        {
+          "at": 1,
+          "color": "#a8c4de"
+        }
+      ],
+      "tags": [
+        "blue",
+        "faded",
+        "denim",
+        "muted"
+      ]
+    },
+    {
+      "id": "retro-summer",
+      "name": "Retro Summer",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f0932b"
+        },
+        {
+          "at": 0.5,
+          "color": "#eb4d4b"
+        },
+        {
+          "at": 1,
+          "color": "#6ab04c"
+        }
+      ],
+      "tags": [
+        "retro",
+        "warm",
+        "summer",
+        "70s"
+      ]
+    },
+    {
+      "id": "flea-market",
+      "name": "Flea Market",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#c8a882"
+        },
+        {
+          "at": 0.4,
+          "color": "#a0785e"
+        },
+        {
+          "at": 0.7,
+          "color": "#6e4f3e"
+        },
+        {
+          "at": 1,
+          "color": "#3d2617"
+        }
+      ],
+      "tags": [
+        "brown",
+        "tan",
+        "vintage",
+        "earthy"
+      ]
+    },
+    {
+      "id": "mimeograph",
+      "name": "Mimeograph",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f5f0e8"
+        },
+        {
+          "at": 0.5,
+          "color": "#8b7355"
+        },
+        {
+          "at": 1,
+          "color": "#4a3728"
+        }
+      ],
+      "tags": [
+        "cream",
+        "brown",
+        "muted",
+        "paper"
+      ]
+    },
+    {
+      "id": "synthwave-grid",
+      "name": "Synthwave Grid",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0221"
+        },
+        {
+          "at": 0.35,
+          "color": "#5e16ab"
+        },
+        {
+          "at": 0.7,
+          "color": "#ff2d9b"
+        },
+        {
+          "at": 1,
+          "color": "#ff9f00"
+        }
+      ],
+      "tags": [
+        "synthwave",
+        "purple",
+        "pink",
+        "retro-futurism"
+      ]
+    },
+    {
+      "id": "miami-vice",
+      "name": "Miami Vice",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc5c7d"
+        },
+        {
+          "at": 1,
+          "color": "#6a82fb"
+        }
+      ],
+      "tags": [
+        "pink",
+        "blue",
+        "80s",
+        "pastel-neon"
+      ]
+    },
+    {
+      "id": "retrowave",
+      "name": "Retrowave",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#08005d"
+        },
+        {
+          "at": 0.45,
+          "color": "#1c0073"
+        },
+        {
+          "at": 0.75,
+          "color": "#7b00d4"
+        },
+        {
+          "at": 1,
+          "color": "#f700a8"
+        }
+      ],
+      "tags": [
+        "dark",
+        "purple",
+        "pink",
+        "80s"
+      ]
+    },
+    {
+      "id": "vapor-dreams",
+      "name": "Vapor Dreams",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff94c2"
+        },
+        {
+          "at": 0.33,
+          "color": "#c47ef8"
+        },
+        {
+          "at": 0.66,
+          "color": "#70b8ff"
+        },
+        {
+          "at": 1,
+          "color": "#a8f0ff"
+        }
+      ],
+      "tags": [
+        "pastel",
+        "pink",
+        "purple",
+        "blue",
+        "aesthetic"
+      ]
+    },
+    {
+      "id": "glitch-city",
+      "name": "Glitch City",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0033"
+        },
+        {
+          "at": 0.25,
+          "color": "#6600cc"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff0099"
+        },
+        {
+          "at": 0.75,
+          "color": "#00ffcc"
+        },
+        {
+          "at": 1,
+          "color": "#0033ff"
+        }
+      ],
+      "tags": [
+        "glitch",
+        "multicolor",
+        "dark",
+        "cyberpunk"
+      ]
+    },
+    {
+      "id": "mallsoft",
+      "name": "Mallsoft",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e8b4f8"
+        },
+        {
+          "at": 0.5,
+          "color": "#f4c6e7"
+        },
+        {
+          "at": 1,
+          "color": "#b3e5fc"
+        }
+      ],
+      "tags": [
+        "pastel",
+        "pink",
+        "blue",
+        "soft",
+        "aesthetic"
+      ]
+    },
+    {
+      "id": "terraform-green",
+      "name": "Terraform Green",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#623ce4"
+        },
+        {
+          "at": 1,
+          "color": "#4ca3dd"
+        }
+      ],
+      "tags": [
+        "brand",
+        "purple",
+        "blue",
+        "tech"
+      ]
+    },
+    {
+      "id": "vercel-gradient",
+      "name": "Vercel Dark",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 1,
+          "color": "#333333"
+        }
+      ],
+      "tags": [
+        "brand",
+        "dark",
+        "minimal",
+        "black"
+      ]
+    },
+    {
+      "id": "stripe-violet",
+      "name": "Stripe Violet",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#635bff"
+        },
+        {
+          "at": 0.5,
+          "color": "#8f89ff"
+        },
+        {
+          "at": 1,
+          "color": "#00d4ff"
+        }
+      ],
+      "tags": [
+        "brand",
+        "purple",
+        "blue",
+        "fintech"
+      ]
+    },
+    {
+      "id": "figma-spectrum",
+      "name": "Design Spectrum",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f24e1e"
+        },
+        {
+          "at": 0.25,
+          "color": "#ff7262"
+        },
+        {
+          "at": 0.5,
+          "color": "#a259ff"
+        },
+        {
+          "at": 0.75,
+          "color": "#1abcfe"
+        },
+        {
+          "at": 1,
+          "color": "#0acf83"
+        }
+      ],
+      "tags": [
+        "brand",
+        "multicolor",
+        "design",
+        "spectrum"
+      ]
+    },
+    {
+      "id": "notion-cream",
+      "name": "Notion Cream",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f7f6f3"
+        },
+        {
+          "at": 1,
+          "color": "#eae8e3"
+        }
+      ],
+      "tags": [
+        "brand",
+        "cream",
+        "neutral",
+        "minimal"
+      ]
+    },
+    {
+      "id": "linear-purple",
+      "name": "Linear Purple",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5c52e8"
+        },
+        {
+          "at": 0.5,
+          "color": "#7c72ea"
+        },
+        {
+          "at": 1,
+          "color": "#9b8ef0"
+        }
+      ],
+      "tags": [
+        "brand",
+        "purple",
+        "monochrome",
+        "tech"
+      ]
+    },
+    {
+      "id": "terra-cotta",
+      "name": "Terra Cotta",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5d3a1a"
+        },
+        {
+          "at": 0.5,
+          "color": "#c1440e"
+        },
+        {
+          "at": 1,
+          "color": "#e07b39"
+        }
+      ],
+      "tags": [
+        "earth",
+        "clay",
+        "brown",
+        "warm"
+      ]
+    },
+    {
+      "id": "moss-stone",
+      "name": "Moss Stone",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a2e1a"
+        },
+        {
+          "at": 0.5,
+          "color": "#3d6b35"
+        },
+        {
+          "at": 1,
+          "color": "#7ab870"
+        }
+      ],
+      "tags": [
+        "earth",
+        "green",
+        "forest",
+        "moss"
+      ]
+    },
+    {
+      "id": "desert-sand",
+      "name": "Desert Sand",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f5deb3"
+        },
+        {
+          "at": 0.4,
+          "color": "#d4a96a"
+        },
+        {
+          "at": 1,
+          "color": "#a0522d"
+        }
+      ],
+      "tags": [
+        "earth",
+        "sand",
+        "warm",
+        "tan"
+      ]
+    },
+    {
+      "id": "ocean-floor",
+      "name": "Ocean Floor",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a1628"
+        },
+        {
+          "at": 0.5,
+          "color": "#1a3a5c"
+        },
+        {
+          "at": 1,
+          "color": "#2e7d9e"
+        }
+      ],
+      "tags": [
+        "earth",
+        "ocean",
+        "deep",
+        "blue"
+      ]
+    },
+    {
+      "id": "volcanic-ash",
+      "name": "Volcanic Ash",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a1a1a"
+        },
+        {
+          "at": 0.4,
+          "color": "#4a3f3f"
+        },
+        {
+          "at": 0.7,
+          "color": "#7a6060"
+        },
+        {
+          "at": 1,
+          "color": "#b08a80"
+        }
+      ],
+      "tags": [
+        "earth",
+        "dark",
+        "grey",
+        "brown"
+      ]
+    },
+    {
+      "id": "pine-forest",
+      "name": "Pine Forest",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d2818"
+        },
+        {
+          "at": 0.5,
+          "color": "#1a472a"
+        },
+        {
+          "at": 1,
+          "color": "#2e7d32"
+        }
+      ],
+      "tags": [
+        "earth",
+        "forest",
+        "dark green",
+        "pine"
+      ]
+    },
+    {
+      "id": "autumn-leaves",
+      "name": "Autumn Leaves",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#8b0000"
+        },
+        {
+          "at": 0.33,
+          "color": "#cc5500"
+        },
+        {
+          "at": 0.66,
+          "color": "#e8a020"
+        },
+        {
+          "at": 1,
+          "color": "#f5d060"
+        }
+      ],
+      "tags": [
+        "earth",
+        "autumn",
+        "red",
+        "orange",
+        "gold"
+      ]
+    },
+    {
+      "id": "rainbow-arc",
+      "name": "Rainbow Arc",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0000"
+        },
+        {
+          "at": 0.17,
+          "color": "#ff7700"
+        },
+        {
+          "at": 0.33,
+          "color": "#ffff00"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ff00"
+        },
+        {
+          "at": 0.67,
+          "color": "#0000ff"
+        },
+        {
+          "at": 0.83,
+          "color": "#4b0082"
+        },
+        {
+          "at": 1,
+          "color": "#8b00ff"
+        }
+      ],
+      "tags": [
+        "rainbow",
+        "full spectrum",
+        "vibrant",
+        "multicolor"
+      ]
+    },
+    {
+      "id": "prism",
+      "name": "Prism",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff6b6b"
+        },
+        {
+          "at": 0.25,
+          "color": "#ffd93d"
+        },
+        {
+          "at": 0.5,
+          "color": "#6bcb77"
+        },
+        {
+          "at": 0.75,
+          "color": "#4d96ff"
+        },
+        {
+          "at": 1,
+          "color": "#c77dff"
+        }
+      ],
+      "tags": [
+        "spectrum",
+        "prism",
+        "multicolor",
+        "vibrant"
+      ]
+    },
+    {
+      "id": "warm-spectrum",
+      "name": "Warm Spectrum",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff176"
+        },
+        {
+          "at": 0.33,
+          "color": "#ff8a65"
+        },
+        {
+          "at": 0.66,
+          "color": "#e91e63"
+        },
+        {
+          "at": 1,
+          "color": "#7b1fa2"
+        }
+      ],
+      "tags": [
+        "warm",
+        "yellow",
+        "red",
+        "purple",
+        "spectrum"
+      ]
+    },
+    {
+      "id": "cool-spectrum",
+      "name": "Cool Spectrum",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00e5ff"
+        },
+        {
+          "at": 0.4,
+          "color": "#2196f3"
+        },
+        {
+          "at": 0.7,
+          "color": "#7e57c2"
+        },
+        {
+          "at": 1,
+          "color": "#e91e63"
+        }
+      ],
+      "tags": [
+        "cool",
+        "cyan",
+        "blue",
+        "purple",
+        "pink"
+      ]
+    },
+    {
+      "id": "forest-fire",
+      "name": "Forest Fire",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a3a1a"
+        },
+        {
+          "at": 0.3,
+          "color": "#2e7d32"
+        },
+        {
+          "at": 0.6,
+          "color": "#ff8c00"
+        },
+        {
+          "at": 0.8,
+          "color": "#ff2200"
+        },
+        {
+          "at": 1,
+          "color": "#000000"
+        }
+      ],
+      "tags": [
+        "spectrum",
+        "green",
+        "fire",
+        "dark"
+      ]
+    },
+    {
+      "id": "slammer-cyan",
+      "name": "Slammer Cyan",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00c9c8"
+        },
+        {
+          "at": 0.5,
+          "color": "#00b4d8"
+        },
+        {
+          "at": 1,
+          "color": "#0072ab"
+        }
+      ],
+      "tags": [
+        "cyan",
+        "teal",
+        "blue",
+        "slammer"
+      ]
+    },
+    {
+      "id": "slammer-magenta",
+      "name": "Slammer Magenta",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff006e"
+        },
+        {
+          "at": 0.5,
+          "color": "#c9184a"
+        },
+        {
+          "at": 1,
+          "color": "#800f3f"
+        }
+      ],
+      "tags": [
+        "magenta",
+        "pink",
+        "red",
+        "slammer"
+      ]
+    },
+    {
+      "id": "deep-sea",
+      "name": "Deep Sea",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a2a"
+        },
+        {
+          "at": 0.35,
+          "color": "#003366"
+        },
+        {
+          "at": 0.65,
+          "color": "#006994"
+        },
+        {
+          "at": 1,
+          "color": "#40c4ff"
+        }
+      ],
+      "tags": [
+        "ocean",
+        "dark",
+        "blue",
+        "deep"
+      ]
+    },
+    {
+      "id": "morning-dew",
+      "name": "Morning Dew",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#d4f1f4"
+        },
+        {
+          "at": 0.5,
+          "color": "#a8e6cf"
+        },
+        {
+          "at": 1,
+          "color": "#dcedc1"
+        }
+      ],
+      "tags": [
+        "green",
+        "blue",
+        "fresh",
+        "morning"
+      ]
+    },
+    {
+      "id": "champagne-rose",
+      "name": "Champagne Rose",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f8e7d3"
+        },
+        {
+          "at": 0.5,
+          "color": "#f5c2c7"
+        },
+        {
+          "at": 1,
+          "color": "#e8a4b8"
+        }
+      ],
+      "tags": [
+        "champagne",
+        "rose",
+        "warm",
+        "feminine"
+      ]
+    },
+    {
+      "id": "northern-lights",
+      "name": "Northern Lights",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000011"
+        },
+        {
+          "at": 0.3,
+          "color": "#003300"
+        },
+        {
+          "at": 0.55,
+          "color": "#00cc66"
+        },
+        {
+          "at": 0.75,
+          "color": "#00eeff"
+        },
+        {
+          "at": 1,
+          "color": "#6600ff"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "green",
+        "cyan",
+        "purple",
+        "dark"
+      ]
+    },
+    {
+      "id": "lava-lamp",
+      "name": "Lava Lamp",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0a00"
+        },
+        {
+          "at": 0.4,
+          "color": "#8b2500"
+        },
+        {
+          "at": 0.7,
+          "color": "#ff4500"
+        },
+        {
+          "at": 1,
+          "color": "#ffa500"
+        }
+      ],
+      "tags": [
+        "retro",
+        "orange",
+        "red",
+        "dark",
+        "70s"
+      ]
+    },
+    {
+      "id": "tidal-wave",
+      "name": "Tidal Wave",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#001f3f"
+        },
+        {
+          "at": 0.4,
+          "color": "#005b8e"
+        },
+        {
+          "at": 0.7,
+          "color": "#00a8cc"
+        },
+        {
+          "at": 1,
+          "color": "#80deea"
+        }
+      ],
+      "tags": [
+        "ocean",
+        "blue",
+        "teal",
+        "wave"
+      ]
+    },
+    {
+      "id": "nebula-core",
+      "name": "Nebula Core",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#09012f"
+        },
+        {
+          "at": 0.3,
+          "color": "#460a71"
+        },
+        {
+          "at": 0.6,
+          "color": "#ad1d8b"
+        },
+        {
+          "at": 0.85,
+          "color": "#f14e65"
+        },
+        {
+          "at": 1,
+          "color": "#ffc36d"
+        }
+      ],
+      "tags": [
+        "space",
+        "nebula",
+        "purple",
+        "pink",
+        "gold"
+      ]
+    },
+    {
+      "id": "sakura-bloom",
+      "name": "Sakura Bloom",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff0f3"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffb3c1"
+        },
+        {
+          "at": 1,
+          "color": "#ff85a1"
+        }
+      ],
+      "tags": [
+        "pink",
+        "sakura",
+        "japanese",
+        "soft"
+      ]
+    },
+    {
+      "id": "jungle-canopy",
+      "name": "Jungle Canopy",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a1a0a"
+        },
+        {
+          "at": 0.4,
+          "color": "#1e4020"
+        },
+        {
+          "at": 0.7,
+          "color": "#2d6a30"
+        },
+        {
+          "at": 1,
+          "color": "#52b756"
+        }
+      ],
+      "tags": [
+        "jungle",
+        "green",
+        "dark",
+        "tropical"
+      ]
+    },
+    {
+      "id": "iridescent",
+      "name": "Iridescent",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff9a9e"
+        },
+        {
+          "at": 0.2,
+          "color": "#fad0c4"
+        },
+        {
+          "at": 0.4,
+          "color": "#a18cd1"
+        },
+        {
+          "at": 0.6,
+          "color": "#fbc2eb"
+        },
+        {
+          "at": 0.8,
+          "color": "#a1c4fd"
+        },
+        {
+          "at": 1,
+          "color": "#c2e9fb"
+        }
+      ],
+      "tags": [
+        "iridescent",
+        "opal",
+        "pastel",
+        "multicolor"
+      ]
+    },
+    {
+      "id": "slammer-lime",
+      "name": "Slammer Lime",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00ff88"
+        },
+        {
+          "at": 0.5,
+          "color": "#00cc66"
+        },
+        {
+          "at": 1,
+          "color": "#008844"
+        }
+      ],
+      "tags": [
+        "green",
+        "lime",
+        "slammer",
+        "bright"
+      ]
+    },
+    {
+      "id": "dusk-navy",
+      "name": "Dusk Navy",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020917"
+        },
+        {
+          "at": 0.5,
+          "color": "#0a1628"
+        },
+        {
+          "at": 1,
+          "color": "#1a2c4e"
+        }
+      ],
+      "tags": [
+        "navy",
+        "dark",
+        "night",
+        "blue-black"
+      ]
+    },
+    {
+      "id": "chalk-board",
+      "name": "Chalk Board",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a2a1a"
+        },
+        {
+          "at": 1,
+          "color": "#2d4a2d"
+        }
+      ],
+      "tags": [
+        "green",
+        "dark",
+        "chalk",
+        "board"
+      ]
+    },
+    {
+      "id": "rose-gold",
+      "name": "Rose Gold",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#b76e79"
+        },
+        {
+          "at": 0.5,
+          "color": "#d4a5a5"
+        },
+        {
+          "at": 1,
+          "color": "#f2c6b4"
+        }
+      ],
+      "tags": [
+        "rose",
+        "gold",
+        "pink",
+        "metallic"
+      ]
+    },
+    {
+      "id": "cosmic-dust",
+      "name": "Cosmic Dust",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d001a"
+        },
+        {
+          "at": 0.4,
+          "color": "#3a0068"
+        },
+        {
+          "at": 0.7,
+          "color": "#7b2d8b"
+        },
+        {
+          "at": 1,
+          "color": "#c0a0ff"
+        }
+      ],
+      "tags": [
+        "space",
+        "cosmic",
+        "purple",
+        "dark"
+      ]
+    },
+    {
+      "id": "amber-glow",
+      "name": "Amber Glow",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#4a1a00"
+        },
+        {
+          "at": 0.5,
+          "color": "#c85a00"
+        },
+        {
+          "at": 1,
+          "color": "#ffb347"
+        }
+      ],
+      "tags": [
+        "amber",
+        "orange",
+        "warm",
+        "glow"
+      ]
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cce7f4"
+        },
+        {
+          "at": 0.5,
+          "color": "#a8d8ea"
+        },
+        {
+          "at": 1,
+          "color": "#4f9ebe"
+        }
+      ],
+      "tags": [
+        "ice",
+        "blue",
+        "cold",
+        "winter"
+      ]
+    },
+    {
+      "id": "velvet-night",
+      "name": "Velvet Night",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0015"
+        },
+        {
+          "at": 0.5,
+          "color": "#4a0080"
+        },
+        {
+          "at": 1,
+          "color": "#9900cc"
+        }
+      ],
+      "tags": [
+        "purple",
+        "dark",
+        "velvet",
+        "neon"
+      ]
+    },
+    {
+      "id": "sea-foam",
+      "name": "Sea Foam",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e8f8f5"
+        },
+        {
+          "at": 0.5,
+          "color": "#a8e6d4"
+        },
+        {
+          "at": 1,
+          "color": "#76c7b5"
+        }
+      ],
+      "tags": [
+        "teal",
+        "mint",
+        "seafoam",
+        "soft"
+      ]
+    },
+    {
+      "id": "tangerine-dream",
+      "name": "Tangerine Dream",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff6e00"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffe0b2"
+        },
+        {
+          "at": 1,
+          "color": "#ff6e00"
+        }
+      ],
+      "tags": [
+        "orange",
+        "tangerine",
+        "warm",
+        "bright"
+      ]
+    },
+    {
+      "id": "neon-coral",
+      "name": "Neon Coral",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0010"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff2d55"
+        },
+        {
+          "at": 1,
+          "color": "#ff6b9d"
+        }
+      ],
+      "tags": [
+        "coral",
+        "pink",
+        "neon",
+        "dark"
+      ]
+    },
+    {
+      "id": "obsidian",
+      "name": "Obsidian",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a0a"
+        },
+        {
+          "at": 0.6,
+          "color": "#1a1a2e"
+        },
+        {
+          "at": 1,
+          "color": "#16213e"
+        }
+      ],
+      "tags": [
+        "obsidian",
+        "black",
+        "very dark",
+        "minimal"
+      ]
+    },
+    {
+      "id": "psychedelic-pop",
+      "name": "Psychedelic Pop",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff4500"
+        },
+        {
+          "at": 0.33,
+          "color": "#ff69b4"
+        },
+        {
+          "at": 0.66,
+          "color": "#00ced1"
+        },
+        {
+          "at": 1,
+          "color": "#7fff00"
+        }
+      ],
+      "tags": [
+        "psychedelic",
+        "pop art",
+        "60s",
+        "saturated"
+      ]
+    },
+    {
+      "id": "mango-sunset",
+      "name": "Mango Sunset",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff512f"
+        },
+        {
+          "at": 1,
+          "color": "#f09819"
+        }
+      ],
+      "tags": [
+        "warm",
+        "orange",
+        "mango"
+      ]
+    },
+    {
+      "id": "passion-fruit",
+      "name": "Passion Fruit",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f12711"
+        },
+        {
+          "at": 1,
+          "color": "#f5af19"
+        }
+      ],
+      "tags": [
+        "warm",
+        "red",
+        "gold"
+      ]
+    },
+    {
+      "id": "beach-bonfire",
+      "name": "Beach Bonfire",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#16222a"
+        },
+        {
+          "at": 0.5,
+          "color": "#3a6073"
+        },
+        {
+          "at": 1,
+          "color": "#ff8a00"
+        }
+      ],
+      "tags": [
+        "evening",
+        "warm",
+        "navy"
+      ]
+    },
+    {
+      "id": "saffron-glow",
+      "name": "Saffron Glow",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff9a44"
+        },
+        {
+          "at": 1,
+          "color": "#fc6076"
+        }
+      ],
+      "tags": [
+        "orange",
+        "pink",
+        "warm"
+      ]
+    },
+    {
+      "id": "coral-blush",
+      "name": "Coral Blush",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff8674"
+        },
+        {
+          "at": 1,
+          "color": "#ffd194"
+        }
+      ],
+      "tags": [
+        "coral",
+        "peach",
+        "soft"
+      ]
+    },
+    {
+      "id": "horizon-fire",
+      "name": "Horizon Fire",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0f2027"
+        },
+        {
+          "at": 0.5,
+          "color": "#203a43"
+        },
+        {
+          "at": 1,
+          "color": "#ff7e5f"
+        }
+      ],
+      "tags": [
+        "dark",
+        "fire",
+        "horizon"
+      ]
+    },
+    {
+      "id": "orchid-dawn",
+      "name": "Orchid Dawn",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc466b"
+        },
+        {
+          "at": 1,
+          "color": "#3f5efb"
+        }
+      ],
+      "tags": [
+        "pink",
+        "blue",
+        "dawn"
+      ]
+    },
+    {
+      "id": "peach-mango",
+      "name": "Peach Mango",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffafbd"
+        },
+        {
+          "at": 1,
+          "color": "#ffc3a0"
+        }
+      ],
+      "tags": [
+        "peach",
+        "pink",
+        "soft"
+      ]
+    },
+    {
+      "id": "flamingo",
+      "name": "Flamingo",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fa709a"
+        },
+        {
+          "at": 1,
+          "color": "#fee140"
+        }
+      ],
+      "tags": [
+        "pink",
+        "yellow",
+        "tropical"
+      ]
+    },
+    {
+      "id": "sherbet",
+      "name": "Sherbet",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f6d365"
+        },
+        {
+          "at": 1,
+          "color": "#fda085"
+        }
+      ],
+      "tags": [
+        "yellow",
+        "orange",
+        "soft"
+      ]
+    },
+    {
+      "id": "wildfire",
+      "name": "Wildfire",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.4,
+          "color": "#9a1f30"
+        },
+        {
+          "at": 1,
+          "color": "#fc4a1a"
+        }
+      ],
+      "tags": [
+        "fire",
+        "dark",
+        "red"
+      ]
+    },
+    {
+      "id": "honey-glaze",
+      "name": "Honey Glaze",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffe259"
+        },
+        {
+          "at": 1,
+          "color": "#ffa751"
+        }
+      ],
+      "tags": [
+        "yellow",
+        "amber",
+        "warm"
+      ]
+    },
+    {
+      "id": "cloud-nine",
+      "name": "Cloud Nine",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fdfbfb"
+        },
+        {
+          "at": 1,
+          "color": "#ebedee"
+        }
+      ],
+      "tags": [
+        "white",
+        "cloud",
+        "soft"
+      ]
+    },
+    {
+      "id": "peony-petal",
+      "name": "Peony Petal",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fad0c4"
+        },
+        {
+          "at": 1,
+          "color": "#ffd1ff"
+        }
+      ],
+      "tags": [
+        "pink",
+        "soft"
+      ]
+    },
+    {
+      "id": "vanilla-sky",
+      "name": "Vanilla Sky",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fffbd5"
+        },
+        {
+          "at": 1,
+          "color": "#b2fefa"
+        }
+      ],
+      "tags": [
+        "cream",
+        "cyan",
+        "soft"
+      ]
+    },
+    {
+      "id": "baby-blue",
+      "name": "Baby Blue",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a1c4fd"
+        },
+        {
+          "at": 1,
+          "color": "#c2e9fb"
+        }
+      ],
+      "tags": [
+        "blue",
+        "sky",
+        "soft"
+      ]
+    },
+    {
+      "id": "lilac-haze",
+      "name": "Lilac Haze",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e0c3fc"
+        },
+        {
+          "at": 1,
+          "color": "#8ec5fc"
+        }
+      ],
+      "tags": [
+        "purple",
+        "blue",
+        "soft"
+      ]
+    },
+    {
+      "id": "mint-julep",
+      "name": "Mint Julep",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#d4fc79"
+        },
+        {
+          "at": 1,
+          "color": "#96e6a1"
+        }
+      ],
+      "tags": [
+        "mint",
+        "green",
+        "soft"
+      ]
+    },
+    {
+      "id": "milky-way-pastel",
+      "name": "Milky Pastel",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cfd9df"
+        },
+        {
+          "at": 1,
+          "color": "#e2ebf0"
+        }
+      ],
+      "tags": [
+        "grey",
+        "soft",
+        "misty"
+      ]
+    },
+    {
+      "id": "rose-water",
+      "name": "Rose Water",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff1eb"
+        },
+        {
+          "at": 1,
+          "color": "#ace0f9"
+        }
+      ],
+      "tags": [
+        "pink",
+        "cyan",
+        "soft"
+      ]
+    },
+    {
+      "id": "apricot-cream",
+      "name": "Apricot Cream",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffecd2"
+        },
+        {
+          "at": 1,
+          "color": "#fcb69f"
+        }
+      ],
+      "tags": [
+        "cream",
+        "apricot",
+        "soft"
+      ]
+    },
+    {
+      "id": "macaron",
+      "name": "Macaron",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fbc2eb"
+        },
+        {
+          "at": 1,
+          "color": "#a6c1ee"
+        }
+      ],
+      "tags": [
+        "pink",
+        "blue",
+        "soft"
+      ]
+    },
+    {
+      "id": "summer-melon",
+      "name": "Summer Melon",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8edea"
+        },
+        {
+          "at": 1,
+          "color": "#fed6e3"
+        }
+      ],
+      "tags": [
+        "cyan",
+        "pink",
+        "soft"
+      ]
+    },
+    {
+      "id": "pearl",
+      "name": "Pearl",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f8f9fa"
+        },
+        {
+          "at": 0.5,
+          "color": "#e9ecef"
+        },
+        {
+          "at": 1,
+          "color": "#dee2e6"
+        }
+      ],
+      "tags": [
+        "white",
+        "pearl",
+        "soft"
+      ]
+    },
+    {
+      "id": "neon-strobe",
+      "name": "Neon Strobe",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff00cc"
+        },
+        {
+          "at": 1,
+          "color": "#333399"
+        }
+      ],
+      "tags": [
+        "pink",
+        "indigo",
+        "glow"
+      ]
+    },
+    {
+      "id": "toxic-slime",
+      "name": "Toxic Slime",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#36ffac"
+        },
+        {
+          "at": 1,
+          "color": "#caff36"
+        }
+      ],
+      "tags": [
+        "green",
+        "lime",
+        "glow"
+      ]
+    },
+    {
+      "id": "laser-grid",
+      "name": "Laser Grid",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#06292d"
+        },
+        {
+          "at": 0.5,
+          "color": "#1ab7c4"
+        },
+        {
+          "at": 1,
+          "color": "#ff10f0"
+        }
+      ],
+      "tags": [
+        "cyan",
+        "magenta",
+        "grid"
+      ]
+    },
+    {
+      "id": "hyperdrive",
+      "name": "Hyperdrive",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000428"
+        },
+        {
+          "at": 1,
+          "color": "#004e92"
+        }
+      ],
+      "tags": [
+        "blue",
+        "deep",
+        "speed"
+      ]
+    },
+    {
+      "id": "plasma-coil",
+      "name": "Plasma Coil",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0099"
+        },
+        {
+          "at": 1,
+          "color": "#493240"
+        }
+      ],
+      "tags": [
+        "pink",
+        "purple",
+        "glow"
+      ]
+    },
+    {
+      "id": "blacklight",
+      "name": "Blacklight",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0c0032"
+        },
+        {
+          "at": 0.5,
+          "color": "#190061"
+        },
+        {
+          "at": 1,
+          "color": "#3500d3"
+        }
+      ],
+      "tags": [
+        "indigo",
+        "dark",
+        "glow"
+      ]
+    },
+    {
+      "id": "disco-pulse",
+      "name": "Disco Pulse",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff006e"
+        },
+        {
+          "at": 0.5,
+          "color": "#fb5607"
+        },
+        {
+          "at": 1,
+          "color": "#ffbe0b"
+        }
+      ],
+      "tags": [
+        "pink",
+        "orange",
+        "yellow"
+      ]
+    },
+    {
+      "id": "cyborg-eye",
+      "name": "Cyborg Eye",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0f3460"
+        },
+        {
+          "at": 0.5,
+          "color": "#16213e"
+        },
+        {
+          "at": 1,
+          "color": "#e94560"
+        }
+      ],
+      "tags": [
+        "red",
+        "navy",
+        "cyber"
+      ]
+    },
+    {
+      "id": "neon-jungle",
+      "name": "Neon Jungle",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0b3d2e"
+        },
+        {
+          "at": 0.5,
+          "color": "#15bd66"
+        },
+        {
+          "at": 1,
+          "color": "#bdfb73"
+        }
+      ],
+      "tags": [
+        "green",
+        "lime",
+        "wild"
+      ]
+    },
+    {
+      "id": "rave-laser",
+      "name": "Rave Laser",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ee0979"
+        },
+        {
+          "at": 1,
+          "color": "#ff6a00"
+        }
+      ],
+      "tags": [
+        "pink",
+        "orange",
+        "rave"
+      ]
+    },
+    {
+      "id": "graphite",
+      "name": "Graphite",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#414345"
+        },
+        {
+          "at": 1,
+          "color": "#232526"
+        }
+      ],
+      "tags": [
+        "grey",
+        "dark",
+        "pencil"
+      ]
+    },
+    {
+      "id": "paper-white",
+      "name": "Paper White",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffffff"
+        },
+        {
+          "at": 1,
+          "color": "#f4f4f4"
+        }
+      ],
+      "tags": [
+        "white",
+        "minimal"
+      ]
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#dae2f8"
+        },
+        {
+          "at": 1,
+          "color": "#d6a4a4"
+        }
+      ],
+      "tags": [
+        "silver",
+        "pink",
+        "subtle"
+      ]
+    },
+    {
+      "id": "soot",
+      "name": "Soot",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a1a1a"
+        },
+        {
+          "at": 1,
+          "color": "#3d3d3d"
+        }
+      ],
+      "tags": [
+        "black",
+        "dark",
+        "soot"
+      ]
+    },
+    {
+      "id": "pewter",
+      "name": "Pewter",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bdc3c7"
+        },
+        {
+          "at": 1,
+          "color": "#2c3e50"
+        }
+      ],
+      "tags": [
+        "silver",
+        "navy",
+        "classic"
+      ]
+    },
+    {
+      "id": "cement",
+      "name": "Cement",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#757f9a"
+        },
+        {
+          "at": 1,
+          "color": "#d7dde8"
+        }
+      ],
+      "tags": [
+        "grey",
+        "cool",
+        "concrete"
+      ]
+    },
+    {
+      "id": "faded-poster",
+      "name": "Faded Poster",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7b4397"
+        },
+        {
+          "at": 1,
+          "color": "#dc2430"
+        }
+      ],
+      "tags": [
+        "purple",
+        "red",
+        "aged"
+      ]
+    },
+    {
+      "id": "grandpa-radio",
+      "name": "Grandpa Radio",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#c9d6ff"
+        },
+        {
+          "at": 1,
+          "color": "#e2e2e2"
+        }
+      ],
+      "tags": [
+        "blue",
+        "grey",
+        "old"
+      ]
+    },
+    {
+      "id": "70s-wallpaper",
+      "name": "70s Wallpaper",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cb9b51"
+        },
+        {
+          "at": 0.5,
+          "color": "#fbeebd"
+        },
+        {
+          "at": 1,
+          "color": "#cb9b51"
+        }
+      ],
+      "tags": [
+        "gold",
+        "70s",
+        "warm"
+      ]
+    },
+    {
+      "id": "teakwood",
+      "name": "Teakwood",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#603813"
+        },
+        {
+          "at": 1,
+          "color": "#b29f94"
+        }
+      ],
+      "tags": [
+        "brown",
+        "wood",
+        "warm"
+      ]
+    },
+    {
+      "id": "jukebox",
+      "name": "Jukebox",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#b06ab3"
+        },
+        {
+          "at": 1,
+          "color": "#4568dc"
+        }
+      ],
+      "tags": [
+        "purple",
+        "blue",
+        "50s"
+      ]
+    },
+    {
+      "id": "sun-faded",
+      "name": "Sun Faded",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#eacda3"
+        },
+        {
+          "at": 1,
+          "color": "#d6ae7b"
+        }
+      ],
+      "tags": [
+        "cream",
+        "tan",
+        "aged"
+      ]
+    },
+    {
+      "id": "film-roll",
+      "name": "Film Roll",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e8c5a6"
+        },
+        {
+          "at": 0.5,
+          "color": "#d4a373"
+        },
+        {
+          "at": 1,
+          "color": "#7f5539"
+        }
+      ],
+      "tags": [
+        "brown",
+        "film",
+        "sepia"
+      ]
+    },
+    {
+      "id": "motel-sign",
+      "name": "Motel Sign",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff5e62"
+        },
+        {
+          "at": 1,
+          "color": "#ff9966"
+        }
+      ],
+      "tags": [
+        "red",
+        "orange",
+        "roadside"
+      ]
+    },
+    {
+      "id": "vhs-static",
+      "name": "VHS Static",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1f4068"
+        },
+        {
+          "at": 0.5,
+          "color": "#e43f5a"
+        },
+        {
+          "at": 1,
+          "color": "#f8b400"
+        }
+      ],
+      "tags": [
+        "blue",
+        "red",
+        "static"
+      ]
+    },
+    {
+      "id": "windows95",
+      "name": "Windows 95",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#008080"
+        },
+        {
+          "at": 1,
+          "color": "#c0c0c0"
+        }
+      ],
+      "tags": [
+        "teal",
+        "silver",
+        "retro"
+      ]
+    },
+    {
+      "id": "aesthetic-cloud",
+      "name": "Aesthetic Cloud",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fbc2eb"
+        },
+        {
+          "at": 1,
+          "color": "#a18cd1"
+        }
+      ],
+      "tags": [
+        "pink",
+        "purple",
+        "cloud"
+      ]
+    },
+    {
+      "id": "palm-tree",
+      "name": "Palm Tree",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff61a6"
+        },
+        {
+          "at": 0.5,
+          "color": "#a76eff"
+        },
+        {
+          "at": 1,
+          "color": "#19c4ff"
+        }
+      ],
+      "tags": [
+        "pink",
+        "purple",
+        "cyan"
+      ]
+    },
+    {
+      "id": "sun-strip",
+      "name": "Sun Strip",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0080"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff8c00"
+        },
+        {
+          "at": 1,
+          "color": "#ffd200"
+        }
+      ],
+      "tags": [
+        "pink",
+        "orange",
+        "sun"
+      ]
+    },
+    {
+      "id": "beach-modem",
+      "name": "Beach Modem",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8ff78"
+        },
+        {
+          "at": 1,
+          "color": "#78ffd6"
+        }
+      ],
+      "tags": [
+        "mint",
+        "cyan",
+        "beach"
+      ]
+    },
+    {
+      "id": "roller-disco",
+      "name": "Roller Disco",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc5c7d"
+        },
+        {
+          "at": 1,
+          "color": "#6a82fb"
+        }
+      ],
+      "tags": [
+        "pink",
+        "blue",
+        "disco"
+      ]
+    },
+    {
+      "id": "static-pop",
+      "name": "Static Pop",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1c71"
+        },
+        {
+          "at": 0.5,
+          "color": "#d76d77"
+        },
+        {
+          "at": 1,
+          "color": "#ffaf7b"
+        }
+      ],
+      "tags": [
+        "purple",
+        "pink",
+        "orange"
+      ]
+    },
+    {
+      "id": "github-dark",
+      "name": "GitHub Dark",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d1117"
+        },
+        {
+          "at": 1,
+          "color": "#161b22"
+        }
+      ],
+      "tags": [
+        "github",
+        "dark",
+        "dev"
+      ]
+    },
+    {
+      "id": "discord-blurple",
+      "name": "Discord Blurple",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5865f2"
+        },
+        {
+          "at": 1,
+          "color": "#404eed"
+        }
+      ],
+      "tags": [
+        "discord",
+        "purple",
+        "app"
+      ]
+    },
+    {
+      "id": "spotify-green",
+      "name": "Spotify Green",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1db954"
+        },
+        {
+          "at": 1,
+          "color": "#191414"
+        }
+      ],
+      "tags": [
+        "spotify",
+        "green",
+        "music"
+      ]
+    },
+    {
+      "id": "instagram-fade",
+      "name": "Instagram Fade",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f58529"
+        },
+        {
+          "at": 0.5,
+          "color": "#dd2a7b"
+        },
+        {
+          "at": 1,
+          "color": "#8134af"
+        }
+      ],
+      "tags": [
+        "instagram",
+        "pink",
+        "orange"
+      ]
+    },
+    {
+      "id": "twitch-purple",
+      "name": "Twitch Purple",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#9146ff"
+        },
+        {
+          "at": 1,
+          "color": "#7d2bff"
+        }
+      ],
+      "tags": [
+        "twitch",
+        "purple",
+        "live"
+      ]
+    },
+    {
+      "id": "apple-graphite",
+      "name": "Apple Graphite",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#2c2c2e"
+        },
+        {
+          "at": 1,
+          "color": "#1c1c1e"
+        }
+      ],
+      "tags": [
+        "apple",
+        "dark",
+        "os"
+      ]
+    },
+    {
+      "id": "sahara",
+      "name": "Sahara",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fdc830"
+        },
+        {
+          "at": 1,
+          "color": "#f37335"
+        }
+      ],
+      "tags": [
+        "sand",
+        "orange",
+        "desert"
+      ]
+    },
+    {
+      "id": "redwood",
+      "name": "Redwood",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#603813"
+        },
+        {
+          "at": 1,
+          "color": "#83a4d4"
+        }
+      ],
+      "tags": [
+        "brown",
+        "sky",
+        "forest"
+      ]
+    },
+    {
+      "id": "tundra",
+      "name": "Tundra",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e6dada"
+        },
+        {
+          "at": 1,
+          "color": "#274046"
+        }
+      ],
+      "tags": [
+        "grey",
+        "cold",
+        "arctic"
+      ]
+    },
+    {
+      "id": "riverbed",
+      "name": "Riverbed",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#4ca1af"
+        },
+        {
+          "at": 1,
+          "color": "#2c3e50"
+        }
+      ],
+      "tags": [
+        "blue",
+        "navy",
+        "water"
+      ]
+    },
+    {
+      "id": "canyon",
+      "name": "Canyon",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7f4f24"
+        },
+        {
+          "at": 0.5,
+          "color": "#bc6c25"
+        },
+        {
+          "at": 1,
+          "color": "#dda15e"
+        }
+      ],
+      "tags": [
+        "brown",
+        "orange",
+        "rock"
+      ]
+    },
+    {
+      "id": "mossy-rock",
+      "name": "Mossy Rock",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a5a40"
+        },
+        {
+          "at": 1,
+          "color": "#a3b18a"
+        }
+      ],
+      "tags": [
+        "green",
+        "moss",
+        "natural"
+      ]
+    },
+    {
+      "id": "mountain-air",
+      "name": "Mountain Air",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a2a6c"
+        },
+        {
+          "at": 0.5,
+          "color": "#b21f1f"
+        },
+        {
+          "at": 1,
+          "color": "#fdbb2d"
+        }
+      ],
+      "tags": [
+        "blue",
+        "red",
+        "gold"
+      ]
+    },
+    {
+      "id": "storm-cloud",
+      "name": "Storm Cloud",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#373b44"
+        },
+        {
+          "at": 1,
+          "color": "#4286f4"
+        }
+      ],
+      "tags": [
+        "grey",
+        "blue",
+        "storm"
+      ]
+    },
+    {
+      "id": "autumn-rust",
+      "name": "Autumn Rust",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#8e2c0c"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf4904"
+        },
+        {
+          "at": 1,
+          "color": "#f9d423"
+        }
+      ],
+      "tags": [
+        "rust",
+        "orange",
+        "autumn"
+      ]
+    },
+    {
+      "id": "sea-cliff",
+      "name": "Sea Cliff",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#4b6cb7"
+        },
+        {
+          "at": 1,
+          "color": "#182848"
+        }
+      ],
+      "tags": [
+        "blue",
+        "navy",
+        "sea"
+      ]
+    },
+    {
+      "id": "full-rainbow",
+      "name": "Full Rainbow",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0000"
+        },
+        {
+          "at": 0.16,
+          "color": "#ff7f00"
+        },
+        {
+          "at": 0.33,
+          "color": "#ffff00"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ff00"
+        },
+        {
+          "at": 0.66,
+          "color": "#0000ff"
+        },
+        {
+          "at": 0.83,
+          "color": "#4b0082"
+        },
+        {
+          "at": 1,
+          "color": "#9400d3"
+        }
+      ],
+      "tags": [
+        "rainbow",
+        "full",
+        "pride"
+      ]
+    },
+    {
+      "id": "pride-flag",
+      "name": "Pride",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e40303"
+        },
+        {
+          "at": 0.2,
+          "color": "#ff8c00"
+        },
+        {
+          "at": 0.4,
+          "color": "#ffed00"
+        },
+        {
+          "at": 0.6,
+          "color": "#008026"
+        },
+        {
+          "at": 0.8,
+          "color": "#004dff"
+        },
+        {
+          "at": 1,
+          "color": "#750787"
+        }
+      ],
+      "tags": [
+        "rainbow",
+        "pride"
+      ]
+    },
+    {
+      "id": "cool-arc",
+      "name": "Cool Arc",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00b09b"
+        },
+        {
+          "at": 0.5,
+          "color": "#00c6ff"
+        },
+        {
+          "at": 1,
+          "color": "#7367f0"
+        }
+      ],
+      "tags": [
+        "cyan",
+        "blue",
+        "cool"
+      ]
+    },
+    {
+      "id": "warm-arc",
+      "name": "Warm Arc",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fceabb"
+        },
+        {
+          "at": 0.5,
+          "color": "#f8b500"
+        },
+        {
+          "at": 1,
+          "color": "#fc4a1a"
+        }
+      ],
+      "tags": [
+        "cream",
+        "amber",
+        "warm"
+      ]
+    },
+    {
+      "id": "cmyk",
+      "name": "CMYK",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00ffff"
+        },
+        {
+          "at": 0.33,
+          "color": "#ff00ff"
+        },
+        {
+          "at": 0.66,
+          "color": "#ffff00"
+        },
+        {
+          "at": 1,
+          "color": "#000000"
+        }
+      ],
+      "tags": [
+        "cmyk",
+        "print"
+      ]
+    },
+    {
+      "id": "sunset-spectrum",
+      "name": "Sunset Spectrum",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7e0fff"
+        },
+        {
+          "at": 0.25,
+          "color": "#ff0080"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff5e00"
+        },
+        {
+          "at": 0.75,
+          "color": "#ffd200"
+        },
+        {
+          "at": 1,
+          "color": "#fff"
+        }
+      ],
+      "tags": [
+        "rainbow",
+        "warm"
+      ]
+    },
+    {
+      "id": "liquid-gold",
+      "name": "Liquid Gold",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bf953f"
+        },
+        {
+          "at": 0.5,
+          "color": "#fcf6ba"
+        },
+        {
+          "at": 1,
+          "color": "#aa771c"
+        }
+      ],
+      "tags": [
+        "gold",
+        "shine",
+        "rich"
+      ]
+    },
+    {
+      "id": "chrome-mirror",
+      "name": "Chrome Mirror",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#eef2f3"
+        },
+        {
+          "at": 0.5,
+          "color": "#8e9eab"
+        },
+        {
+          "at": 1,
+          "color": "#eef2f3"
+        }
+      ],
+      "tags": [
+        "silver",
+        "chrome",
+        "shine"
+      ]
+    },
+    {
+      "id": "copper-foil",
+      "name": "Copper Foil",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a14a16"
+        },
+        {
+          "at": 0.5,
+          "color": "#d28856"
+        },
+        {
+          "at": 1,
+          "color": "#7d3217"
+        }
+      ],
+      "tags": [
+        "copper",
+        "orange",
+        "foil"
+      ]
+    },
+    {
+      "id": "rose-gold-metal",
+      "name": "Rose Gold Metal",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#b76e79"
+        },
+        {
+          "at": 0.5,
+          "color": "#eecda3"
+        },
+        {
+          "at": 1,
+          "color": "#b76e79"
+        }
+      ],
+      "tags": [
+        "rose",
+        "gold",
+        "shine"
+      ]
+    },
+    {
+      "id": "brass-buckle",
+      "name": "Brass Buckle",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#876d3d"
+        },
+        {
+          "at": 0.5,
+          "color": "#e2cc8b"
+        },
+        {
+          "at": 1,
+          "color": "#876d3d"
+        }
+      ],
+      "tags": [
+        "brass",
+        "warm",
+        "tone"
+      ]
+    },
+    {
+      "id": "gunmetal",
+      "name": "Gunmetal",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#414345"
+        },
+        {
+          "at": 1,
+          "color": "#1c1c1c"
+        }
+      ],
+      "tags": [
+        "gunmetal",
+        "dark",
+        "tactical"
+      ]
+    },
+    {
+      "id": "platinum-bar",
+      "name": "Platinum Bar",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#c8c9cb"
+        },
+        {
+          "at": 0.5,
+          "color": "#fdfdfd"
+        },
+        {
+          "at": 1,
+          "color": "#c8c9cb"
+        }
+      ],
+      "tags": [
+        "platinum",
+        "silver",
+        "bar"
+      ]
+    },
+    {
+      "id": "iron-cast",
+      "name": "Iron Cast",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#27292a"
+        },
+        {
+          "at": 0.5,
+          "color": "#535860"
+        },
+        {
+          "at": 1,
+          "color": "#27292a"
+        }
+      ],
+      "tags": [
+        "iron",
+        "grey",
+        "cast"
+      ]
+    },
+    {
+      "id": "andromeda",
+      "name": "Andromeda",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0c0032"
+        },
+        {
+          "at": 0.5,
+          "color": "#430089"
+        },
+        {
+          "at": 1,
+          "color": "#82ffa1"
+        }
+      ],
+      "tags": [
+        "galaxy",
+        "purple",
+        "green"
+      ]
+    },
+    {
+      "id": "milky-way",
+      "name": "Milky Way",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0d0d"
+        },
+        {
+          "at": 0.4,
+          "color": "#1a1a40"
+        },
+        {
+          "at": 0.8,
+          "color": "#7c3aed"
+        },
+        {
+          "at": 1,
+          "color": "#fce96a"
+        }
+      ],
+      "tags": [
+        "galaxy",
+        "purple",
+        "gold"
+      ]
+    },
+    {
+      "id": "eclipse",
+      "name": "Eclipse",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.5,
+          "color": "#3d0000"
+        },
+        {
+          "at": 1,
+          "color": "#ff5e00"
+        }
+      ],
+      "tags": [
+        "black",
+        "orange",
+        "eclipse"
+      ]
+    },
+    {
+      "id": "supernova",
+      "name": "Supernova",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0033"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff006e"
+        },
+        {
+          "at": 1,
+          "color": "#fff700"
+        }
+      ],
+      "tags": [
+        "burst",
+        "pink",
+        "yellow"
+      ]
+    },
+    {
+      "id": "void",
+      "name": "Void",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 1,
+          "color": "#0c0c2e"
+        }
+      ],
+      "tags": [
+        "black",
+        "deep",
+        "void"
+      ]
+    },
+    {
+      "id": "nebulae",
+      "name": "Nebulae",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1d2671"
+        },
+        {
+          "at": 0.5,
+          "color": "#c33764"
+        },
+        {
+          "at": 1,
+          "color": "#fcb045"
+        }
+      ],
+      "tags": [
+        "nebula",
+        "purple",
+        "pink"
+      ]
+    },
+    {
+      "id": "starfield",
+      "name": "Starfield",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020024"
+        },
+        {
+          "at": 0.5,
+          "color": "#090979"
+        },
+        {
+          "at": 1,
+          "color": "#00d4ff"
+        }
+      ],
+      "tags": [
+        "stars",
+        "navy",
+        "cyan"
+      ]
+    },
+    {
+      "id": "asteroid-belt",
+      "name": "Asteroid Belt",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a4a5b"
+        },
+        {
+          "at": 0.5,
+          "color": "#7a8b99"
+        },
+        {
+          "at": 1,
+          "color": "#3a4a5b"
+        }
+      ],
+      "tags": [
+        "rock",
+        "space",
+        "grey"
+      ]
+    },
+    {
+      "id": "emerald-cut",
+      "name": "Emerald Cut",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#003f2d"
+        },
+        {
+          "at": 0.5,
+          "color": "#04976c"
+        },
+        {
+          "at": 1,
+          "color": "#74e0bb"
+        }
+      ],
+      "tags": [
+        "emerald",
+        "green",
+        "gem"
+      ]
+    },
+    {
+      "id": "ruby-glow",
+      "name": "Ruby Glow",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5d001e"
+        },
+        {
+          "at": 0.5,
+          "color": "#9b0a3a"
+        },
+        {
+          "at": 1,
+          "color": "#e3afbc"
+        }
+      ],
+      "tags": [
+        "ruby",
+        "red",
+        "gem"
+      ]
+    },
+    {
+      "id": "sapphire",
+      "name": "Sapphire",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0f2027"
+        },
+        {
+          "at": 0.5,
+          "color": "#203a8c"
+        },
+        {
+          "at": 1,
+          "color": "#5b9eea"
+        }
+      ],
+      "tags": [
+        "sapphire",
+        "blue",
+        "gem"
+      ]
+    },
+    {
+      "id": "amethyst",
+      "name": "Amethyst",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3b1772"
+        },
+        {
+          "at": 0.5,
+          "color": "#9b4dca"
+        },
+        {
+          "at": 1,
+          "color": "#dab8ff"
+        }
+      ],
+      "tags": [
+        "amethyst",
+        "purple",
+        "gem"
+      ]
+    },
+    {
+      "id": "topaz",
+      "name": "Topaz",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7a3e0f"
+        },
+        {
+          "at": 0.5,
+          "color": "#e08e3a"
+        },
+        {
+          "at": 1,
+          "color": "#fce6c1"
+        }
+      ],
+      "tags": [
+        "topaz",
+        "amber",
+        "gem"
+      ]
+    },
+    {
+      "id": "opal-fire",
+      "name": "Opal Fire",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a4f5d2"
+        },
+        {
+          "at": 0.33,
+          "color": "#ffd57a"
+        },
+        {
+          "at": 0.66,
+          "color": "#ff8aae"
+        },
+        {
+          "at": 1,
+          "color": "#a8c0ff"
+        }
+      ],
+      "tags": [
+        "opal",
+        "iridescent",
+        "gem"
+      ]
+    },
+    {
+      "id": "cold-brew",
+      "name": "Cold Brew",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2723"
+        },
+        {
+          "at": 1,
+          "color": "#a47148"
+        }
+      ],
+      "tags": [
+        "coffee",
+        "brown",
+        "drink"
+      ]
+    },
+    {
+      "id": "matcha-latte",
+      "name": "Matcha Latte",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d8c5c"
+        },
+        {
+          "at": 1,
+          "color": "#d6e1c2"
+        }
+      ],
+      "tags": [
+        "matcha",
+        "green",
+        "tea"
+      ]
+    },
+    {
+      "id": "chocolate-pudding",
+      "name": "Chocolate Pudding",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1c0c"
+        },
+        {
+          "at": 0.5,
+          "color": "#6b3410"
+        },
+        {
+          "at": 1,
+          "color": "#bf7e3b"
+        }
+      ],
+      "tags": [
+        "chocolate",
+        "brown",
+        "sweet"
+      ]
+    },
+    {
+      "id": "mango-lassi",
+      "name": "Mango Lassi",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fce38a"
+        },
+        {
+          "at": 1,
+          "color": "#f38181"
+        }
+      ],
+      "tags": [
+        "mango",
+        "pink",
+        "tropical"
+      ]
+    },
+    {
+      "id": "strawberry-cream",
+      "name": "Strawberry Cream",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffafbd"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff5e7e"
+        },
+        {
+          "at": 1,
+          "color": "#fff5f7"
+        }
+      ],
+      "tags": [
+        "strawberry",
+        "pink",
+        "cream"
+      ]
+    },
+    {
+      "id": "blueberry-jam",
+      "name": "Blueberry Jam",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1f0e3a"
+        },
+        {
+          "at": 0.5,
+          "color": "#3c1361"
+        },
+        {
+          "at": 1,
+          "color": "#7f3fbf"
+        }
+      ],
+      "tags": [
+        "blueberry",
+        "purple",
+        "jam"
+      ]
+    },
+    {
+      "id": "aurora-borealis",
+      "name": "Aurora Borealis",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#001f3f"
+        },
+        {
+          "at": 0.4,
+          "color": "#0fa3b1"
+        },
+        {
+          "at": 0.8,
+          "color": "#a8e6cf"
+        },
+        {
+          "at": 1,
+          "color": "#dcedc1"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "green",
+        "cyan"
+      ]
+    },
+    {
+      "id": "aurora-pink",
+      "name": "Aurora Pink",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d1b2a"
+        },
+        {
+          "at": 0.4,
+          "color": "#7b2cbf"
+        },
+        {
+          "at": 1,
+          "color": "#ff80ab"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "pink",
+        "purple"
+      ]
+    },
+    {
+      "id": "arctic-aurora",
+      "name": "Arctic Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#13294b"
+        },
+        {
+          "at": 0.5,
+          "color": "#06d6a0"
+        },
+        {
+          "at": 1,
+          "color": "#fbf8cc"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "mint",
+        "cream"
+      ]
+    },
+    {
+      "id": "south-aurora",
+      "name": "Southern Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020024"
+        },
+        {
+          "at": 0.5,
+          "color": "#005bea"
+        },
+        {
+          "at": 1,
+          "color": "#00ff87"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "blue",
+        "green"
+      ]
+    },
+    {
+      "id": "cyan-magenta",
+      "name": "Cyan / Magenta",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#06beb6"
+        },
+        {
+          "at": 1,
+          "color": "#48b1bf"
+        }
+      ],
+      "tags": [
+        "cyan",
+        "duotone"
+      ]
+    },
+    {
+      "id": "orange-teal",
+      "name": "Orange / Teal",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc4a1a"
+        },
+        {
+          "at": 1,
+          "color": "#02aab0"
+        }
+      ],
+      "tags": [
+        "orange",
+        "teal",
+        "duotone"
+      ]
+    },
+    {
+      "id": "peach-purple",
+      "name": "Peach / Purple",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffafbd"
+        },
+        {
+          "at": 1,
+          "color": "#7868e6"
+        }
+      ],
+      "tags": [
+        "peach",
+        "purple",
+        "duotone"
+      ]
+    },
+    {
+      "id": "lemon-lime",
+      "name": "Lemon / Lime",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffe000"
+        },
+        {
+          "at": 1,
+          "color": "#799f0c"
+        }
+      ],
+      "tags": [
+        "yellow",
+        "green",
+        "duotone"
+      ]
+    },
+    {
+      "id": "mint-coral",
+      "name": "Mint / Coral",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8e6cf"
+        },
+        {
+          "at": 1,
+          "color": "#ff8b94"
+        }
+      ],
+      "tags": [
+        "mint",
+        "coral",
+        "duotone"
+      ]
+    },
+    {
+      "id": "navy-rose",
+      "name": "Navy / Rose",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a2a6c"
+        },
+        {
+          "at": 1,
+          "color": "#fa709a"
+        }
+      ],
+      "tags": [
+        "navy",
+        "rose",
+        "duotone"
+      ]
+    },
+    {
+      "id": "forest-fog",
+      "name": "Forest / Fog",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#134e5e"
+        },
+        {
+          "at": 1,
+          "color": "#71b280"
+        }
+      ],
+      "tags": [
+        "forest",
+        "green",
+        "duotone"
+      ]
+    },
+    {
+      "id": "plum-tangerine",
+      "name": "Plum / Tangerine",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5d2666"
+        },
+        {
+          "at": 1,
+          "color": "#fa8231"
+        }
+      ],
+      "tags": [
+        "plum",
+        "tangerine",
+        "duotone"
+      ]
+    },
+    {
+      "id": "ice-fire",
+      "name": "Ice / Fire",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a7bd5"
+        },
+        {
+          "at": 1,
+          "color": "#ff512f"
+        }
+      ],
+      "tags": [
+        "blue",
+        "red",
+        "duotone"
+      ]
+    },
+    {
+      "id": "mocha-mint",
+      "name": "Mocha / Mint",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2723"
+        },
+        {
+          "at": 1,
+          "color": "#a8e6cf"
+        }
+      ],
+      "tags": [
+        "mocha",
+        "mint",
+        "duotone"
+      ]
+    },
+    {
+      "id": "sunset-mojito",
+      "name": "Sunset Mojito",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff5f6d"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffc371"
+        },
+        {
+          "at": 1,
+          "color": "#fffae5"
+        }
+      ],
+      "tags": [
+        "warm",
+        "tropical",
+        "mojito"
+      ]
+    },
+    {
+      "id": "flamingo-sky",
+      "name": "Flamingo Sky",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1c71"
+        },
+        {
+          "at": 0.5,
+          "color": "#d76d77"
+        },
+        {
+          "at": 1,
+          "color": "#ffaf7b"
+        }
+      ],
+      "tags": [
+        "flamingo",
+        "pink",
+        "orange"
+      ]
+    },
+    {
+      "id": "blood-orange",
+      "name": "Blood Orange",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#330000"
+        },
+        {
+          "at": 0.4,
+          "color": "#ad1604"
+        },
+        {
+          "at": 1,
+          "color": "#fc6b1f"
+        }
+      ],
+      "tags": [
+        "blood",
+        "orange",
+        "fruit"
+      ]
+    },
+    {
+      "id": "twilight-sigh",
+      "name": "Twilight Sigh",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#190a05"
+        },
+        {
+          "at": 0.4,
+          "color": "#870000"
+        },
+        {
+          "at": 1,
+          "color": "#7c4848"
+        }
+      ],
+      "tags": [
+        "dark",
+        "red",
+        "twilight"
+      ]
+    },
+    {
+      "id": "aurora-sunset",
+      "name": "Aurora Sunset",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0084"
+        },
+        {
+          "at": 0.5,
+          "color": "#33001b"
+        },
+        {
+          "at": 1,
+          "color": "#ff8a00"
+        }
+      ],
+      "tags": [
+        "hot",
+        "pink",
+        "fire"
+      ]
+    },
+    {
+      "id": "papaya",
+      "name": "Papaya",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff5f6d"
+        },
+        {
+          "at": 1,
+          "color": "#ffc371"
+        }
+      ],
+      "tags": [
+        "papaya",
+        "fruity",
+        "pink"
+      ]
+    },
+    {
+      "id": "reef-sunset",
+      "name": "Reef Sunset",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc8c4a"
+        },
+        {
+          "at": 0.5,
+          "color": "#fa6464"
+        },
+        {
+          "at": 1,
+          "color": "#fa3f81"
+        }
+      ],
+      "tags": [
+        "reef",
+        "pink",
+        "orange"
+      ]
+    },
+    {
+      "id": "amber-tide",
+      "name": "Amber Tide",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1f0036"
+        },
+        {
+          "at": 0.5,
+          "color": "#7d2469"
+        },
+        {
+          "at": 1,
+          "color": "#fbb344"
+        }
+      ],
+      "tags": [
+        "amber",
+        "tide",
+        "evening"
+      ]
+    },
+    {
+      "id": "miami-sunset",
+      "name": "Miami Sunset",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0093e9"
+        },
+        {
+          "at": 0.4,
+          "color": "#80d0c7"
+        },
+        {
+          "at": 1,
+          "color": "#ffeb96"
+        }
+      ],
+      "tags": [
+        "miami",
+        "cyan",
+        "yellow"
+      ]
+    },
+    {
+      "id": "cherry-evening",
+      "name": "Cherry Evening",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5b0e2d"
+        },
+        {
+          "at": 0.5,
+          "color": "#9d174d"
+        },
+        {
+          "at": 1,
+          "color": "#fdc1cc"
+        }
+      ],
+      "tags": [
+        "cherry",
+        "rose",
+        "evening"
+      ]
+    },
+    {
+      "id": "valencia-orange",
+      "name": "Valencia Orange",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff8a00"
+        },
+        {
+          "at": 1,
+          "color": "#e52e71"
+        }
+      ],
+      "tags": [
+        "valencia",
+        "pink",
+        "orange"
+      ]
+    },
+    {
+      "id": "martian-dusk",
+      "name": "Martian Dusk",
+      "category": "sunset",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#240b36"
+        },
+        {
+          "at": 0.5,
+          "color": "#c31432"
+        },
+        {
+          "at": 1,
+          "color": "#ff8e00"
+        }
+      ],
+      "tags": [
+        "mars",
+        "red",
+        "dusk"
+      ]
+    },
+    {
+      "id": "soft-marshmallow",
+      "name": "Soft Marshmallow",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fef9d7"
+        },
+        {
+          "at": 1,
+          "color": "#d299c2"
+        }
+      ],
+      "tags": [
+        "marshmallow",
+        "cream",
+        "lavender"
+      ]
+    },
+    {
+      "id": "powder-blush",
+      "name": "Powder Blush",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffe9d7"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffd6e7"
+        },
+        {
+          "at": 1,
+          "color": "#cdb8e3"
+        }
+      ],
+      "tags": [
+        "blush",
+        "powder",
+        "soft"
+      ]
+    },
+    {
+      "id": "mint-tulip",
+      "name": "Mint Tulip",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#d3ffe7"
+        },
+        {
+          "at": 1,
+          "color": "#efacff"
+        }
+      ],
+      "tags": [
+        "mint",
+        "tulip",
+        "soft"
+      ]
+    },
+    {
+      "id": "peach-sorbet",
+      "name": "Peach Sorbet",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffe1c0"
+        },
+        {
+          "at": 1,
+          "color": "#fec5e5"
+        }
+      ],
+      "tags": [
+        "peach",
+        "sorbet",
+        "soft"
+      ]
+    },
+    {
+      "id": "iced-jade",
+      "name": "Iced Jade",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cbf0f8"
+        },
+        {
+          "at": 1,
+          "color": "#a3eebe"
+        }
+      ],
+      "tags": [
+        "jade",
+        "iced",
+        "soft"
+      ]
+    },
+    {
+      "id": "seafoam-sigh",
+      "name": "Seafoam Sigh",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e0f7fa"
+        },
+        {
+          "at": 0.5,
+          "color": "#b2ebf2"
+        },
+        {
+          "at": 1,
+          "color": "#80deea"
+        }
+      ],
+      "tags": [
+        "sea",
+        "foam",
+        "soft"
+      ]
+    },
+    {
+      "id": "confetti-pop",
+      "name": "Confetti Pop",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fde2ff"
+        },
+        {
+          "at": 0.33,
+          "color": "#caf6ff"
+        },
+        {
+          "at": 0.66,
+          "color": "#e7ffd1"
+        },
+        {
+          "at": 1,
+          "color": "#fff5b3"
+        }
+      ],
+      "tags": [
+        "confetti",
+        "soft",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "sweetpea",
+      "name": "Sweetpea",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fadeff"
+        },
+        {
+          "at": 1,
+          "color": "#dadbff"
+        }
+      ],
+      "tags": [
+        "sweet",
+        "pea",
+        "soft"
+      ]
+    },
+    {
+      "id": "pearl-shell",
+      "name": "Pearl Shell",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f6f3ff"
+        },
+        {
+          "at": 0.5,
+          "color": "#fff0f8"
+        },
+        {
+          "at": 1,
+          "color": "#dff7ff"
+        }
+      ],
+      "tags": [
+        "pearl",
+        "shell",
+        "soft"
+      ]
+    },
+    {
+      "id": "lavender-soap",
+      "name": "Lavender Soap",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e0c3fc"
+        },
+        {
+          "at": 0.5,
+          "color": "#dbe9fc"
+        },
+        {
+          "at": 1,
+          "color": "#c2e9fb"
+        }
+      ],
+      "tags": [
+        "lavender",
+        "soap",
+        "soft"
+      ]
+    },
+    {
+      "id": "whipped-rose",
+      "name": "Whipped Rose",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff0f5"
+        },
+        {
+          "at": 1,
+          "color": "#ffd1dc"
+        }
+      ],
+      "tags": [
+        "rose",
+        "whipped",
+        "soft"
+      ]
+    },
+    {
+      "id": "mochi",
+      "name": "Mochi",
+      "category": "pastel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fcefee"
+        },
+        {
+          "at": 1,
+          "color": "#cee5d0"
+        }
+      ],
+      "tags": [
+        "mochi",
+        "pink",
+        "green"
+      ]
+    },
+    {
+      "id": "rave-night",
+      "name": "Rave Night",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0033"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff00aa"
+        },
+        {
+          "at": 1,
+          "color": "#00ffe1"
+        }
+      ],
+      "tags": [
+        "rave",
+        "pink",
+        "cyan"
+      ]
+    },
+    {
+      "id": "cyber-storm",
+      "name": "Cyber Storm",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020111"
+        },
+        {
+          "at": 0.4,
+          "color": "#3023ae"
+        },
+        {
+          "at": 1,
+          "color": "#c86dd7"
+        }
+      ],
+      "tags": [
+        "storm",
+        "electric",
+        "purple"
+      ]
+    },
+    {
+      "id": "toxic-pop",
+      "name": "Toxic Pop",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#16d9e3"
+        },
+        {
+          "at": 0.5,
+          "color": "#30c7ec"
+        },
+        {
+          "at": 1,
+          "color": "#46aef7"
+        }
+      ],
+      "tags": [
+        "toxic",
+        "cyan",
+        "pop"
+      ]
+    },
+    {
+      "id": "atomic-grape",
+      "name": "Atomic Grape",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff61d2"
+        },
+        {
+          "at": 1,
+          "color": "#fe9090"
+        }
+      ],
+      "tags": [
+        "atomic",
+        "grape",
+        "pink"
+      ]
+    },
+    {
+      "id": "synth-pulse",
+      "name": "Synth Pulse",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff007f"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff7f00"
+        },
+        {
+          "at": 1,
+          "color": "#ffe600"
+        }
+      ],
+      "tags": [
+        "synth",
+        "pink",
+        "yellow"
+      ]
+    },
+    {
+      "id": "saber-clash",
+      "name": "Saber Clash",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff003c"
+        },
+        {
+          "at": 0.5,
+          "color": "#0c0c2e"
+        },
+        {
+          "at": 1,
+          "color": "#00f0ff"
+        }
+      ],
+      "tags": [
+        "saber",
+        "red",
+        "cyan"
+      ]
+    },
+    {
+      "id": "digital-acid",
+      "name": "Digital Acid",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00ff85"
+        },
+        {
+          "at": 0.5,
+          "color": "#0011ff"
+        },
+        {
+          "at": 1,
+          "color": "#ff00ff"
+        }
+      ],
+      "tags": [
+        "acid",
+        "digital",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "arcade-glow",
+      "name": "Arcade Glow",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a002c"
+        },
+        {
+          "at": 0.5,
+          "color": "#bd34fe"
+        },
+        {
+          "at": 1,
+          "color": "#ff5ed1"
+        }
+      ],
+      "tags": [
+        "arcade",
+        "purple",
+        "glow"
+      ]
+    },
+    {
+      "id": "plasma-fountain",
+      "name": "Plasma Fountain",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.4,
+          "color": "#7000ff"
+        },
+        {
+          "at": 1,
+          "color": "#00f0ff"
+        }
+      ],
+      "tags": [
+        "plasma",
+        "fountain",
+        "electric"
+      ]
+    },
+    {
+      "id": "nemesis",
+      "name": "Nemesis",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0844"
+        },
+        {
+          "at": 1,
+          "color": "#ffb199"
+        }
+      ],
+      "tags": [
+        "nemesis",
+        "red",
+        "glow"
+      ]
+    },
+    {
+      "id": "quantum-leap",
+      "name": "Quantum Leap",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0061ff"
+        },
+        {
+          "at": 1,
+          "color": "#60efff"
+        }
+      ],
+      "tags": [
+        "quantum",
+        "electric",
+        "cyan"
+      ]
+    },
+    {
+      "id": "neon-jelly",
+      "name": "Neon Jelly",
+      "category": "neon",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fc466b"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff61d2"
+        },
+        {
+          "at": 1,
+          "color": "#3f5efb"
+        }
+      ],
+      "tags": [
+        "jelly",
+        "pink",
+        "blue"
+      ]
+    },
+    {
+      "id": "charcoal-mist",
+      "name": "Charcoal Mist",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#16191c"
+        },
+        {
+          "at": 0.5,
+          "color": "#2f3438"
+        },
+        {
+          "at": 1,
+          "color": "#4a5258"
+        }
+      ],
+      "tags": [
+        "charcoal",
+        "mist",
+        "dark"
+      ]
+    },
+    {
+      "id": "ash-fade",
+      "name": "Ash Fade",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3c3c3c"
+        },
+        {
+          "at": 1,
+          "color": "#aaaaaa"
+        }
+      ],
+      "tags": [
+        "ash",
+        "fade",
+        "grey"
+      ]
+    },
+    {
+      "id": "moonstone",
+      "name": "Moonstone",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#dcdcdc"
+        },
+        {
+          "at": 0.5,
+          "color": "#a9a9a9"
+        },
+        {
+          "at": 1,
+          "color": "#696969"
+        }
+      ],
+      "tags": [
+        "moonstone",
+        "silver",
+        "cool"
+      ]
+    },
+    {
+      "id": "newsprint",
+      "name": "Newsprint",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f9f6ee"
+        },
+        {
+          "at": 1,
+          "color": "#bbb6a8"
+        }
+      ],
+      "tags": [
+        "newsprint",
+        "paper",
+        "aged"
+      ]
+    },
+    {
+      "id": "basalt",
+      "name": "Basalt",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0c0c0c"
+        },
+        {
+          "at": 1,
+          "color": "#262626"
+        }
+      ],
+      "tags": [
+        "basalt",
+        "stone",
+        "dark"
+      ]
+    },
+    {
+      "id": "foggy-window",
+      "name": "Foggy Window",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#9b9c9d"
+        },
+        {
+          "at": 0.5,
+          "color": "#bdbdbd"
+        },
+        {
+          "at": 1,
+          "color": "#dcdfe2"
+        }
+      ],
+      "tags": [
+        "fog",
+        "window",
+        "cool"
+      ]
+    },
+    {
+      "id": "zinc",
+      "name": "Zinc",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#71777b"
+        },
+        {
+          "at": 0.5,
+          "color": "#aaa"
+        },
+        {
+          "at": 1,
+          "color": "#71777b"
+        }
+      ],
+      "tags": [
+        "zinc",
+        "metal",
+        "cool"
+      ]
+    },
+    {
+      "id": "moonlight-grey",
+      "name": "Moonlight Grey",
+      "category": "monochrome",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c1c1c"
+        },
+        {
+          "at": 0.5,
+          "color": "#3a3a3a"
+        },
+        {
+          "at": 1,
+          "color": "#cfcfcf"
+        }
+      ],
+      "tags": [
+        "moonlight",
+        "grey",
+        "subtle"
+      ]
+    },
+    {
+      "id": "60s-flower",
+      "name": "60s Flower",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff8a47"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffc4a3"
+        },
+        {
+          "at": 1,
+          "color": "#76c7c0"
+        }
+      ],
+      "tags": [
+        "60s",
+        "flower",
+        "retro"
+      ]
+    },
+    {
+      "id": "typewriter",
+      "name": "Typewriter",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bcaa92"
+        },
+        {
+          "at": 1,
+          "color": "#5d4d3a"
+        }
+      ],
+      "tags": [
+        "paper",
+        "typewriter",
+        "aged"
+      ]
+    },
+    {
+      "id": "analog-tape",
+      "name": "Analog Tape",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2c41"
+        },
+        {
+          "at": 0.5,
+          "color": "#3a3346"
+        },
+        {
+          "at": 1,
+          "color": "#666870"
+        }
+      ],
+      "tags": [
+        "tape",
+        "analog",
+        "cassette"
+      ]
+    },
+    {
+      "id": "attic-trunk",
+      "name": "Attic Trunk",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a2818"
+        },
+        {
+          "at": 0.5,
+          "color": "#5b3a23"
+        },
+        {
+          "at": 1,
+          "color": "#9b6a47"
+        }
+      ],
+      "tags": [
+        "attic",
+        "wood",
+        "aged"
+      ]
+    },
+    {
+      "id": "parchment",
+      "name": "Parchment",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f5e3c0"
+        },
+        {
+          "at": 0.5,
+          "color": "#e8c882"
+        },
+        {
+          "at": 1,
+          "color": "#bd8c5a"
+        }
+      ],
+      "tags": [
+        "parchment",
+        "aged",
+        "paper"
+      ]
+    },
+    {
+      "id": "grandma-couch",
+      "name": "Grandma Couch",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d3c4f"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf8c8c"
+        },
+        {
+          "at": 1,
+          "color": "#dcc3a4"
+        }
+      ],
+      "tags": [
+        "couch",
+        "grandma",
+        "rose"
+      ]
+    },
+    {
+      "id": "moss-vinyl",
+      "name": "Moss Vinyl",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3d4a30"
+        },
+        {
+          "at": 1,
+          "color": "#a3a86b"
+        }
+      ],
+      "tags": [
+        "vinyl",
+        "moss",
+        "aged"
+      ]
+    },
+    {
+      "id": "royal-velvet",
+      "name": "Royal Velvet",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3b0d11"
+        },
+        {
+          "at": 0.5,
+          "color": "#7c1f3a"
+        },
+        {
+          "at": 1,
+          "color": "#c44569"
+        }
+      ],
+      "tags": [
+        "velvet",
+        "royal",
+        "red"
+      ]
+    },
+    {
+      "id": "storyboard",
+      "name": "Storyboard",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff2e2"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffd9b3"
+        },
+        {
+          "at": 1,
+          "color": "#999"
+        }
+      ],
+      "tags": [
+        "story",
+        "paper",
+        "cinema"
+      ]
+    },
+    {
+      "id": "saloon",
+      "name": "Saloon",
+      "category": "vintage",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1d10"
+        },
+        {
+          "at": 0.5,
+          "color": "#7e3920"
+        },
+        {
+          "at": 1,
+          "color": "#deb887"
+        }
+      ],
+      "tags": [
+        "saloon",
+        "western",
+        "wood"
+      ]
+    },
+    {
+      "id": "lo-fi-cassette",
+      "name": "Lo-Fi Cassette",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5a3eea"
+        },
+        {
+          "at": 0.5,
+          "color": "#5a76eb"
+        },
+        {
+          "at": 1,
+          "color": "#7befb2"
+        }
+      ],
+      "tags": [
+        "lo-fi",
+        "cassette",
+        "pastel"
+      ]
+    },
+    {
+      "id": "mall-fountain",
+      "name": "Mall Fountain",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bdd4e7"
+        },
+        {
+          "at": 0.5,
+          "color": "#8693ab"
+        },
+        {
+          "at": 1,
+          "color": "#fcb1a6"
+        }
+      ],
+      "tags": [
+        "mall",
+        "fountain",
+        "pastel"
+      ]
+    },
+    {
+      "id": "mac-classic",
+      "name": "Mac Classic",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bdc3c7"
+        },
+        {
+          "at": 0.5,
+          "color": "#dadfe1"
+        },
+        {
+          "at": 1,
+          "color": "#bdc3c7"
+        }
+      ],
+      "tags": [
+        "mac",
+        "classic",
+        "silver"
+      ]
+    },
+    {
+      "id": "aesthetic-grid",
+      "name": "Aesthetic Grid",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#160f29"
+        },
+        {
+          "at": 0.4,
+          "color": "#246a73"
+        },
+        {
+          "at": 1,
+          "color": "#f3dfa2"
+        }
+      ],
+      "tags": [
+        "aesthetic",
+        "grid",
+        "cyan"
+      ]
+    },
+    {
+      "id": "skype-screen",
+      "name": "Skype Screen",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#00aff0"
+        },
+        {
+          "at": 1,
+          "color": "#0078d4"
+        }
+      ],
+      "tags": [
+        "skype",
+        "cyan",
+        "00s"
+      ]
+    },
+    {
+      "id": "vapor-cloud",
+      "name": "Vapor Cloud",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffafbd"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffc3a0"
+        },
+        {
+          "at": 1,
+          "color": "#a8edea"
+        }
+      ],
+      "tags": [
+        "vapor",
+        "cloud",
+        "pastel"
+      ]
+    },
+    {
+      "id": "y2k-screensaver",
+      "name": "Y2K Screensaver",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0044ff"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ffd5"
+        },
+        {
+          "at": 1,
+          "color": "#0044ff"
+        }
+      ],
+      "tags": [
+        "y2k",
+        "screensaver",
+        "cyan"
+      ]
+    },
+    {
+      "id": "arcade-grid",
+      "name": "Arcade Grid",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000428"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff0099"
+        },
+        {
+          "at": 1,
+          "color": "#00f9ff"
+        }
+      ],
+      "tags": [
+        "arcade",
+        "grid",
+        "pink"
+      ]
+    },
+    {
+      "id": "boombox",
+      "name": "Boombox",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1c71"
+        },
+        {
+          "at": 1,
+          "color": "#ffaf7b"
+        }
+      ],
+      "tags": [
+        "boombox",
+        "purple",
+        "orange"
+      ]
+    },
+    {
+      "id": "vhs-rewind",
+      "name": "VHS Rewind",
+      "category": "vaporwave",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#222831"
+        },
+        {
+          "at": 0.5,
+          "color": "#393e46"
+        },
+        {
+          "at": 1,
+          "color": "#00adb5"
+        }
+      ],
+      "tags": [
+        "vhs",
+        "rewind",
+        "cyan"
+      ]
+    },
+    {
+      "id": "slack-spectrum",
+      "name": "Slack Spectrum",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#36c5f0"
+        },
+        {
+          "at": 0.33,
+          "color": "#2eb67d"
+        },
+        {
+          "at": 0.66,
+          "color": "#ecb22e"
+        },
+        {
+          "at": 1,
+          "color": "#e01e5a"
+        }
+      ],
+      "tags": [
+        "slack",
+        "rainbow",
+        "app"
+      ]
+    },
+    {
+      "id": "dropbox-blue",
+      "name": "Dropbox Blue",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0061ff"
+        },
+        {
+          "at": 1,
+          "color": "#60efff"
+        }
+      ],
+      "tags": [
+        "dropbox",
+        "blue",
+        "cloud"
+      ]
+    },
+    {
+      "id": "airbnb-coral",
+      "name": "Airbnb Coral",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff385c"
+        },
+        {
+          "at": 0.5,
+          "color": "#e61e4d"
+        },
+        {
+          "at": 1,
+          "color": "#bd1e59"
+        }
+      ],
+      "tags": [
+        "airbnb",
+        "coral",
+        "travel"
+      ]
+    },
+    {
+      "id": "reddit-orange",
+      "name": "Reddit Orange",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff4500"
+        },
+        {
+          "at": 1,
+          "color": "#ffa500"
+        }
+      ],
+      "tags": [
+        "reddit",
+        "orange",
+        "social"
+      ]
+    },
+    {
+      "id": "netflix-noir",
+      "name": "Netflix Noir",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.5,
+          "color": "#831010"
+        },
+        {
+          "at": 1,
+          "color": "#e50914"
+        }
+      ],
+      "tags": [
+        "netflix",
+        "red",
+        "film"
+      ]
+    },
+    {
+      "id": "lyft-pink",
+      "name": "Lyft Pink",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff00bf"
+        },
+        {
+          "at": 1,
+          "color": "#ff5db1"
+        }
+      ],
+      "tags": [
+        "lyft",
+        "pink",
+        "rideshare"
+      ]
+    },
+    {
+      "id": "coinbase-blue",
+      "name": "Coinbase Blue",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0052ff"
+        },
+        {
+          "at": 1,
+          "color": "#1652f0"
+        }
+      ],
+      "tags": [
+        "coinbase",
+        "blue",
+        "crypto"
+      ]
+    },
+    {
+      "id": "tinder-flame",
+      "name": "Tinder Flame",
+      "category": "brand",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fd5068"
+        },
+        {
+          "at": 0.5,
+          "color": "#fd5068"
+        },
+        {
+          "at": 1,
+          "color": "#fd297b"
+        }
+      ],
+      "tags": [
+        "tinder",
+        "pink",
+        "red"
+      ]
+    },
+    {
+      "id": "amazon-deep",
+      "name": "Amazon Deep",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#053f1c"
+        },
+        {
+          "at": 0.5,
+          "color": "#0a6c3d"
+        },
+        {
+          "at": 1,
+          "color": "#7fbf7b"
+        }
+      ],
+      "tags": [
+        "amazon",
+        "jungle",
+        "green"
+      ]
+    },
+    {
+      "id": "savannah",
+      "name": "Savannah",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#c1a36e"
+        },
+        {
+          "at": 0.5,
+          "color": "#a37c40"
+        },
+        {
+          "at": 1,
+          "color": "#765828"
+        }
+      ],
+      "tags": [
+        "savannah",
+        "tan",
+        "dry"
+      ]
+    },
+    {
+      "id": "iceberg",
+      "name": "Iceberg",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a4cdd9"
+        },
+        {
+          "at": 0.5,
+          "color": "#dceefa"
+        },
+        {
+          "at": 1,
+          "color": "#5589a8"
+        }
+      ],
+      "tags": [
+        "iceberg",
+        "cool",
+        "arctic"
+      ]
+    },
+    {
+      "id": "coral-reef",
+      "name": "Coral Reef",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff7e5f"
+        },
+        {
+          "at": 0.5,
+          "color": "#feb47b"
+        },
+        {
+          "at": 1,
+          "color": "#5f9ea0"
+        }
+      ],
+      "tags": [
+        "coral",
+        "reef",
+        "sea"
+      ]
+    },
+    {
+      "id": "great-lake",
+      "name": "Great Lake",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c4f64"
+        },
+        {
+          "at": 0.5,
+          "color": "#2c819a"
+        },
+        {
+          "at": 1,
+          "color": "#a7d2cb"
+        }
+      ],
+      "tags": [
+        "lake",
+        "navy",
+        "mist"
+      ]
+    },
+    {
+      "id": "redstone",
+      "name": "Redstone",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a0f0f"
+        },
+        {
+          "at": 0.5,
+          "color": "#7d2222"
+        },
+        {
+          "at": 1,
+          "color": "#c45050"
+        }
+      ],
+      "tags": [
+        "rock",
+        "red",
+        "desert"
+      ]
+    },
+    {
+      "id": "tropical-beach",
+      "name": "Tropical Beach",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#2bc0e4"
+        },
+        {
+          "at": 0.5,
+          "color": "#a3ddcb"
+        },
+        {
+          "at": 1,
+          "color": "#fff3b0"
+        }
+      ],
+      "tags": [
+        "beach",
+        "tropical",
+        "sand"
+      ]
+    },
+    {
+      "id": "granite",
+      "name": "Granite",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e3e3e"
+        },
+        {
+          "at": 0.5,
+          "color": "#7c7c7c"
+        },
+        {
+          "at": 1,
+          "color": "#cfcfcf"
+        }
+      ],
+      "tags": [
+        "granite",
+        "stone",
+        "cool"
+      ]
+    },
+    {
+      "id": "volcano-edge",
+      "name": "Volcano Edge",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0908"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff4500"
+        },
+        {
+          "at": 1,
+          "color": "#ffd166"
+        }
+      ],
+      "tags": [
+        "volcano",
+        "lava",
+        "fire"
+      ]
+    },
+    {
+      "id": "mossy-pond",
+      "name": "Mossy Pond",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a3a32"
+        },
+        {
+          "at": 0.5,
+          "color": "#3d6e64"
+        },
+        {
+          "at": 1,
+          "color": "#a8b2a3"
+        }
+      ],
+      "tags": [
+        "pond",
+        "moss",
+        "green"
+      ]
+    },
+    {
+      "id": "open-meadow",
+      "name": "Open Meadow",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8e063"
+        },
+        {
+          "at": 1,
+          "color": "#56ab2f"
+        }
+      ],
+      "tags": [
+        "meadow",
+        "grass",
+        "green"
+      ]
+    },
+    {
+      "id": "rust-belt",
+      "name": "Rust Belt",
+      "category": "earth",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#36190a"
+        },
+        {
+          "at": 0.5,
+          "color": "#7a3210"
+        },
+        {
+          "at": 1,
+          "color": "#c87142"
+        }
+      ],
+      "tags": [
+        "rust",
+        "industrial",
+        "orange"
+      ]
+    },
+    {
+      "id": "triadic-pop",
+      "name": "Triadic Pop",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0050"
+        },
+        {
+          "at": 0.33,
+          "color": "#fff700"
+        },
+        {
+          "at": 0.66,
+          "color": "#00d4ff"
+        },
+        {
+          "at": 1,
+          "color": "#ff0050"
+        }
+      ],
+      "tags": [
+        "triadic",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "analogous-warm",
+      "name": "Analogous Warm",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff006e"
+        },
+        {
+          "at": 0.5,
+          "color": "#fb5607"
+        },
+        {
+          "at": 1,
+          "color": "#ffbe0b"
+        }
+      ],
+      "tags": [
+        "warm",
+        "analogous"
+      ]
+    },
+    {
+      "id": "analogous-cool",
+      "name": "Analogous Cool",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a86ff"
+        },
+        {
+          "at": 0.5,
+          "color": "#8338ec"
+        },
+        {
+          "at": 1,
+          "color": "#06ffa5"
+        }
+      ],
+      "tags": [
+        "cool",
+        "analogous"
+      ]
+    },
+    {
+      "id": "split-complement",
+      "name": "Split Complement",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff595e"
+        },
+        {
+          "at": 0.5,
+          "color": "#1982c4"
+        },
+        {
+          "at": 1,
+          "color": "#ffca3a"
+        }
+      ],
+      "tags": [
+        "split",
+        "complement"
+      ]
+    },
+    {
+      "id": "tetrad",
+      "name": "Tetrad",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ee4035"
+        },
+        {
+          "at": 0.33,
+          "color": "#f37736"
+        },
+        {
+          "at": 0.66,
+          "color": "#7bc043"
+        },
+        {
+          "at": 1,
+          "color": "#0392cf"
+        }
+      ],
+      "tags": [
+        "tetrad",
+        "four"
+      ]
+    },
+    {
+      "id": "rainbow-dust",
+      "name": "Rainbow Dust",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff0080"
+        },
+        {
+          "at": 0.25,
+          "color": "#ff8c00"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffd200"
+        },
+        {
+          "at": 0.75,
+          "color": "#1ddf48"
+        },
+        {
+          "at": 1,
+          "color": "#3023ae"
+        }
+      ],
+      "tags": [
+        "rainbow",
+        "dust"
+      ]
+    },
+    {
+      "id": "ice-prism",
+      "name": "Ice Prism",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ddd6f3"
+        },
+        {
+          "at": 0.33,
+          "color": "#a1ffce"
+        },
+        {
+          "at": 0.66,
+          "color": "#74ebd5"
+        },
+        {
+          "at": 1,
+          "color": "#9face6"
+        }
+      ],
+      "tags": [
+        "prism",
+        "cool"
+      ]
+    },
+    {
+      "id": "warm-prism",
+      "name": "Warm Prism",
+      "category": "spectrum",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff5858"
+        },
+        {
+          "at": 0.5,
+          "color": "#f09819"
+        },
+        {
+          "at": 1,
+          "color": "#ffd200"
+        }
+      ],
+      "tags": [
+        "prism",
+        "warm"
+      ]
+    },
+    {
+      "id": "white-gold",
+      "name": "White Gold",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fffaeb"
+        },
+        {
+          "at": 0.5,
+          "color": "#f4d589"
+        },
+        {
+          "at": 1,
+          "color": "#fffaeb"
+        }
+      ],
+      "tags": [
+        "white",
+        "gold",
+        "shine"
+      ]
+    },
+    {
+      "id": "hammered-copper",
+      "name": "Hammered Copper",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d3217"
+        },
+        {
+          "at": 0.3,
+          "color": "#c87242"
+        },
+        {
+          "at": 0.6,
+          "color": "#7d3217"
+        },
+        {
+          "at": 1,
+          "color": "#c87242"
+        }
+      ],
+      "tags": [
+        "hammered",
+        "copper",
+        "texture"
+      ]
+    },
+    {
+      "id": "steel-blue",
+      "name": "Steel Blue",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e5871"
+        },
+        {
+          "at": 0.5,
+          "color": "#84a0bb"
+        },
+        {
+          "at": 1,
+          "color": "#3e5871"
+        }
+      ],
+      "tags": [
+        "steel",
+        "blue",
+        "shine"
+      ]
+    },
+    {
+      "id": "antique-bronze",
+      "name": "Antique Bronze",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3c2511"
+        },
+        {
+          "at": 0.5,
+          "color": "#7c4f1d"
+        },
+        {
+          "at": 1,
+          "color": "#3c2511"
+        }
+      ],
+      "tags": [
+        "bronze",
+        "antique",
+        "tone"
+      ]
+    },
+    {
+      "id": "mercury-slick",
+      "name": "Mercury Slick",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#9d9d9d"
+        },
+        {
+          "at": 0.5,
+          "color": "#e5e5e5"
+        },
+        {
+          "at": 1,
+          "color": "#5d5d5d"
+        }
+      ],
+      "tags": [
+        "mercury",
+        "silver",
+        "liquid"
+      ]
+    },
+    {
+      "id": "rusted-iron",
+      "name": "Rusted Iron",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0a05"
+        },
+        {
+          "at": 0.5,
+          "color": "#7a3413"
+        },
+        {
+          "at": 1,
+          "color": "#cf6e2c"
+        }
+      ],
+      "tags": [
+        "iron",
+        "rust",
+        "orange"
+      ]
+    },
+    {
+      "id": "palladium",
+      "name": "Palladium",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e6e6e6"
+        },
+        {
+          "at": 0.5,
+          "color": "#bababa"
+        },
+        {
+          "at": 1,
+          "color": "#e6e6e6"
+        }
+      ],
+      "tags": [
+        "palladium",
+        "silver",
+        "cool"
+      ]
+    },
+    {
+      "id": "nickel-shine",
+      "name": "Nickel Shine",
+      "category": "metallic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a8a8a8"
+        },
+        {
+          "at": 0.5,
+          "color": "#fcfcfc"
+        },
+        {
+          "at": 1,
+          "color": "#888"
+        }
+      ],
+      "tags": [
+        "nickel",
+        "shine",
+        "silver"
+      ]
+    },
+    {
+      "id": "event-horizon",
+      "name": "Event Horizon",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.5,
+          "color": "#1a1a40"
+        },
+        {
+          "at": 1,
+          "color": "#ff6f00"
+        }
+      ],
+      "tags": [
+        "blackhole",
+        "cosmic",
+        "fire"
+      ]
+    },
+    {
+      "id": "purple-nebula",
+      "name": "Purple Nebula",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0c1d"
+        },
+        {
+          "at": 0.4,
+          "color": "#553475"
+        },
+        {
+          "at": 1,
+          "color": "#ff80b5"
+        }
+      ],
+      "tags": [
+        "nebula",
+        "purple",
+        "pink"
+      ]
+    },
+    {
+      "id": "saturn-ring",
+      "name": "Saturn Ring",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ddc69e"
+        },
+        {
+          "at": 0.4,
+          "color": "#a18a5e"
+        },
+        {
+          "at": 0.7,
+          "color": "#5b4a37"
+        },
+        {
+          "at": 1,
+          "color": "#000"
+        }
+      ],
+      "tags": [
+        "saturn",
+        "ring",
+        "gold"
+      ]
+    },
+    {
+      "id": "comet-tail",
+      "name": "Comet Tail",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fffae5"
+        },
+        {
+          "at": 0.5,
+          "color": "#9bc4ff"
+        },
+        {
+          "at": 1,
+          "color": "#0a0a2e"
+        }
+      ],
+      "tags": [
+        "comet",
+        "tail",
+        "star"
+      ]
+    },
+    {
+      "id": "blue-giant",
+      "name": "Blue Giant",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000418"
+        },
+        {
+          "at": 0.5,
+          "color": "#003eff"
+        },
+        {
+          "at": 1,
+          "color": "#a0deff"
+        }
+      ],
+      "tags": [
+        "blue",
+        "giant",
+        "star"
+      ]
+    },
+    {
+      "id": "red-dwarf",
+      "name": "Red Dwarf",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0000"
+        },
+        {
+          "at": 0.5,
+          "color": "#7a0000"
+        },
+        {
+          "at": 1,
+          "color": "#ff5e3a"
+        }
+      ],
+      "tags": [
+        "red",
+        "dwarf",
+        "star"
+      ]
+    },
+    {
+      "id": "binary-orbit",
+      "name": "Binary Orbit",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000814"
+        },
+        {
+          "at": 0.4,
+          "color": "#7400b8"
+        },
+        {
+          "at": 1,
+          "color": "#ff006e"
+        }
+      ],
+      "tags": [
+        "binary",
+        "orbit",
+        "space"
+      ]
+    },
+    {
+      "id": "orion-nebula",
+      "name": "Orion Nebula",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a18"
+        },
+        {
+          "at": 0.4,
+          "color": "#ff006e"
+        },
+        {
+          "at": 0.7,
+          "color": "#3a86ff"
+        },
+        {
+          "at": 1,
+          "color": "#06ffa5"
+        }
+      ],
+      "tags": [
+        "orion",
+        "rainbow",
+        "nebula"
+      ]
+    },
+    {
+      "id": "asteroid-belt-2",
+      "name": "Asteroid Field",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c1c1c"
+        },
+        {
+          "at": 0.3,
+          "color": "#5a5a5a"
+        },
+        {
+          "at": 0.7,
+          "color": "#888"
+        },
+        {
+          "at": 1,
+          "color": "#1c1c1c"
+        }
+      ],
+      "tags": [
+        "asteroid",
+        "rocks",
+        "space"
+      ]
+    },
+    {
+      "id": "white-dwarf",
+      "name": "White Dwarf",
+      "category": "cosmic",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fffae5"
+        },
+        {
+          "at": 0.5,
+          "color": "#a0deff"
+        },
+        {
+          "at": 1,
+          "color": "#000"
+        }
+      ],
+      "tags": [
+        "white",
+        "dwarf",
+        "star"
+      ]
+    },
+    {
+      "id": "citrine",
+      "name": "Citrine",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5d4321"
+        },
+        {
+          "at": 0.5,
+          "color": "#e9b04b"
+        },
+        {
+          "at": 1,
+          "color": "#fff3a8"
+        }
+      ],
+      "tags": [
+        "citrine",
+        "yellow",
+        "gem"
+      ]
+    },
+    {
+      "id": "jade-tablet",
+      "name": "Jade Tablet",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d3b27"
+        },
+        {
+          "at": 0.5,
+          "color": "#208357"
+        },
+        {
+          "at": 1,
+          "color": "#a0e3b0"
+        }
+      ],
+      "tags": [
+        "jade",
+        "green",
+        "gem"
+      ]
+    },
+    {
+      "id": "garnet",
+      "name": "Garnet",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a0613"
+        },
+        {
+          "at": 0.5,
+          "color": "#7d1a30"
+        },
+        {
+          "at": 1,
+          "color": "#df3849"
+        }
+      ],
+      "tags": [
+        "garnet",
+        "red",
+        "gem"
+      ]
+    },
+    {
+      "id": "aquamarine",
+      "name": "Aquamarine",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#093a4a"
+        },
+        {
+          "at": 0.5,
+          "color": "#1d7b8e"
+        },
+        {
+          "at": 1,
+          "color": "#a0e8f0"
+        }
+      ],
+      "tags": [
+        "aqua",
+        "cyan",
+        "gem"
+      ]
+    },
+    {
+      "id": "peridot",
+      "name": "Peridot",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3b4d18"
+        },
+        {
+          "at": 0.5,
+          "color": "#7da33d"
+        },
+        {
+          "at": 1,
+          "color": "#cfe87b"
+        }
+      ],
+      "tags": [
+        "peridot",
+        "green",
+        "gem"
+      ]
+    },
+    {
+      "id": "moonstone-gem",
+      "name": "Moonstone Gem",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cdcde6"
+        },
+        {
+          "at": 0.4,
+          "color": "#fdfbff"
+        },
+        {
+          "at": 0.7,
+          "color": "#a8c0e0"
+        },
+        {
+          "at": 1,
+          "color": "#fdfbff"
+        }
+      ],
+      "tags": [
+        "moonstone",
+        "pearl",
+        "gem"
+      ]
+    },
+    {
+      "id": "tanzanite",
+      "name": "Tanzanite",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a1d52"
+        },
+        {
+          "at": 0.5,
+          "color": "#3d3998"
+        },
+        {
+          "at": 1,
+          "color": "#7a82e5"
+        }
+      ],
+      "tags": [
+        "tanzanite",
+        "blue",
+        "gem"
+      ]
+    },
+    {
+      "id": "rose-quartz",
+      "name": "Rose Quartz",
+      "category": "jewel",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5a2c34"
+        },
+        {
+          "at": 0.5,
+          "color": "#bd6168"
+        },
+        {
+          "at": 1,
+          "color": "#f3c5cb"
+        }
+      ],
+      "tags": [
+        "rose",
+        "quartz",
+        "gem"
+      ]
+    },
+    {
+      "id": "tiramisu",
+      "name": "Tiramisu",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a2113"
+        },
+        {
+          "at": 0.5,
+          "color": "#a47148"
+        },
+        {
+          "at": 1,
+          "color": "#fff5e3"
+        }
+      ],
+      "tags": [
+        "tiramisu",
+        "coffee",
+        "cream"
+      ]
+    },
+    {
+      "id": "lemon-tart",
+      "name": "Lemon Tart",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fff094"
+        },
+        {
+          "at": 0.5,
+          "color": "#fff7c0"
+        },
+        {
+          "at": 1,
+          "color": "#cda434"
+        }
+      ],
+      "tags": [
+        "lemon",
+        "tart",
+        "yellow"
+      ]
+    },
+    {
+      "id": "avocado-toast",
+      "name": "Avocado Toast",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d8c5c"
+        },
+        {
+          "at": 0.5,
+          "color": "#aac28c"
+        },
+        {
+          "at": 1,
+          "color": "#e9d8a6"
+        }
+      ],
+      "tags": [
+        "avocado",
+        "green",
+        "toast"
+      ]
+    },
+    {
+      "id": "raspberry-coulis",
+      "name": "Raspberry Coulis",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#660033"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf2a48"
+        },
+        {
+          "at": 1,
+          "color": "#ff8aae"
+        }
+      ],
+      "tags": [
+        "raspberry",
+        "coulis",
+        "red"
+      ]
+    },
+    {
+      "id": "hot-honey",
+      "name": "Hot Honey",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#a83e0e"
+        },
+        {
+          "at": 0.5,
+          "color": "#e58e26"
+        },
+        {
+          "at": 1,
+          "color": "#fdce46"
+        }
+      ],
+      "tags": [
+        "honey",
+        "hot",
+        "amber"
+      ]
+    },
+    {
+      "id": "pumpkin-spice",
+      "name": "Pumpkin Spice",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7e3a0e"
+        },
+        {
+          "at": 0.5,
+          "color": "#d97419"
+        },
+        {
+          "at": 1,
+          "color": "#fcb04a"
+        }
+      ],
+      "tags": [
+        "pumpkin",
+        "spice",
+        "autumn"
+      ]
+    },
+    {
+      "id": "cherry-soda",
+      "name": "Cherry Soda",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7c0a02"
+        },
+        {
+          "at": 0.5,
+          "color": "#c70039"
+        },
+        {
+          "at": 1,
+          "color": "#ff8b94"
+        }
+      ],
+      "tags": [
+        "cherry",
+        "soda",
+        "red"
+      ]
+    },
+    {
+      "id": "peppermint",
+      "name": "Peppermint",
+      "category": "food",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d3026"
+        },
+        {
+          "at": 0.5,
+          "color": "#88e79e"
+        },
+        {
+          "at": 1,
+          "color": "#fff"
+        }
+      ],
+      "tags": [
+        "peppermint",
+        "mint",
+        "cool"
+      ]
+    },
+    {
+      "id": "lavender-aurora",
+      "name": "Lavender Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a2e"
+        },
+        {
+          "at": 0.5,
+          "color": "#7400b8"
+        },
+        {
+          "at": 1,
+          "color": "#c39bff"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "lavender"
+      ]
+    },
+    {
+      "id": "emerald-aurora",
+      "name": "Emerald Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000814"
+        },
+        {
+          "at": 0.5,
+          "color": "#0d8a48"
+        },
+        {
+          "at": 1,
+          "color": "#a4f5d2"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "emerald"
+      ]
+    },
+    {
+      "id": "ruby-aurora",
+      "name": "Ruby Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a18"
+        },
+        {
+          "at": 0.5,
+          "color": "#7d0633"
+        },
+        {
+          "at": 1,
+          "color": "#ff8aae"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "ruby"
+      ]
+    },
+    {
+      "id": "aurora-celeste",
+      "name": "Aurora Celeste",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020024"
+        },
+        {
+          "at": 0.4,
+          "color": "#0093e9"
+        },
+        {
+          "at": 1,
+          "color": "#80d0c7"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "celeste"
+      ]
+    },
+    {
+      "id": "twin-aurora",
+      "name": "Twin Aurora",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020024"
+        },
+        {
+          "at": 0.4,
+          "color": "#0093e9"
+        },
+        {
+          "at": 0.7,
+          "color": "#9b51e0"
+        },
+        {
+          "at": 1,
+          "color": "#ff5694"
+        }
+      ],
+      "tags": [
+        "aurora",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "icelandic-night",
+      "name": "Icelandic Night",
+      "category": "aurora",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a182a"
+        },
+        {
+          "at": 0.4,
+          "color": "#1d4e89"
+        },
+        {
+          "at": 0.7,
+          "color": "#06d6a0"
+        },
+        {
+          "at": 1,
+          "color": "#fbf8cc"
+        }
+      ],
+      "tags": [
+        "icelandic",
+        "aurora"
+      ]
+    },
+    {
+      "id": "navy-mustard",
+      "name": "Navy / Mustard",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a2a6c"
+        },
+        {
+          "at": 1,
+          "color": "#fdc830"
+        }
+      ],
+      "tags": [
+        "navy",
+        "mustard",
+        "duotone"
+      ]
+    },
+    {
+      "id": "teal-orange",
+      "name": "Teal / Orange",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#008080"
+        },
+        {
+          "at": 1,
+          "color": "#ff7f50"
+        }
+      ],
+      "tags": [
+        "teal",
+        "orange",
+        "duotone"
+      ]
+    },
+    {
+      "id": "forest-cream",
+      "name": "Forest / Cream",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a3a32"
+        },
+        {
+          "at": 1,
+          "color": "#fff5e3"
+        }
+      ],
+      "tags": [
+        "forest",
+        "cream",
+        "duotone"
+      ]
+    },
+    {
+      "id": "crimson-cyan",
+      "name": "Crimson / Cyan",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d1a30"
+        },
+        {
+          "at": 1,
+          "color": "#06d6a0"
+        }
+      ],
+      "tags": [
+        "crimson",
+        "cyan",
+        "duotone"
+      ]
+    },
+    {
+      "id": "coffee-mint",
+      "name": "Coffee / Mint",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2723"
+        },
+        {
+          "at": 1,
+          "color": "#88e79e"
+        }
+      ],
+      "tags": [
+        "coffee",
+        "mint",
+        "duotone"
+      ]
+    },
+    {
+      "id": "rose-charcoal",
+      "name": "Rose / Charcoal",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fa709a"
+        },
+        {
+          "at": 1,
+          "color": "#16191c"
+        }
+      ],
+      "tags": [
+        "rose",
+        "charcoal",
+        "duotone"
+      ]
+    },
+    {
+      "id": "mauve-mustard",
+      "name": "Mauve / Mustard",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#915063"
+        },
+        {
+          "at": 1,
+          "color": "#fdc830"
+        }
+      ],
+      "tags": [
+        "mauve",
+        "mustard",
+        "duotone"
+      ]
+    },
+    {
+      "id": "teal-magenta",
+      "name": "Teal / Magenta",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#008080"
+        },
+        {
+          "at": 1,
+          "color": "#c71585"
+        }
+      ],
+      "tags": [
+        "teal",
+        "magenta",
+        "duotone"
+      ]
+    },
+    {
+      "id": "mint-cobalt",
+      "name": "Mint / Cobalt",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#88e79e"
+        },
+        {
+          "at": 1,
+          "color": "#0044ff"
+        }
+      ],
+      "tags": [
+        "mint",
+        "cobalt",
+        "duotone"
+      ]
+    },
+    {
+      "id": "peach-navy",
+      "name": "Peach / Navy",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffd1a3"
+        },
+        {
+          "at": 1,
+          "color": "#03075c"
+        }
+      ],
+      "tags": [
+        "peach",
+        "navy",
+        "duotone"
+      ]
+    },
+    {
+      "id": "emerald-rose",
+      "name": "Emerald / Rose",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#03996b"
+        },
+        {
+          "at": 1,
+          "color": "#fda4af"
+        }
+      ],
+      "tags": [
+        "emerald",
+        "rose",
+        "duotone"
+      ]
+    },
+    {
+      "id": "plum-cream",
+      "name": "Plum / Cream",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#5d2666"
+        },
+        {
+          "at": 1,
+          "color": "#fff5e3"
+        }
+      ],
+      "tags": [
+        "plum",
+        "cream",
+        "duotone"
+      ]
+    },
+    {
+      "id": "terracotta-sage",
+      "name": "Terracotta / Sage",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#c14d36"
+        },
+        {
+          "at": 1,
+          "color": "#a3b18a"
+        }
+      ],
+      "tags": [
+        "terracotta",
+        "sage",
+        "duotone"
+      ]
+    },
+    {
+      "id": "sand-cobalt",
+      "name": "Sand / Cobalt",
+      "category": "duotone",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#dbc7a8"
+        },
+        {
+          "at": 1,
+          "color": "#1d3557"
+        }
+      ],
+      "tags": [
+        "sand",
+        "cobalt",
+        "duotone"
+      ]
+    },
+    {
+      "id": "summer-rain",
+      "name": "Summer Rain",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#536976"
+        },
+        {
+          "at": 0.5,
+          "color": "#88a4b9"
+        },
+        {
+          "at": 1,
+          "color": "#dde1e3"
+        }
+      ],
+      "tags": [
+        "rain",
+        "summer",
+        "cool"
+      ]
+    },
+    {
+      "id": "thunderhead",
+      "name": "Thunderhead",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c1c2b"
+        },
+        {
+          "at": 0.5,
+          "color": "#3b3b5c"
+        },
+        {
+          "at": 1,
+          "color": "#777e91"
+        }
+      ],
+      "tags": [
+        "thunder",
+        "cloud",
+        "storm"
+      ]
+    },
+    {
+      "id": "clear-blue",
+      "name": "Clear Blue",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#56ccf2"
+        },
+        {
+          "at": 1,
+          "color": "#2f80ed"
+        }
+      ],
+      "tags": [
+        "clear",
+        "sky",
+        "blue"
+      ]
+    },
+    {
+      "id": "overcast",
+      "name": "Overcast",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#bdc3c7"
+        },
+        {
+          "at": 0.5,
+          "color": "#9aa3a8"
+        },
+        {
+          "at": 1,
+          "color": "#7a838a"
+        }
+      ],
+      "tags": [
+        "overcast",
+        "grey",
+        "cloud"
+      ]
+    },
+    {
+      "id": "snowfall",
+      "name": "Snowfall",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fdfbfb"
+        },
+        {
+          "at": 0.5,
+          "color": "#cfd9df"
+        },
+        {
+          "at": 1,
+          "color": "#a8b6c1"
+        }
+      ],
+      "tags": [
+        "snow",
+        "cool",
+        "winter"
+      ]
+    },
+    {
+      "id": "hurricane",
+      "name": "Hurricane",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1c2933"
+        },
+        {
+          "at": 0.4,
+          "color": "#4f6275"
+        },
+        {
+          "at": 1,
+          "color": "#a4b1be"
+        }
+      ],
+      "tags": [
+        "hurricane",
+        "storm",
+        "gale"
+      ]
+    },
+    {
+      "id": "humid-day",
+      "name": "Humid Day",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fbeec1"
+        },
+        {
+          "at": 0.5,
+          "color": "#fcdc94"
+        },
+        {
+          "at": 1,
+          "color": "#bcdde9"
+        }
+      ],
+      "tags": [
+        "humid",
+        "day",
+        "soft"
+      ]
+    },
+    {
+      "id": "lightning-flash",
+      "name": "Lightning Flash",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0c0e1f"
+        },
+        {
+          "at": 0.4,
+          "color": "#5b6175"
+        },
+        {
+          "at": 0.7,
+          "color": "#fcfcfc"
+        },
+        {
+          "at": 1,
+          "color": "#0c0e1f"
+        }
+      ],
+      "tags": [
+        "lightning",
+        "flash",
+        "storm"
+      ]
+    },
+    {
+      "id": "frost-morning",
+      "name": "Frost Morning",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cce6f4"
+        },
+        {
+          "at": 0.5,
+          "color": "#e8f1f5"
+        },
+        {
+          "at": 1,
+          "color": "#a3cfdc"
+        }
+      ],
+      "tags": [
+        "frost",
+        "morning",
+        "cool"
+      ]
+    },
+    {
+      "id": "heatwave",
+      "name": "Heatwave",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff9e2c"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff6b35"
+        },
+        {
+          "at": 1,
+          "color": "#fad643"
+        }
+      ],
+      "tags": [
+        "heat",
+        "warm",
+        "sun"
+      ]
+    },
+    {
+      "id": "foggy-coast",
+      "name": "Foggy Coast",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7591a3"
+        },
+        {
+          "at": 0.5,
+          "color": "#a4b0bb"
+        },
+        {
+          "at": 1,
+          "color": "#cdd5da"
+        }
+      ],
+      "tags": [
+        "fog",
+        "coast",
+        "cool"
+      ]
+    },
+    {
+      "id": "monsoon",
+      "name": "Monsoon",
+      "category": "weather",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0b3140"
+        },
+        {
+          "at": 0.5,
+          "color": "#28505b"
+        },
+        {
+          "at": 1,
+          "color": "#88a4ab"
+        }
+      ],
+      "tags": [
+        "monsoon",
+        "storm",
+        "tropical"
+      ]
+    },
+    {
+      "id": "blade-runner",
+      "name": "Blade Runner",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0e23"
+        },
+        {
+          "at": 0.4,
+          "color": "#5e2d63"
+        },
+        {
+          "at": 1,
+          "color": "#ffb02e"
+        }
+      ],
+      "tags": [
+        "blade-runner",
+        "cyberpunk",
+        "film"
+      ]
+    },
+    {
+      "id": "grand-budapest",
+      "name": "Grand Budapest",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#f5b0c5"
+        },
+        {
+          "at": 0.5,
+          "color": "#fce5d8"
+        },
+        {
+          "at": 1,
+          "color": "#a37c40"
+        }
+      ],
+      "tags": [
+        "anderson",
+        "budapest",
+        "pastel"
+      ]
+    },
+    {
+      "id": "mad-max",
+      "name": "Mad Max",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3d1a04"
+        },
+        {
+          "at": 0.5,
+          "color": "#a0421e"
+        },
+        {
+          "at": 1,
+          "color": "#fce0a8"
+        }
+      ],
+      "tags": [
+        "madmax",
+        "desert",
+        "fire"
+      ]
+    },
+    {
+      "id": "tron-grid",
+      "name": "Tron Grid",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000c1f"
+        },
+        {
+          "at": 0.5,
+          "color": "#0058b3"
+        },
+        {
+          "at": 1,
+          "color": "#00ffe1"
+        }
+      ],
+      "tags": [
+        "tron",
+        "grid",
+        "cyan"
+      ]
+    },
+    {
+      "id": "matrix-rain",
+      "name": "Matrix Rain",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#000000"
+        },
+        {
+          "at": 0.5,
+          "color": "#003b00"
+        },
+        {
+          "at": 1,
+          "color": "#00ff41"
+        }
+      ],
+      "tags": [
+        "matrix",
+        "green",
+        "code"
+      ]
+    },
+    {
+      "id": "akira-bike",
+      "name": "Akira Bike",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0033"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf0000"
+        },
+        {
+          "at": 1,
+          "color": "#ffeb3b"
+        }
+      ],
+      "tags": [
+        "akira",
+        "anime",
+        "red"
+      ]
+    },
+    {
+      "id": "moonrise-kingdom",
+      "name": "Moonrise Kingdom",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#735c2a"
+        },
+        {
+          "at": 0.5,
+          "color": "#cba74c"
+        },
+        {
+          "at": 1,
+          "color": "#5b8a72"
+        }
+      ],
+      "tags": [
+        "anderson",
+        "forest",
+        "autumn"
+      ]
+    },
+    {
+      "id": "drive-pink",
+      "name": "Drive Pink",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a0a18"
+        },
+        {
+          "at": 0.5,
+          "color": "#3a0066"
+        },
+        {
+          "at": 1,
+          "color": "#ff5dd6"
+        }
+      ],
+      "tags": [
+        "drive",
+        "cinema",
+        "pink"
+      ]
+    },
+    {
+      "id": "fifth-element",
+      "name": "Fifth Element",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#031634"
+        },
+        {
+          "at": 0.4,
+          "color": "#033f63"
+        },
+        {
+          "at": 1,
+          "color": "#fa9907"
+        }
+      ],
+      "tags": [
+        "fifth-element",
+        "sci-fi",
+        "orange"
+      ]
+    },
+    {
+      "id": "amelie",
+      "name": "Amélie",
+      "category": "films",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a0e0e"
+        },
+        {
+          "at": 0.5,
+          "color": "#cfa050"
+        },
+        {
+          "at": 1,
+          "color": "#a4be7b"
+        }
+      ],
+      "tags": [
+        "amelie",
+        "paris",
+        "warm"
+      ]
+    },
+    {
+      "id": "tokyo-night",
+      "name": "Tokyo Night",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0d0d2b"
+        },
+        {
+          "at": 0.5,
+          "color": "#380059"
+        },
+        {
+          "at": 1,
+          "color": "#ff61ce"
+        }
+      ],
+      "tags": [
+        "tokyo",
+        "night",
+        "pink"
+      ]
+    },
+    {
+      "id": "paris-rose",
+      "name": "Paris Rose",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2c41"
+        },
+        {
+          "at": 0.5,
+          "color": "#aa6c63"
+        },
+        {
+          "at": 1,
+          "color": "#fbcaca"
+        }
+      ],
+      "tags": [
+        "paris",
+        "rose",
+        "romance"
+      ]
+    },
+    {
+      "id": "manhattan-grey",
+      "name": "Manhattan Grey",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a1a1a"
+        },
+        {
+          "at": 0.5,
+          "color": "#3d3d3d"
+        },
+        {
+          "at": 1,
+          "color": "#bdbdbd"
+        }
+      ],
+      "tags": [
+        "nyc",
+        "grey",
+        "urban"
+      ]
+    },
+    {
+      "id": "berlin-concrete",
+      "name": "Berlin Concrete",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#2b2b2b"
+        },
+        {
+          "at": 0.5,
+          "color": "#5d5d5d"
+        },
+        {
+          "at": 1,
+          "color": "#ffd33d"
+        }
+      ],
+      "tags": [
+        "berlin",
+        "concrete",
+        "yellow"
+      ]
+    },
+    {
+      "id": "mumbai-spice",
+      "name": "Mumbai Spice",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7a1f0a"
+        },
+        {
+          "at": 0.5,
+          "color": "#e58e26"
+        },
+        {
+          "at": 1,
+          "color": "#fff094"
+        }
+      ],
+      "tags": [
+        "mumbai",
+        "spice",
+        "warm"
+      ]
+    },
+    {
+      "id": "rio-beach",
+      "name": "Rio Beach",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0093e9"
+        },
+        {
+          "at": 0.5,
+          "color": "#00ffd5"
+        },
+        {
+          "at": 1,
+          "color": "#fff094"
+        }
+      ],
+      "tags": [
+        "rio",
+        "beach",
+        "tropical"
+      ]
+    },
+    {
+      "id": "reykjavik-blue",
+      "name": "Reykjavik Blue",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#020024"
+        },
+        {
+          "at": 0.5,
+          "color": "#0093e9"
+        },
+        {
+          "at": 1,
+          "color": "#a4cdd9"
+        }
+      ],
+      "tags": [
+        "reykjavik",
+        "aurora",
+        "cool"
+      ]
+    },
+    {
+      "id": "marrakesh",
+      "name": "Marrakesh",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#7d2105"
+        },
+        {
+          "at": 0.5,
+          "color": "#c2581a"
+        },
+        {
+          "at": 1,
+          "color": "#f6c177"
+        }
+      ],
+      "tags": [
+        "marrakesh",
+        "orange",
+        "spice"
+      ]
+    },
+    {
+      "id": "dubai-gold",
+      "name": "Dubai Gold",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1a0a05"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf953f"
+        },
+        {
+          "at": 1,
+          "color": "#fcf6ba"
+        }
+      ],
+      "tags": [
+        "dubai",
+        "gold",
+        "desert"
+      ]
+    },
+    {
+      "id": "venice-canal",
+      "name": "Venice Canal",
+      "category": "cities",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1d3557"
+        },
+        {
+          "at": 0.5,
+          "color": "#5b8aa9"
+        },
+        {
+          "at": 1,
+          "color": "#fbcaca"
+        }
+      ],
+      "tags": [
+        "venice",
+        "canal",
+        "rose"
+      ]
+    },
+    {
+      "id": "impressionist",
+      "name": "Impressionist",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#cfd8b3"
+        },
+        {
+          "at": 0.4,
+          "color": "#bbdcb3"
+        },
+        {
+          "at": 0.7,
+          "color": "#e8d8a3"
+        },
+        {
+          "at": 1,
+          "color": "#cccfe5"
+        }
+      ],
+      "tags": [
+        "impressionist",
+        "monet",
+        "pastel"
+      ]
+    },
+    {
+      "id": "art-deco",
+      "name": "Art Deco",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#0a1a30"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf953f"
+        },
+        {
+          "at": 1,
+          "color": "#0a1a30"
+        }
+      ],
+      "tags": [
+        "deco",
+        "gold",
+        "navy"
+      ]
+    },
+    {
+      "id": "bauhaus",
+      "name": "Bauhaus",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e63946"
+        },
+        {
+          "at": 0.33,
+          "color": "#f1c40f"
+        },
+        {
+          "at": 0.66,
+          "color": "#1d3557"
+        },
+        {
+          "at": 1,
+          "color": "#fff"
+        }
+      ],
+      "tags": [
+        "bauhaus",
+        "primary",
+        "modern"
+      ]
+    },
+    {
+      "id": "memphis-design",
+      "name": "Memphis Design",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff006e"
+        },
+        {
+          "at": 0.33,
+          "color": "#3a86ff"
+        },
+        {
+          "at": 0.66,
+          "color": "#ffbe0b"
+        },
+        {
+          "at": 1,
+          "color": "#06ffa5"
+        }
+      ],
+      "tags": [
+        "memphis",
+        "80s",
+        "pop"
+      ]
+    },
+    {
+      "id": "mondrian",
+      "name": "Mondrian",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#e63946"
+        },
+        {
+          "at": 0.4,
+          "color": "#fff"
+        },
+        {
+          "at": 0.7,
+          "color": "#1d3557"
+        },
+        {
+          "at": 1,
+          "color": "#ffd33d"
+        }
+      ],
+      "tags": [
+        "mondrian",
+        "primary"
+      ]
+    },
+    {
+      "id": "rothko-red",
+      "name": "Rothko Red",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a0613"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf2a48"
+        },
+        {
+          "at": 1,
+          "color": "#ff8aae"
+        }
+      ],
+      "tags": [
+        "rothko",
+        "red",
+        "abstract"
+      ]
+    },
+    {
+      "id": "pop-art",
+      "name": "Pop Art",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffeb00"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff0080"
+        },
+        {
+          "at": 1,
+          "color": "#3a86ff"
+        }
+      ],
+      "tags": [
+        "pop-art",
+        "warhol",
+        "bright"
+      ]
+    },
+    {
+      "id": "renaissance",
+      "name": "Renaissance",
+      "category": "art-movements",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3e2c1d"
+        },
+        {
+          "at": 0.5,
+          "color": "#bf953f"
+        },
+        {
+          "at": 1,
+          "color": "#7d4f1e"
+        }
+      ],
+      "tags": [
+        "renaissance",
+        "gold",
+        "classic"
+      ]
+    },
+    {
+      "id": "bubblegum",
+      "name": "Bubblegum",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff6ec7"
+        },
+        {
+          "at": 1,
+          "color": "#ffb6e6"
+        }
+      ],
+      "tags": [
+        "bubblegum",
+        "pink"
+      ]
+    },
+    {
+      "id": "candy-corn",
+      "name": "Candy Corn",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffd200"
+        },
+        {
+          "at": 0.5,
+          "color": "#ff8c00"
+        },
+        {
+          "at": 1,
+          "color": "#fff"
+        }
+      ],
+      "tags": [
+        "candy-corn",
+        "yellow",
+        "orange"
+      ]
+    },
+    {
+      "id": "cotton-twirl",
+      "name": "Cotton Twirl",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff80ab"
+        },
+        {
+          "at": 0.5,
+          "color": "#b388ff"
+        },
+        {
+          "at": 1,
+          "color": "#80d8ff"
+        }
+      ],
+      "tags": [
+        "cotton",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "lollipop",
+      "name": "Lollipop",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ee0979"
+        },
+        {
+          "at": 0.33,
+          "color": "#ffd200"
+        },
+        {
+          "at": 0.66,
+          "color": "#06ffa5"
+        },
+        {
+          "at": 1,
+          "color": "#3a86ff"
+        }
+      ],
+      "tags": [
+        "lolli",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "rock-candy",
+      "name": "Rock Candy",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ffafbd"
+        },
+        {
+          "at": 0.5,
+          "color": "#ffc3a0"
+        },
+        {
+          "at": 1,
+          "color": "#a8edea"
+        }
+      ],
+      "tags": [
+        "rock",
+        "sweet"
+      ]
+    },
+    {
+      "id": "jellybean",
+      "name": "Jellybean",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff5e7e"
+        },
+        {
+          "at": 0.33,
+          "color": "#fbb144"
+        },
+        {
+          "at": 0.66,
+          "color": "#34d399"
+        },
+        {
+          "at": 1,
+          "color": "#3b82f6"
+        }
+      ],
+      "tags": [
+        "jellybean",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "caramel-swirl",
+      "name": "Caramel Swirl",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1a08"
+        },
+        {
+          "at": 0.5,
+          "color": "#a05e2c"
+        },
+        {
+          "at": 1,
+          "color": "#fcd29f"
+        }
+      ],
+      "tags": [
+        "caramel",
+        "sweet",
+        "brown"
+      ]
+    },
+    {
+      "id": "ice-pop",
+      "name": "Ice Pop",
+      "category": "candy",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#ff6090"
+        },
+        {
+          "at": 0.33,
+          "color": "#ffeb3b"
+        },
+        {
+          "at": 0.66,
+          "color": "#80deea"
+        },
+        {
+          "at": 1,
+          "color": "#9575cd"
+        }
+      ],
+      "tags": [
+        "ice-pop",
+        "rainbow"
+      ]
+    },
+    {
+      "id": "linen",
+      "name": "Linen",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fdf6e3"
+        },
+        {
+          "at": 0.5,
+          "color": "#e8e0c8"
+        },
+        {
+          "at": 1,
+          "color": "#c2b8a3"
+        }
+      ],
+      "tags": [
+        "linen",
+        "fabric",
+        "soft"
+      ]
+    },
+    {
+      "id": "denim",
+      "name": "Denim",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#1d3557"
+        },
+        {
+          "at": 0.5,
+          "color": "#457b9d"
+        },
+        {
+          "at": 1,
+          "color": "#a8dadc"
+        }
+      ],
+      "tags": [
+        "denim",
+        "blue",
+        "fabric"
+      ]
+    },
+    {
+      "id": "rust-patina",
+      "name": "Rust Patina",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a1a08"
+        },
+        {
+          "at": 0.4,
+          "color": "#7a3210"
+        },
+        {
+          "at": 0.7,
+          "color": "#5b8a72"
+        },
+        {
+          "at": 1,
+          "color": "#94b59f"
+        }
+      ],
+      "tags": [
+        "rust",
+        "patina",
+        "aged"
+      ]
+    },
+    {
+      "id": "wood-grain",
+      "name": "Wood Grain",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#6b3410"
+        },
+        {
+          "at": 0.4,
+          "color": "#a06028"
+        },
+        {
+          "at": 0.7,
+          "color": "#8b4513"
+        },
+        {
+          "at": 1,
+          "color": "#bf7e3b"
+        }
+      ],
+      "tags": [
+        "wood",
+        "grain",
+        "natural"
+      ]
+    },
+    {
+      "id": "marble-veined",
+      "name": "Marble Veined",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#fffae5"
+        },
+        {
+          "at": 0.3,
+          "color": "#e2dfdf"
+        },
+        {
+          "at": 0.6,
+          "color": "#7e7c7c"
+        },
+        {
+          "at": 1,
+          "color": "#fffae5"
+        }
+      ],
+      "tags": [
+        "marble",
+        "veined",
+        "stone"
+      ]
+    },
+    {
+      "id": "velour",
+      "name": "Velour",
+      "category": "texture",
+      "stops": [
+        {
+          "at": 0,
+          "color": "#3a0e3a"
+        },
+        {
+          "at": 0.5,
+          "color": "#7d2469"
+        },
+        {
+          "at": 1,
+          "color": "#bd6168"
+        }
+      ],
+      "tags": [
+        "velour",
+        "velvet",
+        "soft"
+      ]
+    }
+  ]
+}

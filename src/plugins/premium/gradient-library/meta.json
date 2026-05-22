@@ -1,0 +1,16 @@
+{
+  "id": "gradient-library",
+  "name": "Gradient Library",
+  "version": "1.0.0",
+  "pack": "infinity-gradients",
+  "packName": "Infinity Gradients Pack",
+  "tagline": "Curated gradient presets — drag onto any gradient picker",
+  "description": "80+ hand-crafted gradient presets across 10 categories. Browse, search, and drag onto any gradient editor in slammer. Save your own custom gradients to the personal vault.",
+  "icon": "swatchbook",
+  "category": "panel",
+  "pro": true,
+  "tags": ["gradient", "preset", "library", "color", "panel"],
+  "previewImage": null,
+  "price": null,
+  "bundledWithPack": true
+}

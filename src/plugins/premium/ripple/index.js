@@ -3,7 +3,8 @@
 // function evaluated at the pixel's distance from a configurable center.
 // Edge mode: clamp. Output is a fresh ImageData.
 
-import { sliderRow, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { sliderRow, sliderRowLg, pillGroup, makeRoot } from '../../shared/ui-helpers.js';
+import { createXYPadWidget } from '../../shared/xy-pad-widget.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -57,6 +58,7 @@ export default {
   type: 'filter',
   icon: 'bullseye',
   category: 'distort',
+  description: 'Concentric wave distortion',
   pro: true,
   pack: 'liquid-pack',
 
@@ -199,25 +201,25 @@ export default {
       onChange(patch);
     }
 
-    root.appendChild(sliderRow({
-      label: 'Center X', min: 0, max: 100, step: 1,
-      value: local.centerX ?? 50, defaultValue: 50, suffix: '%',
-      onChange: (v) => set({ centerX: v }),
+    root.appendChild(createXYPadWidget({
+      x: local.centerX ?? 50,
+      y: local.centerY ?? 50,
+      defaultX: 50,
+      defaultY: 50,
+      onChange: ({ x, y }) => {
+        local.centerX = x;
+        local.centerY = y;
+        set({ centerX: x, centerY: y });
+      },
     }));
 
-    root.appendChild(sliderRow({
-      label: 'Center Y', min: 0, max: 100, step: 1,
-      value: local.centerY ?? 50, defaultValue: 50, suffix: '%',
-      onChange: (v) => set({ centerY: v }),
-    }));
-
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Wavelength', min: 5, max: 200, step: 1,
       value: local.wavelength ?? 30, defaultValue: 30, suffix: 'px',
       onChange: (v) => set({ wavelength: v }),
     }));
 
-    root.appendChild(sliderRow({
+    root.appendChild(sliderRowLg({
       label: 'Amplitude', min: 0, max: 80, step: 1,
       value: local.amplitude ?? 10, defaultValue: 10, suffix: 'px',
       onChange: (v) => set({ amplitude: v }),

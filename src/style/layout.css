@@ -54,6 +54,30 @@ html, body {
   width: 100vw;
 }
 
+/* ============================================================================
+   Theme swap transition — Phase 30.
+   Smooths the cross-fade between dark / anthracite / light themes by
+   easing the colour properties only. box-shadow and transform are
+   deliberately NOT in the list — animating box-shadow during a swap
+   causes a visible jank wave across the layout, and transform would
+   fight the per-element interaction transforms. 200 ms matches the
+   roadmap-specified duration.
+   ========================================================================== */
+.app,
+.app-toolbar,
+.tool-sidebar,
+.side-panel,
+.app-footer,
+.effect-card,
+.layer-item,
+.settings-modal,
+.shop-modal,
+.pb-modal,
+.floating-window,
+.color-hub {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
 .app-toolbar { grid-area: toolbar; }
 .tool-sidebar { grid-area: tools; }
 .canvas-area { grid-area: canvas; }
@@ -104,6 +128,27 @@ body.panels-collapsed #app {
   color: var(--sl-text-secondary);
   opacity: 0.6;
   letter-spacing: 0.1em;
+}
+
+/* Public-BETA chip next to the version tag. Tints with the accent so it
+ * reads as "active development status", not a permanent label. Tooltip on
+ * hover explains the BETA→shop-launch transition. Remove this element +
+ * rule when Phase 28 commerce ships and slammer.app exits BETA. */
+.beta-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sl-accent-primary);
+  background: color-mix(in srgb, var(--sl-accent-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sl-accent-primary) 30%, transparent);
+  border-radius: 3px;
+  vertical-align: middle;
+  cursor: help;
+  user-select: none;
 }
 
 .tb-sep {
@@ -166,17 +211,50 @@ body.panels-collapsed #app {
 }
 
 /* ---------- Tool sidebar (Photoshop-style) ---------- */
+/* Layout: outer flex column with a scrollable content area on top + a
+ * pinned shop section at the bottom. Tools / plugins overflow into the
+ * scroll area; the shop button stays anchored regardless of how many
+ * plugins the user pins. The bottom section sits OUTSIDE the scroll
+ * container so it never disappears off-screen on short viewports. */
 .tool-sidebar {
   background-color: var(--sl-surface-panel);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   padding: 8px 4px;
   border-right: 1px solid var(--sl-shadow-vhs-deep);
   box-shadow: inset -1px 0 0 var(--sl-shadow-vhs-highlight);
   overflow: hidden;
+  /* Establish a stacking context so the pinned shop section can sit
+   * above the scrolling content's potential overlapping divider. */
+  position: relative;
 }
+
+/* Scrollable region — holds Edit / Create / Plugins sections. Wins
+ * `flex: 1` of the outer column so it eats available space; `min-height: 0`
+ * lets flex actually shrink the container in tight viewports (otherwise
+ * the column refuses to scroll and pushes the shop section off-screen).
+ *
+ * Scrollbar deliberately HIDDEN here even though the global slammer-wide
+ * custom scrollbar would otherwise apply. The tools sidebar is too narrow
+ * (44 px) to spare horizontal room for a visible track — and the visual
+ * weight of even a 4 px slim scrollbar fights with the icon column. Scroll
+ * still works via mouse-wheel + trackpad + touch-drag, just no track UI.
+ * `scrollbar-width: none` covers Firefox, `::-webkit-scrollbar { display:
+ * none }` covers Chrome/Edge/Safari. Override of the global custom rule. */
+.tool-sidebar-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  scrollbar-width: none;
+}
+.tool-sidebar-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* ---------- Footer ---------- */
 .app-footer {
@@ -792,6 +870,98 @@ body.color-hub-open:not(.color-hub--dot) .quick-wheel-controls {
   background-size: 100% auto;
   background-repeat: repeat-y;
   background-position: top center;
+}
+
+/* ============================================================================
+   Light theme overrides — Phase 30.
+   The plastic-texture JPG and the heavy inset/drop shadows are dark-theme
+   chrome. Light theme is flat: no decorative texture, no shadow stacks on
+   chrome buttons. !important is needed where main.js sets the texture as
+   an inline style attribute.
+   ========================================================================== */
+:root[data-theme="light"] .plastic-texture {
+  background-image: none !important;
+}
+:root[data-theme="light"] .tool-btn {
+  background: var(--sl-surface-panel) !important;
+  border: 1px solid var(--sl-border-default) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"] .tool-btn:hover {
+  background: var(--sl-surface-raised) !important;
+  border-color: var(--sl-accent-primary) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"] .tool-btn:active {
+  background: var(--sl-surface-elevated) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"] .tool-btn[aria-pressed="true"] {
+  /* Keep the accent ring (signals 'active tool'), drop the white highlight. */
+  box-shadow: inset 0 0 0 1px var(--sl-accent-primary) !important;
+}
+:root[data-theme="light"] .tool-btn i,
+:root[data-theme="light"] .tb-btn i,
+:root[data-theme="light"] .zoom-btn i {
+  text-shadow: none;
+}
+:root[data-theme="light"] .tb-btn,
+:root[data-theme="light"] .zoom-btn {
+  background: var(--sl-surface-panel);
+  border: 1px solid var(--sl-border-default);
+  box-shadow: none;
+}
+:root[data-theme="light"] .tb-btn:hover,
+:root[data-theme="light"] .zoom-btn:hover {
+  background: var(--sl-surface-raised);
+  box-shadow: none;
+}
+:root[data-theme="light"] .app-toolbar,
+:root[data-theme="light"] .app-footer,
+:root[data-theme="light"] .tool-sidebar,
+:root[data-theme="light"] .side-panel {
+  background: var(--sl-surface-panel);
+  box-shadow: none;
+}
+
+/* Plugin-window header — every panel plugin (Unsplash, Pexels, fal.ai,
+ * Openverse, Met, etc.) writes its own dark-gradient .floating-header in
+ * its plugin CSS. Strip the gradient in Light and use a flat elevated
+ * surface; the plugin's own title colour (often a brand accent) stays. */
+:root[data-theme="light"] .floating-header {
+  background: var(--sl-surface-elevated) !important;
+  border-bottom: 1px solid var(--sl-border-default) !important;
+}
+:root[data-theme="light"] .floating-window {
+  /* Drop the dark-mode 18px black box-shadow halo around plugin windows.
+   * Light theme floats them with just a 1px border for definition. */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Shop cards — hardcoded black drop shadow + inset highlight. Flatten. */
+:root[data-theme="light"] .shop-card {
+  box-shadow: none !important;
+  border: 1px solid var(--sl-border-default) !important;
+}
+:root[data-theme="light"] .shop-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Settings / shop / plugin-browser modal panels — drop the heavy black
+ * 24px halo. Use a faint shadow + border so the modal still floats. */
+:root[data-theme="light"] .settings-modal,
+:root[data-theme="light"] .shop-modal,
+:root[data-theme="light"] .pb-modal {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10) !important;
+}
+
+/* Layer / effect cards in the side panel — the inset highlight token is
+ * already transparent in Light, but some surfaces have hardcoded black
+ * drop shadows. Strip them. */
+:root[data-theme="light"] .effect-card,
+:root[data-theme="light"] .layer-item,
+:root[data-theme="light"] .effects-group {
+  box-shadow: none !important;
 }
 
 .side-panel-top,

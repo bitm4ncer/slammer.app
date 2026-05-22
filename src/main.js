@@ -104,7 +104,7 @@ import { exportVisibleAsPng } from './io/export-png.js';
 import { initProjectStore } from './io/project-store.js';
 import { initProjectMenu } from './ui/project-menu.js';
 import { initAffinityBridge } from './integrations/affinity/index.js';
-import { initSettingsPopup, getSettings, setSettings, onSettingsChange } from './ui/settings-popup.js';
+import { initSettingsPopup, getSettings, setSettings, onSettingsChange, applyTheme } from './ui/settings-popup.js';
 import { initSidePanelSplit } from './ui/side-panel-split.js';
 import { initLayerStackAdd } from './ui/layer-stack-add.js';
 import { initDocumentSizePopup } from './ui/document-size-popup.js';
@@ -126,6 +126,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     button: document.getElementById('btnSettings'),
     version: '1.0.2',
   });
+
+  // Phase 30 — apply persisted UI theme BEFORE the renderer mounts so light /
+  // anthracite users never see a flash of Dark on cold boot. Also subscribe
+  // so subsequent theme changes from the picker flow through here too.
+  applyTheme(getSettings().theme);
+  onSettingsChange((s) => applyTheme(s.theme));
+
   // Konva.pixelRatio policy — applied BEFORE any Konva object is created.
   //   • 1x display (Windows / desktop monitors): pixelRatio = 1. No-op.
   //   • 2x retina (most Macs, iPads): pixelRatio = 2. Sharp UI, default.

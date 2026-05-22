@@ -1,0 +1,20 @@
+{
+  "id": "pixelsort",
+  "pack": "glitch-pack",
+  "tagline": "Sort pixels along rows or columns by brightness, hue, or saturation — with score-from-source so it stays readable through any stack",
+  "description": "Pixel Sort reorders ink along straight runs by a chosen criterion, freezing pixels above or below a threshold. The slammer build scores each pixel from the layer's pre-effect-stack source — so a Pixel Sort placed above a Dither, a Halftone, or a JPEG crush still sees the original tonal map and produces real, readable streaks instead of noise.",
+  "faq": [
+    {
+      "q": "Why does Pixel Sort still work above other glitch effects in slammer?",
+      "a": "The renderer threads the layer's original source pixels into every plugin's process() call as ctx.sourceImageData. Pixel Sort scores from there but writes the permutation into the current pipeline buffer. So the dither / halftone / JPEG colours follow the sort positions of the underlying continuous tones."
+    },
+    {
+      "q": "What's the right Threshold default?",
+      "a": "9 (out of 100). Low enough to catch almost every pixel, so the criterion does the work. Crank it up to 60–80 for that classic 'only the lights flow' look, or down to 0 for full-line sorts."
+    },
+    {
+      "q": "Direction icons mean what exactly?",
+      "a": "Horizontal sorts each ROW left to right; vertical sorts each COLUMN top to bottom. Combine with Criteria (brightness / hue / saturation) for radically different glitch flavours."
+    }
+  ]
+}
