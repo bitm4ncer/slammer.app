@@ -3,6 +3,7 @@
 import { showNotification } from './notifications.js';
 import { exportSlmr, importSlmr } from '../io/project-file.js';
 import { preloadFontsForDoc } from './typography/font-loader.js';
+import { track } from '../analytics.js';
 
 export function initProjectMenu({ document: doc, projectStore, view }) {
   let backdrop = null;
@@ -446,6 +447,7 @@ export function initProjectMenu({ document: doc, projectStore, view }) {
         });
         doc.load(projDoc);
         projectStore.setCurrent(id);
+        track.projectLoaded('menu');
         showNotification(`Opened "${projDoc.name}"`);
         close();
       };

@@ -10,6 +10,7 @@
 // so the shop is never empty during development.
 
 import { listPlugins } from '../plugins/registry.js';
+import { track } from '../analytics.js';
 
 let backdrop = null;
 let viewState = { mode: 'grid', selectedId: null };
@@ -581,7 +582,7 @@ function bindEvents() {
   backdrop.onclick = (e) => {
     if (e.target === backdrop) { close(); return; }
     const card = e.target.closest('[data-act="open"]');
-    if (card) { setView('detail', card.dataset.id); return; }
+    if (card) { track.shopSpecimenViewed(card.dataset.id); setView('detail', card.dataset.id); return; }
     if (e.target.closest('[data-act="close"]')) { close(); return; }
     if (e.target.closest('[data-act="back"]')) { setView('grid'); return; }
     // [data-act="buy"] — disabled in v1, real Polar checkout in Phase 28

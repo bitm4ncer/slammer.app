@@ -5,6 +5,7 @@
 
 import { exportImage } from '../io/export-png.js';
 import { createFloatingWindow } from './floating-window.js';
+import { track } from '../analytics.js';
 
 const SETTINGS_KEY = 'slammer:lastExportSettings';
 
@@ -187,6 +188,7 @@ export function openExportPopup({ document: doc, renderer }) {
       activeLayerId: state.activeLayerId,
       activeLayerName: state.activeLayerName,
     });
+    track.exported(state.format);
     handle.close();
   });
 }

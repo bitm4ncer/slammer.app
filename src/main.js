@@ -119,6 +119,8 @@ import { initSnapRulers } from './ui/snap-rulers.js';
 import { initCanvasGrid } from './ui/canvas-grid.js';
 import { initTransformInspector } from './ui/transform-inspector.js';
 import * as activeGenerations from './ui/active-generations.js';
+import { track } from './analytics.js';
+import { onToolChange } from './ui/vector-tools/active-tool.js';
 
 // ---------- Bootstrap ----------
 document.addEventListener('DOMContentLoaded', async () => {
@@ -365,7 +367,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ---------- Bitmancer Shop button ----------
   const btnShop = document.getElementById('btnShop');
-  if (btnShop) btnShop.addEventListener('click', () => openShop());
+  if (btnShop) btnShop.addEventListener('click', () => { track.shopOpened(); openShop(); });
+
+  // ---------- Analytics — document event subscribers ----------
+  // Centralised here so the call sites stay clean: every layer add and
+  // effect add already emits through doc.subscribe(), so we just listen
+  // once instead of sprinkling track() calls across the codebase.
+  doc.subscribe((evt) => {
+    if (!evt || !evt.type) return;
+    if (evt.type === 'layer:added' && evt.layer) {
+      track.layerAdded(evt.layer.type);
+    } else if (evt.type === 'effect:added' && evt.effect) {
+      track.effectAdded(evt.effect.id || evt.effect.pluginId);
+    }
+  });
+  onToolChange((tool) => track.toolSelected(tool));
 
   initDocumentSizePopup({
     document: doc,

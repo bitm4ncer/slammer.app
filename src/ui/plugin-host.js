@@ -3,6 +3,7 @@
 
 import { getPlugin } from '../plugins/registry.js';
 import { createFloatingWindow } from './floating-window.js';
+import { track } from '../analytics.js';
 
 const openInstances = new Map(); // pluginId → handle
 
@@ -15,6 +16,7 @@ export function openPluginWindow(pluginId) {
     console.warn(`[plugin-host] no panel plugin "${pluginId}"`);
     return null;
   }
+  track.pluginOpened(pluginId);
 
   const ctx = window.__slammer;
   if (!ctx) {

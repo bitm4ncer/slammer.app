@@ -13,6 +13,7 @@ import {
 } from './selection-state.js';
 import { getActiveFill, getActiveKind } from '../core/colors.js';
 import { registerShortcuts } from './shortcut-manager.js';
+import { track } from '../analytics.js';
 
 // Hexagon for "polygon" via inline SVG (FA 6.4 lacks a clean hexagon glyph).
 const HEX_SVG = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M 8 1 L 14.5 4.5 L 14.5 11.5 L 8 15 L 1.5 11.5 L 1.5 4.5 Z" fill="currentColor"/></svg>';
@@ -277,11 +278,13 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
     doc.setName('Untitled');
     projectStore.clearCurrent();
     showNotification('New blank document');
+    track.projectNew();
   });
 
   $('btnExport').addEventListener('click', (e) => {
     if (e.shiftKey) {
       exportSlmr({ document: doc, name: doc.state.name });
+      track.exported('slmr');
       showNotification('.slmr exported');
     } else if (renderer) {
       openExportPopup({ document: doc, renderer });
@@ -293,6 +296,7 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
   $('btnSave').addEventListener('click', async () => {
     if (!projectStore) return;
     await projectStore.saveCurrent({ document: doc, view });
+    track.projectSaved();
     showNotification(`Saved "${doc.state.name}"`);
   });
 
@@ -312,6 +316,7 @@ export function initToolbar({ document: doc, view, renderer, exportPng, projectS
       await importSlmr(f, doc);
       projectStore.clearCurrent();
       await projectStore.saveCurrent({ document: doc, view });
+      track.projectImportedSlmr();
       showNotification(`Loaded "${doc.state.name}"`);
     } catch (err) {
       showNotification(`Import failed: ${err.message || err}`);

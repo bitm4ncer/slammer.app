@@ -10,6 +10,7 @@ import {
 } from './shortcut-manager.js';
 import { prettyCombo, captureCombo } from './shortcuts/helpers.js';
 import { showConfirm } from './confirm-prompt.js';
+import { track } from '../analytics.js';
 
 const STORE_KEY = 'slammer:settings';
 const DEFAULTS = {
@@ -1114,13 +1115,16 @@ function wireApp(root) {
 
   btn.addEventListener('click', async () => {
     if (!pwa || !pwa.canInstall()) return;
+    track.pwaInstallClicked();
     btn.disabled = true;
     btn.querySelector('span').textContent = 'Installing…';
     const outcome = await pwa.install();
     if (outcome === 'accepted') {
+      track.pwaInstallAccepted();
       btn.querySelector('span').textContent = 'Installed!';
       btn.querySelector('i').className = 'fas fa-check';
     } else {
+      track.pwaInstallDismissed();
       // 'dismissed' or 'unavailable' — re-evaluate state.
       render();
     }
